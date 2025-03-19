@@ -3,3 +3,4 @@ numpy
 matplotlib
 pytest
 yfinance
+quantstats
