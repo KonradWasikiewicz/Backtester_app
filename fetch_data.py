@@ -1,45 +1,35 @@
 import yfinance as yf
 import pandas as pd
 import datetime
-import time
 
-# Lista tickerów dla Magnificent 7
+# Lista tickerów
 tickers = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NVDA', 'TSLA']
 
-# Ustalenie zakresu dat: ostatnie dwa lata
+# Zakres dat: ostatnie 2 lata
 end_date = datetime.date.today()
 start_date = end_date - datetime.timedelta(days=2*365)
 
-all_data = []
-failed_tickers = []
+# Pobieranie danych w szerokim formacie (multi-index)
+data = yf.download(
+    tickers,
+    start=start_date,
+    end=end_date,
+    interval='1d',
+    auto_adjust=False,   # aby zachować kolumny Open/High/Low/Close/Adj Close
+    group_by='column',   # lub 'ticker'; w nowszych wersjach bywa różnie interpretowane
+    progress=False
+)
 
-for ticker in tickers:
-    try:
-        print(f"Pobieram dane dla {ticker}...")
-        # Ustawienie interwału na dzienny
-        df = yf.download(ticker, start=start_date, end=end_date, interval='1d', progress=False)
-        # Dodaj krótkie opóźnienie między zapytaniami
-        time.sleep(1)
-        if df.empty:
-            print(f"Brak danych dla {ticker}")
-            failed_tickers.append(ticker)
-            continue
-        df['Ticker'] = ticker
-        df.index.name = 'Date'
-        all_data.append(df)
-        print(f"Pobrano dane dla {ticker}")
-    except Exception as e:
-        print(f"Nie udało się pobrać danych dla {ticker}. Powód: {e}")
-        failed_tickers.append(ticker)
+# Jeśli `data` ma wielopoziomowe kolumny, możemy je „spłaszczyć” i przekształcić w long format:
+data_long = data.stack(level=1, future_stack=True).reset_index()
+# Teraz mamy kolumny: Date, level_1 (ticker), Open, High, Low, Close, Adj Close, Volume itd.
 
-if all_data:
-    data = pd.concat(all_data)
-    data.reset_index(inplace=True)
-    data = data[['Date', 'Ticker', 'Open', 'High', 'Low', 'Close', 'Volume']]
-    data.to_csv('data/historical_prices.csv', index=False)
-    print("Plik data/historical_prices.csv został wygenerowany.")
-else:
-    print("Brak danych do zapisania.")
+# Zmieniamy nazwę kolumny level_1 na 'Ticker'
+data_long.rename(columns={'level_1': 'Ticker'}, inplace=True)
 
-if failed_tickers:
-    print(f"Nie udało się pobrać danych dla następujących tickerów: {failed_tickers}")
+# Na koniec wybieramy tylko interesujące nas kolumny:
+data_long = data_long[['Date', 'Ticker', 'Open', 'High', 'Low', 'Close', 'Volume']]
+
+# Zapisujemy do CSV
+data_long.to_csv('data/historical_prices.csv', index=False)
+print("Plik historical_prices.csv został zapisany w formacie long.")

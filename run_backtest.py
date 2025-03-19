@@ -19,6 +19,8 @@ if __name__ == '__main__':
     results = engine.run_backtest(data_with_signals)
     
     # Wizualizacja wyników: wykres portfela w czasie
+    # Po otrzymaniu wyników z backtestu
+    results.reset_index(inplace=True)  # Przywrócenie kolumny "Date"
     plt.figure(figsize=(12, 6))
     plt.plot(results['Date'], results['Portfolio_Value'], label='Wartość portfela')
     plt.xlabel('Data')
@@ -26,3 +28,5 @@ if __name__ == '__main__':
     plt.title('Wyniki backtestu strategii dla MSFT')
     plt.legend()
     plt.show()
+    print(results[['Date', 'Close', 'Signal', 'Return', 'Strategy_Return', 'Portfolio_Value']].head(10))
+    print(results[['Portfolio_Value']].describe())
