@@ -29,26 +29,33 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
-    # 5. Integracja z QuantStats
+        # 5. Integracja z QuantStats
     # a) Upewnij się, że masz daty w indeksie i w formacie daty
     results.set_index('Date', inplace=True)
     results.index = pd.to_datetime(results.index)
 
-    # b) Wyodrębnij dzienne stopy zwrotu strategii
-    # Strategy_Return to dzienny procentowy zwrot, np. 0.01 dla +1%
-    # Dla QuantStats lepiej mieć Series z "zwykłymi" zwrotami (nie skumulowanymi)
-    strategy_returns = results['Strategy_Return'].dropna()
+    # b) Wyodrębnij dzienne stopy zwrotu strategii i przekształć na serię
+    strategy_returns = pd.Series(
+        results['Strategy_Return'].values,
+        index=results.index,
+        name='Strategy'
+    ).dropna()
 
-    # c) Możesz rozszerzyć Pandas, by używać wbudowanych metod quantstats
+    # c) Rozszerz Pandas o metody quantstats
     qs.extend_pandas()
 
     # d) Wygeneruj raport HTML
-    # Możesz też podać benchmark (np. '^GSPC' dla S&P500), aby porównać strategię z rynkiem
-    qs.reports.html(
-        strategy_returns,
-        # benchmark="^GSPC",  # opcjonalnie, jeśli chcesz porównania z S&P500
-        output='my_quantstats_report.html',
-        title='Raport strategii MSFT'
-    )
-
-    print("Wygenerowano raport QuantStats: my_quantstats_report.html")
+    try:
+        qs.reports.html(
+            returns=strategy_returns,
+            output='my_quantstats_report.html',
+            title='Raport strategii MSFT',
+            download_filename='my_quantstats_report.html'
+        )
+        print("Wygenerowano raport QuantStats: my_quantstats_report.html")
+    except Exception as e:
+        print(f"Błąd podczas generowania raportu: {str(e)}")
+        # Alternatywnie, pokaż podstawowe statystyki
+        print("\nPodstawowe statystyki:")
+        print(f"Całkowity zwrot: {(strategy_returns + 1).prod() - 1:.2%}")
+        print(f"Roczna zmienność: {strategy_returns.std() * (252 ** 0.5):.2%}")
