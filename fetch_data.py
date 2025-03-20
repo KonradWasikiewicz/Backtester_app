@@ -1,35 +1,56 @@
 import yfinance as yf
 import pandas as pd
 import datetime
+import os
+from typing import List
+import time
 
-# Lista tickerów
-tickers = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NVDA', 'TSLA']
+def fetch_stock_data(tickers: List[str], start_date: datetime.date, end_date: datetime.date) -> pd.DataFrame:
+    all_data = []
+    for ticker in tickers:
+        try:
+            print(f"Pobieranie danych dla {ticker}...")
+            ticker_data = yf.download(
+                ticker,
+                start=start_date,
+                end=end_date,
+                interval='1d',
+                progress=False
+            )
+            if not ticker_data.empty:
+                ticker_data = ticker_data.reset_index()
+                ticker_data['Ticker'] = ticker
+                all_data.append(ticker_data)
+            else:
+                print(f"Brak danych dla {ticker}")
+            time.sleep(1)  # Dodanie opóźnienia między zapytaniami
+        except Exception as e:
+            print(f"Błąd podczas pobierania {ticker}: {str(e)}")
 
-# Zakres dat: ostatnie 2 lata
-end_date = datetime.date.today()
-start_date = end_date - datetime.timedelta(days=2*365)
+    return pd.concat(all_data, ignore_index=True) if all_data else pd.DataFrame()
 
-# Pobieranie danych w szerokim formacie (multi-index)
-data = yf.download(
-    tickers,
-    start=start_date,
-    end=end_date,
-    interval='1d',
-    auto_adjust=False,   # aby zachować kolumny Open/High/Low/Close/Adj Close
-    group_by='column',   # lub 'ticker'; w nowszych wersjach bywa różnie interpretowane
-    progress=False
-)
+if __name__ == "__main__":
+    # Lista tickerów
+    TICKERS = ['AAPL', 'MSFT', 'AMZN', 'GOOGL', 'META', 'NVDA', 'TSLA']
 
-# Jeśli `data` ma wielopoziomowe kolumny, możemy je „spłaszczyć” i przekształcić w long format:
-data_long = data.stack(level=1, future_stack=True).reset_index()
-# Teraz mamy kolumny: Date, level_1 (ticker), Open, High, Low, Close, Adj Close, Volume itd.
+    # Zakres dat: ostatnie 2 lata
+    end_date = datetime.date.today()
+    start_date = end_date - datetime.timedelta(days=2*365)
 
-# Zmieniamy nazwę kolumny level_1 na 'Ticker'
-data_long.rename(columns={'level_1': 'Ticker'}, inplace=True)
+    try:
+        # Utworzenie katalogu data jeśli nie istnieje
+        os.makedirs('data', exist_ok=True)
 
-# Na koniec wybieramy tylko interesujące nas kolumny:
-data_long = data_long[['Date', 'Ticker', 'Open', 'High', 'Low', 'Close', 'Volume']]
+        # Pobieranie danych
+        data_long = fetch_stock_data(TICKERS, start_date, end_date)
 
-# Zapisujemy do CSV
-data_long.to_csv('data/historical_prices.csv', index=False)
-print("Plik historical_prices.csv został zapisany w formacie long.")
+        if not data_long.empty:
+            # Wybór potrzebnych kolumn i zapis do CSV
+            data_long = data_long[['Date', 'Ticker', 'Open', 'High', 'Low', 'Close', 'Volume']]
+            data_long.to_csv('data/historical_prices.csv', index=False)
+            print("\nPlik historical_prices.csv został zapisany pomyślnie.")
+        else:
+            print("Nie udało się pobrać żadnych danych.")
+
+    except Exception as e:
+        print(f"Wystąpił błąd: {str(e)}")

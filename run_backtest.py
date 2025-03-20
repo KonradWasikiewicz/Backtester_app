@@ -1,62 +1,58 @@
-from src.data_loader import load_data
-from src.strategy import MovingAverageCrossover
-from src.backtest_engine import BacktestEngine
-import quantstats as qs
 import pandas as pd
+import numpy as np
 import warnings
-warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings('ignore')
+
+def load_data(csv_path: str, ticker: str) -> pd.DataFrame:
+    try:
+        # Wczytaj dane z CSV
+        df = pd.read_csv(csv_path)
+
+        # Filtruj dla wybranego tickera
+        df = df[df['Ticker'] == ticker]
+
+        # Ustaw index na Date
+        df['Date'] = pd.to_datetime(df['Date'])
+        df.set_index('Date', inplace=True)
+
+        # Sortuj po dacie
+        df.sort_index(inplace=True)
+
+        if df.empty:
+            raise ValueError(f"Brak danych dla {ticker}")
+
+        return df
+
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Nie znaleziono pliku {csv_path}. Upewnij się, że uruchomiłeś fetch_data.py")
 
 if __name__ == '__main__':
-    # 1. Wczytaj dane (dla przykładowego tickeru MSFT)
-    data = load_data('data/historical_prices.csv')
-
-    # Upewnij się, że kolumna Date jest właściwie zinterpretowana
-    print("Typy kolumn w data:", data.dtypes)
-
-    # Filtruj dane dla MSFT
-    data = data[data['Ticker'] == 'MSFT']
-
-    # 2. Generowanie sygnałów strategii
-    strategy = MovingAverageCrossover(short_window=20, long_window=50)
-    data_with_signals = strategy.generate_signals(data)
-
-    # 3. Uruchomienie backtestu
-    engine = BacktestEngine(initial_capital=100000, commission=0.001)
-    results = engine.run_backtest(data_with_signals)
-
-    # 4. Przygotowanie danych dla QuantStats
-    print("Dostępne kolumny:", results.columns.tolist())
-
-    # Ustawienie indeksu na Date
-    results.set_index('Date', inplace=True)
-
-    # Konwersja zwrotów na format wymagany przez QuantStats
-    strategy_returns = pd.Series(
-        results['Strategy_Return'].values,
-        index=results.index,
-        name='Strategy'
-    ).dropna()
-
-    # Upewnij się, że zwroty są w formacie dziennym
-    strategy_returns = strategy_returns.resample('D').sum().fillna(0)
-
-    # 5. Generowanie raportu QuantStats
     try:
-        # Rozszerzenie funkcjonalności pandas
-        qs.extend_pandas()
+        # 1. Wczytaj dane
+        data = load_data('data/historical_prices.csv', 'MSFT')
 
-        # Generowanie raportu HTML
-        qs.reports.html(
-            returns=strategy_returns,
-            benchmark=None,  # Usunięto benchmark dla uproszczenia
-            output='quantstats_report.html',
-            title='Raport strategii MSFT',
-            download_filename='quantstats_report.html'
-        )
-        print("Wygenerowano raport QuantStats: quantstats_report.html")
+        # Dodaj sprawdzenie czy dane nie są puste
+        if data.empty:
+            raise ValueError("Pobrane dane są puste")
+
+        # 2. Dodaj prostą strategię (przykład: Moving Average Crossover)
+        data['SMA20'] = data['Close'].rolling(window=20).mean()
+        data['SMA50'] = data['Close'].rolling(window=50).mean()
+        data['Signal'] = np.where(data['SMA20'] > data['SMA50'], 1, -1)
+
+        # 3. Uruchom backtest
+        engine = BacktestEngine(initial_capital=100000)
+        results = engine.run_backtest(data)
+
+        # 4. Wizualizuj wyniki
+        visualizer = BacktestVisualizer()
+        visualizer.plot_strategy_performance(results)
+
+        # 5. Wyświetl statystyki
+        stats = engine.get_statistics()
+        print("\nStatystyki backtesta:")
+        for key, value in stats.items():
+            print(f"{key}: {value}")
 
     except Exception as e:
-        print(f"Błąd podczas generowania raportu: {str(e)}")
-        print("\nPodstawowe statystyki:")
-        print(f"Całkowity zwrot: {(strategy_returns + 1).prod() - 1:.2%}")
-        print(f"Roczna zmienność: {strategy_returns.std() * (252 ** 0.5):.2%}")
+        print(f"Wystąpił błąd: {str(e)}")
