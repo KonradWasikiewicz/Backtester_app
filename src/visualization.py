@@ -4,6 +4,7 @@ from typing import List, Dict
 import pandas as pd
 from matplotlib.ticker import FuncFormatter, AutoMinorLocator
 from matplotlib.dates import AutoDateLocator, DateFormatter
+import yfinance as yf
 
 class BacktestVisualizer:
     def __init__(self, figsize=(16, 10)):
@@ -49,10 +50,35 @@ class BacktestVisualizer:
         ax.legend()
 
     def _setup_portfolio_plot(self, ax, data):
-        # Wykres wartości portfela z ulepszoną osią Y
-        ax.plot(data.index, data['Portfolio_Value'])
+        try:
+            # Load S&P500 data from the CSV instead of fetching it
+            sp500_data = pd.read_csv('data/historical_prices.csv')
+            sp500_data = sp500_data[sp500_data['Ticker'] == '^GSPC']
+            sp500_data['Date'] = pd.to_datetime(sp500_data['Date'])
+            sp500_data.set_index('Date', inplace=True)
+
+            # Align dates with portfolio data
+            sp500_data = sp500_data.loc[data.index[0]:data.index[-1]]
+
+            if not sp500_data.empty:
+                # Calculate S&P500 returns
+                sp500_returns = sp500_data['Close'].pct_change()
+                sp500_cum_returns = (1 + sp500_returns).cumprod()
+                sp500_normalized = sp500_cum_returns * data['Portfolio_Value'].iloc[0]
+
+                # Plot both portfolio and S&P500
+                ax.plot(data.index, data['Portfolio_Value'], label='Portfolio')
+                ax.plot(data.index, sp500_normalized, label='S&P500', alpha=0.7, linestyle='--')
+            else:
+                # If no S&P500 data, just plot portfolio
+                ax.plot(data.index, data['Portfolio_Value'], label='Portfolio')
+        except Exception as e:
+            # Fallback to just portfolio plot if there's any error
+            ax.plot(data.index, data['Portfolio_Value'], label='Portfolio')
+
         ax.set_title('Portfolio Value ($)')
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'${x:,.0f}'))
+        ax.legend()
 
     def _setup_drawdown_plot(self, ax, data):
         # Wykres drawdownu z ulepszoną osią Y
@@ -76,7 +102,8 @@ class BacktestVisualizer:
             f"  Liczba transakcji: {stats.get('total_trades', 0)}",
             f"  Win rate: {stats.get('win_rate', 0)*100:.1f}%",
             f"  Średni zysk: ${stats.get('avg_profit', 0):,.2f}",
-            f"  Max drawdown: {stats.get('max_drawdown', 0)*100:.1f}%"
+            f"  Max drawdown: {stats.get('max_drawdown', 0)*100:.1f}%",
+            f"  Sharpe Ratio: {stats.get('sharpe_ratio', 0):.2f}"
         ]
 
         ax.text(0.05, 0.95, '\n'.join(strategy_info),

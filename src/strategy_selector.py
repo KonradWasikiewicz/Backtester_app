@@ -64,65 +64,97 @@ class StrategySelector:
         ticker_frame.pack(fill="x", padx=10, pady=5)
 
         self.ticker_var = tk.StringVar()
-                rb.invoke()  # Domyślnie wybrana pierwsza strategia
+        self.ticker_combo = ttk.Combobox(ticker_frame,
+                                       textvariable=self.ticker_var,
+                                       values=sorted(self.available_tickers),
+                                       state="readonly")
+        self.ticker_combo.set(self.available_tickers[0])
+        self.ticker_combo.pack(fill="x")
 
-        # Opis strategii
-        desc_frame = ttk.LabelFrame(self.strategy_tab, text="Opis Strategii", padding=10)
-        desc_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
-        self.desc_label = ttk.Label(desc_frame, wraplength=550)
-        self.desc_label.pack(fill="both", expand=True)
+        # Przycisk zatwierdzenia
+        ttk.Button(self.root, text="Zatwierdź",
+                  command=self.on_submit).pack(pady=20)
 
         # Aktualizacja opisu przy zmianie strategii
         self.strategy_var.trace('w', self.update_description)
         self.update_description()
 
-    def setup_ticker_tab(self):
-        # Dodanie opisu i filtrowania tickerów
-        search_frame = ttk.LabelFrame(self.ticker_tab, text="Wyszukiwanie", padding=10)
-        search_frame.pack(fill="x", padx=10, pady=5)
+    def update_description(self, *args):
+        strategy = self.strategy_var.get()
+        self.desc_label.config(text=self.strategy_descriptions.get(strategy, ""))
 
-        ttk.Label(search_frame, text="Filtruj tickery:").pack(side="left", padx=5)
-        self.search_var = tk.StringVar()
-        self.search_var.trace('w', self.filter_tickers)
-        ttk.Entry(search_frame, textvariable=self.search_var).pack(side="left", fill="x", expand=True)
-
-        # Lista tickerów
-        self.ticker_listbox = tk.Listbox(self.ticker_tab, height=10)
-        self.ticker_listbox.pack(fill="both", expand=True, padx=10, pady=5)
-
-        # Wypełnienie listy tickerów
-        for ticker in sorted(self.available_tickers):
-            self.ticker_listbox.insert(tk.END, ticker)
-
-    def filter_tickers(self, *args):
-        search_term = self.search_var.get().lower()
-        self.ticker_listbox.delete(0, tk.END)
-        for ticker in sorted(self.available_tickers):
-            if search_term in ticker.lower():
-                self.ticker_listbox.insert(tk.END, ticker)
-
-    def get_strategy_parameters(self) -> Dict[str, Any]:
-        # Dodatkowe okno do konfiguracji parametrów
+    def get_strategy_parameters(self, strategy_name: str) -> Dict[str, Any]:
         param_window = tk.Toplevel(self.root)
         param_window.title("Parametry Strategii")
-        param_window.grab_set()
+        param_window.geometry("400x300")
 
-        # ...existing code for parameter configuration...
+        params = {}
+        entries = {}
+
+        if strategy_name == "Moving Average Crossover":
+            params = {
+                "short_window": ("Krótka średnia", "20"),
+                "long_window": ("Długa średnia", "50")
+            }
+        elif strategy_name == "RSI":
+            params = {
+                "period": ("Okres RSI", "14"),
+                "overbought": ("Poziom wykupienia", "70"),
+                "oversold": ("Poziom wyprzedania", "30")
+            }
+        elif strategy_name == "Bollinger Bands":
+            params = {
+                "window": ("Okres", "20"),
+                "num_std": ("Liczba odchyleń std.", "2.0")
+            }
+
+        for i, (key, (label, default)) in enumerate(params.items()):
+            frame = ttk.Frame(param_window)
+            frame.pack(fill="x", padx=5, pady=5)
+            ttk.Label(frame, text=label).pack(side="left", padx=5)
+            entry = ttk.Entry(frame)
+            entry.insert(0, default)
+            entry.pack(side="right", padx=5)
+            entries[key] = entry
+
+        result = {}
+
+        def on_submit():
+            for key, entry in entries.items():
+                val = entry.get().strip()
+                if val:  # jeśli pole nie jest puste
+                    try:
+                        # konwersja na odpowiedni typ
+                        if key in ["num_std"]:
+                            result[key] = float(val)
+                        else:
+                            result[key] = int(val)
+                    except ValueError:
+                        # jeśli konwersja się nie powiedzie, użyj wartości domyślnej
+                        result[key] = float(params[key][1]) if key in ["num_std"] else int(params[key][1])
+                else:
+                    # użyj wartości domyślnej jeśli pole jest puste
+                    result[key] = float(params[key][1]) if key in ["num_std"] else int(params[key][1])
+            param_window.destroy()
+
+        ttk.Button(param_window, text="OK", command=on_submit).pack(pady=20)
+
+        param_window.wait_window()
+        return result
 
     def on_submit(self):
-        if not self.ticker_listbox.curselection():
-            tk.messagebox.showerror("Błąd", "Wybierz ticker!")
+        strategy = self.strategy_var.get()
+        ticker = self.ticker_var.get()
+
+        if not ticker:
+            messagebox.showerror("Błąd", "Wybierz ticker!")
             return
 
-        strategy = self.strategy_var.get()
-        ticker = self.ticker_listbox.get(self.ticker_listbox.curselection())
-        params = self.get_strategy_parameters()
-
+        params = self.get_strategy_parameters(strategy)
         self.result = (strategy, ticker, params)
         self.root.quit()
 
-    def get_selection(self) -> Tuple[str, str, Dict[str, Any]]:
+    def get_selection(self) -> Tuple[str, str]:
         self.root.mainloop()
         self.root.destroy()
         return self.result

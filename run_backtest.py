@@ -51,7 +51,7 @@ if __name__ == '__main__':
     try:
         # Wybór strategii i tickera przez okno dialogowe
         selector = StrategySelector()
-        strategy_name, ticker = selector.get_selection()
+        strategy_name, ticker, params = selector.get_selection()  # Changed this line
 
         # 1. Wczytaj dane
         data = load_data('data/historical_prices.csv', ticker)
@@ -69,20 +69,20 @@ if __name__ == '__main__':
             "Bollinger Bands": BollingerBandsStrategy
         }[strategy_name]
 
+        # Użyj parametrów z okna dialogowego
         if strategy_name == "Moving Average Crossover":
-            short_window = int(input("Podaj okres krótkiej średniej (default=20): ") or "20")
-            long_window = int(input("Podaj okres długiej średniej (default=50): ") or "50")
-            strategy = strategy_class(short_window=short_window, long_window=long_window)
-            strategy_params = {"Short MA": short_window, "Long MA": long_window}
+            strategy = strategy_class(short_window=params['short_window'],
+                                   long_window=params['long_window'])
+            strategy_params = {"Short MA": params['short_window'],
+                             "Long MA": params['long_window']}
         elif strategy_name == "RSI":
-            period = int(input("Podaj okres RSI (default=14): ") or "14")
-            strategy = strategy_class(period=period)
-            strategy_params = {"Period": period}
+            strategy = strategy_class(period=params['period'])
+            strategy_params = {"Period": params['period']}
         else:  # Bollinger Bands
-            window = int(input("Podaj okres (default=20): ") or "20")
-            num_std = float(input("Podaj liczbę odchyleń standardowych (default=2.0): ") or "2.0")
-            strategy = strategy_class(window=window, num_std=num_std)
-            strategy_params = {"Window": window, "Std Dev": num_std}
+            strategy = strategy_class(window=params['window'],
+                                   num_std=params['num_std'])
+            strategy_params = {"Window": params['window'],
+                             "Std Dev": params['num_std']}
 
         # Generowanie sygnałów
         data = strategy.generate_signals(data)

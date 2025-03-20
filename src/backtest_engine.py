@@ -20,6 +20,7 @@ class BacktestEngine:
         self.commission = commission
         self.slippage = slippage
         self.trades: List[Trade] = []
+        self.portfolio_values = None
 
     def run_backtest(self, data: pd.DataFrame) -> pd.DataFrame:
         data = data.copy()
@@ -37,6 +38,7 @@ class BacktestEngine:
 
         # Wartość portfela
         data['Portfolio_Value'] = self.initial_capital * (1 + data['Net_Return']).cumprod()
+        self.portfolio_values = data['Portfolio_Value']  # Store portfolio values
 
         # Rejestracja transakcji
         self._record_trades(data)
@@ -75,12 +77,26 @@ class BacktestEngine:
 
         pnls = [trade.pnl for trade in self.trades]
         winning_trades = [pnl for pnl in pnls if pnl > 0]
+        returns = pd.Series(pnls)
+
+        # Obliczanie Sharpe Ratio (zakładając 252 dni handlowe w roku)
+        excess_returns = returns - 0.02/252  # 2% stopa wolna od ryzyka
+        sharpe_ratio = np.sqrt(252) * excess_returns.mean() / excess_returns.std() if len(returns) > 1 else 0
+
+        # Obliczanie max drawdown z zapisanych wartości portfela
+        if self.portfolio_values is not None:
+            max_drawdown = ((self.portfolio_values - self.portfolio_values.cummax()) /
+                          self.portfolio_values.cummax()).min()
+        else:
+            max_drawdown = 0
 
         return {
             'total_trades': len(self.trades),
             'winning_trades': len(winning_trades),
             'win_rate': len(winning_trades) / len(pnls),
             'avg_profit': np.mean(pnls),
-            'profit_factor': abs(sum(winning_trades) / sum(pnl for pnl in pnls if pnl < 0)) if any(pnl < 0 for pnl in pnls) else float('inf'),
-            'max_drawdown': 0  # TODO: Implement
+            'sharpe_ratio': sharpe_ratio,
+            'profit_factor': abs(sum(winning_trades) / sum(pnl for pnl in pnls if pnl < 0))
+                           if any(pnl < 0 for pnl in pnls) else float('inf'),
+            'max_drawdown': max_drawdown
         }
