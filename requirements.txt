@@ -1,6 +1,6 @@
-pandas
-numpy
-matplotlib
-pytest
-yfinance
-quantstats
+pandas>=2.0.0
+numpy>=1.21.0
+matplotlib>=3.5.0
+pytest>=7.0.0
+yfinance>=0.2.36
+quantstats>=0.0.59
