@@ -90,6 +90,18 @@ class BacktestEngine:
         else:
             max_drawdown = 0
 
+        # Obliczanie średniego rocznego turnover'u portfela
+        if self.trades:
+            total_trading_value = sum(abs(trade.entry_price * trade.position_size) +
+                                    abs(trade.exit_price * trade.position_size)
+                                    for trade in self.trades)
+            trading_days = (self.trades[-1].exit_date - self.trades[0].entry_date).days
+            years = trading_days / 365
+            avg_portfolio_value = self.portfolio_values.mean() if self.portfolio_values is not None else self.initial_capital
+            turnover = (total_trading_value / (2 * avg_portfolio_value)) / years if years > 0 else 0
+        else:
+            turnover = 0
+
         return {
             'total_trades': len(self.trades),
             'winning_trades': len(winning_trades),
@@ -98,5 +110,6 @@ class BacktestEngine:
             'sharpe_ratio': sharpe_ratio,
             'profit_factor': abs(sum(winning_trades) / sum(pnl for pnl in pnls if pnl < 0))
                            if any(pnl < 0 for pnl in pnls) else float('inf'),
-            'max_drawdown': max_drawdown
+            'max_drawdown': max_drawdown,
+            'annual_turnover': turnover
         }

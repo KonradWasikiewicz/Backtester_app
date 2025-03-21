@@ -103,7 +103,8 @@ class BacktestVisualizer:
             f"  Win rate: {stats.get('win_rate', 0)*100:.1f}%",
             f"  Średni zysk: ${stats.get('avg_profit', 0):,.2f}",
             f"  Max drawdown: {stats.get('max_drawdown', 0)*100:.1f}%",
-            f"  Sharpe Ratio: {stats.get('sharpe_ratio', 0):.2f}"
+            f"  Sharpe Ratio: {stats.get('sharpe_ratio', 0):.2f}",
+            f"  Annual Turnover: {stats.get('annual_turnover', 0):.2f}x"
         ]
 
         ax.text(0.05, 0.95, '\n'.join(strategy_info),
