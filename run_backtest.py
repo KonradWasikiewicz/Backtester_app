@@ -133,7 +133,7 @@ if __name__ == '__main__':
         )
 
         # 5. Wyświetl statystyki
-        print("\nStatystyki backtesta:")
+        print("\nStatystyki backtestingu:")
         for key, value in stats.items():
             print(f"{key}: {value}")
 

@@ -11,3 +11,9 @@ pytest>=7.3.1
 tk==0.1.0
 typing-extensions>=4.5.0
 scikit-learn>=1.0.0
+dash>=2.14.0
+dash-bootstrap-components>=1.5.0
+dash-core-components>=2.0.0
+dash-html-components>=2.0.0
+dash-table>=5.0.0
+plotly>=5.18.0
