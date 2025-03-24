@@ -28,33 +28,28 @@ def get_base_layout(title):
 
 def create_empty_chart(title):
     """Create an empty chart with message"""
-    return {
-        "data": [],
-        "layout": go.Layout(
-            title=title,
-            template="plotly_dark",
-            annotations=[{
-                "text": "No data available",
-                "xref": "paper",
-                "yref": "paper",
-                "showarrow": False,
-                "font": {"size": 20}
-            }],
-            **CHART_THEME
-        )
-    }
+    layout = go.Layout(
+        title=title,
+        template="plotly_dark",
+        annotations=[{
+            "text": "No data available",
+            "xref": "paper",
+            "yref": "paper",
+            "showarrow": False,
+            "font": {"size": 20}
+        }],
+        **CHART_THEME
+    )
+    return go.Figure(data=[], layout=layout)
 
 def create_equity_curve(results):
     """Create equity curve chart"""
-    return {
-        "data": [
-            go.Scatter(
-                x=results.index,
-                y=results["Portfolio_Value"],
-                mode="lines",
-                name="Portfolio Value",
-                line=dict(color="#17B897")
-            )
-        ],
-        "layout": get_base_layout("Equity Curve")
-    }
+    trace = go.Scatter(
+        x=results.index,
+        y=results["Portfolio_Value"],
+        mode="lines",
+        name="Portfolio Value",
+        line=dict(color="#17B897")
+    )
+    layout = get_base_layout("Equity Curve")
+    return go.Figure(data=[trace], layout=layout)

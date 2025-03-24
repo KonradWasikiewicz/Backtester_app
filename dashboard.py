@@ -7,6 +7,10 @@ from src.backtest_engine import BacktestEngine
 from src.strategy import MovingAverageCrossover, RSIStrategy, BollingerBandsStrategy
 from src.data_loader import DataLoader
 from src.visualization import BacktestVisualizer, create_empty_chart
+from src.metrics import (
+    calculate_cagr, calculate_sharpe_ratio, calculate_sortino_ratio,
+    calculate_max_drawdown, calculate_calmar_ratio, calculate_pure_profit_score
+)
 
 # Initialize Dash app with dark theme
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
@@ -74,15 +78,17 @@ def run_backtest(ticker, strategy_type, strategy_params=None):
         results = engine.run_backtest(data)
         
         # Calculate statistics
+        portfolio_value = results['Portfolio_Value']
         stats = {
             'initial_capital': 100000,
-            'final_capital': results['Portfolio_Value'].iloc[-1],
-            'total_return': ((results['Portfolio_Value'].iloc[-1] / 100000) - 1) * 100,
-            'max_drawdown': ((results['Portfolio_Value'] - results['Portfolio_Value'].cummax()) / 
-                            results['Portfolio_Value'].cummax()).min(),
-            'sharpe_ratio': 0.0,
-            'win_rate': 0.0,
-            'total_trades': 0
+            'final_capital': portfolio_value.iloc[-1],
+            'total_return': ((portfolio_value.iloc[-1] / 100000) - 1) * 100,
+            'cagr': calculate_cagr(portfolio_value) * 100,
+            'sharpe_ratio': calculate_sharpe_ratio(portfolio_value),
+            'sortino_ratio': calculate_sortino_ratio(portfolio_value),
+            'max_drawdown': calculate_max_drawdown(portfolio_value, method='percent') * 100,
+            'calmar_ratio': calculate_calmar_ratio(portfolio_value),
+            'pure_profit_score': calculate_pure_profit_score(portfolio_value)
         }
         
         engine_stats = engine.get_statistics()
@@ -95,12 +101,23 @@ def run_backtest(ticker, strategy_type, strategy_params=None):
         return None, None, None
 
 def create_metric_cards(stats):
-    """Create metric cards layout"""
+    """Create metric cards layout with advanced metrics"""
     return dbc.Row([
-        dbc.Col(create_metric_card("Initial Capital", f"${stats['initial_capital']:,.2f}")),
-        dbc.Col(create_metric_card("Final Capital", f"${stats['final_capital']:,.2f}")),
-        dbc.Col(create_metric_card("Total Return", f"{stats['total_return']:.2f}%")),
-        dbc.Col(create_metric_card("Sharpe Ratio", f"{stats['sharpe_ratio']:.2f}"))
+        dbc.Col([
+            create_metric_card("CAGR", f"{stats['cagr']:.2f}%"),
+            create_metric_card("Sharpe Ratio", f"{stats['sharpe_ratio']:.2f}"),
+            create_metric_card("Sortino Ratio", f"{stats['sortino_ratio']:.2f}"),
+        ]),
+        dbc.Col([
+            create_metric_card("Max Drawdown", f"{stats['max_drawdown']:.2f}%"),
+            create_metric_card("Calmar Ratio", f"{stats['calmar_ratio']:.2f}"),
+            create_metric_card("Pure Profit Score", f"{stats['pure_profit_score']:.2f}"),
+        ]),
+        dbc.Col([
+            create_metric_card("Total Return", f"{stats['total_return']:.2f}%"),
+            create_metric_card("Win Rate", f"{stats['win_rate']:.2f}%"),
+            create_metric_card("Total Trades", f"{stats['total_trades']}")
+        ])
     ])
 
 # Initialize visualizer
@@ -128,6 +145,7 @@ app.layout = dbc.Container([
     ]),
 
     dbc.Row([
+        # Left column (1/3)
         dbc.Col([
             dbc.Card([
                 dbc.CardHeader("Strategy Settings"),
@@ -142,7 +160,7 @@ app.layout = dbc.Container([
                                 className="mb-3 dropdown-dark",
                                 style=DROPDOWN_STYLE
                             )
-                        ], width=6),
+                        ], width=12),
                         dbc.Col([
                             html.Label("Select Strategy"),
                             dcc.Dropdown(
@@ -156,61 +174,90 @@ app.layout = dbc.Container([
                                 className="mb-3 dropdown-dark",
                                 style=DROPDOWN_STYLE
                             )
-                        ], width=6)
+                        ], width=12)
                     ]),
                     html.Div(id="strategy-params", className="mt-3"),
                     dbc.Spinner(html.Div(id="calculation-status"))
                 ])
             ], className="mb-4")
-        ], width=12)
-    ]),
-    
-    html.Div(id="metric-cards"),
-    html.Div(id="charts"),
-    
+        ], width=3),
+        
+        # Center column (charts & metrics)
+        dbc.Col([
+            # Row 1: Equity Curve
+            dbc.Row([
+                dbc.Col(html.Div(id="equity-curve-container"), className="mb-4")
+            ]),
+            # Row 2: Metrics
+            dbc.Row([
+                dbc.Col(html.Div(id="metrics-container"), className="mb-4")
+            ]),
+            # Row 3: Additional Charts
+            dbc.Row([
+                dbc.Col(html.Div(id="additional-charts"))
+            ])
+        ], width=6),
+        
+        # Right column (1/3)
+        dbc.Col([
+            # Additional content for right column
+        ], width=3)
+    ])
 ], fluid=True, style={"backgroundColor": "#131722"})
 
 @app.callback(
     [Output("calculation-status", "children"),
-     Output("metric-cards", "children"),
-     Output("charts", "children")],
+     Output("equity-curve-container", "children"),
+     Output("metrics-container", "children"),
+     Output("additional-charts", "children")],
     [Input("instrument-selector", "value"),
      Input("strategy-selector", "value")]
 )
 def update_backtest(instrument, strategy):
-    """Update backtest results when instrument or strategy changes"""
     if not instrument:
-        return "Please select an instrument", create_empty_cards(), []
+        return "Please select an instrument", [], create_empty_cards(), []
     
     try:
-        # Show loading status
-        status = html.Div("Calculating...", className="text-info")
-        
-        # Run backtest
-        data, results, stats = run_backtest(instrument, strategy)
+        data, results, basic_stats = run_backtest(instrument, strategy)
         
         if data is None or results is None:
             return (
                 html.Div("Error running backtest", className="text-danger"),
+                [],
                 create_empty_cards(),
-                [create_empty_chart("No Data Available")]
+                []
             )
         
-        # Update components
+        # Calculate additional metrics
+        advanced_stats = {
+            'cagr': calculate_cagr(results['Portfolio_Value']) * 100,
+            'sharpe_ratio': calculate_sharpe_ratio(results['Portfolio_Value']),
+            'sortino_ratio': calculate_sortino_ratio(results['Portfolio_Value']),
+            'max_drawdown': calculate_max_drawdown(results['Portfolio_Value'], method='percent') * 100,
+            'calmar_ratio': calculate_calmar_ratio(results['Portfolio_Value']),
+            'pure_profit_score': calculate_pure_profit_score(results['Portfolio_Value'])
+        }
+        
+        stats = {**basic_stats, **advanced_stats}
+        
+        # Create components
+        equity_curve = create_chart(results, "Equity Curve")
         metric_cards = create_metric_cards(stats)
-        charts = create_charts(results)
+        additional_charts = create_charts(results)[1:]  # Skip equity curve as it's shown separately
         
         return (
             html.Div("Calculation complete", className="text-success"),
+            equity_curve,
             metric_cards,
-            charts
+            additional_charts
         )
         
     except Exception as e:
         return (
             html.Div(f"Error: {str(e)}", className="text-danger"),
+            [],
             create_empty_cards(),
-            [create_empty_chart("Error Running Backtest")]
+            []
         )
 
 if __name__ == "__main__":
