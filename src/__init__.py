@@ -1,2 +1,4 @@
 from .backtest_engine import BacktestEngine
-from .visualization import BacktestVisualizer
+from .visualization.visualizer import BacktestVisualizer
+
+__all__ = ['BacktestEngine', 'BacktestVisualizer']

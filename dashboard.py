@@ -1,182 +1,217 @@
 import dash
-from dash import dcc, html
+from dash import dcc, html, callback_context
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 import plotly.graph_objs as go
-import plotly.express as px
 from src.backtest_engine import BacktestEngine
 from src.strategy import MovingAverageCrossover, RSIStrategy, BollingerBandsStrategy
 from src.data_loader import DataLoader
+from src.visualization import BacktestVisualizer, create_empty_chart
 
-# Initialize Dash app with Bootstrap theme
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
-app.title = "Backtesting Dashboard"
+# Initialize Dash app with dark theme
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+app.title = "Trading Strategy Backtester"
+
+# Default chart theme configuration
+CHART_THEME = {
+    'paper_bgcolor': '#1e222d',
+    'plot_bgcolor': '#1e222d',
+    'font_color': '#e1e1e1',
+    'grid_color': '#2a2e39'
+}
+
+# Style dla dropdownów
+DROPDOWN_STYLE = {
+    'backgroundColor': '#1e222d',
+    'color': '#e1e1e1',
+    'option': {
+        'backgroundColor': '#1e222d',
+        'color': '#e1e1e1',
+        'hover': '#2a2e39'
+    }
+}
+
+# Available instruments
+AVAILABLE_INSTRUMENTS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', '^GSPC']  # Add more as needed
 
 def create_metric_card(title, value, prefix="", suffix=""):
-    """Create a styled metric card component"""
+    """Create a styled metric card component with dark theme"""
     return dbc.Card(
         dbc.CardBody([
             html.H6(title, className="card-subtitle text-muted"),
-            html.H4(f"{prefix}{value}{suffix}", className="card-title")
+            html.H4(f"{prefix}{value}{suffix}", className="card-title text-info")
         ]),
-        className="mb-3"
+        className="mb-3 bg-dark"
     )
 
 def create_chart(figure_data, layout_title):
     """Create a styled chart component"""
+    # Zwracamy komponent Graph z figure jako props
     return dcc.Graph(
-        figure={
-            "data": figure_data,
-            "layout": go.Layout(
-                title=layout_title,
-                template="plotly_white",
-                hovermode='x unified',
-                xaxis={"showgrid": True, "gridwidth": 1, "gridcolor": "LightGrey"},
-                yaxis={"showgrid": True, "gridwidth": 1, "gridcolor": "LightGrey"},
-                margin=dict(l=40, r=40, t=40, b=40)
-            )
-        }
+        id=f"chart-{layout_title}",  # Unique ID for each chart
+        figure=figure_data if figure_data else create_empty_chart(layout_title),
+        config={'displayModeBar': True}
     )
 
-def load_backtest_results():
-    """Load and process backtest results"""
-    default_stats = {
-        'initial_capital': 100000,
-        'final_capital': 100000,
-        'total_return': 0.0,
-        'max_drawdown': 0.0,
-        'sharpe_ratio': 0.0,
-        'win_rate': 0.0,
-        'total_trades': 0
-    }
-    
+def run_backtest(ticker, strategy_type, strategy_params=None):
+    """Run backtest with specified parameters"""
     try:
-        data = DataLoader.load_data('data/historical_prices.csv', 'AAPL')
-        strategy = MovingAverageCrossover(short_window=50, long_window=200)
+        data = DataLoader.load_data('data/historical_prices.csv', ticker)
+        
+        # Default to Bollinger Bands if no strategy specified
+        if strategy_type == "BB" or not strategy_type:
+            strategy = BollingerBandsStrategy(window=20, num_std=2)
+        elif strategy_type == "MA":
+            strategy = MovingAverageCrossover(
+                short_window=strategy_params.get('short_window', 50),
+                long_window=strategy_params.get('long_window', 200)
+            )
+        elif strategy_type == "RSI":
+            strategy = RSIStrategy(period=strategy_params.get('period', 14))
+            
         data = strategy.generate_signals(data)
         engine = BacktestEngine(initial_capital=100000)
         results = engine.run_backtest(data)
         
-        # Initialize stats with default values
-        stats = default_stats.copy()
-        
-        # Update with calculated values
-        stats.update({
+        # Calculate statistics
+        stats = {
+            'initial_capital': 100000,
             'final_capital': results['Portfolio_Value'].iloc[-1],
             'total_return': ((results['Portfolio_Value'].iloc[-1] / 100000) - 1) * 100,
             'max_drawdown': ((results['Portfolio_Value'] - results['Portfolio_Value'].cummax()) / 
-                            results['Portfolio_Value'].cummax()).min()
-        })
+                            results['Portfolio_Value'].cummax()).min(),
+            'sharpe_ratio': 0.0,
+            'win_rate': 0.0,
+            'total_trades': 0
+        }
         
-        # Update with engine statistics if available
         engine_stats = engine.get_statistics()
         if engine_stats:
             stats.update(engine_stats)
-        
+            
         return data, results, stats
     except Exception as e:
-        print(f"Error loading backtest results: {str(e)}")
-        return None, None, default_stats
+        print(f"Backtest error: {str(e)}")
+        return None, None, None
 
-# Load data with error handling
-data, results, stats = load_backtest_results()
+def create_metric_cards(stats):
+    """Create metric cards layout"""
+    return dbc.Row([
+        dbc.Col(create_metric_card("Initial Capital", f"${stats['initial_capital']:,.2f}")),
+        dbc.Col(create_metric_card("Final Capital", f"${stats['final_capital']:,.2f}")),
+        dbc.Col(create_metric_card("Total Return", f"{stats['total_return']:.2f}%")),
+        dbc.Col(create_metric_card("Sharpe Ratio", f"{stats['sharpe_ratio']:.2f}"))
+    ])
 
-# Dashboard layout
+# Initialize visualizer
+visualizer = BacktestVisualizer()
+
+def create_charts(results):
+    """Create charts layout"""
+    return visualizer.create_backtest_charts(results)
+
+def create_empty_cards():
+    """Create empty metric cards"""
+    return dbc.Row([
+        dbc.Col(create_metric_card("Initial Capital", "N/A")),
+        dbc.Col(create_metric_card("Final Capital", "N/A")),
+        dbc.Col(create_metric_card("Total Return", "N/A")),
+        dbc.Col(create_metric_card("Sharpe Ratio", "N/A"))
+    ])
+
+# Update layout to include containers for metric cards and charts
 app.layout = dbc.Container([
     dbc.Row([
         dbc.Col([
-            html.H1("Backtesting Dashboard", className="text-center my-4")
+            html.H1("Trading Strategy Backtester", className="text-center my-4")
         ])
     ]),
 
     dbc.Row([
         dbc.Col([
             dbc.Card([
-                dbc.CardHeader("Strategy Controls"),
+                dbc.CardHeader("Strategy Settings"),
                 dbc.CardBody([
-                    dbc.Select(
-                        id="strategy-selector",
-                        options=[
-                            {"label": "Moving Average Crossover", "value": "MA"},
-                            {"label": "RSI", "value": "RSI"},
-                            {"label": "Bollinger Bands", "value": "BB"}
-                        ],
-                        value="MA"
-                    ),
-                    html.Div(id="strategy-params", className="mt-3")
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Select Instrument"),
+                            dcc.Dropdown(
+                                id="instrument-selector",
+                                options=[{"label": i, "value": i} for i in AVAILABLE_INSTRUMENTS],
+                                value="AAPL",
+                                className="mb-3 dropdown-dark",
+                                style=DROPDOWN_STYLE
+                            )
+                        ], width=6),
+                        dbc.Col([
+                            html.Label("Select Strategy"),
+                            dcc.Dropdown(
+                                id="strategy-selector",
+                                options=[
+                                    {"label": "Bollinger Bands", "value": "BB"},
+                                    {"label": "Moving Average Crossover", "value": "MA"},
+                                    {"label": "RSI", "value": "RSI"}
+                                ],
+                                value="BB",
+                                className="mb-3 dropdown-dark",
+                                style=DROPDOWN_STYLE
+                            )
+                        ], width=6)
+                    ]),
+                    html.Div(id="strategy-params", className="mt-3"),
+                    dbc.Spinner(html.Div(id="calculation-status"))
                 ])
             ], className="mb-4")
         ], width=12)
     ]),
-
-    dbc.Row([
-        dbc.Col([
-            dbc.Row([
-                dbc.Col(create_metric_card("Initial Capital", f"${stats['initial_capital']:,.2f}")),
-                dbc.Col(create_metric_card("Final Capital", f"${stats['final_capital']:,.2f}")),
-                dbc.Col(create_metric_card("Total Return", f"{stats['total_return']:.2f}%")),
-                dbc.Col(create_metric_card("Sharpe Ratio", f"{stats['sharpe_ratio']:.2f}"))
-            ])
-        ], width=12)
-    ]),
-
-    dbc.Row([
-        dbc.Col([
-            create_chart(
-                [go.Scatter(
-                    x=results.index,
-                    y=results["Portfolio_Value"],
-                    mode="lines",
-                    name="Portfolio Value",
-                    line=dict(color="#17B897")
-                )],
-                "Equity Curve"
-            )
-        ], width=8),
-        dbc.Col([
-            create_chart(
-                [go.Bar(
-                    x=["Wins", "Losses"],
-                    y=[stats.get("win_rate", 0) * stats.get("total_trades", 0),
-                       (1 - stats.get("win_rate", 0)) * stats.get("total_trades", 0)],
-                    marker_color=["#17B897", "#FF6B6B"]
-                )],
-                "Trade Analytics"
-            )
-        ], width=4)
-    ]),
-
-    dbc.Row([
-        dbc.Col([
-            create_chart(
-                [go.Scatter(
-                    x=results.index,
-                    y=(results["Portfolio_Value"] - results["Portfolio_Value"].cummax()) / 
-                      results["Portfolio_Value"].cummax(),
-                    mode="lines",
-                    fill="tozeroy",
-                    line=dict(color="#FF6B6B"),
-                    name="Drawdown"
-                )],
-                "Drawdown"
-            )
-        ], width=12)
-    ])
-], fluid=True)
+    
+    html.Div(id="metric-cards"),
+    html.Div(id="charts"),
+    
+], fluid=True, style={"backgroundColor": "#131722"})
 
 @app.callback(
-    Output("strategy-params", "children"),
-    Input("strategy-selector", "value")
+    [Output("calculation-status", "children"),
+     Output("metric-cards", "children"),
+     Output("charts", "children")],
+    [Input("instrument-selector", "value"),
+     Input("strategy-selector", "value")]
 )
-def update_strategy_params(strategy):
-    """Update strategy parameters based on selection"""
-    if strategy == "MA":
-        return dbc.Row([
-            dbc.Col(dbc.Input(id="short-ma", type="number", value=50, placeholder="Short MA")),
-            dbc.Col(dbc.Input(id="long-ma", type="number", value=200, placeholder="Long MA"))
-        ])
-    # Add other strategy parameters as needed
-    return []
+def update_backtest(instrument, strategy):
+    """Update backtest results when instrument or strategy changes"""
+    if not instrument:
+        return "Please select an instrument", create_empty_cards(), []
+    
+    try:
+        # Show loading status
+        status = html.Div("Calculating...", className="text-info")
+        
+        # Run backtest
+        data, results, stats = run_backtest(instrument, strategy)
+        
+        if data is None or results is None:
+            return (
+                html.Div("Error running backtest", className="text-danger"),
+                create_empty_cards(),
+                [create_empty_chart("No Data Available")]
+            )
+        
+        # Update components
+        metric_cards = create_metric_cards(stats)
+        charts = create_charts(results)
+        
+        return (
+            html.Div("Calculation complete", className="text-success"),
+            metric_cards,
+            charts
+        )
+        
+    except Exception as e:
+        return (
+            html.Div(f"Error: {str(e)}", className="text-danger"),
+            create_empty_cards(),
+            [create_empty_chart("Error Running Backtest")]
+        )
 
 if __name__ == "__main__":
     app.run(debug=True)
