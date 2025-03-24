@@ -1,10 +1,27 @@
+import os
+import sys
 import pandas as pd
-import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 from src.backtest_engine import BacktestEngine
 from src.visualization import BacktestVisualizer
 from src.strategy import MovingAverageCrossover, RSIStrategy, BollingerBandsStrategy
 from src.strategy_selector import StrategySelector
+from src.data_loader import DataLoader
 import warnings
+
+def check_environment():
+    """Verify the execution environment"""
+    if not os.path.isdir('.venv'):
+        print("Virtual environment not found. Please run setup.py first.")
+        sys.exit(1)
+    if not os.path.exists('data/historical_prices.csv'):
+        print("Data file not found. Please run fetch_data.py first.")
+        sys.exit(1)
+    if not os.path.exists('src'):
+        print("Source directory not found.")
+        sys.exit(1)
+
 warnings.filterwarnings('ignore')
 
 def load_data(csv_path: str, ticker: str) -> pd.DataFrame:
@@ -48,15 +65,17 @@ def select_strategy():
     return strategies[choice]
 
 if __name__ == '__main__':
+    check_environment()
+    
     try:
         # Wybór strategii i tickera przez okno dialogowe
         selector = StrategySelector()
         strategy_name, ticker, params = selector.get_selection()  # Changed this line
 
-        # 1. Wczytaj dane
-        data = load_data('data/historical_prices.csv', ticker)
-        print(f"Załadowano dane w zakresie dat: {data.index.min()} - {data.index.max()}")
-        print(f"Liczba rekordów: {len(data)}")
+        # Use the new DataLoader
+        data = DataLoader.load_data('data/historical_prices.csv', ticker)
+        print(f"Loaded data range: {data.index.min()} - {data.index.max()}")
+        print(f"Number of records: {len(data)}")
 
         # Dodaj sprawdzenie czy dane nie są puste
         if data.empty:
@@ -100,7 +119,7 @@ if __name__ == '__main__':
             'initial_capital': 100000,
             'final_capital': results['Portfolio_Value'].iloc[-1],
             'total_return': ((results['Portfolio_Value'].iloc[-1] / 100000) - 1) * 100,
-            'max_drawdown': ((results['Portfolio_Value'] - results['Portfolio_Value'].cummax()) /
+            'max_drawdown': ((results['Portfolio_Value'] - results['Portfolio_Value'].cummax()) / 
                             results['Portfolio_Value'].cummax()).min()
         })
 

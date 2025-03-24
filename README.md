@@ -1,6 +1,41 @@
 # Backtester App
 
-A flexible Python-based backtesting framework for testing trading strategies on historical market data.
+A Python-based backtesting application for trading strategies.
+
+## Setup
+
+1. Make sure you have Python 3.8+ installed
+2. Run the setup script:
+   ```
+   python setup.py
+   ```
+3. Activate the virtual environment:
+   - Windows:
+     ```
+     .venv\Scripts\activate
+     ```
+   - Linux/Mac:
+     ```
+     source .venv/bin/activate
+     ```
+
+## Usage
+
+1. First, fetch historical data:
+   ```
+   python fetch_data.py
+   ```
+
+2. Run the backtester:
+   ```
+   python run_backtest.py
+   ```
+
+## Project Structure
+
+- `src/` - Source code for the backtesting engine and strategies
+- `data/` - Directory for storing historical price data
+- `requirements.txt` - Python package dependencies
 
 ## Features
 
@@ -13,58 +48,6 @@ A flexible Python-based backtesting framework for testing trading strategies on 
 - Risk management capabilities
 - Historical data fetching from Yahoo Finance
 - Comprehensive performance metrics
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd Backtester_app
-```
-
-2. Create and activate a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-## Usage
-
-1. Fetch historical data:
-```bash
-python fetch_data.py
-```
-
-2. Run the backtester:
-```bash
-python run_backtest.py
-```
-
-3. Follow the GUI prompts to:
-   - Select a trading strategy
-   - Choose a ticker
-   - Configure strategy parameters
-   - View backtest results
-
-## Project Structure
-
-```
-Backtester_app/
-├── data/                  # Historical price data
-├── src/
-│   ├── backtest_engine.py # Core backtesting logic
-│   ├── strategy.py        # Trading strategies
-│   ├── visualization.py   # Results visualization
-│   ├── risk_manager.py    # Risk management
-│   └── strategy_selector.py # GUI for strategy selection
-├── fetch_data.py         # Data acquisition script
-└── run_backtest.py       # Main execution script
-```
 
 ## Available Strategies
 

@@ -8,8 +8,22 @@ import yfinance as yf
 
 class BacktestVisualizer:
     def __init__(self, figsize=(16, 10)):
-        self.figsize = figsize
-        plt.style.use('seaborn-darkgrid')
+        self.figsize = figsize  # Store figsize as instance variable
+        
+        # Set modern style defaults
+        plt.style.use('default')
+        sns.set_theme(style="whitegrid")
+        sns.set_palette("husl")
+        
+        # Custom style settings
+        plt.rcParams.update({
+            'figure.figsize': self.figsize,  # Use instance variable
+            'axes.grid': True,
+            'grid.alpha': 0.3,
+            'axes.labelsize': 12,
+            'xtick.labelsize': 10,
+            'ytick.labelsize': 10
+        })
 
     def plot_strategy_performance(self, data: pd.DataFrame, strategy_name: str,
                                 strategy_params: Dict, stats: Dict, save_path: str = None):
