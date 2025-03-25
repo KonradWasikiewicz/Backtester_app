@@ -44,37 +44,68 @@ def get_years_past(series: pd.Series) -> float:
     return (end_date - start_date).days / 365.25
 
 
+def handle_nan_series(series: pd.Series) -> pd.Series:
+    """Clean series by removing NaN values and ensuring float type"""
+    return pd.Series(series, dtype=float).ffill().bfill()
+
 def calculate_cagr(series: pd.Series) -> float:
-    """
-    Calculate compounded annual growth rate
-    """
-    start_price = series.iloc[0]
-    end_price = series.iloc[-1]
-    value_factor = end_price / start_price
-    year_past = get_years_past(series)
-    return (value_factor ** (1 / year_past)) - 1
+    """Calculate compounded annual growth rate with better error handling"""
+    try:
+        series = handle_nan_series(series)
+        if len(series) < 2:
+            return 0.0
+        
+        start_price = series.iloc[0]
+        end_price = series.iloc[-1]
+        
+        if start_price <= 0 or end_price <= 0:
+            return 0.0
+            
+        value_factor = end_price / start_price
+        year_past = get_years_past(series)
+        
+        if year_past <= 0:
+            return 0.0
+            
+        return (value_factor ** (1 / year_past)) - 1
+    except Exception:
+        return 0.0
 
 
 def calculate_annualized_volatility(return_series: pd.Series) -> float:
-    """
-    Calculates annualized volatility for a date-indexed return series. 
-    Works for any interval of date-indexed prices and returns.
-    """
-    years_past = get_years_past(return_series)
-    entries_per_year = return_series.shape[0] / years_past
-    return return_series.std() * np.sqrt(entries_per_year)
+    """Calculate annualized volatility with error handling"""
+    try:
+        if len(return_series) < 2:
+            return 0.0
+            
+        years_past = get_years_past(return_series)
+        if years_past <= 0:
+            return 0.0
+            
+        entries_per_year = return_series.shape[0] / years_past
+        std = return_series.std()
+        
+        if pd.isna(std) or std == 0:
+            return 0.0
+            
+        return std * np.sqrt(entries_per_year)
+    except Exception:
+        return 0.0
 
 
 def calculate_sharpe_ratio(price_series: pd.Series, 
     benchmark_rate: float=0) -> float:
-    """
-    Calculates the Sharpe ratio given a price series. Defaults to benchmark_rate
-    of zero.
-    """
-    cagr = calculate_cagr(price_series)
-    return_series = calculate_return_series(price_series)
-    volatility = calculate_annualized_volatility(return_series)
-    return (cagr - benchmark_rate) / volatility
+    """Calculates the Sharpe ratio with NaN handling"""
+    try:
+        price_series = handle_nan_series(price_series)
+        if len(price_series) < 2:
+            return 0.0
+        cagr = calculate_cagr(price_series)
+        return_series = calculate_return_series(price_series)
+        volatility = calculate_annualized_volatility(return_series)
+        return (cagr - benchmark_rate) / volatility if volatility != 0 else 0.0
+    except Exception:
+        return 0.0
 
 
 def calculate_rolling_sharpe_ratio(price_series: pd.Series,
@@ -112,31 +143,36 @@ def calculate_annualized_downside_deviation(return_series: pd.Series,
 
 def calculate_sortino_ratio(price_series: pd.Series,
     benchmark_rate: float=0) -> float:
-    """
-    Calculates the Sortino ratio.
-    """
-    cagr = calculate_cagr(price_series)
-    return_series = calculate_return_series(price_series)
-    downside_deviation = calculate_annualized_downside_deviation(return_series)
-    return (cagr - benchmark_rate) / downside_deviation
+    """Calculates the Sortino ratio with NaN handling"""
+    try:
+        price_series = handle_nan_series(price_series)
+        if len(price_series) < 2:
+            return 0.0
+        cagr = calculate_cagr(price_series)
+        return_series = calculate_return_series(price_series)
+        downside_deviation = calculate_annualized_downside_deviation(return_series)
+        return (cagr - benchmark_rate) / downside_deviation if downside_deviation != 0 else 0.0
+    except Exception:
+        return 0.0
 
 
 def calculate_pure_profit_score(price_series: pd.Series) -> float:
-    """
-    Calculates the pure profit score
-    """
-    cagr = calculate_cagr(price_series)
-
-    # Build a single column for a predictor, t
-    t: np.ndarray = np.arange(0, price_series.shape[0]).reshape(-1, 1)
-
-    # Fit the regression
-    regression = LinearRegression().fit(t, price_series)
-
-    # Get the r-squared value
-    r_squared = regression.score(t, price_series)
-
-    return cagr * r_squared
+    """Calculates the pure profit score with NaN handling"""
+    try:
+        series = handle_nan_series(price_series)
+        if len(series) < 2:
+            return 0.0
+            
+        cagr = calculate_cagr(series)
+        t = np.arange(0, len(series)).reshape(-1, 1)
+        values = series.values.reshape(-1, 1)
+        
+        regression = LinearRegression().fit(t, values)
+        r_squared = regression.score(t, values)
+        
+        return cagr * r_squared
+    except Exception:
+        return 0.0
 
 def calculate_jensens_alpha(return_series: pd.Series, 
     benchmark_return_series: pd.Series) -> float: 
