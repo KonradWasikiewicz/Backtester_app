@@ -3,6 +3,7 @@ from typing import List, Dict, Optional
 import pandas as pd
 import numpy as np
 from .risk_manager import RiskManager
+from .models import Trade
 
 @dataclass
 class Position:

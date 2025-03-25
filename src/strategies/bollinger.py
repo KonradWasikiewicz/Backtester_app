@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
-from .base import Strategy
+from .base import BaseStrategy
 
-class BollingerBandsStrategy(Strategy):
+class BollingerBandsStrategy(BaseStrategy):
     def __init__(self, window=20, num_std=2):
         self.window = window
         self.num_std = num_std

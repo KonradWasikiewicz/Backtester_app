@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 from typing import Dict
-from .base import Strategy
+from .base import BaseStrategy
 
-class RSIStrategy(Strategy):
+class RSIStrategy(BaseStrategy):
     def __init__(self, period: int = 14, overbought: int = 70, oversold: int = 30):
         self.period = period
         self.overbought = overbought

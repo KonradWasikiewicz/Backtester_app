@@ -5,8 +5,9 @@ from dash import dcc, html, callback_context, dash_table
 from dash.dependencies import Input, Output, State
 
 from src.core.config import config, VISUALIZATION_CONFIG, BACKTEST_CONFIG
-from src.core.constants import AVAILABLE_STRATEGIES, CHART_THEME, DROPDOWN_STYLE  # usuwamy DEFAULT_TICKERS z importu
+from src.core.constants import AVAILABLE_STRATEGIES, CHART_THEME, DROPDOWN_STYLE  
 from src.core.data import DataLoader
+from src.core.exceptions import DataError 
 
 # Add BENCHMARK constant
 BENCHMARK = "^GSPC"  # S&P 500 as default benchmark
@@ -21,7 +22,7 @@ from src.portfolio.models import Trade
 from src.portfolio.portfolio_manager import PortfolioManager
 from src.portfolio.risk_manager import RiskManager
 from src.core.engine import BacktestEngine
-from src.strategies.moving_average import MovingAverageStrategy
+from src.strategies.moving_average import MovingAverageCrossover
 from src.strategies.rsi import RSIStrategy
 from src.strategies.bollinger import BollingerBandsStrategy
 
@@ -106,23 +107,37 @@ def create_chart(figure_data, layout_title):
 def run_backtest(strategy_type, strategy_params=None):
     """Run backtest with specified parameters"""
     try:
-        # Load data for trading instruments and benchmark
+        # Get available tickers first
+        available_tickers = DataLoader.get_available_tickers()
+        print(f"Running backtest for tickers: {available_tickers}")
+        
+        if not available_tickers:
+            raise ValueError("No trading instruments found in data file")
+            
+        # Load data for trading instruments
         data_dict = {}
-        available_tickers = DataLoader.get_available_tickers()  # Pobieramy dynamicznie tickery
-        
         for ticker in available_tickers:
-            df = DataLoader.load_data('data/historical_prices.csv', ticker)
-            if df is not None and len(df.index) > 0:
-                data_dict[ticker] = df.ffill().bfill()
-
-        # Load benchmark data separately
-        benchmark_data = DataLoader.load_data('data/historical_prices.csv', BENCHMARK)
-        if benchmark_data is not None:
-            benchmark_data = benchmark_data.ffill().bfill()
-        
+            try:
+                df = DataLoader.load_data(ticker)
+                if df is not None and not df.empty:
+                    data_dict[ticker] = df
+                    print(f"Successfully loaded data for {ticker}: {len(df)} rows")
+            except Exception as e:
+                print(f"Warning: Could not load data for {ticker}: {str(e)}")
+                continue
+                
         if not data_dict:
-            raise ValueError("No data available for any instrument")
-        
+            raise ValueError("No valid data loaded for any instrument")
+            
+        # Load benchmark data
+        try:
+            benchmark_data = DataLoader.load_data(config.BENCHMARK_TICKER)
+            if benchmark_data is not None:
+                benchmark_data = benchmark_data.ffill().bfill()
+        except DataError as e:
+            print(f"Warning: Could not load benchmark data: {str(e)}")
+            benchmark_data = None
+
         strategy_params = strategy_params or {}
         
         # Strategy initialization with error handling
@@ -145,8 +160,8 @@ def run_backtest(strategy_type, strategy_params=None):
         risk_manager = RiskManager()
         portfolio_manager = PortfolioManager(initial_capital=100000, risk_manager=risk_manager)
         
-        # Run backtest
-        engine = BacktestEngine(initial_capital=100000)
+        # Run backtest with proper strategy initialization
+        engine = BacktestEngine(strategy=strategy, initial_capital=100000)
         all_results = {}
         for ticker, data in signals.items():
             ticker_results = engine.run_backtest(data)
@@ -298,7 +313,7 @@ app.layout = dbc.Container([
                 dbc.CardBody([
                     dbc.Row([
                         dbc.Col([
-                            html.Label("Select Strategy"),
+                            html.Label("Select Strategy", className="text-light mb-2"),
                             dcc.Dropdown(
                                 id="strategy-selector",
                                 options=[
@@ -307,8 +322,13 @@ app.layout = dbc.Container([
                                     {"label": "RSI", "value": "RSI"}
                                 ],
                                 value="MA",
-                                className="mb-3 dropdown-dark",
-                                style=DROPDOWN_STYLE
+                                className="mb-3",
+                                style={
+                                    'backgroundColor': '#1e222d',
+                                    'color': '#e1e1e1',
+                                    'border': '1px solid #2a2e39',
+                                    'borderRadius': '4px'
+                                }
                             )
                         ], width=12)
                     ]),
@@ -413,22 +433,40 @@ def update_backtest(strategy):
             ""
         )
 
+# Add this to main() for debugging
 def main():
-    # Create strategy instance
-    strategy = MovingAverageStrategy()  # or RSIStrategy() or BollingerBandsStrategy()
-    
-    # Initialize backtesting engine
-    engine = BacktestEngine(strategy=strategy)
-    
-    # Run backtest for a ticker
-    ticker = input("Enter ticker symbol: ")
-    results = engine.run(ticker)
-    
-    # Print basic results
-    print("\nBacktest Results:")
-    print(f"Total Return: {(results['returns'] + 1).prod() - 1:.2%}")
-    print(f"Benchmark Return: {(results['benchmark_returns'] + 1).prod() - 1:.2%}")
+    try:
+        print("Checking CSV file content...")
+        df = pd.read_csv(config.DATA_FILE)
+        print("\nCSV columns:", df.columns.tolist())
+        print("\nUnique tickers:", df['Ticker'].unique())
+        print("\nDate range:", df['Date'].min(), "to", df['Date'].max())
+        print("\nSample data:\n", df.head())
+        
+        # Get all available tickers from CSV
+        available_tickers = DataLoader.get_available_tickers()
+        
+        # Create strategy instance
+        strategy = MovingAverageCrossover()
+        
+        # Initialize backtesting engine with strategy
+        engine = BacktestEngine(strategy=strategy, initial_capital=100000)
+        
+        # Run backtest for all tickers
+        results = run_backtest("MA")  # Use the existing run_backtest function
+        
+        if results is not None:
+            signals, combined_results, stats = results
+            
+            # Print basic results
+            print("\nBacktest Results:")
+            print(f"Total Return: {stats['total_return']:.2f}%")
+            print(f"Total Trades: {stats['total_trades']}")
+            print(f"Win Rate: {stats['win_rate']:.2f}%")
+            print(f"Sharpe Ratio: {stats['sharpe_ratio']:.2f}")
+            
+    except Exception as e:
+        print(f"Error running backtest: {str(e)}")
 
 if __name__ == "__main__":
-    main()
     app.run(debug=True)

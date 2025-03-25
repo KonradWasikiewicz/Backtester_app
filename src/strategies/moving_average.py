@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from .base import BaseStrategy
 
-class MovingAverageStrategy(BaseStrategy):
+class MovingAverageCrossover(BaseStrategy):
     def __init__(self, short_window=50, long_window=200):
         self.short_window = short_window
         self.long_window = long_window

@@ -18,38 +18,47 @@ class DataLoader:
 
     @staticmethod
     def get_available_tickers() -> List[str]:
-        """Get unique tickers from historical data excluding benchmark"""
-        df = pd.read_csv(config.DATA_FILE)
-        tickers = df['Ticker'].unique()
-        return [t for t in tickers if t != BENCHMARK_TICKER]
-
-    def load_data(self, ticker):
-        """Load historical data for given ticker"""
-        data = yf.download(ticker, start=self.start_date, end=self.end_date)
-        return data
-
-    def load_benchmark(self):
-        """Load S&P 500 data as benchmark"""
-        return self.load_data(self.benchmark)
-
-    @staticmethod
-    def load_data(tickers: Optional[List[str]] = None) -> Dict[str, pd.DataFrame]:
-        """Load price data for specified tickers"""
+        """Get list of available tickers excluding benchmark"""
         try:
             df = pd.read_csv(config.DATA_FILE)
-            
-            if tickers is None:
-                tickers = DataLoader.get_available_tickers()
-                
+            all_tickers = sorted(df['Ticker'].unique())
+            print(f"Found tickers in CSV: {all_tickers}")
+            available_tickers = [t for t in all_tickers if t != config.BENCHMARK_TICKER]
+            print(f"Available trading tickers: {available_tickers}")
+            return available_tickers
+        except Exception as e:
+            print(f"Error reading tickers from CSV: {str(e)}")
+            raise DataError(f"Failed to load tickers: {str(e)}")
+
+    @staticmethod
+    def load_data(ticker: str = None, tickers: List[str] = None) -> Dict[str, pd.DataFrame]:
+        """Load historical price data for one or multiple tickers"""
+        try:
+            df = pd.read_csv(config.DATA_FILE)
             data = {}
-            for ticker in tickers:
-                ticker_data = df[df['Ticker'] == ticker].copy()
+
+            if ticker:
+                tickers = [ticker]
+            elif tickers is None:
+                tickers = DataLoader.get_available_tickers()
+
+            for t in tickers:
+                ticker_data = df[df['Ticker'] == t].copy()
                 if ticker_data.empty:
-                    raise DataError(f"No data found for ticker {ticker}")
-                ticker_data['Date'] = pd.to_datetime(ticker_data['Date'])
+                    print(f"No data found for ticker: {t}")
+                    continue
+                    
+                ticker_data['Date'] = pd.to_datetime(ticker_data['Date'], utc=True)
                 ticker_data.set_index('Date', inplace=True)
-                data[ticker] = ticker_data
-                
-            return data
+                ticker_data = ticker_data.sort_index()
+                data[t] = ticker_data
+                print(f"Loaded {len(ticker_data)} rows for {t}")
+
+            return data if not ticker else next(iter(data.values())) if data else None
+
         except Exception as e:
             raise DataError(f"Error loading data: {str(e)}")
+
+    def load_benchmark(self) -> pd.DataFrame:
+        """Load S&P 500 data as benchmark"""
+        return self.load_data(ticker=self.benchmark)

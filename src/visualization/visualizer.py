@@ -1,7 +1,7 @@
+import pandas as pd
+from typing import Dict, List
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import datetime
-from typing import Dict, List
 from .chart_utils import create_empty_chart, create_equity_curve, get_base_layout
 from dash import dcc
 
