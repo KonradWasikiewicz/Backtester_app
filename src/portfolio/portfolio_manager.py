@@ -50,19 +50,15 @@ class PortfolioManager:
             total_exposure + allocation <= 1.0
         )
 
-    def calculate_position_size(self, ticker: str, price: float, volatility: float) -> Optional[int]:
-        """Oblicz wielkość pozycji w liczbie akcji"""
-        target_allocation = self.risk_manager.calculate_allocation(
-            capital=self.current_capital,
-            price=price,
-            volatility=volatility
-        )
-        
-        if not self.can_open_position(ticker, target_allocation):
-            return None
+    def calculate_position_size(self, signal: float, close_price: float) -> int:
+        """Calculate position size based on signal and available capital"""
+        if signal == 0:
+            return 0
             
-        position_value = self.current_capital * target_allocation
-        return int(position_value / price)  # zaokrąglenie w dół do pełnych akcji
+        position_value = self.current_capital * self.position_size
+        shares = int(position_value / close_price)  # Convert to int instead of using np.floor
+        
+        return shares if signal > 0 else -shares
 
     def open_position(self, signal: Dict) -> Optional[Position]:
         """Otwórz nową pozycję z uwzględnieniem limitów portfelowych"""
@@ -134,3 +130,26 @@ class PortfolioManager:
             'average_trade_duration': pd.Timedelta(sum(t.duration for t in self.closed_trades) / len(self.closed_trades)) if self.closed_trades else pd.Timedelta(0),
             'current_exposure': sum(abs(p.shares * p.entry_price) for p in self.positions.values())
         }
+
+    def calculate_position_value(self, position: dict) -> float:
+        """Calculate current position value"""
+        if not position:
+            return 0.0
+        
+        # Use float() to ensure we're not treating arrays as callable
+        shares = float(position.get('shares', 0))
+        price = float(position.get('current_price', 0))
+        return shares * price
+
+    def update_portfolio_value(self, current_prices: dict) -> float:
+        """Update portfolio value based on current prices"""
+        total_value = self.cash
+        
+        for ticker, position in self.positions.items():
+            if ticker in current_prices:
+                # Convert to float to avoid numpy array issues
+                price = float(current_prices[ticker])
+                shares = float(position['shares'])
+                total_value += shares * price
+        
+        return total_value

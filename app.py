@@ -109,34 +109,37 @@ def run_backtest(strategy_type, strategy_params=None):
     try:
         # Get available tickers first
         available_tickers = DataLoader.get_available_tickers()
-        print(f"Running backtest for tickers: {available_tickers}")
+        print(f"\nInitializing backtest for {len(available_tickers)} instruments...")
         
-        if not available_tickers:
-            raise ValueError("No trading instruments found in data file")
-            
         # Load data for trading instruments
         data_dict = {}
+        loaded_tickers = []
+        
         for ticker in available_tickers:
             try:
                 df = DataLoader.load_data(ticker)
                 if df is not None and not df.empty:
                     data_dict[ticker] = df
-                    print(f"Successfully loaded data for {ticker}: {len(df)} rows")
+                    loaded_tickers.append(ticker)
             except Exception as e:
-                print(f"Warning: Could not load data for {ticker}: {str(e)}")
+                print(f"Failed to load {ticker}: {str(e)}")
                 continue
-                
+
+        if loaded_tickers:
+            print(f"✓ {', '.join(loaded_tickers)}")
+        
         if not data_dict:
-            raise ValueError("No valid data loaded for any instrument")
-            
+            raise ValueError("No valid data loaded")
+
         # Load benchmark data
         try:
             benchmark_data = DataLoader.load_data(config.BENCHMARK_TICKER)
             if benchmark_data is not None:
                 benchmark_data = benchmark_data.ffill().bfill()
-        except DataError as e:
-            print(f"Warning: Could not load benchmark data: {str(e)}")
+                print(f"✓ Benchmark ({config.BENCHMARK_TICKER})")
+        except Exception:
             benchmark_data = None
+            print("✗ Benchmark not available")
 
         strategy_params = strategy_params or {}
         

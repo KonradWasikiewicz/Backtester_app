@@ -13,12 +13,13 @@ class MovingAverageCrossover(BaseStrategy):
         
         for ticker, df in data.items():
             df = df.copy()
-            df['SMA_short'] = df['Close'].rolling(window=self.short_window).mean()
-            df['SMA_long'] = df['Close'].rolling(window=self.long_window).mean()
+            df['SMA_short'] = df['Close'].astype(float).rolling(window=self.short_window).mean()
+            df['SMA_long'] = df['Close'].astype(float).rolling(window=self.long_window).mean()
             
             df['Signal'] = 0
-            df.loc[df['SMA_short'] > df['SMA_long'], 'Signal'] = 1
-            df.loc[df['SMA_short'] < df['SMA_long'], 'Signal'] = -1
+            # Use numpy.where instead of direct comparison
+            df['Signal'] = np.where(df['SMA_short'] > df['SMA_long'], 1,
+                                  np.where(df['SMA_short'] < df['SMA_long'], -1, 0))
             
             signals[ticker] = df
             

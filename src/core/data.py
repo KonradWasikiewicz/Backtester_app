@@ -22,40 +22,31 @@ class DataLoader:
         try:
             df = pd.read_csv(config.DATA_FILE)
             all_tickers = sorted(df['Ticker'].unique())
-            print(f"Found tickers in CSV: {all_tickers}")
             available_tickers = [t for t in all_tickers if t != config.BENCHMARK_TICKER]
-            print(f"Available trading tickers: {available_tickers}")
+            print(f"\nInitializing backtest with:")
+            print(f"Trading instruments: {', '.join(available_tickers)}")
+            print(f"Benchmark: {config.BENCHMARK_TICKER}")
+            print(f"Data rows per instrument: {len(df) // len(all_tickers)}\n")
             return available_tickers
         except Exception as e:
             print(f"Error reading tickers from CSV: {str(e)}")
             raise DataError(f"Failed to load tickers: {str(e)}")
 
     @staticmethod
-    def load_data(ticker: str = None, tickers: List[str] = None) -> Dict[str, pd.DataFrame]:
-        """Load historical price data for one or multiple tickers"""
+    def load_data(ticker: str) -> pd.DataFrame:
+        """Load data for a specific ticker"""
         try:
             df = pd.read_csv(config.DATA_FILE)
-            data = {}
-
-            if ticker:
-                tickers = [ticker]
-            elif tickers is None:
-                tickers = DataLoader.get_available_tickers()
-
-            for t in tickers:
-                ticker_data = df[df['Ticker'] == t].copy()
-                if ticker_data.empty:
-                    print(f"No data found for ticker: {t}")
-                    continue
-                    
-                ticker_data['Date'] = pd.to_datetime(ticker_data['Date'], utc=True)
-                ticker_data.set_index('Date', inplace=True)
-                ticker_data = ticker_data.sort_index()
-                data[t] = ticker_data
-                print(f"Loaded {len(ticker_data)} rows for {t}")
-
-            return data if not ticker else next(iter(data.values())) if data else None
-
+            ticker_data = df[df['Ticker'] == ticker].copy()
+            
+            if ticker_data.empty:
+                raise DataError(f"No data found for ticker {ticker}")
+            
+            # Fix datetime parsing warning by specifying utc=True
+            ticker_data['Date'] = pd.to_datetime(ticker_data['Date'], utc=True)
+            ticker_data.set_index('Date', inplace=True)
+            return ticker_data.sort_index()
+            
         except Exception as e:
             raise DataError(f"Error loading data: {str(e)}")
 
