@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import List, Dict
+from typing import List, Dict, Union
 import pandas as pd
 from matplotlib.ticker import FuncFormatter, AutoMinorLocator
 from matplotlib.dates import AutoDateLocator, DateFormatter
 import yfinance as yf
+import plotly.graph_objects as go
 
 class BacktestVisualizer:
     def __init__(self, figsize=(16, 10)):
@@ -129,3 +130,106 @@ class BacktestVisualizer:
                           edgecolor='gray',
                           alpha=0.9,
                           pad=10))
+
+    def create_backtest_charts(self, results: Union[pd.DataFrame, Dict]) -> List:
+        """
+        Create interactive charts for backtest results
+        
+        Parameters:
+        -----------
+        results : DataFrame or Dict
+            Must contain 'Portfolio_Value' column/key. 
+            Optionally can contain 'Benchmark' for comparison.
+        
+        Returns:
+        --------
+        List[go.Figure]
+            List of plotly figures
+        """
+        charts = []
+        
+        # Convert dict to DataFrame if necessary
+        if isinstance(results, dict):
+            results = pd.DataFrame(results)
+        
+        # Validate data
+        if not isinstance(results, pd.DataFrame):
+            raise ValueError("Results must be a DataFrame or dict")
+        
+        if 'Portfolio_Value' not in results.columns:
+            raise ValueError("Results must contain 'Portfolio_Value' column")
+            
+        # Create equity curve with benchmark comparison
+        equity_curve = go.Figure()
+        
+        # Add portfolio performance line
+        equity_curve.add_trace(
+            go.Scatter(
+                x=results.index,
+                y=results['Portfolio_Value'],
+                name='Portfolio',
+                line=dict(color='#17B897')
+            )
+        )
+        
+        # Add benchmark line if available
+        if 'Benchmark' in results.columns:
+            equity_curve.add_trace(
+                go.Scatter(
+                    x=results.index,
+                    y=results['Benchmark'],
+                    name='S&P 500',
+                    line=dict(color='#FF6B6B', dash='dash')
+                )
+            )
+        
+        equity_curve.update_layout(
+            title='Portfolio Performance vs Benchmark',
+            xaxis_title='Date',
+            yaxis_title='Value ($)',
+            template='plotly_dark',
+            paper_bgcolor='#1e222d',
+            plot_bgcolor='#1e222d',
+            font=dict(color='#e1e1e1')
+        )
+        
+        charts.append(equity_curve)
+        
+        # Add drawdown chart
+        drawdown_data = (results["Portfolio_Value"] - results["Portfolio_Value"].cummax()) / results["Portfolio_Value"].cummax()
+        drawdown_fig = go.Figure(
+            data=[go.Scatter(
+                x=results.index,
+                y=drawdown_data,
+                fill="tozeroy",
+                name="Drawdown"
+            )],
+            layout=dict(
+                title="Drawdown Analysis",
+                template="plotly_dark",
+                paper_bgcolor="#1e222d",
+                plot_bgcolor="#1e222d",
+                font=dict(color="#e1e1e1")
+            )
+        )
+        charts.append(drawdown_fig)
+        
+        # Add position chart 
+        if "Position" in results.columns:
+            position_fig = go.Figure(
+                data=[go.Scatter(
+                    x=results.index,
+                    y=results["Position"],
+                    name="Position Size"
+                )],
+                layout=dict(
+                    title="Position Size",
+                    template="plotly_dark", 
+                    paper_bgcolor="#1e222d",
+                    plot_bgcolor="#1e222d",
+                    font=dict(color="#e1e1e1")
+                )
+            )
+            charts.append(position_fig)
+        
+        return charts

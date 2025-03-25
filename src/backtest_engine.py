@@ -2,73 +2,173 @@ import pandas as pd
 import numpy as np
 from dataclasses import dataclass
 from typing import List, Dict
+from decimal import Decimal, ROUND_DOWN
 
 @dataclass
 class Trade:
+    """Unified trade record format"""
+    trade_id: int          # Unikalny identyfikator transakcji
+    ticker: str           # Symbol instrumentu
     entry_date: pd.Timestamp
     exit_date: pd.Timestamp
     entry_price: float
     exit_price: float
-    position_size: float
-    pnl: float
-    signal: int
+    shares: int
+    strategy: str         # Nazwa strategii
+    direction: int        # 1 dla long, -1 dla short
+    pnl: float           # Zysk/strata w walucie
+    return_pct: float    # Zwrot procentowy
+    cash_used: float     # Wykorzystany kapitał
+    commission: float    # Łączna prowizja
+    holding_period: pd.Timedelta  # Czas trzymania pozycji
+    exit_reason: str     # Powód wyjścia (np. "signal", "stop_loss", "take_profit")
+
+    def to_dict(self) -> dict:
+        """Convert trade to dictionary for display"""
+        return {
+            'ID': self.trade_id,
+            'Ticker': self.ticker,
+            'Entry Date': self.entry_date.strftime('%Y-%m-%d %H:%M'),
+            'Exit Date': self.exit_date.strftime('%Y-%m-%d %H:%M'),
+            'Direction': 'LONG' if self.direction == 1 else 'SHORT',
+            'Shares': self.shares,
+            'Entry Price': f"${self.entry_price:.2f}",
+            'Exit Price': f"${self.exit_price:.2f}",
+            'P&L': f"${self.pnl:.2f}",
+            'Return %': f"{self.return_pct:.2f}%",
+            'Capital Used': f"${self.cash_used:.2f}",
+            'Commission': f"${self.commission:.2f}",
+            'Duration': str(self.holding_period),
+            'Exit Reason': self.exit_reason
+        }
+
+    def to_print(self) -> str:
+        """Format trade for console output"""
+        return (
+            f"\nTrade #{self.trade_id} - {self.ticker}\n"
+            f"{'=' * 40}\n"
+            f"Direction: {'LONG' if self.direction == 1 else 'SHORT'}\n"
+            f"Entry: {self.entry_date.strftime('%Y-%m-%d')} @ ${self.entry_price:.2f}\n"
+            f"Exit:  {self.exit_date.strftime('%Y-%m-%d')} @ ${self.exit_price:.2f}\n"
+            f"Shares: {self.shares:,d}\n"
+            f"P&L: ${self.pnl:.2f} ({self.return_pct:+.2f}%)\n"
+            f"Capital Used: ${self.cash_used:.2f}\n"
+            f"Commission: ${self.commission:.2f}\n"
+            f"Duration: {self.holding_period}\n"
+            f"Exit Reason: {self.exit_reason}\n"
+        )
 
 class BacktestEngine:
-    def __init__(self, initial_capital: float = 100000, commission: float = 0.001,
-                 slippage: float = 0.001):
+    def __init__(self, initial_capital: float = 100000, position_size_pct: float = 0.025,
+                 commission: float = 0.001, slippage: float = 0.001):
         self.initial_capital = initial_capital
+        self.current_capital = initial_capital
+        self.available_cash = initial_capital
+        self.position_size_pct = position_size_pct
         self.commission = commission
         self.slippage = slippage
         self.trades: List[Trade] = []
+        self.positions: Dict[str, Dict] = {}  # ticker -> position details
         self.portfolio_values = None
 
-    def run_backtest(self, data: pd.DataFrame) -> pd.DataFrame:
-        data = data.copy()
-        data['Return'] = data['Close'].pct_change()
-        data['Position'] = data['Signal'].shift(1)
-        data['Trade'] = data['Position'].diff().fillna(0)
+    def calculate_shares(self, price: float) -> int:
+        """Calculate number of shares based on position size and available cash"""
+        target_position_value = self.current_capital * self.position_size_pct
+        max_shares = int(min(
+            target_position_value / price,
+            self.available_cash / (price * (1 + self.commission + self.slippage))
+        ))
+        return max_shares
 
-        # Symulacja poślizgu cenowego
-        data['Entry_Price'] = data['Close'] * (1 + self.slippage * np.sign(data['Trade']))
+    def run_backtest(self, data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
+        """Run backtest on multiple instruments"""
+        # Initialize combined results
+        combined_results = pd.DataFrame(index=next(iter(data.values())).index)
+        combined_results['Portfolio_Value'] = self.current_capital
 
-        # Obliczenie zwrotów z uwzględnieniem kosztów
-        data['Strategy_Return'] = data['Return'] * data['Position']
-        data['Transaction_Costs'] = abs(data['Trade']) * (self.commission + self.slippage)
-        data['Net_Return'] = data['Strategy_Return'] - data['Transaction_Costs']
+        for date in combined_results.index:
+            daily_pnl = 0
+            
+            # Check signals for each instrument
+            for ticker, df in data.items():
+                current_row = df.loc[date]
+                
+                # Check for exit signals on existing positions
+                if ticker in self.positions:
+                    if current_row['Signal'] != self.positions[ticker]['signal']:
+                        exit_price = current_row['Close'] * (1 - self.slippage * np.sign(current_row['Signal']))
+                        pnl = self._close_position(ticker, exit_price, date)
+                        daily_pnl += pnl
+                        print(f"\nZamknięcie pozycji {ticker}:")
+                        print(f"Data wyjścia: {date}")
+                        print(f"Cena wyjścia: ${exit_price:.2f}")
+                        print(f"P&L: ${pnl:.2f}")
+                
+                # Check for entry signals
+                if ticker not in self.positions and current_row['Signal'] != 0:
+                    entry_shares = self.calculate_shares(current_row['Close'])
+                    
+                    if entry_shares > 0:
+                        entry_price = current_row['Close'] * (1 + self.slippage * np.sign(current_row['Signal']))
+                        total_cost = entry_shares * entry_price * (1 + self.commission)
+                        
+                        if total_cost <= self.available_cash:
+                            self._open_position(ticker, entry_price, entry_shares, current_row['Signal'], date)
+                            self.available_cash -= total_cost
+                            print(f"\nNowa pozycja {ticker}:")
+                            print(f"Data wejścia: {date}")
+                            print(f"Cena wejścia: ${entry_price:.2f}")
+                            print(f"Liczba akcji: {entry_shares}")
+                            print(f"Kierunek: {'LONG' if current_row['Signal'] > 0 else 'SHORT'}")
+                            print(f"Pozostały cash: ${self.available_cash:.2f}")
 
-        # Wartość portfela
-        data['Portfolio_Value'] = self.initial_capital * (1 + data['Net_Return']).cumprod()
-        self.portfolio_values = data['Portfolio_Value']  # Store portfolio values
+            # Update portfolio value
+            self.current_capital = self.available_cash + sum(
+                pos['shares'] * data[ticker].loc[date, 'Close']
+                for ticker, pos in self.positions.items()
+            )
+            combined_results.loc[date, 'Portfolio_Value'] = self.current_capital
 
-        # Rejestracja transakcji
-        self._record_trades(data)
+        self.portfolio_values = combined_results['Portfolio_Value']
+        return combined_results
 
-        return data
+    def _open_position(self, ticker: str, price: float, shares: int, signal: int, date: pd.Timestamp) -> None:
+        self.positions[ticker] = {
+            'entry_date': date,
+            'entry_price': price,
+            'shares': shares,
+            'signal': signal
+        }
 
-    def _record_trades(self, data: pd.DataFrame) -> None:
-        """Rejestruje wszystkie transakcje"""
-        position = 0
-        entry_price = None
-        entry_date = None
-
-        for idx, row in data.iterrows():
-            if row['Trade'] != 0:
-                if position == 0:  # Wejście w pozycję
-                    position = row['Position']
-                    entry_price = row['Entry_Price']
-                    entry_date = idx
-                else:  # Zamknięcie pozycji
-                    pnl = position * (row['Entry_Price'] - entry_price)
-                    self.trades.append(Trade(
-                        entry_date=entry_date,
-                        exit_date=idx,
-                        entry_price=entry_price,
-                        exit_price=row['Entry_Price'],
-                        position_size=abs(position),
-                        pnl=pnl,
-                        signal=position
-                    ))
-                    position = 0
+    def _close_position(self, ticker: str, exit_price: float, exit_date: pd.Timestamp, exit_reason: str = "signal") -> float:
+        position = self.positions[ticker]
+        pnl = (exit_price - position['entry_price']) * position['shares'] * position['signal']
+        commission = (position['entry_price'] + exit_price) * position['shares'] * self.commission
+        
+        trade = Trade(
+            trade_id=len(self.trades) + 1,
+            ticker=ticker,
+            entry_date=position['entry_date'],
+            exit_date=exit_date,
+            entry_price=position['entry_price'],
+            exit_price=exit_price,
+            shares=position['shares'],
+            strategy=position.get('strategy', 'unknown'),
+            direction=position['signal'],
+            pnl=pnl,
+            return_pct=((exit_price/position['entry_price'] - 1) * 100 * position['signal']),
+            cash_used=position['entry_price'] * position['shares'],
+            commission=commission,
+            holding_period=exit_date - position['entry_date'],
+            exit_reason=exit_reason
+        )
+        
+        print(trade.to_print())  # Print detailed trade info to console
+        self.trades.append(trade)
+        
+        self.available_cash += (exit_price * position['shares']) - commission
+        del self.positions[ticker]
+        return pnl
 
     def get_statistics(self) -> Dict:
         """Zwraca podstawowe statystyki backtesta"""
@@ -92,8 +192,8 @@ class BacktestEngine:
 
         # Obliczanie średniego rocznego turnover'u portfela
         if self.trades:
-            total_trading_value = sum(abs(trade.entry_price * trade.position_size) +
-                                    abs(trade.exit_price * trade.position_size)
+            total_trading_value = sum(abs(trade.entry_price * trade.shares) +
+                                    abs(trade.exit_price * trade.shares)
                                     for trade in self.trades)
             trading_days = (self.trades[-1].exit_date - self.trades[0].entry_date).days
             years = trading_days / 365

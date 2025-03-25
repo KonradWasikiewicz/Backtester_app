@@ -16,9 +16,11 @@ class DataLoader:
             if df.empty:
                 raise ValueError(f"No data found for ticker {ticker}")
             
-            # Fix datetime parsing
-            df['Date'] = pd.to_datetime(df['Date'])
+            # Fix datetime parsing with explicit UTC handling
+            df['Date'] = pd.to_datetime(df['Date'], utc=True)
             df.set_index('Date', inplace=True)
+            # Convert to naive datetime after standardizing to UTC
+            df.index = df.index.tz_convert(None)
             df.sort_index(inplace=True)
             
             # Ensure all required columns exist and are numeric
