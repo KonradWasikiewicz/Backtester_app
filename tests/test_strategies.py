@@ -1,6 +1,6 @@
-from src.data_loader import DataLoader
-from src.strategy import MovingAverageCrossover, RSIStrategy, BollingerBandsStrategy
-from src.backtest_engine import BacktestEngine
+from src.core.data import DataLoader
+from src.strategies import MovingAverageCrossover, RSIStrategy, BollingerBandsStrategy
+from core.engine import BacktestEngine
 import pandas as pd
 
 def test_strategy(strategy_name: str = "BB"):
@@ -14,10 +14,10 @@ def test_strategy(strategy_name: str = "BB"):
     print("\nLoading data...")
     for ticker in tickers:
         try:
-            df = DataLoader.load_data('data/historical_prices.csv', ticker)
-            if df is not None and len(df.index) > 0:
-                data_dict[ticker] = df
-                print(f"Loaded {len(df)} rows for {ticker}")
+            df = DataLoader.load_data([ticker])
+            if ticker in df and len(df[ticker].index) > 0:
+                data_dict[ticker] = df[ticker]
+                print(f"Loaded {len(df[ticker])} rows for {ticker}")
         except Exception as e:
             print(f"Error loading {ticker}: {str(e)}")
     

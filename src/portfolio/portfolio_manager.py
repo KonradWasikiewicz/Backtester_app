@@ -16,19 +16,6 @@ class Position:
     take_profit: float
 
 @dataclass
-class Trade:
-    ticker: str
-    entry_date: pd.Timestamp
-    exit_date: pd.Timestamp
-    entry_price: float
-    exit_price: float
-    shares: int
-    allocation: float
-    pnl: float
-    return_pct: float
-    direction: int
-    duration: pd.Timedelta
-
 class PortfolioManager:
     def __init__(self, initial_capital: float, risk_manager: 'RiskManager',
                  max_position_allocation: float = 0.2,

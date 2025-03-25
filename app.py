@@ -1,48 +1,34 @@
 import dash
-from dash import dcc, html, callback_context, dash_table  # Updated import
 import dash_bootstrap_components as dbc
+import pandas as pd  # Add pandas import
+from dash import dcc, html, callback_context, dash_table
 from dash.dependencies import Input, Output, State
-import plotly.graph_objs as go
-import pandas as pd
-from src.backtest_engine import BacktestEngine
-from src.strategy import MovingAverageCrossover, RSIStrategy, BollingerBandsStrategy
-from src.data_loader import DataLoader
-from src.visualization import BacktestVisualizer, create_empty_chart
-from src.metrics import (
+
+from src.core.config import config, VISUALIZATION_CONFIG, BACKTEST_CONFIG
+from src.core.constants import AVAILABLE_STRATEGIES, CHART_THEME, DROPDOWN_STYLE  # usuwamy DEFAULT_TICKERS z importu
+from src.core.data import DataLoader
+
+# Add BENCHMARK constant
+BENCHMARK = "^GSPC"  # S&P 500 as default benchmark
+
+from src.strategies import MovingAverageCrossover, RSIStrategy, BollingerBandsStrategy
+from src.visualization.visualizer import BacktestVisualizer
+from src.analysis.metrics import (
     calculate_cagr, calculate_sharpe_ratio, calculate_sortino_ratio,
     calculate_max_drawdown, calculate_calmar_ratio, calculate_pure_profit_score
 )
+from src.portfolio.models import Trade
 from src.portfolio.portfolio_manager import PortfolioManager
 from src.portfolio.risk_manager import RiskManager
-from src.analysis.trade_analyzer import TradeAnalyzer
+from src.core.engine import BacktestEngine
+from src.strategies.moving_average import MovingAverageStrategy
+from src.strategies.rsi import RSIStrategy
+from src.strategies.bollinger import BollingerBandsStrategy
 
 # Initialize Dash app with dark theme
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 app.title = "Trading Strategy Backtester"
-
-# Default chart theme configuration
-CHART_THEME = {
-    'paper_bgcolor': '#1e222d',
-    'plot_bgcolor': '#1e222d',
-    'font_color': '#e1e1e1',
-    'grid_color': '#2a2e39'
-}
-
-# Style dla dropdownów
-DROPDOWN_STYLE = {
-    'backgroundColor': '#1e222d',
-    'color': '#e1e1e1',
-    'option': {
-        'backgroundColor': '#1e222d',
-        'color': '#e1e1e1',
-        'hover': '#2a2e39'
-    }
-}
-
-# Available instruments (remove ^GSPC from trading instruments)
-AVAILABLE_INSTRUMENTS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN']
-BENCHMARK = '^GSPC'
-
+  
 def create_metric_card(title, value, prefix="", suffix=""):
     """Create a styled metric card component with dark theme"""
     return dbc.Card(
@@ -53,13 +39,68 @@ def create_metric_card(title, value, prefix="", suffix=""):
         className="mb-3 bg-dark"
     )
 
+def create_empty_chart(layout_title):
+    """Create an empty chart with placeholder message"""
+    return {
+        'data': [],
+        'layout': {
+            'title': layout_title,
+            'xaxis': {'visible': False},
+            'yaxis': {'visible': False},
+            'annotations': [{
+                'text': 'No data available',
+                'xref': 'paper',
+                'yref': 'paper',
+                'showarrow': False,
+                'font': {'size': 16, 'color': '#ffffff'},
+                'x': 0.5,
+                'y': 0.5
+            }],
+            'template': CHART_THEME,
+            'paper_bgcolor': '#1e222d',
+            'plot_bgcolor': '#1e222d',
+            'margin': {'t': 50, 'l': 40, 'r': 40, 'b': 40}
+        }
+    }
+
 def create_chart(figure_data, layout_title):
-    """Create a styled chart component"""
-    # Zwracamy komponent Graph z figure jako props
+    """Create a styled chart component
+    
+    Args:
+        figure_data: Plotly figure data or None
+        layout_title: String title for the chart
+    
+    Returns:
+        dcc.Graph: A styled Dash core components Graph
+    """
+    if figure_data is None:
+        figure = create_empty_chart(layout_title)
+    else:
+        figure = {
+            'data': figure_data if isinstance(figure_data, list) else [figure_data],
+            'layout': {
+                'title': layout_title,
+                'template': CHART_THEME,
+                'paper_bgcolor': '#1e222d',
+                'plot_bgcolor': '#1e222d',
+                'font': {'color': '#ffffff'},
+                'xaxis': {'gridcolor': '#2a2e39'},
+                'yaxis': {'gridcolor': '#2a2e39'},
+                'margin': {'t': 50, 'l': 40, 'r': 40, 'b': 40},
+                'showlegend': True,
+                'legend': {'font': {'color': '#ffffff'}}
+            }
+        }
+
     return dcc.Graph(
-        id=f"chart-{layout_title}",  # Unique ID for each chart
-        figure=figure_data if figure_data else create_empty_chart(layout_title),
-        config={'displayModeBar': True}
+        id=f"chart-{layout_title.lower().replace(' ', '-')}",
+        figure=figure,
+        config={
+            'displayModeBar': True,
+            'responsive': True,
+            'scrollZoom': True
+        },
+        style={'height': '100%', 'width': '100%'}
     )
 
 def run_backtest(strategy_type, strategy_params=None):
@@ -67,7 +108,9 @@ def run_backtest(strategy_type, strategy_params=None):
     try:
         # Load data for trading instruments and benchmark
         data_dict = {}
-        for ticker in AVAILABLE_INSTRUMENTS:
+        available_tickers = DataLoader.get_available_tickers()  # Pobieramy dynamicznie tickery
+        
+        for ticker in available_tickers:
             df = DataLoader.load_data('data/historical_prices.csv', ticker)
             if df is not None and len(df.index) > 0:
                 data_dict[ticker] = df.ffill().bfill()
@@ -370,5 +413,22 @@ def update_backtest(strategy):
             ""
         )
 
+def main():
+    # Create strategy instance
+    strategy = MovingAverageStrategy()  # or RSIStrategy() or BollingerBandsStrategy()
+    
+    # Initialize backtesting engine
+    engine = BacktestEngine(strategy=strategy)
+    
+    # Run backtest for a ticker
+    ticker = input("Enter ticker symbol: ")
+    results = engine.run(ticker)
+    
+    # Print basic results
+    print("\nBacktest Results:")
+    print(f"Total Return: {(results['returns'] + 1).prod() - 1:.2%}")
+    print(f"Benchmark Return: {(results['benchmark_returns'] + 1).prod() - 1:.2%}")
+
 if __name__ == "__main__":
+    main()
     app.run(debug=True)

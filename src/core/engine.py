@@ -3,6 +3,8 @@ import numpy as np
 from dataclasses import dataclass
 from typing import List, Dict
 from decimal import Decimal, ROUND_DOWN
+from ..strategies.base import BaseStrategy
+from .data import DataLoader
 
 @dataclass
 class Trade:
@@ -59,17 +61,43 @@ class Trade:
         )
 
 class BacktestEngine:
-    def __init__(self, initial_capital: float = 100000, position_size_pct: float = 0.025,
-                 commission: float = 0.001, slippage: float = 0.001):
+    def __init__(self, strategy: BaseStrategy, initial_capital=100000):
+        self.strategy = strategy
         self.initial_capital = initial_capital
-        self.current_capital = initial_capital
-        self.available_cash = initial_capital
-        self.position_size_pct = position_size_pct
-        self.commission = commission
-        self.slippage = slippage
-        self.trades: List[Trade] = []
-        self.positions: Dict[str, Dict] = {}  # ticker -> position details
-        self.portfolio_values = None
+        self.data_loader = DataLoader()
+        self.positions = {}
+        self.cash = initial_capital
+        self.portfolio_value = initial_capital
+        
+    def run(self, ticker):
+        # Load data
+        data = self.data_loader.load_data(ticker)
+        benchmark = self.data_loader.load_benchmark()
+        
+        # Generate signals
+        signals = self.strategy.generate_signals(data)
+        
+        # Calculate returns
+        portfolio_returns = []
+        current_position = 0
+        
+        for i in range(len(data)):
+            if i > 0:
+                if signals[i] == 1 and current_position <= 0:  # Buy signal
+                    current_position = 1
+                elif signals[i] == -1 and current_position >= 0:  # Sell signal
+                    current_position = -1
+                    
+            daily_return = current_position * data['Close'].pct_change()[i]
+            portfolio_returns.append(daily_return)
+            
+        portfolio_returns = pd.Series(portfolio_returns, index=data.index)
+        
+        return {
+            'returns': portfolio_returns,
+            'benchmark_returns': benchmark['Close'].pct_change(),
+            'signals': signals
+        }
 
     def calculate_shares(self, price: float) -> int:
         """Calculate number of shares based on position size and available cash"""

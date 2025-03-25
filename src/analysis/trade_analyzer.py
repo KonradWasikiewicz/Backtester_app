@@ -1,40 +1,46 @@
-import pandas as pd
+from dataclasses import dataclass
 from typing import List, Dict
-from src.portfolio.portfolio_manager import Trade
+import pandas as pd
+import numpy as np
+
+@dataclass
+class Trade:
+    entry_date: pd.Timestamp
+    exit_date: pd.Timestamp
+    entry_price: float
+    exit_price: float
+    position_size: float
+    pnl: float
+    signal: int
 
 class TradeAnalyzer:
-    @staticmethod
-    def analyze_trades(trades: List[Trade]) -> Dict:
+    def __init__(self):
+        self.trades: List[Trade] = []
+        
+    def analyze_trades(self, trades: List[Trade]) -> Dict:
+        """Calculate trade statistics"""
         if not trades:
             return {}
             
-        df = pd.DataFrame([vars(t) for t in trades])
+        pnls = [trade.pnl for trade in trades]
+        winning_trades = [pnl for pnl in pnls if pnl > 0]
         
-        # Performance metrics
-        total_pnl = df['pnl'].sum()
-        win_rate = (df['pnl'] > 0).mean()
-        profit_factor = abs(df[df['pnl'] > 0]['pnl'].sum() / df[df['pnl'] < 0]['pnl'].sum()) if (df['pnl'] < 0).any() else float('inf')
-        
-        # Trade statistics
-        avg_winner = df[df['pnl'] > 0]['pnl'].mean() if (df['pnl'] > 0).any() else 0
-        avg_loser = df[df['pnl'] < 0]['pnl'].mean() if (df['pnl'] < 0).any() else 0
-        largest_winner = df['pnl'].max()
-        largest_loser = df['pnl'].min()
-        
-        # Time analysis
-        avg_duration = df['duration'].mean()
-        
-        return {
+        stats = {
             'total_trades': len(trades),
-            'winning_trades': (df['pnl'] > 0).sum(),
-            'losing_trades': (df['pnl'] < 0).sum(),
-            'total_pnl': total_pnl,
-            'win_rate': win_rate,
-            'profit_factor': profit_factor,
-            'avg_winner': avg_winner,
-            'avg_loser': avg_loser,
-            'largest_winner': largest_winner,
-            'largest_loser': largest_loser,
-            'avg_trade_duration': avg_duration,
-            'avg_return_pct': df['return_pct'].mean()
+            'winning_trades': len(winning_trades),
+            'win_rate': len(winning_trades) / len(trades) if trades else 0,
+            'avg_profit': np.mean(pnls) if pnls else 0,
+            'profit_factor': abs(sum(winning_trades) / sum(pnl for pnl in pnls if pnl < 0))
+                           if any(pnl < 0 for pnl in pnls) else float('inf')
         }
+        
+        # Add additional metrics
+        if trades:
+            durations = [(t.exit_date - t.entry_date).days for t in trades]
+            stats.update({
+                'avg_duration': np.mean(durations),
+                'max_duration': max(durations),
+                'min_duration': min(durations)
+            })
+            
+        return stats
