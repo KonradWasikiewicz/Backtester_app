@@ -65,31 +65,56 @@ def create_empty_chart(layout_title):
     }
 
 def create_chart(figure_data, layout_title):
-    """Create a styled chart component
-    
-    Args:
-        figure_data: Plotly figure data or None
-        layout_title: String title for the chart
-    
-    Returns:
-        dcc.Graph: A styled Dash core components Graph
-    """
-    if figure_data is None:
+    """Create a styled chart component"""
+    if (figure_data is None):
         figure = create_empty_chart(layout_title)
     else:
+        # Filter data to include only trading period
+        if isinstance(figure_data, dict):
+            for key in figure_data:
+                if isinstance(figure_data[key], pd.Series):
+                    figure_data[key] = figure_data[key][figure_data[key].index >= pd.Timestamp('2020-01-01', tz='UTC')]
+        
+        traces = []
+        for name, data in figure_data.items():
+            trace = {
+                'x': data.index,
+                'y': data.values,
+                'name': name,
+                'type': 'scatter',
+                'mode': 'lines',
+                'line': {'color': '#17B897' if name == 'Portfolio' else '#FF6B6B'}
+            }
+            traces.append(trace)
+        
         figure = {
-            'data': figure_data if isinstance(figure_data, list) else [figure_data],
+            'data': traces,
             'layout': {
                 'title': layout_title,
                 'template': CHART_THEME,
                 'paper_bgcolor': '#1e222d',
                 'plot_bgcolor': '#1e222d',
                 'font': {'color': '#ffffff'},
-                'xaxis': {'gridcolor': '#2a2e39'},
-                'yaxis': {'gridcolor': '#2a2e39'},
-                'margin': {'t': 50, 'l': 40, 'r': 40, 'b': 40},
+                'xaxis': {
+                    'gridcolor': '#2a2e39',
+                    'showgrid': True,
+                    'zeroline': False,
+                    'title': 'Date'
+                },
+                'yaxis': {
+                    'gridcolor': '#2a2e39',
+                    'showgrid': True,
+                    'zeroline': True,
+                    'zerolinecolor': '#2a2e39',
+                    'title': 'Portfolio Value ($)'
+                },
+                'margin': {'t': 50, 'l': 50, 'r': 40, 'b': 50},
                 'showlegend': True,
-                'legend': {'font': {'color': '#ffffff'}}
+                'legend': {
+                    'font': {'color': '#ffffff'},
+                    'bgcolor': '#1e222d',
+                    'bordercolor': '#2a2e39'
+                }
             }
         }
 
@@ -99,9 +124,10 @@ def create_chart(figure_data, layout_title):
         config={
             'displayModeBar': True,
             'responsive': True,
-            'scrollZoom': True
+            'scrollZoom': True,
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d']
         },
-        style={'height': '100%', 'width': '100%'}
+        style={'height': '600px', 'width': '100%'}  # Increased height for better visibility
     )
 
 def run_backtest(strategy_type, strategy_params=None):
@@ -190,12 +216,18 @@ def run_backtest(strategy_type, strategy_params=None):
             else:
                 portfolio_values.append(result['Portfolio_Value'])
         
-        # Sum portfolio values across all instruments
-        combined_results['Portfolio_Value'] = pd.concat(portfolio_values, axis=1).sum(axis=1)
+        # Combine results with proper structure
+        combined_results = {
+            'Portfolio_Value': pd.concat(portfolio_values, axis=1).sum(axis=1),
+            'trades': [],  # Initialize empty trades list
+            'signals': signals
+        }
         
-        # Calculate benchmark returns if available
+        # Add benchmark if available
         if benchmark_data is not None:
-            benchmark_returns = benchmark_data['Close'].pct_change()
+            # Use ffill() instead of fillna(method='ffill')
+            benchmark_data['Close'] = benchmark_data['Close'].ffill()
+            benchmark_returns = benchmark_data['Close'].pct_change(fill_method=None)
             benchmark_performance = (1 + benchmark_returns).cumprod() * 100000
             combined_results['Benchmark'] = benchmark_performance
         
@@ -211,7 +243,9 @@ def run_backtest(strategy_type, strategy_params=None):
         
         # Additional metrics for valid data
         if len(combined_results) >= 2:
-            portfolio_returns = combined_results['Portfolio_Value'].pct_change().dropna()
+            # Use ffill() instead of fillna(method='ffill')
+            combined_results['Portfolio_Value'] = combined_results['Portfolio_Value'].ffill()
+            portfolio_returns = combined_results['Portfolio_Value'].pct_change(fill_method=None).dropna()
             if len(portfolio_returns) >= 2:
                 metrics = {
                     'cagr': calculate_cagr(combined_results['Portfolio_Value']) * 100,
@@ -259,7 +293,18 @@ visualizer = BacktestVisualizer()
 
 def create_charts(results):
     """Create charts layout"""
-    return visualizer.create_backtest_charts(results)
+    if results is None:
+        return []
+    
+    portfolio_values = results.get('Portfolio_Value', pd.Series())
+    trades = results.get('trades', [])
+    signals = results.get('signals', {})  # Get signals from results
+    
+    return visualizer.create_backtest_charts(
+        trades=trades,
+        portfolio_values=portfolio_values,
+        signals=signals  # Pass signals to visualizer
+    )
 
 def create_empty_cards():
     """Create empty metric cards"""
@@ -350,10 +395,11 @@ app.layout = dbc.Container([
                                 className="mb-3",
                                 style={
                                     'backgroundColor': '#1e222d',
-                                    'color': '#e1e1e1',
-                                    'border': '1px solid #2a2e39',
-                                    'borderRadius': '4px'
-                                }
+                                    'color': '#ffffff',
+                                },
+                                # Dropdown menu styling
+                                optionHeight=35,
+                                clearable=False,
                             )
                         ], width=12)
                     ]),
@@ -417,9 +463,9 @@ def update_backtest(strategy):
         return "Please select a strategy", [], create_empty_cards(), [], "No trades available", "", ""
     
     try:
-        data, results, stats = run_backtest(strategy)  # Placeholder for portfolio backtest
+        signals, results, stats = run_backtest(strategy)
         
-        if any(x is None for x in [data, results, stats]):
+        if any(x is None for x in [signals, results, stats]):
             return (
                 html.Div("Error running backtest", className="text-danger"),
                 [],
@@ -430,11 +476,25 @@ def update_backtest(strategy):
                 ""
             )
         
-        # Create components
-        equity_curve = create_chart(results, "Equity Curve")
+        # Add signals to results
+        results['signals'] = signals  # Ensure signals are included in results
+        
+        # Create components with proper data structure
+        equity_curve = create_chart({
+            'Portfolio': results['Portfolio_Value'],
+            'Benchmark': results.get('Benchmark', pd.Series())
+        }, "Equity Curve")
+        
         metric_cards = create_metric_cards(stats)
-        additional_charts = create_charts(results)[1:]
+        additional_charts = create_charts(results)  # Now includes signals
         trade_table = create_trade_table(results.get('trades', []))
+        
+        # Get actual backtest period (2020 onwards only)
+        portfolio_values = results['Portfolio_Value']
+        trading_period = portfolio_values[portfolio_values.index >= pd.Timestamp('2020-01-01', tz='UTC')]
+        start_date = trading_period.index[0].strftime('%Y-%m-%d')
+        end_date = trading_period.index[-1].strftime('%Y-%m-%d')
+        backtest_period = f"{start_date} to {end_date}"
         
         return (
             html.Div("Calculation complete", className="text-success"),
@@ -442,8 +502,8 @@ def update_backtest(strategy):
             metric_cards,
             additional_charts,
             trade_table,
-            "2021-01-01 to 2021-12-31",  # Placeholder for backtest period
-            "AAPL, MSFT, GOOGL"  # Placeholder for portfolio instruments
+            backtest_period,
+            ", ".join(signals.keys())
         )
         
     except Exception as e:

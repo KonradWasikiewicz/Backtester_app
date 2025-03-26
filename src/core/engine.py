@@ -19,6 +19,7 @@ class BacktestEngine:
         self.commission = 0.001
         self.slippage = 0.001
         self.position_size_pct = 0.1
+        self.cash = initial_capital  # Add cash attribute
         
     def run(self, strategy_type: str) -> Tuple[Dict, pd.DataFrame, Dict]:
         """Run backtest with specified strategy"""
@@ -58,6 +59,7 @@ class BacktestEngine:
                 'trades': []
             }
             
+            self.cash = self.initial_capital  # Reset cash at start
             portfolio_values = []
             current_position = 0
             portfolio_value = self.initial_capital

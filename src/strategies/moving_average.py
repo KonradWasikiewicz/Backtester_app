@@ -12,9 +12,9 @@ class MovingAverageCrossover(BaseStrategy):
         
         for ticker, df in data.items():
             df = df.copy()
-            close_prices = df['Close'].astype(float)
             
-            # Calculate SMAs
+            # Calculate SMAs using entire dataset (including lookback)
+            close_prices = df['Close'].astype(float)
             df['SMA_short'] = close_prices.rolling(
                 window=self.short_window,
                 min_periods=1
@@ -25,18 +25,11 @@ class MovingAverageCrossover(BaseStrategy):
                 min_periods=1
             ).mean()
             
-            # Calculate signals using vectorized operations
+            # Generate signals only for trading period (2020 onwards)
             df['Signal'] = 0
-            long_signals = df['SMA_short'] > df['SMA_long']
-            short_signals = df['SMA_short'] < df['SMA_long']
-            
-            df.loc[long_signals, 'Signal'] = 1
-            df.loc[short_signals, 'Signal'] = -1
-            
-            # Fill missing values
-            df['Signal'] = df['Signal'].fillna(0)
-            df['SMA_short'] = df['SMA_short'].ffill().bfill()
-            df['SMA_long'] = df['SMA_long'].ffill().bfill()
+            trading_mask = df.index >= pd.Timestamp('2020-01-01', tz='UTC')
+            df.loc[trading_mask & (df['SMA_short'] > df['SMA_long']), 'Signal'] = 1
+            df.loc[trading_mask & (df['SMA_short'] < df['SMA_long']), 'Signal'] = -1
             
             signals[ticker] = df
             

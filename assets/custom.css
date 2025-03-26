@@ -1,0 +1,37 @@
+/* Dropdown styling */
+.Select-control {
+    background-color: #1e222d !important;
+    border-color: #2a2e39 !important;
+}
+
+.Select-menu-outer {
+    background-color: #1e222d !important;
+    border: 1px solid #2a2e39 !important;
+}
+
+.Select-option {
+    background-color: #1e222d !important;
+    color: #ffffff !important;
+}
+
+.Select-option:hover {
+    background-color: #2a2e39 !important;
+}
+
+.Select-value-label {
+    color: #ffffff !important;
+}
+
+.Select-placeholder {
+    color: #ffffff !important;
+}
+
+.Select.is-focused > .Select-control {
+    background-color: #1e222d !important;
+    border-color: #2a2e39 !important;
+}
+
+.Select.is-open > .Select-control {
+    background-color: #1e222d !important;
+    border-color: #2a2e39 !important;
+}
