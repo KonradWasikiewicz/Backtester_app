@@ -225,11 +225,20 @@ def run_backtest(strategy_type, strategy_params=None):
         
         # Add benchmark if available
         if benchmark_data is not None:
-            # Use ffill() instead of fillna(method='ffill')
+            # Calculate benchmark performance starting from same initial capital
             benchmark_data['Close'] = benchmark_data['Close'].ffill()
-            benchmark_returns = benchmark_data['Close'].pct_change(fill_method=None)
-            benchmark_performance = (1 + benchmark_returns).cumprod() * 100000
-            combined_results['Benchmark'] = benchmark_performance
+            benchmark_start_price = benchmark_data.loc[
+                benchmark_data.index >= pd.Timestamp('2020-01-01', tz='UTC'), 'Close'
+            ].iloc[0]
+            
+            # Calculate benchmark shares (invest full initial capital)
+            benchmark_shares = int(10000 / benchmark_start_price)
+            benchmark_values = benchmark_data['Close'] * benchmark_shares
+            
+            # Add benchmark to results
+            combined_results['Benchmark'] = benchmark_values[
+                benchmark_values.index >= pd.Timestamp('2020-01-01', tz='UTC')
+            ]
         
         # Calculate portfolio statistics
         stats = {

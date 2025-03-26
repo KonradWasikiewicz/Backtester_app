@@ -8,18 +8,10 @@ from .data import DataLoader
 from ..portfolio.models import Trade
 
 class BacktestEngine:
-    def __init__(self, strategy: BaseStrategy, initial_capital=100000):
+    def __init__(self, strategy, initial_capital=10000):
         self.strategy = strategy
         self.initial_capital = initial_capital
-        self.available_cash = initial_capital
-        self.current_capital = initial_capital
-        self.positions = {}
-        self.trades = []
-        self.portfolio_values = None
-        self.commission = 0.001
-        self.slippage = 0.001
-        self.position_size_pct = 0.1
-        self.cash = initial_capital  # Add cash attribute
+        self.cash = initial_capital
         
     def run(self, strategy_type: str) -> Tuple[Dict, pd.DataFrame, Dict]:
         """Run backtest with specified strategy"""
@@ -55,31 +47,42 @@ class BacktestEngine:
         """Run backtest for a single instrument"""
         try:
             results = {
-                'Portfolio_Value': pd.Series(dtype=float),  # Initialize as Series
+                'Portfolio_Value': pd.Series(dtype=float),
                 'trades': []
             }
             
-            self.cash = self.initial_capital  # Reset cash at start
+            # Reset cash for each ticker's backtest
+            self.cash = self.initial_capital / len(self.strategy.tickers)  # Equal allocation
             portfolio_values = []
             current_position = 0
-            portfolio_value = self.initial_capital
             
+            # Trading loop
             for idx, row in data.iterrows():
-                # Update portfolio value
+                if idx < pd.Timestamp('2020-01-01', tz='UTC'):
+                    continue  # Skip lookback period
+                    
                 close_price = float(row['Close'])
-                position_value = current_position * close_price
-                portfolio_value = self.cash + position_value
-                portfolio_values.append(portfolio_value)
-                
-                # Update position based on signal
                 signal = float(row['Signal'])
+                
+                # Calculate position size (round to whole shares)
                 if signal != 0 and current_position == 0:
-                    # Calculate new position size
-                    position_size = int(self.cash * 0.95 / close_price)
-                    current_position = position_size if signal > 0 else -position_size
-                    self.cash -= abs(current_position * close_price)
+                    max_shares = int(self.cash / close_price)
+                    position_size = max_shares if signal > 0 else -max_shares
+                    
+                    # Only take position if we can afford at least 1 share
+                    if max_shares > 0:
+                        current_position = position_size
+                        self.cash -= abs(position_size * close_price)
+                
+                # Calculate current portfolio value
+                position_value = current_position * close_price
+                portfolio_value = max(0, self.cash + position_value)  # Prevent negative values
+                portfolio_values.append(portfolio_value)
             
-            results['Portfolio_Value'] = pd.Series(portfolio_values, index=data.index)
+            results['Portfolio_Value'] = pd.Series(
+                portfolio_values, 
+                index=data[data.index >= pd.Timestamp('2020-01-01', tz='UTC')].index
+            )
             return results
             
         except Exception as e:
