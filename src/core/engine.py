@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from decimal import Decimal, ROUND_DOWN
 from ..strategies.base import BaseStrategy
 from .data import DataLoader
@@ -20,35 +20,26 @@ class BacktestEngine:
         self.slippage = 0.001
         self.position_size_pct = 0.1
         
-    def run(self, ticker):
-        # Load data
-        data = self.data_loader.load_data(ticker)
-        benchmark = self.data_loader.load_benchmark()
-        
-        # Generate signals
-        signals = self.strategy.generate_signals(data)
-        
-        # Calculate returns
-        portfolio_returns = []
-        current_position = 0
-        
-        for i in range(len(data)):
-            if i > 0:
-                if signals[i] == 1 and current_position <= 0:  # Buy signal
-                    current_position = 1
-                elif signals[i] == -1 and current_position >= 0:  # Sell signal
-                    current_position = -1
-                    
-            daily_return = current_position * data['Close'].pct_change()[i]
-            portfolio_returns.append(daily_return)
+    def run(self, strategy_type: str) -> Tuple[Dict, pd.DataFrame, Dict]:
+        """Run backtest with specified strategy"""
+        try:
+            data_dict = self.load_data()
             
-        portfolio_returns = pd.Series(portfolio_returns, index=data.index)
-        
-        return {
-            'returns': portfolio_returns,
-            'benchmark_returns': benchmark['Close'].pct_change(),
-            'signals': signals
-        }
+            # Ensure all dataframes have same date range
+            min_date = max(df.index.min() for df in data_dict.values())
+            max_date = min(df.index.max() for df in data_dict.values())
+            
+            for ticker in data_dict:
+                mask = (data_dict[ticker].index >= min_date) & (data_dict[ticker].index <= max_date)
+                data_dict[ticker] = data_dict[ticker][mask]
+            
+            # Generate signals
+            signals = self.strategy.generate_signals(data_dict)
+            
+            # Rest of the code...
+        except Exception as e:
+            print(f"Error running backtest: {e}")
+            return {}, pd.DataFrame(), {}
 
     def calculate_shares(self, price: float) -> int:
         """Calculate number of shares based on position size and available cash"""

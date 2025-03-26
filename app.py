@@ -107,9 +107,18 @@ def create_chart(figure_data, layout_title):
 def run_backtest(strategy_type, strategy_params=None):
     """Run backtest with specified parameters"""
     try:
+        # Get data with lookback period
+        data = DataLoader.extend_historical_data()
+        
         # Get available tickers first
         available_tickers = DataLoader.get_available_tickers()
-        print(f"\nInitializing backtest for {len(available_tickers)} instruments...")
+        
+        # Print initial summary
+        data_rows = len(data)
+        print("\nInitializing backtest with:")
+        print(f"Trading instruments: {', '.join(available_tickers)}")
+        print(f"Benchmark: {config.BENCHMARK_TICKER}")
+        print(f"Data rows per instrument: {data_rows // (len(available_tickers) + 1)}\n")
         
         # Load data for trading instruments
         data_dict = {}

@@ -1,12 +1,19 @@
+import sys
+from pathlib import Path
 import pandas as pd
 import os
 import numpy as np
 from typing import List, Dict, Optional
-from .config import config
-from .exceptions import DataError
-from .constants import BENCHMARK_TICKER
-import yfinance as yf
 from datetime import datetime, timedelta
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent
+sys.path.append(str(project_root))
+
+from src.core.config import config
+from src.core.exceptions import DataError
+from src.core.constants import BENCHMARK_TICKER
+import yfinance as yf
 
 class DataLoader:
     """Data loading and preprocessing"""
@@ -53,3 +60,24 @@ class DataLoader:
     def load_benchmark(self) -> pd.DataFrame:
         """Load S&P 500 data as benchmark"""
         return self.load_data(ticker=self.benchmark)
+
+    @staticmethod
+    def extend_historical_data():
+        """Load and extend historical price data if needed"""
+        try:
+            # Get absolute path
+            base_dir = Path(__file__).parent.parent.parent
+            data_path = base_dir / "data" / "historical_prices.csv"
+            
+            # Update historical data
+            from scripts.fetch_data import update_historical_data
+            update_historical_data()
+            
+            # Load updated data
+            data = pd.read_csv(data_path)
+            data['Date'] = pd.to_datetime(data['Date'], utc=True)
+            return data
+            
+        except Exception as e:
+            print(f"Error extending historical data: {str(e)}")
+            raise DataError("Failed to update historical data")
