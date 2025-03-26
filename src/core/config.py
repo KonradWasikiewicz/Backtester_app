@@ -5,22 +5,37 @@ import pandas as pd
 class Config:
     """Global configuration"""
     
-    # Paths
-    ROOT_DIR: Path = Path(__file__).parent.parent.parent
-    DATA_DIR: Path = ROOT_DIR / "data"
-    DATA_FILE: Path = DATA_DIR / "historical_prices.csv"
-    
+    def __init__(self):
+        self.ROOT_DIR = Path(__file__).parent.parent.parent
+        self.DATA_DIR = self.ROOT_DIR / "data"
+        self.DATA_FILE = self.DATA_DIR / "historical_prices.csv"
+        self.TICKERS_FILE = self.DATA_DIR / "tickers.csv"
+        self.BENCHMARK_TICKER = 'SPY'
+        
+    @property
+    def default_tickers(self) -> List[str]:
+        """Get tickers from tickers.csv file or fallback to default"""
+        try:
+            if self.TICKERS_FILE.exists():
+                df = pd.read_csv(self.TICKERS_FILE)
+                # Exclude benchmark from trading tickers
+                return sorted([t for t in df['Ticker'].unique() if t != self.BENCHMARK_TICKER])
+            else:
+                # Fallback to hardcoded defaults
+                return ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA']
+        except Exception as e:
+            print(f"Error reading tickers file: {str(e)}")
+            return ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA']
+
     @property
     def available_tickers(self) -> List[str]:
         """Get unique tickers from historical data"""
-        if not hasattr(self, '_tickers'):
+        if self.DATA_FILE.exists():
             df = pd.read_csv(self.DATA_FILE)
-            self._tickers = sorted(df['Ticker'].unique())
-        return self._tickers
+            tickers = sorted(df['Ticker'].unique())
+            return [t for t in tickers if t != self.BENCHMARK_TICKER]
+        return self.default_tickers
 
-    # Benchmark settings
-    BENCHMARK_TICKER: str = '^GSPC'
-    
     # Trading parameters
     INITIAL_CAPITAL: float = 100_000
     COMMISSION: float = 0.001

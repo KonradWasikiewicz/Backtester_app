@@ -19,9 +19,9 @@ class DataLoader:
     """Data loading and preprocessing"""
     
     def __init__(self, start_date=None, end_date=None):
-        self.start_date = start_date or (datetime.now() - timedelta(days=365*3)).strftime('%Y-%m-%d')
-        self.end_date = end_date or datetime.now().strftime('%Y-%m-%d')
-        self.benchmark = '^GSPC'
+        self.backtest_start = datetime(2020, 1, 1)  # Main backtest period
+        self.indicator_start = datetime(2019, 1, 1)  # Extra year for indicators
+        self.end_date = end_date or datetime.now()
 
     @staticmethod
     def get_available_tickers() -> List[str]:
@@ -40,8 +40,14 @@ class DataLoader:
             raise DataError(f"Failed to load tickers: {str(e)}")
 
     @staticmethod
-    def load_data(ticker: str) -> pd.DataFrame:
-        """Load data for a specific ticker"""
+    def load_data(ticker: str, include_indicator_data: bool = False) -> pd.DataFrame:
+        """
+        Load data for a specific ticker
+        
+        Args:
+            ticker: Stock ticker symbol
+            include_indicator_data: If True, includes extra year of data for indicators
+        """
         try:
             df = pd.read_csv(config.DATA_FILE)
             ticker_data = df[df['Ticker'] == ticker].copy()
@@ -49,8 +55,13 @@ class DataLoader:
             if ticker_data.empty:
                 raise DataError(f"No data found for ticker {ticker}")
             
-            # Fix datetime parsing warning by specifying utc=True
             ticker_data['Date'] = pd.to_datetime(ticker_data['Date'], utc=True)
+            
+            # Filter data based on usage
+            if not include_indicator_data:
+                backtest_start = datetime(2020, 1, 1, tzinfo=ticker_data['Date'].dt.tz)
+                ticker_data = ticker_data[ticker_data['Date'] >= backtest_start]
+                
             ticker_data.set_index('Date', inplace=True)
             return ticker_data.sort_index()
             
