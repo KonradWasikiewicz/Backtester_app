@@ -181,19 +181,32 @@ def run_backtest(strategy_type, strategy_params=None):
         
         # Combine results
         combined_results = pd.DataFrame()
-        combined_results['Portfolio_Value'] = sum(result['Portfolio_Value'] for result in all_results.values())
         
-        # Calculate benchmark returns
+        # Convert lists to Series before combining
+        portfolio_values = []
+        for ticker, result in all_results.items():
+            if isinstance(result['Portfolio_Value'], list):
+                portfolio_values.append(pd.Series(result['Portfolio_Value']))
+            else:
+                portfolio_values.append(result['Portfolio_Value'])
+        
+        # Sum portfolio values across all instruments
+        combined_results['Portfolio_Value'] = pd.concat(portfolio_values, axis=1).sum(axis=1)
+        
+        # Calculate benchmark returns if available
         if benchmark_data is not None:
             benchmark_returns = benchmark_data['Close'].pct_change()
-            benchmark_performance = (1 + benchmark_returns).cumprod() * 100000  # Scale to initial capital
+            benchmark_performance = (1 + benchmark_returns).cumprod() * 100000
             combined_results['Benchmark'] = benchmark_performance
         
         # Calculate portfolio statistics
         stats = {
             'initial_capital': 100000,
             'final_capital': float(combined_results['Portfolio_Value'].iloc[-1]),
-            'total_return': ((float(combined_results['Portfolio_Value'].iloc[-1]) / 100000) - 1) * 100
+            'total_return': ((float(combined_results['Portfolio_Value'].iloc[-1]) / 100000) - 1) * 100,
+            'total_trades': sum(len(result.get('trades', [])) for result in all_results.values()),
+            'win_rate': 0.0,  # Will be calculated if trades exist
+            'sharpe_ratio': 0.0  # Will be calculated if enough data points exist
         }
         
         # Additional metrics for valid data

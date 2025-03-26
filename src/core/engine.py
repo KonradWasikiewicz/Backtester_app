@@ -50,51 +50,39 @@ class BacktestEngine:
         ))
         return max_shares
 
-    def run_backtest(self, data: Dict[str, pd.DataFrame]) -> pd.DataFrame:
-        """Run backtest on multiple instruments"""
-        # Initialize result DataFrame
-        first_data = next(iter(data.values()))
-        combined_results = pd.DataFrame(index=first_data.index)
-        combined_results['Portfolio_Value'] = self.initial_capital
-        
-        for date in combined_results.index:
-            daily_pnl = 0.0  # Initialize daily P&L
+    def run_backtest(self, data: pd.DataFrame) -> dict:
+        """Run backtest for a single instrument"""
+        try:
+            results = {
+                'Portfolio_Value': pd.Series(dtype=float),  # Initialize as Series
+                'trades': []
+            }
             
-            for ticker, df in data.items():
-                if date not in df.index:
-                    continue
-                    
-                current_row = df.loc[date]
-                signal = current_row.get('Signal', 0)
-                
-                # Process existing positions
-                if ticker in self.positions:
-                    pos = self.positions[ticker]
-                    if signal != pos['signal']:
-                        exit_price = current_row['Close']
-                        pnl = self._close_position(ticker, exit_price, date)
-                        daily_pnl += pnl
-                
-                # Process new signals
-                elif signal != 0:
-                    shares = self.calculate_shares(current_row['Close'])
-                    if shares > 0:
-                        self._open_position(ticker, current_row['Close'], shares, signal, date)
+            portfolio_values = []
+            current_position = 0
+            portfolio_value = self.initial_capital
             
-            # Update portfolio value
-            if self.positions:
-                position_value = sum(
-                    pos['shares'] * data[ticker].loc[date, 'Close']
-                    for ticker, pos in self.positions.items()
-                    if date in data[ticker].index
-                )
-            else:
-                position_value = 0
+            for idx, row in data.iterrows():
+                # Update portfolio value
+                close_price = float(row['Close'])
+                position_value = current_position * close_price
+                portfolio_value = self.cash + position_value
+                portfolio_values.append(portfolio_value)
                 
-            self.current_capital = self.available_cash + position_value
-            combined_results.loc[date, 'Portfolio_Value'] = self.current_capital
-        
-        return combined_results
+                # Update position based on signal
+                signal = float(row['Signal'])
+                if signal != 0 and current_position == 0:
+                    # Calculate new position size
+                    position_size = int(self.cash * 0.95 / close_price)
+                    current_position = position_size if signal > 0 else -position_size
+                    self.cash -= abs(current_position * close_price)
+            
+            results['Portfolio_Value'] = pd.Series(portfolio_values, index=data.index)
+            return results
+            
+        except Exception as e:
+            print(f"Backtest error in engine: {str(e)}")
+            return {'Portfolio_Value': pd.Series(dtype=float), 'trades': []}
 
     def _open_position(self, ticker: str, price: float, shares: int, signal: int, date: pd.Timestamp) -> None:
         self.positions[ticker] = {
