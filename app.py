@@ -194,12 +194,12 @@ def run_backtest(strategy_type, strategy_params=None):
         # Generate signals for all instruments
         signals = strategy.generate_signals(data_dict)
         
-        # Initialize portfolio manager and risk manager
+        # Initialize portfolio manager and risk manager with correct initial capital
         risk_manager = RiskManager()
-        portfolio_manager = PortfolioManager(initial_capital=100000, risk_manager=risk_manager)
+        portfolio_manager = PortfolioManager(initial_capital=10000, risk_manager=risk_manager)
         
         # Run backtest with proper strategy initialization
-        engine = BacktestEngine(strategy=strategy, initial_capital=100000)
+        engine = BacktestEngine(strategy=strategy, initial_capital=10000)
         all_results = {}
         for ticker, data in signals.items():
             ticker_results = engine.run_backtest(data)
@@ -242,9 +242,9 @@ def run_backtest(strategy_type, strategy_params=None):
         
         # Calculate portfolio statistics
         stats = {
-            'initial_capital': 100000,
+            'initial_capital': 10000,  # Changed from 100000
             'final_capital': float(combined_results['Portfolio_Value'].iloc[-1]),
-            'total_return': ((float(combined_results['Portfolio_Value'].iloc[-1]) / 100000) - 1) * 100,
+            'total_return': ((float(combined_results['Portfolio_Value'].iloc[-1]) / 10000) - 1) * 100,
             'total_trades': sum(len(result.get('trades', [])) for result in all_results.values()),
             'win_rate': 0.0,  # Will be calculated if trades exist
             'sharpe_ratio': 0.0  # Will be calculated if enough data points exist

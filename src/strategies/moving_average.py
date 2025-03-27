@@ -8,6 +8,7 @@ class MovingAverageCrossover(BaseStrategy):
         self.long_window = long_window
         
     def generate_signals(self, data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
+        self.tickers = list(data.keys())  # Store tickers for position sizing
         signals = {}
         
         for ticker, df in data.items():

@@ -16,34 +16,27 @@ class BacktestVisualizer:
 
     def create_backtest_charts(self, trades, portfolio_values, signals):
         """Create all backtest visualization charts"""
+        if portfolio_values.empty:
+            return []
+            
         charts = []
         
         # Portfolio value chart
-        if not portfolio_values.empty:
-            equity_trace = {
+        portfolio_trace = {
+            'data': [{
                 'x': portfolio_values.index,
                 'y': portfolio_values.values,
                 'name': 'Portfolio Value',
                 'type': 'scatter',
                 'mode': 'lines',
                 'line': {'color': '#17B897'}
+            }],
+            'layout': {
+                'title': 'Portfolio Value',
+                'xaxis': {'title': 'Date'},
+                'yaxis': {'title': 'Value ($)'}
             }
-            charts.append(equity_trace)
-        
-        # Add trade markers if available
-        if trades:
-            for trade in trades:
-                marker = {
-                    'x': [trade.entry_date],
-                    'y': [trade.entry_price],
-                    'name': f'{trade.ticker} {trade.direction}',
-                    'mode': 'markers',
-                    'marker': {
-                        'symbol': 'triangle-up' if trade.direction == 'LONG' else 'triangle-down',
-                        'size': 10,
-                        'color': '#17B897' if trade.direction == 'LONG' else '#FF6B6B'
-                    }
-                }
-                charts.append(marker)
+        }
+        charts.append(portfolio_trace)
         
         return charts
