@@ -67,56 +67,58 @@ def create_empty_chart(layout_title):
 def create_chart(figure_data, layout_title):
     """Create a styled chart component"""
     if (figure_data is None):
-        figure = create_empty_chart(layout_title)
-    else:
-        # Filter data to include only trading period
-        if isinstance(figure_data, dict):
-            for key in figure_data:
-                if isinstance(figure_data[key], pd.Series):
-                    figure_data[key] = figure_data[key][figure_data[key].index >= pd.Timestamp('2020-01-01', tz='UTC')]
+        return create_empty_chart(layout_title)
+    
+    traces = []
+    for name, data in figure_data.items():
+        # Filter data for trading period
+        if isinstance(data, pd.Series):
+            data = data[data.index >= pd.Timestamp('2020-01-01', tz='UTC')]
         
-        traces = []
-        for name, data in figure_data.items():
-            trace = {
-                'x': data.index,
-                'y': data.values,
-                'name': name,
-                'type': 'scatter',
-                'mode': 'lines',
-                'line': {'color': '#17B897' if name == 'Portfolio' else '#FF6B6B'}
-            }
-            traces.append(trace)
-        
-        figure = {
-            'data': traces,
-            'layout': {
-                'title': layout_title,
-                'template': CHART_THEME,
-                'paper_bgcolor': '#1e222d',
-                'plot_bgcolor': '#1e222d',
-                'font': {'color': '#ffffff'},
-                'xaxis': {
-                    'gridcolor': '#2a2e39',
-                    'showgrid': True,
-                    'zeroline': False,
-                    'title': 'Date'
-                },
-                'yaxis': {
-                    'gridcolor': '#2a2e39',
-                    'showgrid': True,
-                    'zeroline': True,
-                    'zerolinecolor': '#2a2e39',
-                    'title': 'Portfolio Value ($)'
-                },
-                'margin': {'t': 50, 'l': 50, 'r': 40, 'b': 50},
-                'showlegend': True,
-                'legend': {
-                    'font': {'color': '#ffffff'},
-                    'bgcolor': '#1e222d',
-                    'bordercolor': '#2a2e39'
-                }
-            }
+        trace = {
+            'x': data.index,
+            'y': data.values,
+            'name': 'Portfolio Value' if name == 'Portfolio' else f'Benchmark ({config.BENCHMARK_TICKER})',
+            'type': 'scatter',
+            'mode': 'lines',
+            'line': {'color': '#17B897' if name == 'Portfolio' else '#FF6B6B'}
         }
+        traces.append(trace)
+    
+    figure = {
+        'data': traces,
+        'layout': {
+            'title': layout_title,
+            'template': CHART_THEME,
+            'paper_bgcolor': '#1e222d',
+            'plot_bgcolor': '#1e222d',
+            'font': {'color': '#ffffff'},
+            'xaxis': {
+                'gridcolor': '#2a2e39',
+                'showgrid': True,
+                'zeroline': False,
+                'title': 'Date'
+            },
+            'yaxis': {
+                'gridcolor': '#2a2e39',
+                'showgrid': True,
+                'zeroline': True,
+                'zerolinecolor': '#2a2e39',
+                'title': 'Portfolio Value ($)'
+            },
+            'margin': {'t': 50, 'l': 50, 'r': 20, 'b': 50},  # Reduced right margin
+            'showlegend': True,
+            'legend': {
+                'orientation': 'h',  # Horizontal legend
+                'y': 1.1,  # Position above chart
+                'x': 0.5,  # Center legend
+                'xanchor': 'center',
+                'font': {'color': '#ffffff'},
+                'bgcolor': '#1e222d'
+            },
+            'width': 600  # Reduced width by 25%
+        }
+    }
 
     return dcc.Graph(
         id=f"chart-{layout_title.lower().replace(' ', '-')}",
@@ -126,8 +128,86 @@ def create_chart(figure_data, layout_title):
             'responsive': True,
             'scrollZoom': True,
             'modeBarButtonsToRemove': ['lasso2d', 'select2d']
-        },
-        style={'height': '600px', 'width': '100%'}  # Increased height for better visibility
+        }
+    )
+
+def create_trade_histogram(trades):
+    """Create trade return distribution histogram"""
+    if not trades:
+        return create_empty_chart("Trade Distribution")
+    
+    # Calculate returns for each trade
+    returns = [(trade['exit_price'] - trade['entry_price']) / trade['entry_price'] * 100 
+              for trade in trades]
+    
+    # Create bins from -50% to 50% in 5% increments
+    bins = list(range(-50, 55, 5))
+    
+    # Split returns into gains and losses
+    gains = [r for r in returns if r >= 0]
+    losses = [r for r in returns if r < 0]
+    
+    figure = {
+        'data': [
+            # Losses histogram
+            {
+                'x': losses,
+                'type': 'histogram',
+                'name': 'Losses',
+                'autobinx': False,
+                'xbins': {'start': -50, 'end': 0, 'size': 5},
+                'marker': {'color': '#FF6B6B'},
+                'opacity': 0.75
+            },
+            # Gains histogram
+            {
+                'x': gains,
+                'type': 'histogram',
+                'name': 'Gains',
+                'autobinx': False,
+                'xbins': {'start': 0, 'end': 50, 'size': 5},
+                'marker': {'color': '#17B897'},
+                'opacity': 0.75
+            }
+        ],
+        'layout': {
+            'title': 'Trade Return Distribution',
+            'template': CHART_THEME,
+            'paper_bgcolor': '#1e222d',
+            'plot_bgcolor': '#1e222d',
+            'font': {'color': '#ffffff'},
+            'xaxis': {
+                'title': 'Return (%)',
+                'gridcolor': '#2a2e39',
+                'range': [-50, 50]
+            },
+            'yaxis': {
+                'title': 'Number of Trades',
+                'gridcolor': '#2a2e39'
+            },
+            'bargap': 0.1,
+            'margin': {'t': 50, 'l': 50, 'r': 20, 'b': 50},
+            'showlegend': True,
+            'legend': {
+                'orientation': 'h',
+                'y': 1.1,
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'color': '#ffffff'},
+                'bgcolor': '#1e222d'
+            },
+            'width': 400  # Match the trade history width
+        }
+    }
+    
+    return dcc.Graph(
+        id='trade-distribution',
+        figure=figure,
+        config={
+            'displayModeBar': True,
+            'responsive': True,
+            'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+        }
     )
 
 def run_backtest(strategy_type, strategy_params=None):
@@ -356,53 +436,61 @@ def create_trade_table(trades):
     if not trades:
         return html.Div("No trades available")
     
-    # Convert trade dictionaries to DataFrame and sort chronologically
     trade_records = []
     for trade in trades:
         record = {
-            'Entry Date': pd.to_datetime(trade['entry_date']).strftime('%Y-%m-%d'),
-            'Exit Date': pd.to_datetime(trade['exit_date']).strftime('%Y-%m-%d'),
+            'Date In': pd.to_datetime(trade['entry_date']).strftime('%Y-%m-%d'),
+            'Date Out': pd.to_datetime(trade['exit_date']).strftime('%Y-%m-%d'),
             'Ticker': trade['ticker'],
-            'Direction': trade['direction'],
-            'Shares': trade['shares'],
-            'Entry Price': f"${trade['entry_price']:.2f}",
-            'Exit Price': f"${trade['exit_price']:.2f}",
+            'Type': trade['direction'],
+            'Shares': f"{trade['shares']:,}",
+            'Entry': f"${trade['entry_price']:.2f}",
+            'Exit': f"${trade['exit_price']:.2f}",
             'P&L': f"${trade['pnl']:.2f}",
-            'Return %': f"{(trade['pnl'] / (trade['entry_price'] * trade['shares']) * 100):.2f}%"
+            'Return': f"{(trade['pnl'] / (trade['entry_price'] * trade['shares']) * 100):.1f}%"
         }
         trade_records.append(record)
     
-    # Create DataFrame and sort by entry date
     df = pd.DataFrame(trade_records)
-    df['Entry Date'] = pd.to_datetime(df['Entry Date'])
-    df = df.sort_values('Entry Date')
-    df['Entry Date'] = df['Entry Date'].dt.strftime('%Y-%m-%d')
     
     return dash_table.DataTable(
         id='trade-table',
         columns=[
-            {"name": "Entry Date", "id": "Entry Date"},
-            {"name": "Exit Date", "id": "Exit Date"},
-            {"name": "Ticker", "id": "Ticker"},
-            {"name": "Direction", "id": "Direction"},
-            {"name": "Shares", "id": "Shares", "type": "numeric"},
-            {"name": "Entry Price", "id": "Entry Price"},
-            {"name": "Exit Price", "id": "Exit Price"},
-            {"name": "P&L", "id": "P&L"},
-            {"name": "Return %", "id": "Return %"}
+            {"name": i, "id": i} for i in df.columns
         ],
         data=df.to_dict('records'),
         sort_action="native",
-        filter_action="native",
-        style_table={'overflowX': 'auto'},
+        style_table={
+            'height': '640px',
+            'overflowY': 'auto',
+            'minWidth': '100%',
+            'maxWidth': '100%'
+        },
+        fixed_rows={'headers': True},
         style_cell={
             'backgroundColor': '#1e222d',
             'color': '#e1e1e1',
-            'minWidth': '100px'
+            'fontFamily': 'system-ui',
+            'fontSize': '13px',
+            'height': 'auto',
+            'minWidth': '70px',
+            'maxWidth': '90px',
+            'overflow': 'hidden',
+            'textOverflow': 'ellipsis',
+            'textAlign': 'left',
+            'padding': '8px 12px'
+        },
+        style_data={
+            'whiteSpace': 'normal',
+            'height': 'auto',
+            'lineHeight': '15px'
         },
         style_header={
             'backgroundColor': '#2a2e39',
-            'fontWeight': 'bold'
+            'fontWeight': 'bold',
+            'border': '1px solid #2a2e39',
+            'whiteSpace': 'normal',
+            'height': 'auto'
         },
         style_data_conditional=[
             {
@@ -413,7 +501,23 @@ def create_trade_table(trades):
                 'if': {'filter_query': '{P&L} contains "-"'},
                 'color': '#FF6B6B'
             }
-        ]
+        ],
+        css=[{
+            'selector': '.dash-table-container',
+            'rule': 'max-height: 640px; font-family: system-ui;'
+        }, {
+            'selector': '::-webkit-scrollbar',
+            'rule': 'width: 8px; height: 8px;'
+        }, {
+            'selector': '::-webkit-scrollbar-track',
+            'rule': 'background: #1e222d;'
+        }, {
+            'selector': '::-webkit-scrollbar-thumb',
+            'rule': 'background: #2a2e39; border-radius: 4px;'
+        }, {
+            'selector': '::-webkit-scrollbar-thumb:hover',
+            'rule': 'background: #363b47;'
+        }]
     )
 
 # Update layout to include containers for metric cards and charts
@@ -425,7 +529,7 @@ app.layout = dbc.Container([
     ]),
 
     dbc.Row([
-        # Left column (1/3)
+        # Left column (Strategy Settings)
         dbc.Col([
             dbc.Card([
                 dbc.CardHeader("Strategy Settings"),
@@ -463,34 +567,31 @@ app.layout = dbc.Container([
             ], className="mb-4")
         ], width=3),
         
-        # Center column (charts & metrics)
+        # Center column (Equity Curve)
         dbc.Col([
-            # Row 1: Equity Curve
             dbc.Row([
                 dbc.Col(html.Div(id="equity-curve-container"), className="mb-4")
             ]),
-            # Row 2: Metrics
             dbc.Row([
                 dbc.Col(html.Div(id="metrics-container"), className="mb-4")
             ]),
-            # Row 3: Additional Charts
             dbc.Row([
                 dbc.Col(html.Div(id="additional-charts"))
             ])
         ], width=6),
         
-        # Right column (1/3)
+        # Right column (Trade Distribution & History)
         dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Trade Distribution"),
+                dbc.CardBody([
+                    html.Div(id="trade-distribution-container")
+                ])
+            ], className="mb-4"),
             dbc.Card([
                 dbc.CardHeader("Trade History"),
                 dbc.CardBody([
                     html.Div(id="trade-table-container")
-                ])
-            ], className="mb-4"),
-            dbc.Card([
-                dbc.CardHeader("Position Analysis"),
-                dbc.CardBody([
-                    html.Div(id="position-analysis")
                 ])
             ])
         ], width=3)
@@ -502,6 +603,7 @@ app.layout = dbc.Container([
      Output("equity-curve-container", "children"),
      Output("metrics-container", "children"),
      Output("additional-charts", "children"),
+     Output("trade-distribution-container", "children"),  # Added output
      Output("trade-table-container", "children"),
      Output("backtest-period", "children"),
      Output("portfolio-instruments", "children")],
@@ -542,6 +644,7 @@ def update_backtest(strategy):
         
         metric_cards = create_metric_cards(stats)
         additional_charts = create_charts(results)  # Now includes signals
+        trade_distribution = create_trade_histogram(results.get('trades', []))
         trade_table = create_trade_table(results.get('trades', []))
         
         # Get actual backtest period (2020 onwards only)
@@ -556,21 +659,16 @@ def update_backtest(strategy):
             equity_curve,
             metric_cards,
             additional_charts,
+            trade_distribution,  # Added return value
             trade_table,
             backtest_period,
             ", ".join(signals.keys())
         )
         
     except Exception as e:
-        print(f"Error in callback: {str(e)}")
         return (
             html.Div(f"Error: {str(e)}", className="text-danger"),
-            [],
-            create_empty_cards(),
-            [],
-            "No trades available",
-            "",
-            ""
+            [], [], [], [], "No trades available", "", ""  # Updated number of return values
         )
 
 # Add this to main() for debugging

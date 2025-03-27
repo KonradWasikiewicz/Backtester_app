@@ -36,28 +36,19 @@ class RSIStrategy(BaseStrategy):
             
             # Calculate RSI
             delta = close_prices.diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            gain = delta.where(delta > 0, 0).rolling(window=self.period).mean()
+            loss = -delta.where(delta < 0, 0).rolling(window=self.period).mean()
             
             rs = gain / loss
             df['RSI'] = 100 - (100 / (1 + rs))
             
-            # Initialize signals
-            df['Signal'] = 0
+            # Generate signals
+            df['Signal'] = pd.Series(0, index=df.index)
+            df.loc[df['RSI'] < self.oversold, 'Signal'] = 1
+            df.loc[df['RSI'] > self.overbought, 'Signal'] = -1
             
-            # Generate signals only for trading period
-            trade_mask = df.index >= pd.Timestamp('2020-01-01', tz='UTC')
-            for i in range(1, len(df)):
-                if not trade_mask.iloc[i]:
-                    continue
-                    
-                # Buy signal: RSI crosses below 30
-                if df['RSI'].iloc[i-1] >= 30 and df['RSI'].iloc[i] < 30:
-                    df.iloc[i, df.columns.get_loc('Signal')] = 1
-                    
-                # Sell signal: RSI crosses above 70
-                elif df['RSI'].iloc[i-1] <= 70 and df['RSI'].iloc[i] > 70:
-                    df.iloc[i, df.columns.get_loc('Signal')] = -1
+            # Only keep signals for trading period
+            df.loc[df.index < pd.Timestamp('2020-01-01', tz='UTC'), 'Signal'] = 0
             
             signals[ticker] = df
             
