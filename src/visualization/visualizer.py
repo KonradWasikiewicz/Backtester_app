@@ -19,24 +19,14 @@ class BacktestVisualizer:
         if portfolio_values.empty:
             return []
             
-        charts = []
-        
-        # Portfolio value chart
-        portfolio_trace = {
-            'data': [{
-                'x': portfolio_values.index,
-                'y': portfolio_values.values,
-                'name': 'Portfolio Value',
-                'type': 'scatter',
-                'mode': 'lines',
-                'line': {'color': '#17B897'}
-            }],
-            'layout': {
-                'title': 'Portfolio Value',
-                'xaxis': {'title': 'Date'},
-                'yaxis': {'title': 'Value ($)'}
-            }
+        # Create portfolio value chart
+        trace = {
+            'x': portfolio_values.index,
+            'y': portfolio_values.values,
+            'name': 'Portfolio Value',
+            'type': 'scatter',
+            'mode': 'lines',
+            'line': {'color': '#17B897'}
         }
-        charts.append(portfolio_trace)
         
-        return charts
+        return [trace]

@@ -198,47 +198,57 @@ def run_backtest(strategy_type, strategy_params=None):
         risk_manager = RiskManager()
         portfolio_manager = PortfolioManager(initial_capital=10000, risk_manager=risk_manager)
         
-        # Run backtest with proper strategy initialization
+        # Initialize engine with strategy
         engine = BacktestEngine(strategy=strategy, initial_capital=10000)
         all_results = {}
-        for ticker, data in signals.items():
-            ticker_results = engine.run_backtest(data)
-            all_results[ticker] = ticker_results
         
-        # Combine results
-        combined_results = pd.DataFrame()
+        # Get trading dates once
+        trading_dates = None
+        for ticker in signals.keys():
+            ticker_data = data_dict[ticker].copy()
+            if trading_dates is None:
+                trading_dates = ticker_data[ticker_data.index >= pd.Timestamp('2020-01-01', tz='UTC')].index
         
-        # Convert lists to Series before combining
-        portfolio_values = []
-        for ticker, result in all_results.items():
-            if isinstance(result['Portfolio_Value'], list):
-                portfolio_values.append(pd.Series(result['Portfolio_Value']))
-            else:
-                portfolio_values.append(result['Portfolio_Value'])
+        # Initialize portfolio value series with initial cash
+        initial_portfolio = pd.Series(10000, index=trading_dates)
         
-        # Combine results with proper structure
+        # Run backtest for each ticker
+        for ticker in signals.keys():
+            ticker_data = data_dict[ticker].copy()
+            ticker_data['Signal'] = signals[ticker]['Signal']
+            results = engine.run_backtest(ticker, ticker_data)
+            all_results[ticker] = results
+        
+        # Create portfolio value series starting from initial capital
+        portfolio_values = pd.DataFrame(
+            {ticker: result['Portfolio_Value'].reindex(trading_dates).fillna(0)
+             for ticker, result in all_results.items()},
+            index=trading_dates
+        )
+        
+        # Calculate final portfolio value (start with initial capital, then subtract it)
         combined_results = {
-            'Portfolio_Value': pd.concat(portfolio_values, axis=1).sum(axis=1),
-            'trades': [],  # Initialize empty trades list
+            'Portfolio_Value': initial_portfolio + portfolio_values.sum(axis=1) - 10000,
+            'trades': engine.trades,
             'signals': signals
         }
         
         # Add benchmark if available
         if benchmark_data is not None:
-            # Calculate benchmark performance starting from same initial capital
             benchmark_data['Close'] = benchmark_data['Close'].ffill()
-            benchmark_start_price = benchmark_data.loc[
-                benchmark_data.index >= pd.Timestamp('2020-01-01', tz='UTC'), 'Close'
-            ].iloc[0]
+            benchmark_start_date = pd.Timestamp('2020-01-01', tz='UTC')
+            benchmark_data = benchmark_data[benchmark_data.index >= benchmark_start_date]
+            benchmark_start_price = benchmark_data['Close'].iloc[0]
             
-            # Calculate benchmark shares (invest full initial capital)
-            benchmark_shares = int(10000 / benchmark_start_price)
-            benchmark_values = benchmark_data['Close'] * benchmark_shares
+            # Calculate benchmark shares to start exactly at 10000
+            benchmark_shares = 10000 / benchmark_start_price
+            benchmark_values = pd.Series(
+                benchmark_data['Close'] * benchmark_shares,
+                index=benchmark_data.index,
+                name='Benchmark'
+            )
             
-            # Add benchmark to results
-            combined_results['Benchmark'] = benchmark_values[
-                benchmark_values.index >= pd.Timestamp('2020-01-01', tz='UTC')
-            ]
+            combined_results['Benchmark'] = benchmark_values
         
         # Calculate portfolio statistics
         stats = {
@@ -305,15 +315,32 @@ def create_charts(results):
     if results is None:
         return []
     
-    portfolio_values = results.get('Portfolio_Value', pd.Series())
-    trades = results.get('trades', [])
-    signals = results.get('signals', {})  # Get signals from results
+    charts = []
     
-    return visualizer.create_backtest_charts(
-        trades=trades,
-        portfolio_values=portfolio_values,
-        signals=signals  # Pass signals to visualizer
-    )
+    # Create equity curve
+    equity_trace = {
+        'x': results['Portfolio_Value'].index,
+        'y': results['Portfolio_Value'].values,
+        'name': 'Portfolio Value',
+        'type': 'scatter',
+        'mode': 'lines',
+        'line': {'color': '#17B897'}
+    }
+    
+    if 'Benchmark' in results:
+        benchmark_trace = {
+            'x': results['Benchmark'].index,
+            'y': results['Benchmark'].values,
+            'name': 'Benchmark',
+            'type': 'scatter',
+            'mode': 'lines',
+            'line': {'color': '#FF6B6B'}
+        }
+        charts.extend([equity_trace, benchmark_trace])
+    else:
+        charts.append(equity_trace)
+    
+    return charts
 
 def create_empty_cards():
     """Create empty metric cards"""
@@ -328,24 +355,41 @@ def create_trade_table(trades):
     """Create unified trade history table"""
     if not trades:
         return html.Div("No trades available")
-        
-    df = pd.DataFrame([trade.to_dict() for trade in trades])
+    
+    # Convert trade dictionaries to DataFrame and sort chronologically
+    trade_records = []
+    for trade in trades:
+        record = {
+            'Entry Date': pd.to_datetime(trade['entry_date']).strftime('%Y-%m-%d'),
+            'Exit Date': pd.to_datetime(trade['exit_date']).strftime('%Y-%m-%d'),
+            'Ticker': trade['ticker'],
+            'Direction': trade['direction'],
+            'Shares': trade['shares'],
+            'Entry Price': f"${trade['entry_price']:.2f}",
+            'Exit Price': f"${trade['exit_price']:.2f}",
+            'P&L': f"${trade['pnl']:.2f}",
+            'Return %': f"{(trade['pnl'] / (trade['entry_price'] * trade['shares']) * 100):.2f}%"
+        }
+        trade_records.append(record)
+    
+    # Create DataFrame and sort by entry date
+    df = pd.DataFrame(trade_records)
+    df['Entry Date'] = pd.to_datetime(df['Entry Date'])
+    df = df.sort_values('Entry Date')
+    df['Entry Date'] = df['Entry Date'].dt.strftime('%Y-%m-%d')
     
     return dash_table.DataTable(
         id='trade-table',
         columns=[
-            {"name": "ID", "id": "ID"},
-            {"name": "Ticker", "id": "Ticker"},
-            {"name": "Direction", "id": "Direction"},
             {"name": "Entry Date", "id": "Entry Date"},
             {"name": "Exit Date", "id": "Exit Date"},
+            {"name": "Ticker", "id": "Ticker"},
+            {"name": "Direction", "id": "Direction"},
             {"name": "Shares", "id": "Shares", "type": "numeric"},
             {"name": "Entry Price", "id": "Entry Price"},
             {"name": "Exit Price", "id": "Exit Price"},
             {"name": "P&L", "id": "P&L"},
-            {"name": "Return %", "id": "Return %"},
-            {"name": "Duration", "id": "Duration"},
-            {"name": "Exit Reason", "id": "Exit Reason"}
+            {"name": "Return %", "id": "Return %"}
         ],
         data=df.to_dict('records'),
         sort_action="native",
@@ -362,15 +406,11 @@ def create_trade_table(trades):
         },
         style_data_conditional=[
             {
-                'if': {
-                    'filter_query': '{P&L} contains "+"'
-                },
+                'if': {'filter_query': '{P&L} contains "+"'},
                 'color': '#17B897'
             },
             {
-                'if': {
-                    'filter_query': '{P&L} contains "-"'
-                },
+                'if': {'filter_query': '{P&L} contains "-"'},
                 'color': '#FF6B6B'
             }
         ]
@@ -484,6 +524,12 @@ def update_backtest(strategy):
                 "",
                 ""
             )
+            
+        # Print debug information
+        print(f"\nStrategy: {strategy}")
+        print_portfolio_summary(results)
+        
+        # Rest of the callback...
         
         # Add signals to results
         results['signals'] = signals  # Ensure signals are included in results
@@ -561,6 +607,47 @@ def main():
             
     except Exception as e:
         print(f"Error running backtest: {str(e)}")
+
+def print_portfolio_summary(results, days=15):
+    """Print daily portfolio values and trades for first n days"""
+    if results is None or 'Portfolio_Value' not in results:
+        print("No results available")
+        return
+        
+    # Get trading days starting from 2020
+    start_date = pd.Timestamp('2020-01-01', tz='UTC')
+    portfolio_values = results['Portfolio_Value'][results['Portfolio_Value'].index >= start_date]
+    benchmark_values = results.get('Benchmark', pd.Series())[results.get('Benchmark', pd.Series()).index >= start_date]
+    
+    # Get trades
+    trades = results.get('trades', [])
+    
+    # Create date range for first n days
+    dates = portfolio_values.index[:days]
+    
+    # Print header
+    print("\nDaily Portfolio Summary (First 3 Weeks)")
+    print("=" * 100)
+    print(f"{'Date':<12} | {'Portfolio ($)':>12} | {'Benchmark ($)':>12} | {'# Trades':>8} | {'Trades Details':<40}")
+    print("-" * 100)
+    
+    for date in dates:
+        # Count trades for this day
+        day_trades = [t for t in trades if pd.Timestamp(t['entry_date']).date() == date.date()]
+        trade_count = len(day_trades)
+        
+        # Get trade details
+        trade_details = ""
+        if trade_count > 0:
+            trade_details = ", ".join([f"{t['ticker']} ({t['direction']})" for t in day_trades])
+        
+        print(f"{date.strftime('%Y-%m-%d'):<12} | "
+              f"{portfolio_values[date]:>12,.2f} | "
+              f"{benchmark_values[date]:>12,.2f} | "
+              f"{trade_count:>8} | "
+              f"{trade_details:<40}")
+
+    print("=" * 100)
 
 if __name__ == "__main__":
     app.run(debug=True)

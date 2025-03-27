@@ -27,27 +27,37 @@ class RSIStrategy(BaseStrategy):
         return rsi
         
     def generate_signals(self, data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
-        super().generate_signals(data)
+        self.tickers = list(data.keys())
         signals = {}
         
         for ticker, df in data.items():
             df = df.copy()
             close_prices = df['Close'].astype(float)
             
-            # Calculate RSI using the entire dataset
-            df['RSI'] = self.calculate_rsi(close_prices)
+            # Calculate RSI
+            delta = close_prices.diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            
+            rs = gain / loss
+            df['RSI'] = 100 - (100 / (1 + rs))
+            
+            # Initialize signals
+            df['Signal'] = 0
             
             # Generate signals only for trading period
-            df['Signal'] = 0
-            trading_mask = df.index >= pd.Timestamp('2020-01-01', tz='UTC')
-            
-            # Long signal when RSI crosses below oversold level
-            long_signal = (df['RSI'] < self.oversold) & trading_mask
-            # Short signal when RSI crosses above overbought level
-            short_signal = (df['RSI'] > self.overbought) & trading_mask
-            
-            df.loc[long_signal, 'Signal'] = 1
-            df.loc[short_signal, 'Signal'] = -1
+            trade_mask = df.index >= pd.Timestamp('2020-01-01', tz='UTC')
+            for i in range(1, len(df)):
+                if not trade_mask.iloc[i]:
+                    continue
+                    
+                # Buy signal: RSI crosses below 30
+                if df['RSI'].iloc[i-1] >= 30 and df['RSI'].iloc[i] < 30:
+                    df.iloc[i, df.columns.get_loc('Signal')] = 1
+                    
+                # Sell signal: RSI crosses above 70
+                elif df['RSI'].iloc[i-1] <= 70 and df['RSI'].iloc[i] > 70:
+                    df.iloc[i, df.columns.get_loc('Signal')] = -1
             
             signals[ticker] = df
             

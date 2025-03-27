@@ -14,70 +14,105 @@ class BacktestEngine:
         self.reset()
         
     def reset(self):
+        """Reset engine state"""
         self.cash = self.initial_capital
+        self.positions = {}  # {ticker: {'shares': n, 'cost_basis': price, 'entry_date': date}}
         self.trades = []
-        self.portfolio_value = pd.Series(dtype=float)
         
-    def run_backtest(self, data: pd.DataFrame) -> dict:
+    def run_backtest(self, ticker: str, data: pd.DataFrame) -> dict:
         try:
-            current_position = 0
+            trading_data = data.copy()
             portfolio_values = []
-            trades = []
             
-            position_value = 0
-            entry_price = None
-            entry_date = None
+            # Split initial capital equally among tickers
+            ticker_allocation = self.initial_capital / len(self.strategy.tickers)
+            available_cash = ticker_allocation
+            current_position = 0
             
-            for idx, row in data.iterrows():
-                if idx < pd.Timestamp('2020-01-01', tz='UTC'):
+            # Process each day
+            for i in range(len(trading_data)):
+                current_day = trading_data.iloc[i]
+                current_date = trading_data.index[i]
+                
+                # Skip processing for lookback period
+                if current_date < pd.Timestamp('2020-01-01', tz='UTC'):
                     continue
+                
+                # Get previous day's signal (only if not in lookback period)
+                if i > 0 and trading_data.iloc[i-1].name >= pd.Timestamp('2020-01-01', tz='UTC'):
+                    prev_signal = trading_data.iloc[i-1]['Signal']
+                else:
+                    prev_signal = 0  # No signal at the start of trading period
+                
+                # Handle entries
+                if current_position == 0 and prev_signal == 1:
+                    max_shares = int(available_cash / current_day['Open'])
+                    if max_shares > 0:
+                        current_position = max_shares
+                        cost = max_shares * current_day['Open']
+                        available_cash -= cost
+                        self.positions[ticker] = {
+                            'shares': max_shares,
+                            'cost_basis': current_day['Open'],
+                            'entry_date': current_date
+                        }
+                
+                # Handle exits
+                elif current_position != 0 and prev_signal in [-1, 0]:
+                    exit_price = current_day['Open']
+                    proceeds = current_position * exit_price
+                    available_cash += proceeds
                     
-                close_price = float(row['Close'])
-                signal = float(row['Signal'])
-                
-                # Entry logic
-                if signal != 0 and current_position == 0:
-                    shares = int(self.cash / close_price)
-                    if shares > 0:
-                        current_position = shares if signal > 0 else -shares
-                        entry_price = close_price
-                        entry_date = idx
-                        self.cash -= abs(current_position * close_price)
-                
-                # Exit logic (opposite signal or strong reversal)
-                elif current_position != 0 and (
-                    (current_position > 0 and signal < 0) or 
-                    (current_position < 0 and signal > 0)
-                ):
                     # Record trade
-                    pl = (close_price - entry_price) * abs(current_position)
-                    trades.append({
-                        'entry_date': entry_date,
-                        'exit_date': idx,
-                        'entry_price': entry_price,
-                        'exit_price': close_price,
-                        'shares': abs(current_position),
-                        'direction': 'LONG' if current_position > 0 else 'SHORT',
-                        'pnl': pl,
-                        'return': (pl / (entry_price * abs(current_position))) * 100
+                    self.trades.append({
+                        'entry_date': self.positions[ticker]['entry_date'],
+                        'exit_date': current_date,
+                        'ticker': ticker,
+                        'direction': 'LONG',
+                        'shares': current_position,
+                        'entry_price': self.positions[ticker]['cost_basis'],
+                        'exit_price': exit_price,
+                        'pnl': proceeds - (current_position * self.positions[ticker]['cost_basis'])
                     })
                     
-                    # Reset position
-                    self.cash += current_position * close_price
                     current_position = 0
-                    entry_price = None
-                    entry_date = None
+                    if ticker in self.positions:
+                        del self.positions[ticker]
                 
-                # Update portfolio value
-                position_value = current_position * close_price if current_position != 0 else 0
-                portfolio_value = self.cash + position_value
-                portfolio_values.append(portfolio_value)
+                # Calculate daily value for this ticker
+                position_value = current_position * current_day['Close']
+                daily_value = position_value + available_cash
+                portfolio_values.append(daily_value)
+            
+            # Create series only for trading period
+            trading_period = trading_data[trading_data.index >= pd.Timestamp('2020-01-01', tz='UTC')]
+            portfolio_series = pd.Series(portfolio_values, index=trading_period.index)
             
             return {
-                'Portfolio_Value': pd.Series(portfolio_values, index=data[data.index >= pd.Timestamp('2020-01-01', tz='UTC')].index),
-                'trades': trades
+                'Portfolio_Value': portfolio_series,
+                'trades': [t for t in self.trades if t['ticker'] == ticker]
             }
             
         except Exception as e:
             print(f"Backtest error in engine: {str(e)}")
-            return {'Portfolio_Value': pd.Series(dtype=float), 'trades': []}
+            return {'Portfolio_Value': pd.Series(), 'trades': []}
+    
+    def get_statistics(self):
+        """Calculate trading statistics"""
+        if not self.trades:
+            return {
+                'total_trades': 0,
+                'winning_trades': 0,
+                'win_rate': 0.0,
+                'avg_trade_return': 0.0
+            }
+        
+        winning_trades = len([t for t in self.trades if t['pnl'] > 0])
+        total_trades = len(self.trades)
+        
+        return {
+            'total_trades': total_trades,
+            'winning_trades': winning_trades,
+            'win_rate': (winning_trades / total_trades * 100) if total_trades > 0 else 0.0,
+            'avg_trade_return': sum(t['pnl'] for t in self.trades) / total_trades if total_trades > 0 else 0.0
+        }
