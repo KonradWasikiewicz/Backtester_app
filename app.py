@@ -131,43 +131,95 @@ def create_chart(figure_data, layout_title):
         }
     )
 
-def create_trade_histogram(trades):
-    """Create trade return distribution histogram"""
+def calculate_trade_statistics(trades):
+    """Calculate detailed trade statistics"""
     if not trades:
-        return create_empty_chart("Trade Distribution")
+        return {}
     
-    # Calculate returns for each trade
+    # Calculate individual trade returns
+    returns = [(trade['exit_price'] - trade['entry_price']) / trade['entry_price'] * 100 
+              for trade in trades]
+    pnls = [trade['pnl'] for trade in trades]
+    
+    # Split into wins and losses
+    wins = [r for r in returns if r > 0]
+    losses = [r for r in returns if r <= 0]
+    win_pnls = [p for p in pnls if p > 0]
+    loss_pnls = [p for p in pnls if p <= 0]
+    
+    stats = {
+        'total_trades': len(trades),
+        'winning_trades': len(wins),
+        'losing_trades': len(losses),
+        'win_rate': (len(wins) / len(trades) * 100) if trades else 0,
+        'avg_return': sum(returns) / len(returns) if returns else 0,
+        'avg_win': sum(wins) / len(wins) if wins else 0,
+        'avg_loss': sum(losses) / len(losses) if losses else 0,
+        'avg_pnl': sum(pnls) / len(pnls) if pnls else 0,
+        'avg_win_pnl': sum(win_pnls) / len(win_pnls) if win_pnls else 0,
+        'avg_loss_pnl': sum(loss_pnls) / len(loss_pnls) if loss_pnls else 0,
+        'largest_win': max(win_pnls) if win_pnls else 0,
+        'largest_loss': min(loss_pnls) if loss_pnls else 0,
+        'profit_factor': abs(sum(win_pnls) / sum(loss_pnls)) if loss_pnls else 0
+    }
+    
+    return stats
+
+def create_trade_histogram(trades):
+    """Create enhanced trade return distribution histogram with statistics"""
+    if not trades:
+        return html.Div("No trades available")
+    
+    # Calculate trade returns
     returns = [(trade['exit_price'] - trade['entry_price']) / trade['entry_price'] * 100 
               for trade in trades]
     
-    # Create bins from -50% to 50% in 5% increments
-    bins = list(range(-50, 55, 5))
+    # Dynamic bin calculation
+    def get_dynamic_bins(returns):
+        min_ret = min(returns)
+        max_ret = max(returns)
+        
+        # Base bin size of 5%
+        bin_size = 5
+        
+        # Handle outliers
+        lower_bound = max(min_ret, -50)  # Cap at -50%
+        upper_bound = min(max_ret, 50)   # Cap at 50%
+        
+        # Create main bins
+        bins = list(range(int(lower_bound - (lower_bound % bin_size)), 
+                         int(upper_bound + bin_size + (bin_size - upper_bound % bin_size)), 
+                         bin_size))
+        
+        # Add outlier bins if needed
+        outliers_low = [r for r in returns if r < lower_bound]
+        outliers_high = [r for r in returns if r > upper_bound]
+        
+        return bins, outliers_low, outliers_high
     
-    # Split returns into gains and losses
-    gains = [r for r in returns if r >= 0]
-    losses = [r for r in returns if r < 0]
+    bins, outliers_low, outliers_high = get_dynamic_bins(returns)
     
+    # Calculate trade statistics
+    stats = calculate_trade_statistics(trades)
+    
+    # Create histogram figure
     figure = {
         'data': [
-            # Losses histogram
+            # Main histogram
             {
-                'x': losses,
+                'x': returns,
                 'type': 'histogram',
-                'name': 'Losses',
                 'autobinx': False,
-                'xbins': {'start': -50, 'end': 0, 'size': 5},
-                'marker': {'color': '#FF6B6B'},
-                'opacity': 0.75
-            },
-            # Gains histogram
-            {
-                'x': gains,
-                'type': 'histogram',
-                'name': 'Gains',
-                'autobinx': False,
-                'xbins': {'start': 0, 'end': 50, 'size': 5},
-                'marker': {'color': '#17B897'},
-                'opacity': 0.75
+                'xbins': {
+                    'start': bins[0],
+                    'end': bins[-1],
+                    'size': 5
+                },
+                'marker': {
+                    'color': ['#FF6B6B' if x < 0 else '#17B897' for x in bins[:-1]],
+                },
+                'opacity': 0.75,
+                'name': 'Trades'
             }
         ],
         'layout': {
@@ -179,7 +231,7 @@ def create_trade_histogram(trades):
             'xaxis': {
                 'title': 'Return (%)',
                 'gridcolor': '#2a2e39',
-                'range': [-50, 50]
+                'range': [bins[0], bins[-1]]
             },
             'yaxis': {
                 'title': 'Number of Trades',
@@ -188,29 +240,44 @@ def create_trade_histogram(trades):
             'bargap': 0.1,
             'margin': {'t': 50, 'l': 50, 'r': 20, 'b': 50},
             'showlegend': True,
-            'legend': {
-                'orientation': 'h',
-                'y': 1.1,
-                'x': 0.5,
-                'xanchor': 'center',
-                'font': {'color': '#ffffff'},
-                'bgcolor': '#1e222d'
-            },
-            'width': 450,  # Dostosowana szerokość
-            'height': 350,  # Dodana stała wysokość
+            'width': None,  # Full width
+            'height': 350
         }
     }
     
-    return dcc.Graph(
-        id='trade-distribution',
-        figure=figure,
-        config={
-            'displayModeBar': True,
-            'responsive': True,
-            'modeBarButtonsToRemove': ['lasso2d', 'select2d']
-        },
-        style={'height': '100%', 'width': '100%'}
-    )
+    # Create statistics table
+    stats_table = html.Div([
+        dbc.Row([
+            dbc.Col([
+                create_metric_card("Total Trades", f"{stats['total_trades']}"),
+                create_metric_card("Win Rate", f"{stats['win_rate']:.1f}%"),
+                create_metric_card("Profit Factor", f"{stats['profit_factor']:.2f}")
+            ], width=4),
+            dbc.Col([
+                create_metric_card("Avg Win", f"${stats['avg_win_pnl']:.2f}"),
+                create_metric_card("Largest Win", f"${stats['largest_win']:.2f}"),
+                create_metric_card("Winning Trades", f"{stats['winning_trades']}")
+            ], width=4),
+            dbc.Col([
+                create_metric_card("Avg Loss", f"${stats['avg_loss_pnl']:.2f}"),
+                create_metric_card("Largest Loss", f"${stats['largest_loss']:.2f}"),
+                create_metric_card("Losing Trades", f"{stats['losing_trades']}")
+            ], width=4)
+        ], className="mt-3")
+    ])
+    
+    return html.Div([
+        dcc.Graph(
+            figure=figure,
+            config={
+                'displayModeBar': True,
+                'responsive': True,
+                'modeBarButtonsToRemove': ['lasso2d', 'select2d']
+            },
+            style={'width': '100%'}
+        ),
+        stats_table
+    ])
 
 def run_backtest(strategy_type, strategy_params=None):
     """Run backtest with specified parameters"""
