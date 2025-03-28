@@ -196,7 +196,8 @@ def create_trade_histogram(trades):
                 'font': {'color': '#ffffff'},
                 'bgcolor': '#1e222d'
             },
-            'width': 400  # Match the trade history width
+            'width': 450,  # Dostosowana szerokość
+            'height': 350,  # Dodana stała wysokość
         }
     }
     
@@ -207,7 +208,8 @@ def create_trade_histogram(trades):
             'displayModeBar': True,
             'responsive': True,
             'modeBarButtonsToRemove': ['lasso2d', 'select2d']
-        }
+        },
+        style={'height': '100%', 'width': '100%'}
     )
 
 def run_backtest(strategy_type, strategy_params=None):
@@ -529,7 +531,7 @@ app.layout = dbc.Container([
     ]),
 
     dbc.Row([
-        # Left column (Strategy Settings)
+        # Left column (Strategy Settings) - zmniejszony z width=3 do width=2
         dbc.Col([
             dbc.Card([
                 dbc.CardHeader("Strategy Settings"),
@@ -550,7 +552,6 @@ app.layout = dbc.Container([
                                     'backgroundColor': '#1e222d',
                                     'color': '#ffffff',
                                 },
-                                # Dropdown menu styling
                                 optionHeight=35,
                                 clearable=False,
                             )
@@ -565,9 +566,9 @@ app.layout = dbc.Container([
                     dbc.Spinner(html.Div(id="calculation-status"))
                 ])
             ], className="mb-4")
-        ], width=3),
+        ], width=2),  # Zmniejszona szerokość
         
-        # Center column (Equity Curve)
+        # Center column (Equity Curve) - bez zmian width=6
         dbc.Col([
             dbc.Row([
                 dbc.Col(html.Div(id="equity-curve-container"), className="mb-4")
@@ -580,7 +581,7 @@ app.layout = dbc.Container([
             ])
         ], width=6),
         
-        # Right column (Trade Distribution & History)
+        # Right column (Trade Distribution & History) - zwiększony z width=3 do width=4
         dbc.Col([
             dbc.Card([
                 dbc.CardHeader("Trade Distribution"),
@@ -594,7 +595,7 @@ app.layout = dbc.Container([
                     html.Div(id="trade-table-container")
                 ])
             ])
-        ], width=3)
+        ], width=4)  # Zwiększona szerokość
     ])
 ], fluid=True, style={"backgroundColor": "#131722"})
 
