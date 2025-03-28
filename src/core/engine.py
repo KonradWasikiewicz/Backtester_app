@@ -24,35 +24,33 @@ class BacktestEngine:
             trading_data = data.copy()
             portfolio_values = []
             
-            # Split initial capital equally among tickers
-            ticker_allocation = self.initial_capital / len(self.strategy.tickers)
-            available_cash = ticker_allocation
+            # Get trading period data only
+            trading_period = trading_data[trading_data.index >= pd.Timestamp('2020-01-01', tz='UTC')]
+            
+            # Initialize with starting capital for this ticker
+            available_cash = self.initial_capital / len(self.strategy.tickers)
             current_position = 0
             
-            # Process each day
-            for i in range(len(trading_data)):
-                current_day = trading_data.iloc[i]
-                current_date = trading_data.index[i]
+            # Add first portfolio value
+            portfolio_values.append(available_cash)
+            
+            # Process each day in trading period
+            for i in range(len(trading_period)):
+                current_day = trading_period.iloc[i]
+                current_date = trading_period.index[i]
                 
-                # Skip processing for lookback period
-                if current_date < pd.Timestamp('2020-01-01', tz='UTC'):
-                    continue
-                
-                # Get previous day's signal (only if not in lookback period)
-                if i > 0 and trading_data.iloc[i-1].name >= pd.Timestamp('2020-01-01', tz='UTC'):
-                    prev_signal = trading_data.iloc[i-1]['Signal']
-                else:
-                    prev_signal = 0  # No signal at the start of trading period
+                # Get previous day's signal
+                prev_signal = trading_period.iloc[i-1]['Signal'] if i > 0 else 0
                 
                 # Handle entries
                 if current_position == 0 and prev_signal == 1:
-                    max_shares = int(available_cash / current_day['Open'])
-                    if max_shares > 0:
-                        current_position = max_shares
-                        cost = max_shares * current_day['Open']
+                    shares = int(available_cash / current_day['Open'])
+                    if shares > 0:
+                        current_position = shares
+                        cost = shares * current_day['Open']
                         available_cash -= cost
                         self.positions[ticker] = {
-                            'shares': max_shares,
+                            'shares': shares,
                             'cost_basis': current_day['Open'],
                             'entry_date': current_date
                         }
@@ -63,7 +61,6 @@ class BacktestEngine:
                     proceeds = current_position * exit_price
                     available_cash += proceeds
                     
-                    # Record trade
                     self.trades.append({
                         'entry_date': self.positions[ticker]['entry_date'],
                         'exit_date': current_date,
@@ -79,23 +76,25 @@ class BacktestEngine:
                     if ticker in self.positions:
                         del self.positions[ticker]
                 
-                # Calculate daily value for this ticker
+                # Calculate daily portfolio value
                 position_value = current_position * current_day['Close']
-                daily_value = position_value + available_cash
-                portfolio_values.append(daily_value)
+                portfolio_value = position_value + available_cash
+                portfolio_values.append(portfolio_value)
             
-            # Create series only for trading period
-            trading_period = trading_data[trading_data.index >= pd.Timestamp('2020-01-01', tz='UTC')]
-            portfolio_series = pd.Series(portfolio_values, index=trading_period.index)
+            # Create series aligned with trading period index
+            portfolio_series = pd.Series(
+                portfolio_values[1:],  # Skip initial value since it's pre-trading
+                index=trading_period.index
+            )
             
             return {
                 'Portfolio_Value': portfolio_series,
-                'trades': [t for t in self.trades if t['ticker'] == ticker]
+                'trades': self.trades
             }
             
         except Exception as e:
             print(f"Backtest error in engine: {str(e)}")
-            return {'Portfolio_Value': pd.Series(), 'trades': []}
+            return None
     
     def get_statistics(self):
         """Calculate trading statistics"""

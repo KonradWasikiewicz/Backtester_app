@@ -27,7 +27,13 @@ from src.strategies.rsi import RSIStrategy
 from src.strategies.bollinger import BollingerBandsStrategy
 
 # Initialize Dash app with dark theme
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+app = dash.Dash(
+    __name__, 
+    external_stylesheets=[
+        dbc.themes.DARKLY,
+        'https://use.fontawesome.com/releases/v5.15.4/css/all.css'
+    ]
+)
 app.title = "Trading Strategy Backtester"
   
 def create_metric_card(title, value, prefix="", suffix=""):
@@ -36,6 +42,28 @@ def create_metric_card(title, value, prefix="", suffix=""):
         dbc.CardBody([
             html.H6(title, className="card-subtitle text-muted"),
             html.H4(f"{prefix}{value}{suffix}", className="card-title text-info")
+        ]),
+        className="mb-3 bg-dark"
+    )
+
+def create_metric_card_with_tooltip(title, value, tooltip_text):
+    """Create a metric card with tooltip"""
+    return dbc.Card(
+        dbc.CardBody([
+            html.Div([
+                html.H6(title, className="card-subtitle text-muted d-inline-block me-2"),
+                html.I(
+                    className="fas fa-info-circle",
+                    id=f"tooltip-{title.lower().replace(' ', '-')}",
+                    style={'color': '#6c757d', 'fontSize': '14px'}
+                ),
+                dbc.Tooltip(
+                    tooltip_text,
+                    target=f"tooltip-{title.lower().replace(' ', '-')}",
+                    placement="top"
+                )
+            ]),
+            html.H4(value, className="card-title text-info")
         ]),
         className="mb-3 bg-dark"
     )
@@ -245,23 +273,36 @@ def create_trade_histogram(trades):
         }
     }
     
-    # Create statistics table
+    # Define tooltips for each metric
+    tooltip_texts = {
+        'Win Rate': "Percentage of trades that resulted in a profit. Calculated as (Winning Trades / Total Trades) × 100.",
+        'Total Trades': "Total number of completed trades (both winners and losers).",
+        'Profit Factor': "Ratio of gross profits to gross losses. A value above 1 indicates overall profitability. Calculated as |Total Profits / Total Losses|.",
+        'Avg Win': "Average profit of winning trades in dollar terms.",
+        'Largest Win': "Largest single trade profit in dollar terms.",
+        'Winning Trades': "Total number of trades that resulted in a profit.",
+        'Avg Loss': "Average loss of losing trades in dollar terms.",
+        'Largest Loss': "Largest single trade loss in dollar terms.",
+        'Losing Trades': "Total number of trades that resulted in a loss."
+    }
+    
+    # Create statistics table with tooltips
     stats_table = html.Div([
         dbc.Row([
             dbc.Col([
-                create_metric_card("Total Trades", f"{stats['total_trades']}"),
-                create_metric_card("Win Rate", f"{stats['win_rate']:.1f}%"),
-                create_metric_card("Profit Factor", f"{stats['profit_factor']:.2f}")
+                create_metric_card_with_tooltip("Total Trades", f"{stats['total_trades']}", tooltip_texts['Total Trades']),
+                create_metric_card_with_tooltip("Profit Factor", f"{stats['profit_factor']:.2f}", tooltip_texts['Profit Factor']),
+                create_metric_card_with_tooltip("Win Rate", f"{stats['win_rate']:.1f}%", tooltip_texts['Win Rate'])
             ], width=4),
             dbc.Col([
-                create_metric_card("Avg Win", f"${stats['avg_win_pnl']:.2f}"),
-                create_metric_card("Largest Win", f"${stats['largest_win']:.2f}"),
-                create_metric_card("Winning Trades", f"{stats['winning_trades']}")
+                create_metric_card_with_tooltip("Avg Win", f"${stats['avg_win_pnl']:.2f}", tooltip_texts['Avg Win']),
+                create_metric_card_with_tooltip("Largest Win", f"${stats['largest_win']:.2f}", tooltip_texts['Largest Win']),
+                create_metric_card_with_tooltip("Winning Trades", f"{stats['winning_trades']}", tooltip_texts['Winning Trades'])
             ], width=4),
             dbc.Col([
-                create_metric_card("Avg Loss", f"${stats['avg_loss_pnl']:.2f}"),
-                create_metric_card("Largest Loss", f"${stats['largest_loss']:.2f}"),
-                create_metric_card("Losing Trades", f"{stats['losing_trades']}")
+                create_metric_card_with_tooltip("Avg Loss", f"${stats['avg_loss_pnl']:.2f}", tooltip_texts['Avg Loss']),
+                create_metric_card_with_tooltip("Largest Loss", f"${stats['largest_loss']:.2f}", tooltip_texts['Largest Loss']),
+                create_metric_card_with_tooltip("Losing Trades", f"{stats['losing_trades']}", tooltip_texts['Losing Trades'])
             ], width=4)
         ], className="mt-3")
     ])
