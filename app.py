@@ -1,31 +1,37 @@
 import dash
 import dash_bootstrap_components as dbc
-import pandas as pd  # Add pandas import
+import pandas as pd
+import numpy as np
 from dash import dcc, html, callback_context, dash_table
 from dash.dependencies import Input, Output, State
+import sys
+from pathlib import Path
 
+# Add project root to Python path
+project_root = Path(__file__).parent.absolute()
+sys.path.append(str(project_root))
+
+# Now import local modules
 from src.core.config import config, VISUALIZATION_CONFIG, BACKTEST_CONFIG
 from src.core.constants import AVAILABLE_STRATEGIES, CHART_THEME, DROPDOWN_STYLE  
 from src.core.data import DataLoader
 from src.core.exceptions import DataError 
-
-# Add BENCHMARK constant
-BENCHMARK = "^GSPC"  # S&P 500 as default benchmark
-
-from src.strategies import MovingAverageCrossover, RSIStrategy, BollingerBandsStrategy
+from src.core.engine import BacktestEngine
+from src.strategies.moving_average import MovingAverageCrossover
+from src.strategies.rsi import RSIStrategy
+from src.strategies.bollinger import BollingerBandsStrategy
+from src.portfolio.models import Trade
+from src.portfolio.portfolio_manager import PortfolioManager
+from src.portfolio.risk_manager import RiskManager
 from src.visualization.visualizer import BacktestVisualizer
 from src.analysis.metrics import (
     calculate_cagr, calculate_sharpe_ratio, calculate_sortino_ratio,
     calculate_max_drawdown, calculate_calmar_ratio, calculate_pure_profit_score,
     calculate_alpha, calculate_beta, calculate_information_ratio
 )
-from src.portfolio.models import Trade
-from src.portfolio.portfolio_manager import PortfolioManager
-from src.portfolio.risk_manager import RiskManager
-from src.core.engine import BacktestEngine
-from src.strategies.moving_average import MovingAverageCrossover
-from src.strategies.rsi import RSIStrategy
-from src.strategies.bollinger import BollingerBandsStrategy
+
+# Add BENCHMARK constant
+BENCHMARK = "SPY"  # S&P 500 ETF as default benchmark
 
 # Initialize Dash app with dark theme
 app = dash.Dash(
@@ -731,7 +737,7 @@ app.layout = dbc.Container([
      Output("equity-curve-container", "children"),
      Output("metrics-container", "children"),
      Output("additional-charts", "children"),
-     Output("trade-distribution-container", "children"),  # Added output
+     Output("trade-distribution-container", "children"),
      Output("trade-table-container", "children"),
      Output("backtest-period", "children"),
      Output("portfolio-instruments", "children")],
@@ -751,52 +757,56 @@ def update_backtest(strategy):
                 create_empty_cards(),
                 [],
                 "No trades available",
+                [],
                 "",
                 ""
             )
             
-        # Print debug information
-        print(f"\nStrategy: {strategy}")
-        print_portfolio_summary(results)
-        
-        # Rest of the callback...
-        
-        # Add signals to results
-        results['signals'] = signals  # Ensure signals are included in results
-        
-        # Create components with proper data structure
-        equity_curve = create_chart({
+        # Create equity curve
+        portfolio_chart = create_chart({
             'Portfolio': results['Portfolio_Value'],
             'Benchmark': results.get('Benchmark', pd.Series())
-        }, "Equity Curve")
+        }, "Portfolio Performance")
         
-        metric_cards = create_metric_cards(stats)
-        additional_charts = create_charts(results)  # Now includes signals
-        trade_distribution = create_trade_histogram(results.get('trades', []))
-        trade_table = create_trade_table(results.get('trades', []))
+        # Create metric cards with stats
+        metrics = create_metric_cards(stats)
         
-        # Get actual backtest period (2020 onwards only)
-        portfolio_values = results['Portfolio_Value']
-        trading_period = portfolio_values[portfolio_values.index >= pd.Timestamp('2020-01-01', tz='UTC')]
-        start_date = trading_period.index[0].strftime('%Y-%m-%d')
-        end_date = trading_period.index[-1].strftime('%Y-%m-%d')
+        # Create trade distribution
+        trade_dist = create_trade_histogram(results.get('trades', []))
+        
+        # Create trade table
+        trade_history = create_trade_table(results.get('trades', []))
+        
+        # Get backtest period
+        start_date = results['Portfolio_Value'].index[0].strftime('%Y-%m-%d')
+        end_date = results['Portfolio_Value'].index[-1].strftime('%Y-%m-%d')
         backtest_period = f"{start_date} to {end_date}"
         
+        # Get portfolio instruments
+        instruments = ", ".join(sorted(signals.keys()))
+        
         return (
-            html.Div("Calculation complete", className="text-success"),
-            equity_curve,
-            metric_cards,
-            additional_charts,
-            trade_distribution,  # Added return value
-            trade_table,
+            html.Div("Backtest completed successfully", className="text-success"),
+            portfolio_chart,
+            metrics,
+            [],  # No additional charts needed
+            trade_dist,
+            trade_history,
             backtest_period,
-            ", ".join(signals.keys())
+            instruments
         )
         
     except Exception as e:
+        print(f"Callback error: {str(e)}")  # Debug print
         return (
             html.Div(f"Error: {str(e)}", className="text-danger"),
-            [], [], [], [], "No trades available", "", ""  # Updated number of return values
+            [],
+            create_empty_cards(),
+            [],
+            "No trades available",
+            [],
+            "",
+            ""
         )
 
 # Add this to main() for debugging
