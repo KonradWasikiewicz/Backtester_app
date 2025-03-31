@@ -1,6 +1,6 @@
 from src.core.data import DataLoader
 from src.strategies import MovingAverageCrossover, RSIStrategy, BollingerBandsStrategy
-from core.engine import BacktestEngine
+from src.core.engine import BacktestEngine
 import pandas as pd
 
 def test_strategy(strategy_name: str = "BB"):
@@ -44,42 +44,12 @@ def test_strategy(strategy_name: str = "BB"):
             for idx, row in signal_rows.iterrows():
                 print(f"Date: {idx}")
                 print(f"Price: ${row['Close']:.2f}")
-                print(f"Signal: {'LONG' if row['Signal'] > 0 else 'SHORT'}")
-                if 'Volatility' in row:
-                    print(f"Volatility: {row['Volatility']:.4f}")
-                print("---")
+
     except Exception as e:
         print(f"Error generating signals: {str(e)}")
-        return
     
     # 4. Run backtest
     print("\nRunning backtest...")
-    try:
-        engine = BacktestEngine(initial_capital=100000)
-        results = engine.run_backtest(signals)
-        
-        # Print backtest statistics
-        stats = engine.get_statistics()
-        print("\nBacktest Statistics:")
-        for key, value in stats.items():
-            print(f"{key}: {value}")
-            
-        # Print trade summary
-        print("\nTrade Summary:")
-        for trade in engine.trades[:5]:  # Show first 5 trades
-            print(f"\nTicker: {trade.ticker}")
-            print(f"Entry Date: {trade.entry_date}")
-            print(f"Exit Date: {trade.exit_date}")
-            print(f"Entry Price: ${trade.entry_price:.2f}")
-            print(f"Exit Price: ${trade.exit_price:.2f}")
-            print(f"Shares: {trade.shares}")
-            print(f"P&L: ${trade.pnl:.2f}")
-            print(f"Direction: {'LONG' if trade.signal > 0 else 'SHORT'}")
-            
-    except Exception as e:
-        print(f"Error in backtest execution: {str(e)}")
-        import traceback
-        traceback.print_exc()
 
 if __name__ == "__main__":
     # Test each strategy

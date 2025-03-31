@@ -2,21 +2,22 @@ from abc import ABC, abstractmethod
 from typing import Dict
 import pandas as pd
 
-class BaseStrategy:
-    """Base class for trading strategies"""
+class BaseStrategy(ABC):
+    """Base class for all trading strategies"""
     
-    def __init__(self):
-        self.tickers = []  # Will be populated during signal generation
-        self.trades = []
-
+    def __init__(self, **kwargs):
+        self.tickers = []
+        self.params = kwargs
+        
+    @abstractmethod
     def generate_signals(self, data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
-        """Generate trading signals for multiple instruments
+        """
+        Generate trading signals for the provided data.
         
         Args:
-            data (Dict[str, pd.DataFrame]): Price data keyed by ticker
+            data: Dictionary mapping ticker symbols to DataFrames with OHLCV data
             
         Returns:
-            Dict[str, pd.DataFrame]: Signals keyed by ticker
+            Dictionary mapping ticker symbols to DataFrames with added Signal column
         """
-        self.tickers = list(data.keys())
-        return {}
+        pass

@@ -1,0 +1,26 @@
+2025-03-31 15:19:57,761 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 15:20:03,261 - __main__ - ERROR - Backtest error: BacktestEngine.__init__() got an unexpected keyword argument 'strategy'
+2025-03-31 15:21:20,266 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 15:21:26,774 - __main__ - ERROR - Backtest error: name 'logger' is not defined
+2025-03-31 15:24:06,828 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 15:24:11,859 - src.core.backtest_manager - ERROR - Backtest manager error: 'str' object is not callable
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 157, in run_backtest
+    strategy = strategy_class(**strategy_params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: 'str' object is not callable
+2025-03-31 15:24:12,340 - src.core.backtest_manager - ERROR - Backtest manager error: 'str' object is not callable
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 157, in run_backtest
+    strategy = strategy_class(**strategy_params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: 'str' object is not callable
+2025-03-31 15:25:39,741 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
+    data = self.data_loader.get_data()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DataLoader' object has no attribute 'get_data'

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, List, Union, Optional, Tuple
 
 def calculate_return_series(series: pd.Series) -> pd.Series:
     """
@@ -295,9 +295,9 @@ def calculate_calmar_ratio(series: pd.Series, years_past: int=3) -> float:
     cagr = calculate_cagr(series)
     return cagr / percent_drawdown
 
-def calculate_alpha(portfolio_values, benchmark_values, risk_free_rate=0.02):
-    """Calculate portfolio alpha relative to benchmark"""
-    if benchmark_values is None:
+def calculate_alpha(portfolio_values: pd.Series, benchmark_values: Optional[pd.Series], risk_free_rate: float = 0.02) -> float:
+    """Calculate portfolio alpha (Jensen's Alpha) relative to benchmark"""
+    if benchmark_values is None or len(portfolio_values) < 2 or len(benchmark_values) < 2:
         return 0
         
     portfolio_returns = portfolio_values.pct_change().dropna()
@@ -305,6 +305,9 @@ def calculate_alpha(portfolio_values, benchmark_values, risk_free_rate=0.02):
     
     # Align dates
     common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
+    if len(common_dates) < 2:
+        return 0
+        
     portfolio_returns = portfolio_returns[common_dates]
     benchmark_returns = benchmark_returns[common_dates]
     
@@ -318,9 +321,9 @@ def calculate_alpha(portfolio_values, benchmark_values, risk_free_rate=0.02):
     
     return alpha * 100  # Convert to percentage
 
-def calculate_beta(portfolio_values, benchmark_values):
-    """Calculate portfolio beta relative to benchmark"""
-    if benchmark_values is None:
+def calculate_beta(portfolio_values: pd.Series, benchmark_values: Optional[pd.Series]) -> float:
+    """Calculate portfolio beta (volatility relative to benchmark)"""
+    if benchmark_values is None or len(portfolio_values) < 2 or len(benchmark_values) < 2:
         return 1
         
     portfolio_returns = portfolio_values.pct_change().dropna()
@@ -328,6 +331,9 @@ def calculate_beta(portfolio_values, benchmark_values):
     
     # Align dates
     common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
+    if len(common_dates) < 2:
+        return 1
+        
     portfolio_returns = portfolio_returns[common_dates]
     benchmark_returns = benchmark_returns[common_dates]
     
@@ -337,9 +343,9 @@ def calculate_beta(portfolio_values, benchmark_values):
     
     return covariance / variance if variance != 0 else 1
 
-def calculate_information_ratio(portfolio_values, benchmark_values):
-    """Calculate information ratio"""
-    if benchmark_values is None:
+def calculate_information_ratio(portfolio_values: pd.Series, benchmark_values: Optional[pd.Series]) -> float:
+    """Calculate information ratio (active return per unit of tracking error)"""
+    if benchmark_values is None or len(portfolio_values) < 2 or len(benchmark_values) < 2:
         return 0
         
     portfolio_returns = portfolio_values.pct_change().dropna()
@@ -347,6 +353,9 @@ def calculate_information_ratio(portfolio_values, benchmark_values):
     
     # Align dates
     common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
+    if len(common_dates) < 2:
+        return 0
+        
     portfolio_returns = portfolio_returns[common_dates]
     benchmark_returns = benchmark_returns[common_dates]
     
@@ -358,5 +367,118 @@ def calculate_information_ratio(portfolio_values, benchmark_values):
     active_return = (portfolio_returns.mean() - benchmark_returns.mean()) * 252  # Annualized
     
     return active_return / tracking_error if tracking_error != 0 else 0
+
+def calculate_recovery_factor(total_return: float, max_drawdown: float) -> float:
+    """Calculate recovery factor (total return divided by max drawdown)"""
+    if max_drawdown == 0:
+        return 0
+    return abs(total_return) / abs(max_drawdown)
+
+def calculate_trade_statistics(trades: List[Dict]) -> Dict:
+    """Calculate detailed trade statistics with comprehensive error handling"""
+    if not trades:
+        return {
+            'total_trades': 0,
+            'winning_trades': 0,
+            'losing_trades': 0,
+            'win_rate': 0,
+            'avg_return': 0,
+            'avg_win': 0,
+            'avg_loss': 0,
+            'avg_pnl': 0,
+            'avg_win_pnl': 0,
+            'avg_loss_pnl': 0,
+            'largest_win': 0,
+            'largest_loss': 0,
+            'profit_factor': 0
+        }
+    
+    # Calculate individual trade returns with error handling
+    returns = []
+    pnls = []
+    
+    for trade in trades:
+        try:
+            # Ensure we have valid numeric values
+            entry_price = float(trade['entry_price'])
+            exit_price = float(trade['exit_price'])
+            pnl = float(trade['pnl'])
+            
+            # Only calculate return if entry price is not zero
+            if entry_price > 0:
+                returns.append((exit_price - entry_price) / entry_price * 100)
+            pnls.append(pnl)
+        except (KeyError, ValueError, TypeError, ZeroDivisionError) as e:
+            print(f"Error processing trade: {e}")
+            continue
+    
+    # Handle empty lists case
+    if not returns or not pnls:
+        return {
+            'total_trades': len(trades),
+            'winning_trades': 0,
+            'losing_trades': 0,
+            'win_rate': 0,
+            'avg_return': 0,
+            'avg_win': 0,
+            'avg_loss': 0,
+            'avg_pnl': 0,
+            'avg_win_pnl': 0,
+            'avg_loss_pnl': 0,
+            'largest_win': 0,
+            'largest_loss': 0,
+            'profit_factor': 0
+        }
+    
+    # Split into wins and losses
+    wins = [r for r in returns if r > 0]
+    losses = [r for r in returns if r <= 0]
+    win_pnls = [p for p in pnls if p > 0]
+    loss_pnls = [p for p in pnls if p <= 0]
+    
+    # Calculate statistics with safe operations
+    stats = {
+        'total_trades': len(trades),
+        'winning_trades': len(wins),
+        'losing_trades': len(losses),
+        'win_rate': (len(wins) / len(trades) * 100) if trades else 0,
+        'avg_return': sum(returns) / len(returns) if returns else 0,
+        'avg_win': sum(wins) / len(wins) if wins else 0,
+        'avg_loss': sum(losses) / len(losses) if losses else 0,
+        'avg_pnl': sum(pnls) / len(pnls) if pnls else 0,
+        'avg_win_pnl': sum(win_pnls) / len(win_pnls) if win_pnls else 0,
+        'avg_loss_pnl': sum(loss_pnls) / len(loss_pnls) if loss_pnls else 0,
+        'largest_win': max(win_pnls) if win_pnls else 0,
+        'largest_loss': min(loss_pnls) if loss_pnls else 0,
+        'profit_factor': abs(sum(win_pnls) / sum(loss_pnls)) if loss_pnls and sum(loss_pnls) != 0 else 1.0
+    }
+    
+    return stats
+
+def get_trade_bins_dynamic(returns: List[float]) -> Tuple[List[int], List[float], List[float]]:
+    """Calculate dynamic histogram bins based on trade return distribution"""
+    if not returns:
+        return list(range(-50, 55, 5)), [], []
+    
+    min_ret = min(returns)
+    max_ret = max(returns)
+    
+    # Base bin size of 5%
+    bin_size = 5
+    
+    # Handle outliers
+    lower_bound = max(min_ret, -50)  # Cap at -50%
+    upper_bound = min(max_ret, 50)   # Cap at 50%
+    
+    # Create main bins
+    bins = list(range(int(lower_bound - (lower_bound % bin_size)), 
+                     int(upper_bound + bin_size + (bin_size - upper_bound % bin_size)), 
+                     bin_size))
+    
+    # Add outlier bins if needed
+    outliers_low = [r for r in returns if r < lower_bound]
+    outliers_high = [r for r in returns if r > upper_bound]
+    
+    return bins, outliers_low, outliers_high
 
 

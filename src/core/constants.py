@@ -1,5 +1,11 @@
 from enum import Enum
-from typing import Dict, Any
+import pandas as pd
+import plotly.graph_objects as go
+
+# Import strategy classes
+from ..strategies.moving_average import MovingAverageCrossover
+from ..strategies.rsi import RSIStrategy
+from ..strategies.bollinger import BollingerBandsStrategy
 
 class SignalType(Enum):
     BUY = 1
@@ -11,29 +17,45 @@ class TimeFrame(Enum):
     WEEKLY = "1w"
     MONTHLY = "1m"
 
+# Strategy types
+class StrategyType(Enum):
+    MOVING_AVERAGE = "MA"
+    RSI = "RSI"
+    BOLLINGER_BANDS = "BB"
+
 TRADING_DAYS_PER_YEAR: int = 252
 RISK_FREE_RATE: float = 0.02
-BENCHMARK_TICKER: str = '^GSPC'
+BENCHMARK_TICKER: str = "SPY"
 
-CHART_THEME = {
-    'paper_bgcolor': '#1e222d',
-    'plot_bgcolor': '#1e222d',
-    'font_color': '#e1e1e1',
-    'grid_color': '#2a2e39'
+# Dictionary mapping strategy types to actual classes (not strings)
+AVAILABLE_STRATEGIES = {
+    "MA": MovingAverageCrossover,
+    "RSI": RSIStrategy,
+    "BB": BollingerBandsStrategy
 }
 
+# Default tickers for demo purposes
+DEFAULT_TICKERS = ["AAPL", "MSFT", "AMZN", "GOOGL", "META"]
+
+# Chart theming
+CHART_THEME = go.layout.Template(
+    layout=go.Layout(
+        paper_bgcolor='#1e222d',
+        plot_bgcolor='#1e222d',
+        font={'color': '#ffffff'},
+        xaxis={
+            'gridcolor': '#2a2e39',
+            'zerolinecolor': '#2a2e39',
+        },
+        yaxis={
+            'gridcolor': '#2a2e39',
+            'zerolinecolor': '#2a2e39',
+        }
+    )
+)
+
+# Dropdown styling
 DROPDOWN_STYLE = {
     'backgroundColor': '#1e222d',
-    'color': '#e1e1e1',
-    'option': {
-        'backgroundColor': '#1e222d',
-        'color': '#e1e1e1',
-        'hover': '#2a2e39'
-    }
-}
-
-AVAILABLE_STRATEGIES: Dict[str, Any] = {
-    "MA": "Moving Average Crossover",
-    "RSI": "Relative Strength Index",
-    "BB": "Bollinger Bands"
+    'color': '#ffffff',
 }
