@@ -69,6 +69,8 @@ def create_empty_cards():
 def create_metric_cards(stats):
     """Create metric cards layout with advanced metrics and tooltips"""
     tooltip_texts = {
+        'Initial Capital': "Starting capital at the beginning of the backtest period.",
+        'Final Capital': "Ending portfolio value at the end of the backtest period.",
         'CAGR': "Compound Annual Growth Rate. Measures the mean annual growth rate of an investment over a specified time period longer than one year.",
         'Total Return': "The overall return of the portfolio from start to finish, expressed as a percentage of initial capital.",
         'Max Drawdown': "Largest peak-to-trough decline in portfolio value, expressed as a percentage. Measures the biggest historical loss.",
@@ -88,24 +90,38 @@ def create_metric_cards(stats):
         stats.get('total_return', 0), 
         stats.get('max_drawdown', 1)
     )
+    
+    # Get initial and final capital values
+    initial_capital = config.INITIAL_CAPITAL
+    portfolio_values = stats.get('Portfolio_Value')
+    final_capital = portfolio_values.iloc[-1] if portfolio_values is not None and len(portfolio_values) > 0 else initial_capital
 
     return dbc.Row([
+        # First row - Capital metrics
         dbc.Col([
-            create_metric_card_with_tooltip("CAGR", f"{stats.get('cagr', 0):.2f}%", tooltip_texts['CAGR']),
-            create_metric_card_with_tooltip("Total Return", f"{stats.get('total_return', 0):.2f}%", tooltip_texts['Total Return']),
-            create_metric_card_with_tooltip("Alpha", f"{alpha:.2f}%", tooltip_texts['Alpha'])
-        ], width=4),
-        dbc.Col([
-            create_metric_card_with_tooltip("Max Drawdown", f"{stats.get('max_drawdown', 0):.2f}%", tooltip_texts['Max Drawdown']),
-            create_metric_card_with_tooltip("Sharpe Ratio", f"{stats.get('sharpe_ratio', 0):.2f}", tooltip_texts['Sharpe Ratio']),
-            create_metric_card_with_tooltip("Beta", f"{beta:.2f}", tooltip_texts['Beta'])
-        ], width=4),
-        dbc.Col([
-            create_metric_card_with_tooltip("Info Ratio", f"{info_ratio:.2f}", tooltip_texts['Information Ratio']),
-            create_metric_card_with_tooltip("Sortino Ratio", f"{stats.get('sortino_ratio', 0):.2f}", tooltip_texts['Sortino Ratio']),
-            create_metric_card_with_tooltip("Recovery Factor", f"{recovery_factor:.2f}", tooltip_texts['Recovery Factor'])
-        ], width=4)
-    ], className="g-2")  # Add smaller gutters for a more compact layout
+            create_metric_card_with_tooltip("Initial Capital", f"${initial_capital:,.2f}", tooltip_texts['Initial Capital']),
+            create_metric_card_with_tooltip("Final Capital", f"${final_capital:,.2f}", tooltip_texts['Final Capital'])
+        ], width=12, className="mb-3"),
+        
+        # Second row - Performance metrics
+        dbc.Row([
+            dbc.Col([
+                create_metric_card_with_tooltip("CAGR", f"{stats.get('cagr', 0):.2f}%", tooltip_texts['CAGR']),
+                create_metric_card_with_tooltip("Total Return", f"{stats.get('total_return', 0):.2f}%", tooltip_texts['Total Return']),
+                create_metric_card_with_tooltip("Alpha", f"{alpha:.2f}%", tooltip_texts['Alpha'])
+            ], width=4),
+            dbc.Col([
+                create_metric_card_with_tooltip("Max Drawdown", f"{stats.get('max_drawdown', 0):.2f}%", tooltip_texts['Max Drawdown']),
+                create_metric_card_with_tooltip("Sharpe Ratio", f"{stats.get('sharpe_ratio', 0):.2f}", tooltip_texts['Sharpe Ratio']),
+                create_metric_card_with_tooltip("Beta", f"{beta:.2f}", tooltip_texts['Beta'])
+            ], width=4),
+            dbc.Col([
+                create_metric_card_with_tooltip("Info Ratio", f"{info_ratio:.2f}", tooltip_texts['Information Ratio']),
+                create_metric_card_with_tooltip("Sortino Ratio", f"{stats.get('sortino_ratio', 0):.2f}", tooltip_texts['Sortino Ratio']),
+                create_metric_card_with_tooltip("Recovery Factor", f"{recovery_factor:.2f}", tooltip_texts['Recovery Factor'])
+            ], width=4)
+        ])
+    ])
 
 def create_trade_histogram(trades):
     """Create enhanced trade return distribution histogram with statistics"""

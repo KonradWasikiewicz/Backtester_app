@@ -24,3 +24,178 @@ Traceback (most recent call last):
     data = self.data_loader.get_data()
            ^^^^^^^^^^^^^^^^^^^^^^^^^
 AttributeError: 'DataLoader' object has no attribute 'get_data'
+2025-03-31 15:33:52,613 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 15:33:58,318 - src.core.backtest_manager - ERROR - Backtest manager error: Can't instantiate abstract class MovingAverageCrossover with abstract method generate_signals
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 157, in run_backtest
+    strategy = strategy_class(**strategy_params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: Can't instantiate abstract class MovingAverageCrossover with abstract method generate_signals
+2025-03-31 15:34:16,681 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
+    data = self.data_loader.get_data()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DataLoader' object has no attribute 'get_data'
+2025-03-31 15:34:20,377 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
+    data = self.data_loader.get_data()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DataLoader' object has no attribute 'get_data'
+2025-03-31 15:38:58,742 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 15:39:05,400 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
+    data = self.data_loader.get_data()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DataLoader' object has no attribute 'get_data'
+2025-03-31 15:39:10,736 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
+    data = self.data_loader.get_data()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'DataLoader' object has no attribute 'get_data'
+2025-03-31 15:41:41,672 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 15:41:48,225 - src.core.data - INFO - Loaded data for 5 instruments
+2025-03-31 15:41:48,254 - root - INFO - Running backtest for AAPL
+2025-03-31 15:41:48,413 - root - INFO - Running backtest for MSFT
+2025-03-31 15:41:48,548 - root - INFO - Running backtest for AMZN
+2025-03-31 15:41:48,678 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:41:48,800 - root - INFO - Running backtest for META
+2025-03-31 15:41:48,945 - src.core.data - INFO - Loaded benchmark data for SPY
+2025-03-31 15:41:48,948 - __main__ - INFO - Backtest completed for MA
+2025-03-31 15:41:48,949 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:41:48,949 - __main__ - INFO - Number of trades: 72
+2025-03-31 15:42:00,532 - root - INFO - Running backtest for AAPL
+2025-03-31 15:42:00,665 - root - INFO - Running backtest for MSFT
+2025-03-31 15:42:00,792 - root - INFO - Running backtest for AMZN
+2025-03-31 15:42:00,912 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:42:01,040 - root - INFO - Running backtest for META
+2025-03-31 15:42:01,163 - __main__ - INFO - Backtest completed for BB
+2025-03-31 15:42:01,163 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:42:01,164 - __main__ - INFO - Number of trades: 157
+2025-03-31 15:42:05,104 - root - INFO - Running backtest for AAPL
+2025-03-31 15:42:05,229 - root - INFO - Running backtest for MSFT
+2025-03-31 15:42:05,346 - root - INFO - Running backtest for AMZN
+2025-03-31 15:42:05,462 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:42:05,591 - root - INFO - Running backtest for META
+2025-03-31 15:42:05,724 - __main__ - INFO - Backtest completed for RSI
+2025-03-31 15:42:05,724 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:42:05,730 - __main__ - INFO - Number of trades: 185
+2025-03-31 15:43:29,341 - root - INFO - Running backtest for AAPL
+2025-03-31 15:43:29,475 - root - INFO - Running backtest for MSFT
+2025-03-31 15:43:29,616 - root - INFO - Running backtest for AMZN
+2025-03-31 15:43:29,740 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:43:29,857 - root - INFO - Running backtest for META
+2025-03-31 15:43:29,986 - __main__ - INFO - Backtest completed for BB
+2025-03-31 15:43:29,986 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:43:29,987 - __main__ - INFO - Number of trades: 157
+2025-03-31 15:43:33,871 - root - INFO - Running backtest for AAPL
+2025-03-31 15:43:34,004 - root - INFO - Running backtest for MSFT
+2025-03-31 15:43:34,124 - root - INFO - Running backtest for AMZN
+2025-03-31 15:43:34,263 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:43:34,387 - root - INFO - Running backtest for META
+2025-03-31 15:43:34,509 - __main__ - INFO - Backtest completed for MA
+2025-03-31 15:43:34,515 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:43:34,518 - __main__ - INFO - Number of trades: 72
+2025-03-31 15:50:04,899 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 15:50:10,894 - src.core.data - INFO - Loaded data for 5 instruments
+2025-03-31 15:50:10,913 - root - INFO - Running backtest for AAPL
+2025-03-31 15:50:11,058 - root - INFO - Running backtest for MSFT
+2025-03-31 15:50:11,194 - root - INFO - Running backtest for AMZN
+2025-03-31 15:50:11,326 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:50:11,464 - root - INFO - Running backtest for META
+2025-03-31 15:50:11,616 - src.core.data - INFO - Loaded benchmark data for SPY
+2025-03-31 15:50:11,619 - __main__ - INFO - Backtest completed for MA
+2025-03-31 15:50:11,619 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:50:11,620 - __main__ - INFO - Number of trades: 72
+2025-03-31 15:50:11,908 - __main__ - ERROR - Callback error: 'Histogram' object has no attribute 'get'
+2025-03-31 15:52:01,957 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 15:52:07,807 - src.core.data - INFO - Loaded data for 5 instruments
+2025-03-31 15:52:07,831 - root - INFO - Running backtest for AAPL
+2025-03-31 15:52:07,994 - root - INFO - Running backtest for MSFT
+2025-03-31 15:52:08,153 - root - INFO - Running backtest for AMZN
+2025-03-31 15:52:08,310 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:52:08,460 - root - INFO - Running backtest for META
+2025-03-31 15:52:08,613 - src.core.data - INFO - Loaded benchmark data for SPY
+2025-03-31 15:52:08,618 - __main__ - INFO - Backtest completed for MA
+2025-03-31 15:52:08,618 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:52:08,618 - __main__ - INFO - Number of trades: 72
+2025-03-31 15:52:44,300 - root - INFO - Running backtest for AAPL
+2025-03-31 15:52:44,437 - root - INFO - Running backtest for MSFT
+2025-03-31 15:52:44,560 - root - INFO - Running backtest for AMZN
+2025-03-31 15:52:44,682 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:52:44,798 - root - INFO - Running backtest for META
+2025-03-31 15:52:44,923 - __main__ - INFO - Backtest completed for BB
+2025-03-31 15:52:44,923 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:52:44,928 - __main__ - INFO - Number of trades: 157
+2025-03-31 15:52:53,388 - root - INFO - Running backtest for AAPL
+2025-03-31 15:52:53,588 - root - INFO - Running backtest for MSFT
+2025-03-31 15:52:53,717 - root - INFO - Running backtest for AMZN
+2025-03-31 15:52:53,834 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:52:53,965 - root - INFO - Running backtest for META
+2025-03-31 15:52:54,094 - __main__ - INFO - Backtest completed for RSI
+2025-03-31 15:52:54,095 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:52:54,095 - __main__ - INFO - Number of trades: 185
+2025-03-31 15:53:32,110 - root - INFO - Running backtest for AAPL
+2025-03-31 15:53:32,282 - root - INFO - Running backtest for MSFT
+2025-03-31 15:53:32,406 - root - INFO - Running backtest for AMZN
+2025-03-31 15:53:32,523 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:53:32,639 - root - INFO - Running backtest for META
+2025-03-31 15:53:32,758 - __main__ - INFO - Backtest completed for BB
+2025-03-31 15:53:32,760 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:53:32,760 - __main__ - INFO - Number of trades: 157
+2025-03-31 15:54:07,862 - root - INFO - Running backtest for AAPL
+2025-03-31 15:54:08,021 - root - INFO - Running backtest for MSFT
+2025-03-31 15:54:08,140 - root - INFO - Running backtest for AMZN
+2025-03-31 15:54:08,256 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:54:08,375 - root - INFO - Running backtest for META
+2025-03-31 15:54:08,494 - __main__ - INFO - Backtest completed for MA
+2025-03-31 15:54:08,495 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:54:08,495 - __main__ - INFO - Number of trades: 72
+2025-03-31 15:59:44,622 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 15:59:50,710 - src.core.data - INFO - Loaded data for 5 instruments
+2025-03-31 15:59:50,735 - root - INFO - Running backtest for AAPL
+2025-03-31 15:59:50,870 - root - INFO - Running backtest for MSFT
+2025-03-31 15:59:51,004 - root - INFO - Running backtest for AMZN
+2025-03-31 15:59:51,131 - root - INFO - Running backtest for GOOGL
+2025-03-31 15:59:51,261 - root - INFO - Running backtest for META
+2025-03-31 15:59:51,414 - src.core.data - INFO - Loaded benchmark data for SPY
+2025-03-31 15:59:51,418 - __main__ - INFO - Backtest completed for MA
+2025-03-31 15:59:51,418 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 15:59:51,419 - __main__ - INFO - Number of trades: 72
+2025-03-31 16:00:34,606 - root - INFO - Running backtest for AAPL
+2025-03-31 16:00:34,742 - root - INFO - Running backtest for MSFT
+2025-03-31 16:00:34,868 - root - INFO - Running backtest for AMZN
+2025-03-31 16:00:34,985 - root - INFO - Running backtest for GOOGL
+2025-03-31 16:00:35,109 - root - INFO - Running backtest for META
+2025-03-31 16:00:35,228 - __main__ - INFO - Backtest completed for BB
+2025-03-31 16:00:35,229 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 16:00:35,229 - __main__ - INFO - Number of trades: 157
+2025-03-31 16:00:44,059 - root - INFO - Running backtest for AAPL
+2025-03-31 16:00:44,186 - root - INFO - Running backtest for MSFT
+2025-03-31 16:00:44,311 - root - INFO - Running backtest for AMZN
+2025-03-31 16:00:44,438 - root - INFO - Running backtest for GOOGL
+2025-03-31 16:00:44,584 - root - INFO - Running backtest for META
+2025-03-31 16:00:44,706 - __main__ - INFO - Backtest completed for RSI
+2025-03-31 16:00:44,707 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 16:00:44,708 - __main__ - INFO - Number of trades: 185
+2025-03-31 16:05:44,227 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-03-31 16:05:50,666 - src.core.data - INFO - Loaded data for 5 instruments
+2025-03-31 16:05:50,688 - root - INFO - Running backtest for AAPL
+2025-03-31 16:05:50,847 - root - INFO - Running backtest for MSFT
+2025-03-31 16:05:50,982 - root - INFO - Running backtest for AMZN
+2025-03-31 16:05:51,109 - root - INFO - Running backtest for GOOGL
+2025-03-31 16:05:51,235 - root - INFO - Running backtest for META
+2025-03-31 16:05:51,383 - src.core.data - INFO - Loaded benchmark data for SPY
+2025-03-31 16:05:51,387 - __main__ - INFO - Backtest completed for MA
+2025-03-31 16:05:51,387 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-03-31 16:05:51,401 - __main__ - INFO - Number of trades: 72
