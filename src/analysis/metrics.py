@@ -295,4 +295,68 @@ def calculate_calmar_ratio(series: pd.Series, years_past: int=3) -> float:
     cagr = calculate_cagr(series)
     return cagr / percent_drawdown
 
+def calculate_alpha(portfolio_values, benchmark_values, risk_free_rate=0.02):
+    """Calculate portfolio alpha relative to benchmark"""
+    if benchmark_values is None:
+        return 0
+        
+    portfolio_returns = portfolio_values.pct_change().dropna()
+    benchmark_returns = benchmark_values.pct_change().dropna()
+    
+    # Align dates
+    common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
+    portfolio_returns = portfolio_returns[common_dates]
+    benchmark_returns = benchmark_returns[common_dates]
+    
+    # Calculate beta first
+    beta = calculate_beta(portfolio_values, benchmark_values)
+    
+    # Calculate alpha
+    portfolio_return = portfolio_returns.mean() * 252  # Annualized
+    benchmark_return = benchmark_returns.mean() * 252  # Annualized
+    alpha = portfolio_return - risk_free_rate - beta * (benchmark_return - risk_free_rate)
+    
+    return alpha * 100  # Convert to percentage
+
+def calculate_beta(portfolio_values, benchmark_values):
+    """Calculate portfolio beta relative to benchmark"""
+    if benchmark_values is None:
+        return 1
+        
+    portfolio_returns = portfolio_values.pct_change().dropna()
+    benchmark_returns = benchmark_values.pct_change().dropna()
+    
+    # Align dates
+    common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
+    portfolio_returns = portfolio_returns[common_dates]
+    benchmark_returns = benchmark_returns[common_dates]
+    
+    # Calculate beta
+    covariance = portfolio_returns.cov(benchmark_returns)
+    variance = benchmark_returns.var()
+    
+    return covariance / variance if variance != 0 else 1
+
+def calculate_information_ratio(portfolio_values, benchmark_values):
+    """Calculate information ratio"""
+    if benchmark_values is None:
+        return 0
+        
+    portfolio_returns = portfolio_values.pct_change().dropna()
+    benchmark_returns = benchmark_values.pct_change().dropna()
+    
+    # Align dates
+    common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
+    portfolio_returns = portfolio_returns[common_dates]
+    benchmark_returns = benchmark_returns[common_dates]
+    
+    # Calculate tracking error
+    excess_returns = portfolio_returns - benchmark_returns
+    tracking_error = excess_returns.std() * np.sqrt(252)  # Annualized
+    
+    # Calculate information ratio
+    active_return = (portfolio_returns.mean() - benchmark_returns.mean()) * 252  # Annualized
+    
+    return active_return / tracking_error if tracking_error != 0 else 0
+
 

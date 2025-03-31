@@ -16,7 +16,8 @@ from src.strategies import MovingAverageCrossover, RSIStrategy, BollingerBandsSt
 from src.visualization.visualizer import BacktestVisualizer
 from src.analysis.metrics import (
     calculate_cagr, calculate_sharpe_ratio, calculate_sortino_ratio,
-    calculate_max_drawdown, calculate_calmar_ratio, calculate_pure_profit_score
+    calculate_max_drawdown, calculate_calmar_ratio, calculate_pure_profit_score,
+    calculate_alpha, calculate_beta, calculate_information_ratio
 )
 from src.portfolio.models import Trade
 from src.portfolio.portfolio_manager import PortfolioManager
@@ -478,22 +479,40 @@ def run_backtest(strategy_type, strategy_params=None):
         return None, None, None
 
 def create_metric_cards(stats):
-    """Create metric cards layout with advanced metrics"""
+    """Create metric cards layout with advanced metrics and tooltips"""
+    tooltip_texts = {
+        'CAGR': "Compound Annual Growth Rate. Measures the mean annual growth rate of an investment over a specified time period longer than one year.",
+        'Total Return': "The overall return of the portfolio from start to finish, expressed as a percentage of initial capital.",
+        'Max Drawdown': "Largest peak-to-trough decline in portfolio value, expressed as a percentage. Measures the biggest historical loss.",
+        'Sharpe Ratio': "Risk-adjusted return metric. Calculated as (Portfolio Return - Risk Free Rate) / Portfolio Standard Deviation. Assumes 2% Risk Free Rate.",
+        'Sortino Ratio': "Similar to Sharpe ratio but only penalizes downside volatility. Calculated using 2% Risk Free Rate.",
+        'Information Ratio': "Measures portfolio returns above the benchmark per unit of risk. Higher values indicate better risk-adjusted performance vs benchmark.",
+        'Alpha': "Excess return of the investment relative to the return of the benchmark index. Expressed as percentage points.",
+        'Beta': "Measure of portfolio's volatility compared to the market. Beta > 1 means more volatile than market, Beta < 1 means less volatile.",
+        'Recovery Factor': "Absolute value of total profit divided by maximum drawdown. Higher values indicate better recovery from drawdowns."
+    }
+    
+    # Calculate additional metrics
+    alpha = calculate_alpha(stats['Portfolio_Value'], stats.get('Benchmark', None))
+    beta = calculate_beta(stats['Portfolio_Value'], stats.get('Benchmark', None))
+    info_ratio = calculate_information_ratio(stats['Portfolio_Value'], stats.get('Benchmark', None))
+    recovery_factor = abs(stats['total_return']) / abs(stats['max_drawdown']) if stats['max_drawdown'] != 0 else 0
+
     return dbc.Row([
         dbc.Col([
-            create_metric_card("CAGR", f"{stats['cagr']:.2f}%"),
-            create_metric_card("Total Return", f"{stats['total_return']:.2f}%"),
-            create_metric_card("Win Rate", f"{stats['win_rate']:.2f}%"),
+            create_metric_card_with_tooltip("CAGR", f"{stats['cagr']:.2f}%", tooltip_texts['CAGR']),
+            create_metric_card_with_tooltip("Total Return", f"{stats['total_return']:.2f}%", tooltip_texts['Total Return']),
+            create_metric_card_with_tooltip("Alpha", f"{alpha:.2f}%", tooltip_texts['Alpha'])
         ]),
         dbc.Col([
-            create_metric_card("Max Drawdown", f"{stats['max_drawdown']:.2f}%"),
-            create_metric_card("Sharpe Ratio", f"{stats['sharpe_ratio']:.2f}"),
-            create_metric_card("Sortino Ratio", f"{stats['sortino_ratio']:.2f}"),
+            create_metric_card_with_tooltip("Max Drawdown", f"{stats['max_drawdown']:.2f}%", tooltip_texts['Max Drawdown']),
+            create_metric_card_with_tooltip("Sharpe Ratio", f"{stats['sharpe_ratio']:.2f}", tooltip_texts['Sharpe Ratio']),
+            create_metric_card_with_tooltip("Beta", f"{beta:.2f}", tooltip_texts['Beta'])
         ]),
         dbc.Col([
-            create_metric_card("Calmar Ratio", f"{stats['calmar_ratio']:.2f}"),
-            create_metric_card("Pure Profit Score", f"{stats['pure_profit_score']:.2f}"),
-            create_metric_card("Total Trades", f"{stats['total_trades']}")
+            create_metric_card_with_tooltip("Information Ratio", f"{info_ratio:.2f}", tooltip_texts['Information Ratio']),
+            create_metric_card_with_tooltip("Sortino Ratio", f"{stats['sortino_ratio']:.2f}", tooltip_texts['Sortino Ratio']),
+            create_metric_card_with_tooltip("Recovery Factor", f"{recovery_factor:.2f}", tooltip_texts['Recovery Factor'])
         ])
     ])
 
