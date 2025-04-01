@@ -1,23 +1,22 @@
-from abc import ABC, abstractmethod
 from typing import Dict
 import pandas as pd
 
-class BaseStrategy(ABC):
+class BaseStrategy:
     """Base class for all trading strategies"""
     
-    def __init__(self, **kwargs):
-        self.tickers = []
-        self.params = kwargs
+    def __init__(self, tickers, **kwargs):
+        """Initialize strategy with parameters"""
+        self.tickers = tickers
         
-    @abstractmethod
-    def generate_signals(self, data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
+    def generate_signals(self, ticker, data):
         """
-        Generate trading signals for the provided data.
+        Generate buy/sell signals for a given ticker and data.
         
         Args:
-            data: Dictionary mapping ticker symbols to DataFrames with OHLCV data
+            ticker: The ticker symbol for the current data
+            data: DataFrame with price data
             
         Returns:
-            Dictionary mapping ticker symbols to DataFrames with added Signal column
+            DataFrame with signals
         """
-        pass
+        raise NotImplementedError("Subclasses must implement this method")

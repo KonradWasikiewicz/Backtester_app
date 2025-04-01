@@ -1,62 +1,46 @@
-import pandas as pd
 import numpy as np
-from typing import Dict
-from .base import BaseStrategy
+import pandas as pd
 
-class RSIStrategy(BaseStrategy):
-    """
-    Relative Strength Index (RSI) strategy
+class RSIStrategy:
+    """Relative Strength Index strategy implementation"""
     
-    Generates buy signals when RSI drops below oversold level
-    Generates sell signals when RSI rises above overbought level
-    """
-    
-    def __init__(self, period=14, overbought=70, oversold=30, **kwargs):
-        super().__init__(**kwargs)
-        self.period = period
+    def __init__(self, tickers, window=14, overbought=70, oversold=30):
+        """Initialize strategy with parameters"""
+        self.tickers = tickers
+        self.window = window
         self.overbought = overbought
         self.oversold = oversold
         
-    def generate_signals(self, data: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
-        """
-        Generate trading signals based on RSI levels.
+    def generate_signals(self, ticker, data):
+        """Generate buy/sell signals using RSI."""
+        # Create copy to avoid modifying original data
+        df = data.copy()
         
-        Args:
-            data: Dictionary of DataFrames with ticker data
-            
-        Returns:
-            Dictionary of DataFrames with added Signal column
-        """
-        self.tickers = list(data.keys())
-        signals = {}
+        # Calculate price changes
+        delta = df['Close'].diff()
         
-        for ticker, df in data.items():
-            df = df.copy()
-            close_prices = df['Close'].astype(float)
-            
-            # Calculate RSI
-            delta = close_prices.diff()
-            gain = delta.where(delta > 0, 0).rolling(window=self.period).mean()
-            loss = -delta.where(delta < 0, 0).rolling(window=self.period).mean()
-            
-            rs = gain / loss
-            df['RSI'] = 100 - (100 / (1 + rs))
-            
-            # Generate signals
-            df['Signal'] = 0
-            
-            # Buy signal: RSI crosses below oversold level
-            df.loc[(df['RSI'] < self.oversold) & 
-                   (df['RSI'].shift(1) >= self.oversold), 'Signal'] = 1
-            
-            # Sell signal: RSI crosses above overbought level
-            df.loc[(df['RSI'] > self.overbought) & 
-                   (df['RSI'].shift(1) <= self.overbought), 'Signal'] = -1
-            
-            # Limit signals to trading period
-            trading_start = pd.Timestamp('2020-01-01')
-            df.loc[df.index < trading_start, 'Signal'] = 0
-            
-            signals[ticker] = df
-            
-        return signals
+        # Separate gains and losses
+        gain = delta.where(delta > 0, 0)
+        loss = -delta.where(delta < 0, 0)
+        
+        # Calculate average gain and loss over specified window
+        avg_gain = gain.rolling(window=self.window).mean()
+        avg_loss = loss.rolling(window=self.window).mean()
+        
+        # Calculate RS and RSI
+        rs = avg_gain / avg_loss
+        df['RSI'] = 100 - (100 / (1 + rs))
+        
+        # Initialize signal column
+        df['Signal'] = 0.0
+        
+        # Create signals
+        # Buy signal (1) when RSI drops below oversold level
+        # Sell signal (-1) when RSI rises above overbought level
+        df['Signal'] = np.where(df['RSI'] < self.oversold, 1.0, 
+                       np.where(df['RSI'] > self.overbought, -1.0, 0.0))
+        
+        # Generate trading signals
+        df['Position'] = df['Signal']
+        
+        return df[['RSI', 'Signal', 'Position']]

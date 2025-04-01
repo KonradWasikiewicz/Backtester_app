@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 import logging
-from typing import List, Dict, Any, Optional
+from datetime import datetime
+from pathlib import Path
+from src.core.config import config  # Add this import
 from dash import dcc  # Updated import to fix deprecation warning
 from dash import html
 import plotly.graph_objects as go
@@ -11,121 +13,133 @@ from .data import DataLoader
 from .constants import CHART_THEME, BENCHMARK_TICKER
 
 class BacktestEngine:
-    def __init__(self, strategy=None, initial_capital=10000):
-        self.initial_capital = initial_capital
-        self.trades = []
-        self.positions = {}
-        self.strategy = strategy
+    """Engine for running backtests on a single ticker"""
     
-    def set_strategy(self, strategy):
+    def __init__(self, initial_capital=100000.0, strategy=None):
+        """Initialize backtest engine with capital and strategy"""
+        self.initial_capital = initial_capital
         self.strategy = strategy
+        self.logger = logging.getLogger(__name__)
         
-    def run_backtest(self, ticker: str, data: pd.DataFrame) -> dict:
-        """Run backtest for a single instrument"""
+    def run_backtest(self, ticker, data):
+        """Run a backtest for a single ticker"""
         try:
-            logging.info(f"Running backtest for {ticker}")
-            trading_data = data.copy()
+            # Check for required data
+            if data is None or data.empty or 'Signal' not in data.columns:
+                return None
+                
+            # Filter data by configured dates
+            start_date = pd.to_datetime(config.START_DATE)
+            end_date = pd.to_datetime(config.END_DATE)
+            data = data.loc[(data.index >= start_date) & (data.index <= end_date)]
             
-            # Initialize with starting capital for this ticker
-            available_cash = self.initial_capital / len(self.strategy.tickers) if self.strategy and hasattr(self.strategy, 'tickers') else self.initial_capital
-            current_position = 0
-            
-            # Create list for portfolio values
+            if len(data) == 0:
+                return None
+                
+            # Initialize portfolio metrics
+            initial_capital = self.initial_capital
+            positions = 0
+            cash = initial_capital
             portfolio_values = []
-            portfolio_allocations = []  # Track daily allocations
+            trades = []
             
-            # Get trading period data only (avoid lookback period)
-            trading_period = trading_data[trading_data.index >= pd.Timestamp('2020-01-01')]
-            
-            # Add first portfolio value (initial cash)
-            portfolio_values.append(available_cash)
-            
-            # First day allocation (100% cash)
-            portfolio_allocations.append({
-                'date': trading_period.index[0] if len(trading_period) > 0 else pd.Timestamp('2020-01-01'),
-                'ticker': ticker,
-                'shares': 0,
-                'value': 0,
-                'cash': available_cash,
-                'total': available_cash
-            })
-            
-            # Process each day in trading period
-            for i in range(len(trading_period)):
-                current_day = trading_period.iloc[i]
-                current_date = trading_period.index[i]
+            # Process signals for each day
+            for date, row in data.iterrows():
+                position_value = positions * row['Close']
+                total_value = cash + position_value
                 
-                # Get signal (previous day for entry decisions)
-                prev_signal = trading_data['Signal'].iloc[trading_data.index.get_loc(current_date)-1] if i > 0 else 0
-                
-                # Process entries
-                if current_position == 0 and prev_signal == 1:
-                    shares = int(available_cash / current_day['Open'])
-                    if shares > 0:
-                        current_position = shares
-                        cost = shares * current_day['Open']
-                        available_cash -= cost
-                        self.positions[ticker] = {
-                            'shares': shares,
-                            'cost_basis': current_day['Open'],
-                            'entry_date': current_date
-                        }
-                
-                # Process exits
-                elif current_position > 0 and prev_signal in [-1, 0]:
-                    exit_price = current_day['Open']
-                    proceeds = current_position * exit_price
-                    available_cash += proceeds
-                    
-                    # Record trade
-                    self.trades.append({
-                        'entry_date': self.positions[ticker]['entry_date'],
-                        'exit_date': current_date,
-                        'ticker': ticker,
-                        'direction': 'LONG',
-                        'shares': current_position,
-                        'entry_price': self.positions[ticker]['cost_basis'],
-                        'exit_price': exit_price,
-                        'pnl': proceeds - (current_position * self.positions[ticker]['cost_basis'])
-                    })
-                    
-                    current_position = 0
-                    if ticker in self.positions:
-                        del self.positions[ticker]
-                
-                # Calculate daily portfolio value
-                position_value = current_position * current_day['Close']
-                portfolio_value = position_value + available_cash
-                portfolio_values.append(portfolio_value)
-                
-                # Record allocation for this day
-                portfolio_allocations.append({
-                    'date': current_date,
-                    'ticker': ticker,
-                    'shares': current_position,
-                    'value': position_value,
-                    'cash': available_cash,
-                    'total': portfolio_value
+                # Store portfolio value for this date
+                portfolio_values.append({
+                    'date': date,
+                    'value': total_value
                 })
-            
-            # Create series aligned with trading period index
-            # Ensure length matches trading period
-            if len(portfolio_values) > len(trading_period):
-                portfolio_values = portfolio_values[1:]  # Skip initial value
                 
+                # Process position changes
+                if 'Position' in row and not pd.isna(row['Position']):
+                    # Buy signal (1)
+                    if row['Position'] > 0:
+                        # Calculate how many shares we can buy with our cash
+                        shares_to_buy = int(cash / row['Close'])
+                        if shares_to_buy > 0:
+                            # Update positions and cash
+                            positions += shares_to_buy
+                            cost = shares_to_buy * row['Close']
+                            cash -= cost
+                            
+                            # Log the trade
+                            trades.append({
+                                'ticker': ticker,
+                                'entry_date': date,
+                                'exit_date': None,
+                                'entry_price': row['Close'],
+                                'exit_price': None,
+                                'shares': shares_to_buy,
+                                'direction': 'Long',
+                                'pnl': None,
+                                'status': 'Open'
+                            })
+                    
+                    # Sell signal (-1)
+                    elif row['Position'] < 0 and positions > 0:
+                        # Sell all current positions
+                        proceeds = positions * row['Close']
+                        
+                        # Find the open trade and close it
+                        for trade in trades:
+                            if trade['status'] == 'Open' and trade['ticker'] == ticker:
+                                trade['exit_date'] = date
+                                trade['exit_price'] = row['Close']
+                                trade['pnl'] = (row['Close'] - trade['entry_price']) * trade['shares']
+                                trade['status'] = 'Closed'
+                        
+                        # Update positions and cash
+                        positions = 0
+                        cash += proceeds
+            
+            # Close any remaining open trades at the last price
+            if positions > 0:
+                last_date = data.index[-1]
+                last_price = data.iloc[-1]['Close']
+                
+                # Find and close any open trades
+                for trade in trades:
+                    if trade['status'] == 'Open':
+                        trade['exit_date'] = last_date
+                        trade['exit_price'] = last_price
+                        trade['pnl'] = (last_price - trade['entry_price']) * trade['shares']
+                        trade['status'] = 'Closed'
+                
+                # Update final portfolio value
+                cash += positions * last_price
+                positions = 0
+                
+                # Update the last portfolio value
+                if portfolio_values:
+                    portfolio_values[-1]['value'] = cash
+            
+            # Create portfolio series
             portfolio_series = pd.Series(
-                portfolio_values,
-                index=trading_period.index
+                [pv['value'] for pv in portfolio_values],
+                index=[pv['date'] for pv in portfolio_values]
             )
+            
+            # Remove trades with status field
+            clean_trades = []
+            for trade in trades:
+                if trade['status'] == 'Closed':
+                    trade_copy = trade.copy()
+                    trade_copy.pop('status', None)
+                    clean_trades.append(trade_copy)
             
             return {
                 'Portfolio_Value': portfolio_series,
-                'trades': self.trades,
-                'allocations': portfolio_allocations  # Add allocations to results
+                'trades': clean_trades
             }
             
         except Exception as e:
-            logging.error(f"Backtest error in engine for {ticker}: {str(e)}", exc_info=True)
+            self.logger.error(f"Backtest error in engine for {ticker}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def get_statistics(self) -> Dict[str, Any]:

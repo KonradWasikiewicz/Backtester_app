@@ -2,35 +2,34 @@ from pathlib import Path
 import os
 
 class Config:
-    """Application configuration"""
+    """Configuration settings for the application"""
     
-    def __init__(self):
-        # Base paths
-        self.PROJECT_ROOT = Path(__file__).parent.parent.parent.absolute()
-        self.DATA_PATH = self.PROJECT_ROOT / "data"
-        self.RESULTS_PATH = self.PROJECT_ROOT / "results"
-        
-        # Ensure directories exist
-        os.makedirs(self.DATA_PATH, exist_ok=True)
-        os.makedirs(self.RESULTS_PATH, exist_ok=True)
-        
-        # Backtest settings
-        self.INITIAL_CAPITAL = 10000
-        self.BENCHMARK_TICKER = "SPY"
-        self.START_DATE = "2019-01-01"
-        self.END_DATE = "2023-12-31"
-        
-        # Trading parameters
-        self.COMMISSION_RATE = 0.001  # 0.1%
-        self.SLIPPAGE = 0.001  # 0.1%
-        self.RISK_FREE_RATE = 0.02  # 2%
-        
-        # UI settings
-        self.APP_TITLE = "Trading Strategy Backtester"
-        self.THEME = "dark"
+    # Data settings
+    DATA_PATH = "data/historical_prices.csv"
+    BENCHMARK_TICKER = "SPY"
+    
+    # Backtest settings
+    START_DATE = "2020-01-01"
+    END_DATE = "2023-12-31"
+    INITIAL_CAPITAL = 100000.0
+    
+    # Strategy parameters
+    MOVING_AVERAGE_SHORT = 20
+    MOVING_AVERAGE_LONG = 50
+    BOLLINGER_PERIOD = 20
+    BOLLINGER_STD = 2.0
+    RSI_PERIOD = 14
+    RSI_OVERBOUGHT = 70
+    RSI_OVERSOLD = 30
+    
+    # Performance calculation
+    RISK_FREE_RATE = 0.02  # 2% annual risk-free rate
+    TRADING_DAYS_PER_YEAR = 252
+    
+    # Other settings
+    LOG_LEVEL = "INFO"
 
-
-# Create singleton instance
+# Create an instance of the Config class to export
 config = Config()
 
 # Visualization config
@@ -47,8 +46,8 @@ VISUALIZATION_CONFIG = {
 
 # Backtest config
 BACKTEST_CONFIG = {
-    "initial_capital": config.INITIAL_CAPITAL,
-    "commission_rate": config.COMMISSION_RATE,
-    "slippage": config.SLIPPAGE,
-    "benchmark_ticker": config.BENCHMARK_TICKER
+    "initial_capital": Config.INITIAL_CAPITAL,
+    "commission_rate": 0.001,  # 0.1%
+    "slippage": 0.001,  # 0.1%
+    "benchmark_ticker": Config.BENCHMARK_TICKER
 }

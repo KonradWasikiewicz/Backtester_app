@@ -1,157 +1,127 @@
-import pandas as pd
-import numpy as np
-import os
 import logging
+import pandas as pd
+import traceback
 from pathlib import Path
-from typing import Dict, List, Optional
-import sys
-
-# Setup logging
-logger = logging.getLogger(__name__)
-
-# Import local modules 
-from .config import config
-from .exceptions import DataError
-from .constants import BENCHMARK_TICKER, DEFAULT_TICKERS
+from src.core.config import config
 
 class DataLoader:
-    """Handles loading and preprocessing of price data for backtesting"""
+    """Data loading and preprocessing for backtesting"""
     
-    def __init__(self, tickers=None, start_date=None, end_date=None):
-        """
-        Initialize DataLoader
+    def __init__(self, data_path=None):
+        """Initialize with optional data path override"""
+        self.data_path = data_path or config.DATA_PATH
+        self.benchmark_ticker = config.BENCHMARK_TICKER
+        self.logger = logging.getLogger(__name__)
+        self._data_cache = {}
         
-        Args:
-            tickers: List of ticker symbols to load
-            start_date: Start date for data
-            end_date: End date for data
-        """
-        self.tickers = tickers or DEFAULT_TICKERS
-        self.start_date = start_date or "2019-01-01"  # Include extra data for lookback
-        self.end_date = end_date or pd.Timestamp.now().strftime('%Y-%m-%d')
-        self.data_path = Path(config.DATA_PATH)
-        self._cached_data = None
-        self._cached_benchmark = None
-        
-    def get_data(self) -> Dict[str, pd.DataFrame]:
-        """
-        Load and preprocess data for all tickers
-        
-        Returns:
-            Dictionary mapping ticker symbols to DataFrames with OHLCV data
-        """
-        # Return cached data if available
-        if self._cached_data is not None:
-            return self._cached_data
-            
-        # Load data for each ticker
-        data_dict = {}
-        
+    def load_all_data(self):
+        """Load all available data from CSV, excluding benchmark ticker"""
         try:
-            # Load full data from CSV
-            csv_path = self.data_path / "historical_prices.csv"
-            if not csv_path.exists():
-                raise DataError(f"Data file not found: {csv_path}")
-                
-            # Read full data
-            all_data = pd.read_csv(
-                csv_path, 
-                parse_dates=['Date'], 
-                index_col='Date'
+            # Log the path we're trying to use
+            self.logger.info(f"Attempting to load data from: {self.data_path}")
+            
+            # Check if file exists
+            if not Path(self.data_path).exists():
+                self.logger.error(f"Data file not found at: {self.data_path}")
+                return {}
+            
+            # Load all historical price data
+            df = pd.read_csv(
+                self.data_path,
+                parse_dates=['Date']
             )
             
-            # Filter by date
-            date_mask = (all_data.index >= self.start_date) & (all_data.index <= self.end_date)
-            all_data = all_data[date_mask]
+            self.logger.info(f"CSV loaded successfully with {len(df)} rows and {len(df.columns)} columns")
             
-            # Split by ticker
-            for ticker in self.tickers:
-                ticker_mask = all_data['Ticker'] == ticker
-                ticker_data = all_data[ticker_mask].copy()
-                
-                if len(ticker_data) == 0:
-                    logger.warning(f"No data found for {ticker}")
-                    continue
-                
-                # Drop the Ticker column and keep only OHLCV data
-                ticker_data = ticker_data.drop(columns=['Ticker'])
-                
-                # Convert column types
-                for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
-                    if col in ticker_data.columns:
-                        ticker_data[col] = pd.to_numeric(ticker_data[col], errors='coerce')
-                
-                # Forward fill any missing data
-                ticker_data = ticker_data.ffill()
-                
-                data_dict[ticker] = ticker_data
-                
-            # Store in cache
-            self._cached_data = data_dict
+            # Get unique tickers from the Ticker column
+            available_tickers = df['Ticker'].unique().tolist()
             
-            logger.info(f"Loaded data for {len(data_dict)} instruments")
-            return data_dict
+            # Remove benchmark from trading universe if present
+            if self.benchmark_ticker in available_tickers:
+                available_tickers.remove(self.benchmark_ticker)
+                
+            # Sort tickers for consistency
+            self.available_tickers = sorted(available_tickers)
+            
+            # Process each ticker's data
+            ticker_data = {}
+            ticker_row_counts = {}
+            
+            for ticker in self.available_tickers:
+                # Filter data for this ticker
+                ticker_df = df[df['Ticker'] == ticker].copy()
+                
+                # Set date as index
+                ticker_df.set_index('Date', inplace=True)
+                
+                # Select only OHLCV columns
+                ticker_df = ticker_df[['Open', 'High', 'Low', 'Close', 'Volume']]
+                
+                # Sort by date
+                ticker_df.sort_index(inplace=True)
+                
+                # Store in cache
+                ticker_data[ticker] = ticker_df
+                ticker_row_counts[ticker] = len(ticker_df)
+            
+            # Log summarized info instead of per-ticker
+            self.logger.info(f"Found tickers: {', '.join(self.available_tickers)}")
+            self.logger.info(f"All tickers have {list(ticker_row_counts.values())[0]} rows of data")
+            self.logger.info(f"Loaded data for {len(ticker_data)} instruments")
+            
+            self._data_cache = ticker_data
+            return ticker_data
             
         except Exception as e:
-            logger.error(f"Error loading data: {str(e)}", exc_info=True)
-            raise DataError(f"Failed to load data: {str(e)}")
+            self.logger.error(f"Error loading price data: {str(e)}")
+            traceback.print_exc()
+            return {}
     
-    def get_benchmark_data(self) -> Optional[pd.DataFrame]:
-        """
-        Load benchmark data
-        
-        Returns:
-            DataFrame with benchmark OHLCV data
-        """
-        # Return cached data if available
-        if self._cached_benchmark is not None:
-            return self._cached_benchmark
+    def get_ticker_data(self, ticker):
+        """Get data for a specific ticker, loading if necessary"""
+        if not self._data_cache:
+            self.load_all_data()
             
+        return self._data_cache.get(ticker)
+    
+    def load_benchmark_data(self):
+        """Load benchmark data specifically"""
         try:
-            # Check if benchmark is in loaded data
-            all_data = self.get_data()
-            if BENCHMARK_TICKER in all_data:
-                self._cached_benchmark = all_data[BENCHMARK_TICKER]
-                return self._cached_benchmark
+            # Check if data is already loaded
+            if not self._data_cache:
+                self.load_all_data()
             
-            # Otherwise load from separate file
-            csv_path = self.data_path / "historical_prices.csv"
-            if not csv_path.exists():
-                logger.warning(f"Benchmark data file not found: {csv_path}")
-                return None
-                
-            # Read full data
-            all_data = pd.read_csv(
-                csv_path, 
-                parse_dates=['Date'], 
-                index_col='Date'
+            # Load full dataset again to include benchmark
+            df = pd.read_csv(
+                self.data_path,
+                parse_dates=['Date']
             )
             
-            # Filter by date and ticker
-            benchmark_mask = (all_data.index >= self.start_date) & (all_data.index <= self.end_date) & (all_data['Ticker'] == BENCHMARK_TICKER)
-            benchmark_data = all_data[benchmark_mask].copy()
+            # Filter for benchmark ticker
+            benchmark_df = df[df['Ticker'] == self.benchmark_ticker].copy()
             
-            if len(benchmark_data) == 0:
-                logger.warning(f"No data found for benchmark {BENCHMARK_TICKER}")
+            if len(benchmark_df) == 0:
+                self.logger.warning(f"Benchmark ticker {self.benchmark_ticker} not found in data")
                 return None
+                
+            # Set date as index
+            benchmark_df.set_index('Date', inplace=True)
             
-            # Drop the Ticker column and keep only OHLCV data
-            benchmark_data = benchmark_data.drop(columns=['Ticker'])
+            # Select only Close price for benchmark
+            benchmark_series = benchmark_df['Close']
             
-            # Convert column types
-            for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
-                if col in benchmark_data.columns:
-                    benchmark_data[col] = pd.to_numeric(benchmark_data[col], errors='coerce')
+            # Sort by date
+            benchmark_series.sort_index(inplace=True)
             
-            # Forward fill any missing data
-            benchmark_data = benchmark_data.ffill()
-            
-            # Store in cache
-            self._cached_benchmark = benchmark_data
-            
-            logger.info(f"Loaded benchmark data for {BENCHMARK_TICKER}")
-            return benchmark_data
+            return benchmark_series
             
         except Exception as e:
-            logger.error(f"Error loading benchmark data: {str(e)}", exc_info=True)
+            self.logger.error(f"Error loading benchmark data: {str(e)}")
             return None
+    
+    def get_available_tickers(self):
+        """Return list of all available tickers"""
+        if not hasattr(self, 'available_tickers') or not self.available_tickers:
+            self.load_all_data()
+            
+        return self.available_tickers

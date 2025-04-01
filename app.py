@@ -98,31 +98,31 @@ def create_metric_cards(stats):
     final_capital = portfolio_values.iloc[-1] if portfolio_values is not None and len(portfolio_values) > 0 else initial_capital
 
     return html.Div([
-        # First row - Capital metrics side by side
+        # First row - Capital metrics side by side with minimal spacing
         dbc.Row([
-            dbc.Col(create_metric_card_with_tooltip("Initial Capital", f"${initial_capital:,.2f}", tooltip_texts['Initial Capital']), width=6),
-            dbc.Col(create_metric_card_with_tooltip("Final Capital", f"${final_capital:,.2f}", tooltip_texts['Final Capital']), width=6)
-        ], className="mb-2"),  # Reduced margin
+            dbc.Col(create_metric_card_with_tooltip("Initial Capital", f"${initial_capital:,.2f}", tooltip_texts['Initial Capital']), width=6, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Final Capital", f"${final_capital:,.2f}", tooltip_texts['Final Capital']), width=6, className="px-1")
+        ], className="g-0 mb-1"),  # Reduced gutters and margin
         
-        # Performance metrics in a compact grid
+        # Performance metrics in a very compact grid
         dbc.Row([
             dbc.Col([
                 create_metric_card_with_tooltip("CAGR", f"{stats.get('cagr', 0):.2f}%", tooltip_texts['CAGR']),
                 create_metric_card_with_tooltip("Total Return", f"{stats.get('total_return', 0):.2f}%", tooltip_texts['Total Return']),
                 create_metric_card_with_tooltip("Alpha", f"{alpha:.2f}%", tooltip_texts['Alpha'])
-            ], width=4, className="px-1"),  # Reduced padding
+            ], width=4, className="px-1 py-0"),  # Reduced padding
             dbc.Col([
                 create_metric_card_with_tooltip("Max Drawdown", f"{stats.get('max_drawdown', 0):.2f}%", tooltip_texts['Max Drawdown']),
                 create_metric_card_with_tooltip("Sharpe Ratio", f"{stats.get('sharpe_ratio', 0):.2f}", tooltip_texts['Sharpe Ratio']),
                 create_metric_card_with_tooltip("Beta", f"{beta:.2f}", tooltip_texts['Beta'])
-            ], width=4, className="px-1"),  # Reduced padding
+            ], width=4, className="px-1 py-0"),  # Reduced padding
             dbc.Col([
                 create_metric_card_with_tooltip("Info Ratio", f"{info_ratio:.2f}", tooltip_texts['Information Ratio']),
                 create_metric_card_with_tooltip("Sortino Ratio", f"{stats.get('sortino_ratio', 0):.2f}", tooltip_texts['Sortino Ratio']),
                 create_metric_card_with_tooltip("Recovery Factor", f"{recovery_factor:.2f}", tooltip_texts['Recovery Factor'])
-            ], width=4, className="px-1")  # Reduced padding
-        ], className="g-2")  # Reduced gutters between columns
-    ])
+            ], width=4, className="px-1 py-0")  # Reduced padding
+        ], className="g-0")  # No gutters between columns
+    ], className="mb-1")  # Reduced bottom margin
 
 def create_trade_histogram(trades):
     """Create enhanced trade return distribution histogram with statistics"""
@@ -148,19 +148,24 @@ def create_trade_histogram(trades):
         'Losing Trades': "Total number of trades that resulted in a loss."
     }
     
-    # Create compact statistics table with tooltips
+    # Create compact statistics table with tooltips (with all original metrics but tighter spacing)
     stats_table = html.Div([
         dbc.Row([
             dbc.Col(create_metric_card_with_tooltip("Total Trades", f"{stats['total_trades']}", tooltip_texts['Total Trades']), width=4, className="px-1"),
             dbc.Col(create_metric_card_with_tooltip("Win Rate", f"{stats['win_rate']:.1f}%", tooltip_texts['Win Rate']), width=4, className="px-1"),
             dbc.Col(create_metric_card_with_tooltip("Profit Factor", f"{stats['profit_factor']:.2f}", tooltip_texts['Profit Factor']), width=4, className="px-1")
-        ], className="g-1 mb-1"),
+        ], className="g-0 mb-1"),  # Reduced gutters and margin
+        dbc.Row([
+            dbc.Col(create_metric_card_with_tooltip("Winning Trades", f"{stats['winning_trades']}", tooltip_texts['Winning Trades']), width=4, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Losing Trades", f"{stats['losing_trades']}", tooltip_texts['Losing Trades']), width=4, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Largest Win", f"${stats['largest_win']:.2f}", tooltip_texts['Largest Win']), width=4, className="px-1")
+        ], className="g-0 mb-1"),  # Reduced gutters and margin
         dbc.Row([
             dbc.Col(create_metric_card_with_tooltip("Avg Win", f"${stats['avg_win_pnl']:.2f}", tooltip_texts['Avg Win']), width=4, className="px-1"),
             dbc.Col(create_metric_card_with_tooltip("Avg Loss", f"${stats['avg_loss_pnl']:.2f}", tooltip_texts['Avg Loss']), width=4, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Largest Win", f"${stats['largest_win']:.2f}", tooltip_texts['Largest Win']), width=4, className="px-1")
-        ], className="g-1")
-    ])
+            dbc.Col(create_metric_card_with_tooltip("Largest Loss", f"${stats['largest_loss']:.2f}", tooltip_texts['Largest Loss']), width=4, className="px-1")
+        ], className="g-0")  # Reduced gutters
+    ], className="mt-2")  # Small margin at top
     
     return html.Div([
         histogram,
@@ -298,140 +303,161 @@ def create_allocation_chart(results):
     if not results or 'trades' not in results:
         return html.Div("No allocation data available")
     
-    # Sprawdź, jakie klucze są dostępne w wynikach (dla debugowania)
-    logger.info(f"Available result keys: {list(results.keys())}")
-    
-    # Pozyskaj dane o tradach i wartości portfela
+    # Get trade and portfolio data
     trades = results.get('trades', [])
     portfolio_series = results.get('Portfolio_Value', pd.Series())
     
     if len(trades) == 0 or len(portfolio_series) == 0:
         return html.Div("No allocation data available")
     
-    # Pobierz unikalne tickery z tradów
-    tickers = list(set(trade.get('ticker', '') for trade in trades if trade.get('ticker')))
+    # Add log to check what we're receiving
+    logger.info(f"Creating allocation chart with {len(trades)} trades")
     
-    # Stwórz DataFrame do śledzenia pozycji dla każdego tickera
+    # Get unique tickers from trades
+    tickers = list(set(trade.get('ticker', '') for trade in trades if trade.get('ticker')))
+    logger.info(f"Found tickers: {tickers}")
+    
+    # Create DataFrame to track positions for each ticker
     positions_df = pd.DataFrame(index=portfolio_series.index)
     
-    # Wypełnij pozycje zerami
+    # Fill positions with zeros - AS FLOAT (fixes type mismatch error)
     for ticker in tickers:
-        positions_df[ticker] = 0
+        positions_df[ticker] = 0.0
     
-    # Dodaj kolumnę na gotówkę, startujemy z całym kapitałem początkowym
-    positions_df['Cash'] = config.INITIAL_CAPITAL
+    # Add column for cash, starting with full initial capital - AS FLOAT
+    positions_df['Cash'] = float(config.INITIAL_CAPITAL)
     
-    # Uzupełnij pozycje na podstawie tradów
+    # Update positions based on trades
     for trade in trades:
         try:
             entry_date = pd.to_datetime(trade.get('entry_date'))
             exit_date = pd.to_datetime(trade.get('exit_date'))
             ticker = trade.get('ticker', '')
-            shares = trade.get('shares', 0)
-            entry_price = trade.get('entry_price', 0)
-            exit_price = trade.get('exit_price', 0)
+            shares = float(trade.get('shares', 0))  # Convert to float
+            entry_price = float(trade.get('entry_price', 0))
+            exit_price = float(trade.get('exit_price', 0))
             
             if ticker not in tickers or entry_date is None or exit_date is None:
                 continue
             
-            # Znajdź indeksy dat dla wejścia i wyjścia
+            # Find indices for entry and exit dates
             try:
+                # Make sure dates are within index range
+                if entry_date < positions_df.index[0] or entry_date > positions_df.index[-1]:
+                    continue
+                if exit_date < positions_df.index[0] or exit_date > positions_df.index[-1]:
+                    continue
+                    
                 entry_idx = positions_df.index.get_indexer([entry_date], method='ffill')[0]
                 exit_idx = positions_df.index.get_indexer([exit_date], method='ffill')[0]
-            except:
-                # Jeśli daty nie są w indeksie, przejdź do następnego trade
+            except Exception as e:
+                logger.error(f"Date indexing error: {e}")
                 continue
                 
-            # Odejmij koszt od gotówki przy wejściu
-            positions_df.iloc[entry_idx:, positions_df.columns.get_loc('Cash')] -= shares * entry_price
+            # Subtract cost from cash at entry
+            cost = shares * entry_price
+            positions_df.iloc[entry_idx:, positions_df.columns.get_loc('Cash')] -= cost
             
-            # Dodaj akcje do pozycji w tickerze
+            # Add shares to ticker position
             if ticker in positions_df.columns:
                 positions_df.iloc[entry_idx:exit_idx+1, positions_df.columns.get_loc(ticker)] += shares
             
-            # Dodaj środki do gotówki po wyjściu
-            positions_df.iloc[exit_idx:, positions_df.columns.get_loc('Cash')] += shares * exit_price
+            # Add proceeds to cash after exit
+            proceeds = shares * exit_price
+            positions_df.iloc[exit_idx:, positions_df.columns.get_loc('Cash')] += proceeds
                 
         except Exception as e:
             logger.error(f"Error processing trade for allocation chart: {e}")
             continue
     
-    # Stwórz kolumny z wartościami pozycji
-    # Weźmy ostatnią znaną cenę każdego tickera
-    last_prices = {}
+    # Create columns with position values
+    # Get closing prices for each ticker from data
+    price_data = {}
     for ticker in tickers:
-        for trade in reversed(trades):
-            if trade.get('ticker') == ticker:
-                last_prices[ticker] = trade.get('exit_price', 0)
-                break
+        try:
+            # First try to get last price from trades
+            last_price = None
+            for trade in reversed(trades):
+                if trade.get('ticker') == ticker:
+                    last_price = trade.get('exit_price')
+                    break
+                    
+            if last_price is not None:
+                # Create constant series with this price
+                price_data[ticker] = pd.Series([last_price] * len(positions_df.index), index=positions_df.index)
+        except Exception as e:
+            logger.error(f"Error getting price data for {ticker}: {e}")
     
-    # Oblicz wartość dla każdej pozycji
+    # Calculate value for each position
+    value_columns = []
     for ticker in tickers:
-        if ticker in last_prices:
-            positions_df[f'{ticker}_value'] = positions_df[ticker] * last_prices[ticker]
+        if ticker in price_data:
+            positions_df[f'{ticker}_value'] = positions_df[ticker] * price_data[ticker]
+            value_columns.append(ticker)
     
-    # Stwórz oddzielne DataFrame tylko z wartościami
-    values_df = positions_df.copy()
+    # Prepare values for visualization
+    values_df = pd.DataFrame(index=positions_df.index)
+    values_df['Cash'] = positions_df['Cash'].clip(lower=0)  # Avoid negative values
+    
     for ticker in tickers:
-        if f'{ticker}_value' in values_df.columns:
-            values_df[ticker] = values_df[f'{ticker}_value']
-            values_df = values_df.drop(f'{ticker}_value', axis=1)
-        else:
-            values_df = values_df.drop(ticker, axis=1)
+        if f'{ticker}_value' in positions_df.columns:
+            values_df[ticker] = positions_df[f'{ticker}_value'].clip(lower=0)
     
-    # Zachowaj tylko kolumny z wartościami i gotówką
-    value_columns = [col for col in values_df.columns if col != 'Cash' and not col.endswith('_value')]
-    values_df = values_df[value_columns + ['Cash']]
-    
-    # Upewnij się, że nie ma ujemnych wartości
-    values_df = values_df.clip(lower=0)
-    
-    # Oblicz procentowy udział
+    # Calculate sum and percentage values
     values_df['Total'] = values_df.sum(axis=1)
-    percentage_df = values_df.copy()
     
-    for col in percentage_df.columns:
+    # Create copy for percentages
+    percentage_df = pd.DataFrame(index=values_df.index)
+    for col in values_df.columns:
         if col != 'Total':
-            percentage_df[col] = (percentage_df[col] / percentage_df['Total']) * 100
+            percentage_df[col] = (values_df[col] / values_df['Total'] * 100).fillna(0)
     
-    # Utwórz wykresy obszarowe
+    # Check if we have data to visualize
+    if len(value_columns) == 0 and values_df['Cash'].sum() == 0:
+        return html.Div("Insufficient data for allocation chart")
+    
+    # Create area charts
     traces_values = []
     traces_percentage = []
     
     colors = ['#17B897', '#FF6B6B', '#36A2EB', '#FFCE56', '#4BC0C0', 
               '#9966FF', '#FF9F40', '#8CD867', '#EA526F', '#9CAFB7']
     
-    # Wykres wartości
+    # Value chart
     for i, col in enumerate(value_columns + ['Cash']):
-        color = colors[i % len(colors)]
-        
-        traces_values.append(
-            go.Scatter(
-                x=values_df.index,
-                y=values_df[col],
-                name=col,
-                mode='lines',
-                line=dict(width=0.5),
-                stackgroup='one',
-                fillcolor=color,
-                hovertemplate='%{y:$,.2f}<extra>%{x|%Y-%m-%d}: ' + col + '</extra>'
+        if col in values_df.columns:
+            color = colors[i % len(colors)]
+            traces_values.append(
+                go.Scatter(
+                    x=values_df.index,
+                    y=values_df[col],
+                    name=col,
+                    mode='lines',
+                    line=dict(width=0.5),
+                    stackgroup='one',
+                    fillcolor=color,
+                    hovertemplate='%{y:$,.2f}<extra>%{x|%Y-%m-%d}: ' + col + '</extra>'
+                )
             )
-        )
-        
-        traces_percentage.append(
-            go.Scatter(
-                x=percentage_df.index,
-                y=percentage_df[col],
-                name=col,
-                mode='lines',
-                line=dict(width=0.5),
-                stackgroup='one',
-                fillcolor=color,
-                hovertemplate='%{y:.1f}%<extra>%{x|%Y-%m-%d}: ' + col + '</extra>'
-            )
-        )
     
-    # Layout dla wykresu wartości
+    # Percentage chart
+    for i, col in enumerate(value_columns + ['Cash']):
+        if col in percentage_df.columns:
+            color = colors[i % len(colors)]
+            traces_percentage.append(
+                go.Scatter(
+                    x=percentage_df.index,
+                    y=percentage_df[col],
+                    name=col,
+                    mode='lines',
+                    line=dict(width=0.5),
+                    stackgroup='one',
+                    fillcolor=color,
+                    hovertemplate='%{y:.1f}%<extra>%{x|%Y-%m-%d}: ' + col + '</extra>'
+                )
+            )
+    
+    # Layout for value chart
     fig_values = go.Figure(data=traces_values)
     fig_values.update_layout(
         title='Portfolio Allocation (Values)',
@@ -466,7 +492,7 @@ def create_allocation_chart(results):
         autosize=True
     )
     
-    # Layout dla wykresu procentowego
+    # Layout for percentage chart
     fig_percentage = go.Figure(data=traces_percentage)
     fig_percentage.update_layout(
         title='Portfolio Allocation (Percentages)',
@@ -502,8 +528,8 @@ def create_allocation_chart(results):
     )
     
     return html.Div([
-        dcc.Graph(figure=fig_values, config={'displayModeBar': True}),
-        dcc.Graph(figure=fig_percentage, config={'displayModeBar': True})
+        dcc.Graph(figure=fig_values, config={'displayModeBar': False}),
+        dcc.Graph(figure=fig_percentage, config={'displayModeBar': False})
     ])
 
 def run_backtest(strategy_type, strategy_params=None):

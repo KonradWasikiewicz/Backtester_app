@@ -246,3 +246,215 @@ def create_trade_table(trades):3-31 15:59:51,261 - root - INFO - Running backtes
 2025-04-01 15:13:10,400 - root - INFO - Running backtest for AMZN
 2025-04-01 15:13:10,516 - root - INFO - Running backtest for GOOGL
 2025-04-01 15:13:10,633 - root - INFO - Running backtest for META
+2025-04-01 15:18:11,799 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 15:18:15,417 - src.core.data - INFO - Loaded data for 5 instruments
+2025-04-01 15:18:15,441 - root - INFO - Running backtest for AAPL
+2025-04-01 15:18:15,578 - root - INFO - Running backtest for MSFT
+2025-04-01 15:18:15,699 - root - INFO - Running backtest for AMZN
+2025-04-01 15:18:15,815 - root - INFO - Running backtest for GOOGL
+2025-04-01 15:18:15,932 - root - INFO - Running backtest for META
+2025-04-01 15:18:16,066 - src.core.data - INFO - Loaded benchmark data for SPY
+2025-04-01 15:18:16,232 - __main__ - INFO - Available result keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+2025-04-01 15:22:34,381 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 15:22:37,732 - src.core.data - INFO - Loaded data for 5 instruments
+2025-04-01 15:22:37,748 - root - INFO - Running backtest for AAPL
+2025-04-01 15:22:37,883 - root - INFO - Running backtest for MSFT
+2025-04-01 15:22:37,998 - root - INFO - Running backtest for AMZN
+2025-04-01 15:22:38,115 - root - INFO - Running backtest for GOOGL
+2025-04-01 15:22:38,233 - root - INFO - Running backtest for META
+2025-04-01 15:22:38,365 - src.core.data - INFO - Loaded benchmark data for SPY
+2025-04-01 15:22:38,565 - __main__ - INFO - Creating allocation chart with 72 trades
+2025-04-01 15:22:38,565 - __main__ - INFO - Found tickers: ['AMZN', 'AAPL', 'GOOGL', 'META', 'MSFT']
+2025-04-01 15:22:45,899 - root - INFO - Running backtest for AAPL
+2025-04-01 15:22:46,076 - root - INFO - Running backtest for MSFT
+2025-04-01 15:22:46,198 - root - INFO - Running backtest for AMZN
+2025-04-01 15:22:46,331 - root - INFO - Running backtest for GOOGL
+2025-04-01 15:22:46,448 - root - INFO - Running backtest for META
+2025-04-01 15:22:46,598 - __main__ - INFO - Creating allocation chart with 72 trades
+2025-04-01 15:22:46,598 - __main__ - INFO - Found tickers: ['AMZN', 'AAPL', 'GOOGL', 'META', 'MSFT']
+2025-04-01 15:22:57,492 - root - INFO - Running backtest for AAPL
+2025-04-01 15:22:57,653 - root - INFO - Running backtest for MSFT
+2025-04-01 15:22:57,773 - root - INFO - Running backtest for AMZN
+2025-04-01 15:22:57,899 - root - INFO - Running backtest for GOOGL
+2025-04-01 15:22:58,014 - root - INFO - Running backtest for META
+2025-04-01 15:22:58,181 - __main__ - INFO - Creating allocation chart with 157 trades
+2025-04-01 15:22:58,181 - __main__ - INFO - Found tickers: ['AMZN', 'AAPL', 'GOOGL', 'META', 'MSFT']
+2025-04-01 15:34:16,890 - src.core.data - INFO - Loaded data for 5 instruments
+2025-04-01 15:34:16,908 - root - INFO - Running backtest for AAPL
+2025-04-01 15:34:17,051 - root - INFO - Running backtest for MSFT
+2025-04-01 15:34:17,164 - root - INFO - Running backtest for AMZN
+2025-04-01 15:34:17,296 - root - INFO - Running backtest for GOOGL
+2025-04-01 15:34:17,447 - root - INFO - Running backtest for META
+2025-04-01 15:34:17,631 - src.core.data - INFO - Loaded benchmark data for SPY
+2025-04-01 15:34:17,796 - __main__ - INFO - Creating allocation chart with 72 trades
+2025-04-01 15:34:17,796 - __main__ - INFO - Found tickers: ['AMZN', 'GOOGL', 'META', 'AAPL', 'MSFT']
+2025-04-01 15:39:41,212 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 15:39:45,797 - src.core.data - INFO - Loaded data for 0 instruments
+2025-04-01 15:39:45,803 - src.core.backtest_manager - ERROR - Backtest manager error: No ticker data available
+2025-04-01 15:39:45,803 - __main__ - ERROR - Backtest error: name 'traceback' is not defined
+2025-04-01 15:49:34,540 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 15:49:45,885 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-01 15:49:45,916 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-01 15:49:45,917 - src.core.data - INFO - Found tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
+2025-04-01 15:49:45,921 - src.core.data - INFO - Processed AAPL data with 1566 rows
+2025-04-01 15:49:45,924 - src.core.data - INFO - Processed AMZN data with 1566 rows
+2025-04-01 15:49:45,929 - src.core.data - INFO - Processed GOOGL data with 1566 rows
+2025-04-01 15:49:45,934 - src.core.data - INFO - Processed META data with 1566 rows
+2025-04-01 15:49:45,937 - src.core.data - INFO - Processed MSFT data with 1566 rows
+2025-04-01 15:49:45,940 - src.core.data - INFO - Processed NVDA data with 1566 rows
+2025-04-01 15:49:45,943 - src.core.data - INFO - Processed TSLA data with 1566 rows
+2025-04-01 15:49:45,943 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-01 15:49:45,946 - src.core.backtest_manager - ERROR - Backtest manager error: MovingAverageCrossover.generate_signals() takes 2 positional arguments but 3 were given
+2025-04-01 15:49:47,245 - src.core.backtest_manager - ERROR - Backtest manager error: MovingAverageCrossover.generate_signals() takes 2 positional arguments but 3 were given
+2025-04-01 15:49:51,633 - src.core.backtest_manager - ERROR - Backtest manager error: MovingAverageCrossover.generate_signals() takes 2 positional arguments but 3 were given
+2025-04-01 16:09:16,073 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 16:09:19,655 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-01 16:09:19,686 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-01 16:09:19,687 - src.core.data - INFO - Found tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
+2025-04-01 16:09:19,692 - src.core.data - INFO - Processed AAPL data with 1566 rows
+2025-04-01 16:09:19,697 - src.core.data - INFO - Processed AMZN data with 1566 rows
+2025-04-01 16:09:19,701 - src.core.data - INFO - Processed GOOGL data with 1566 rows
+2025-04-01 16:09:19,704 - src.core.data - INFO - Processed META data with 1566 rows
+2025-04-01 16:09:19,708 - src.core.data - INFO - Processed MSFT data with 1566 rows
+2025-04-01 16:09:19,711 - src.core.data - INFO - Processed NVDA data with 1566 rows
+2025-04-01 16:09:19,713 - src.core.data - INFO - Processed TSLA data with 1566 rows
+2025-04-01 16:09:19,713 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-01 16:09:19,719 - root - INFO - Running backtest for AAPL
+2025-04-01 16:09:19,902 - root - INFO - Running backtest for AMZN
+2025-04-01 16:09:20,043 - root - INFO - Running backtest for GOOGL
+2025-04-01 16:09:20,174 - root - INFO - Running backtest for META
+2025-04-01 16:09:20,307 - root - INFO - Running backtest for MSFT
+2025-04-01 16:09:20,424 - root - INFO - Running backtest for NVDA
+2025-04-01 16:09:20,624 - root - INFO - Running backtest for TSLA
+2025-04-01 16:09:20,725 - src.core.backtest_manager - ERROR - Backtest manager error: 'BacktestManager' object has no attribute '_combine_results'
+2025-04-01 16:09:24,124 - root - INFO - Running backtest for AAPL
+2025-04-01 16:09:24,272 - root - INFO - Running backtest for AMZN
+2025-04-01 16:09:24,390 - root - INFO - Running backtest for GOOGL
+2025-04-01 16:09:24,524 - root - INFO - Running backtest for META
+2025-04-01 16:09:24,640 - root - INFO - Running backtest for MSFT
+2025-04-01 16:09:24,757 - root - INFO - Running backtest for NVDA
+2025-04-01 16:09:24,890 - root - INFO - Running backtest for TSLA
+2025-04-01 16:09:25,007 - src.core.backtest_manager - ERROR - Backtest manager error: 'BacktestManager' object has no attribute '_combine_results'
+2025-04-01 16:09:27,692 - root - INFO - Running backtest for AAPL
+2025-04-01 16:09:27,827 - root - INFO - Running backtest for AMZN
+2025-04-01 16:09:27,941 - root - INFO - Running backtest for GOOGL
+2025-04-01 16:09:28,057 - root - INFO - Running backtest for META
+2025-04-01 16:09:28,174 - root - INFO - Running backtest for MSFT
+2025-04-01 16:09:28,307 - root - INFO - Running backtest for NVDA
+2025-04-01 16:09:28,424 - root - INFO - Running backtest for TSLA
+2025-04-01 16:09:28,540 - src.core.backtest_manager - ERROR - Backtest manager error: 'BacktestManager' object has no attribute '_combine_results'
+2025-04-01 16:10:38,414 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 16:10:41,808 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-01 16:10:41,843 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-01 16:10:41,843 - src.core.data - INFO - Found tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
+2025-04-01 16:10:41,843 - src.core.data - INFO - Processed AAPL data with 1566 rows
+2025-04-01 16:10:41,851 - src.core.data - INFO - Processed AMZN data with 1566 rows
+2025-04-01 16:10:41,853 - src.core.data - INFO - Processed GOOGL data with 1566 rows
+2025-04-01 16:10:41,855 - src.core.data - INFO - Processed META data with 1566 rows
+2025-04-01 16:10:41,861 - src.core.data - INFO - Processed MSFT data with 1566 rows
+2025-04-01 16:10:41,863 - src.core.data - INFO - Processed NVDA data with 1566 rows
+2025-04-01 16:10:41,868 - src.core.data - INFO - Processed TSLA data with 1566 rows
+2025-04-01 16:10:41,869 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-01 16:10:41,875 - root - INFO - Running backtest for AAPL
+2025-04-01 16:10:42,008 - root - INFO - Running backtest for AMZN
+2025-04-01 16:10:42,126 - root - INFO - Running backtest for GOOGL
+2025-04-01 16:10:42,238 - root - INFO - Running backtest for META
+2025-04-01 16:10:42,357 - root - INFO - Running backtest for MSFT
+2025-04-01 16:10:42,473 - root - INFO - Running backtest for NVDA
+2025-04-01 16:10:42,653 - root - INFO - Running backtest for TSLA
+2025-04-01 16:10:42,791 - src.core.backtest_manager - ERROR - Backtest manager error: 'BacktestManager' object has no attribute '_calculate_portfolio_stats'
+2025-04-01 16:10:49,611 - root - INFO - Running backtest for AAPL
+2025-04-01 16:10:49,763 - root - INFO - Running backtest for AMZN
+2025-04-01 16:10:49,890 - root - INFO - Running backtest for GOOGL
+2025-04-01 16:10:50,007 - root - INFO - Running backtest for META
+2025-04-01 16:10:50,124 - root - INFO - Running backtest for MSFT
+2025-04-01 16:10:50,257 - root - INFO - Running backtest for NVDA
+2025-04-01 16:10:50,374 - root - INFO - Running backtest for TSLA
+2025-04-01 16:10:50,507 - src.core.backtest_manager - ERROR - Backtest manager error: 'BacktestManager' object has no attribute '_calculate_portfolio_stats'
+2025-04-01 16:10:53,174 - root - INFO - Running backtest for AAPL
+2025-04-01 16:10:53,315 - root - INFO - Running backtest for AMZN
+2025-04-01 16:10:53,424 - root - INFO - Running backtest for GOOGL
+2025-04-01 16:10:53,557 - root - INFO - Running backtest for META
+2025-04-01 16:10:53,682 - root - INFO - Running backtest for MSFT
+2025-04-01 16:10:53,808 - root - INFO - Running backtest for NVDA
+2025-04-01 16:10:53,924 - root - INFO - Running backtest for TSLA
+2025-04-01 16:10:54,063 - src.core.backtest_manager - ERROR - Backtest manager error: 'BacktestManager' object has no attribute '_calculate_portfolio_stats'
+2025-04-01 16:12:05,425 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 16:12:09,991 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-01 16:12:10,042 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-01 16:12:10,042 - src.core.data - INFO - Found tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
+2025-04-01 16:12:10,042 - src.core.data - INFO - Processed AAPL data with 1566 rows
+2025-04-01 16:12:10,042 - src.core.data - INFO - Processed AMZN data with 1566 rows
+2025-04-01 16:12:10,065 - src.core.data - INFO - Processed GOOGL data with 1566 rows
+2025-04-01 16:12:10,068 - src.core.data - INFO - Processed META data with 1566 rows
+2025-04-01 16:12:10,071 - src.core.data - INFO - Processed MSFT data with 1566 rows
+2025-04-01 16:12:10,075 - src.core.data - INFO - Processed NVDA data with 1566 rows
+2025-04-01 16:12:10,077 - src.core.data - INFO - Processed TSLA data with 1566 rows
+2025-04-01 16:12:10,078 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-01 16:12:10,083 - root - INFO - Running backtest for AAPL
+2025-04-01 16:12:10,241 - root - INFO - Running backtest for AMZN
+2025-04-01 16:12:10,437 - root - INFO - Running backtest for GOOGL
+2025-04-01 16:12:10,573 - root - INFO - Running backtest for META
+2025-04-01 16:12:10,690 - root - INFO - Running backtest for MSFT
+2025-04-01 16:12:10,822 - root - INFO - Running backtest for NVDA
+2025-04-01 16:12:11,006 - root - INFO - Running backtest for TSLA
+2025-04-01 16:12:11,305 - __main__ - INFO - Creating allocation chart with 88 trades
+2025-04-01 16:12:11,305 - __main__ - INFO - Found tickers: ['TSLA', 'MSFT', 'AAPL', 'META', 'NVDA', 'AMZN', 'GOOGL']
+2025-04-01 16:20:20,408 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 16:20:24,807 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-01 16:20:24,843 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-01 16:20:24,876 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:20:24,877 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-01 16:20:24,878 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-01 16:20:24,878 - src.core.backtest_manager - INFO - Running backtest with MA strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:20:24,881 - root - ERROR - Backtest error in engine for AAPL: name 'config' is not defined
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\engine.py", line 31, in run_backtest
+    start_date = pd.to_datetime(config.START_DATE)
+                                ^^^^^^
+NameError: name 'config' is not defined
+2025-04-01 16:20:24,887 - root - ERROR - Backtest error in engine for AMZN: name 'config' is not defined
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\engine.py", line 31, in run_backtest
+    start_date = pd.to_datetime(config.START_DATE)
+                                ^^^^^^
+NameError: name 'config' is not defined
+2025-04-01 16:20:24,894 - root - ERROR - Backtest error in engine for GOOGL: name 'config' is not defined
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\engine.py", line 31, in run_backtest
+    start_date = pd.to_datetime(config.START_DATE)
+                                ^^^^^^
+NameError: name 'config' is not defined
+2025-04-01 16:20:24,899 - root - ERROR - Backtest error in engine for META: name 'config' is not defined
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\engine.py", line 31, in run_backtest
+    start_date = pd.to_datetime(config.START_DATE)
+                                ^^^^^^
+NameError: name 'config' is not defined
+2025-04-01 16:20:24,920 - root - ERROR - Backtest error in engine for MSFT: name 'config' is not defined
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\engine.py", line 31, in run_backtest
+    start_date = pd.to_datetime(config.START_DATE)
+                                ^^^^^^
+NameError: name 'config' is not defined
+2025-04-01 16:20:24,930 - root - ERROR - Backtest error in engine for NVDA: name 'config' is not defined
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\engine.py", line 31, in run_backtest
+    start_date = pd.to_datetime(config.START_DATE)
+                                ^^^^^^
+NameError: name 'config' is not defined
+2025-04-01 16:20:24,936 - root - ERROR - Backtest error in engine for TSLA: name 'config' is not defined
+Traceback (most recent call last):
+  File "x:\GitHub\Backtester_app\src\core\engine.py", line 31, in run_backtest
+    start_date = pd.to_datetime(config.START_DATE)
+                                ^^^^^^
+NameError: name 'config' is not defined
+2025-04-01 16:20:24,937 - src.core.backtest_manager - INFO - Backtest completed with 0 trades across 0 tickers
