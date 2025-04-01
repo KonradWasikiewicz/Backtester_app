@@ -32,7 +32,7 @@ class BacktestManager:
         self.logger = logging.getLogger(__name__)
         
     def run_backtest(self, strategy_type, **strategy_params):
-        """Run backtest with specified strategy type and parameters"""
+        """Run backtest with proper capital distribution"""
         try:
             # Get all available tickers
             available_tickers = self.data_loader.get_available_tickers()
@@ -45,6 +45,9 @@ class BacktestManager:
             if not strategy_class:
                 raise ValueError(f"Unknown strategy type: {strategy_type}")
                 
+            # Calculate per-ticker allocation
+            per_ticker_allocation = self.initial_capital / len(available_tickers)
+            
             # Use all available tickers
             strategy = strategy_class(
                 tickers=available_tickers,
@@ -70,9 +73,9 @@ class BacktestManager:
                 if ticker_signals is not None:
                     signals[ticker] = ticker_signals
                     
-                # Create backtest engine
+                # Create backtest engine with proper allocation
                 engine = BacktestEngine(
-                    initial_capital=self.initial_capital / len(available_tickers),
+                    initial_capital=per_ticker_allocation,
                     strategy=strategy
                 )
                 
@@ -84,8 +87,8 @@ class BacktestManager:
                     # Collect trades
                     if 'trades' in ticker_results:
                         all_trades.extend(ticker_results['trades'])
-                        
-            # Log summary of results
+            
+            # Log summary of results            
             total_trades = len(all_trades)
             tickers_with_trades = {trade.get('ticker') for trade in all_trades if trade.get('ticker')}
             
@@ -167,13 +170,20 @@ class BacktestManager:
         return combined_results
 
     def _get_benchmark_data(self):
-        """Get benchmark data for comparison, aligned with backtest period"""
+        """
+        Get benchmark data for comparison, treated as a buy-and-hold portfolio 
+        that starts at the beginning of the backtest period.
+        """
         try:
             # Load benchmark data
             benchmark_df = pd.read_csv(
                 self.data_loader.data_path,
                 parse_dates=['Date']
             )
+            
+            # Get the backtest start date from config
+            start_date = pd.to_datetime(config.START_DATE)
+            end_date = pd.to_datetime(config.END_DATE)
             
             # Filter for benchmark ticker
             benchmark_df = benchmark_df[benchmark_df['Ticker'] == self.data_loader.benchmark_ticker].copy()
@@ -191,23 +201,28 @@ class BacktestManager:
             # Select Close price
             benchmark_series = benchmark_df['Close']
             
-            # Get the backtest start date from config
-            start_date = pd.to_datetime(config.START_DATE)
-            end_date = pd.to_datetime(config.END_DATE)
-            
             # Filter benchmark to match backtest period
             benchmark_series = benchmark_series[
                 (benchmark_series.index >= start_date) & 
                 (benchmark_series.index <= end_date)
             ]
             
-            # Normalize to 100 at start for percentage comparison
-            benchmark_series = benchmark_series / benchmark_series.iloc[0] * 100
+            if len(benchmark_series) == 0:
+                return pd.Series()
             
-            return benchmark_series
+            # Calculate the buy-and-hold portfolio value
+            initial_price = benchmark_series.iloc[0]
+            initial_capital = self.initial_capital
+            shares = initial_capital / initial_price
+            
+            # Calculate portfolio value over time (shares * price)
+            benchmark_portfolio = benchmark_series * shares
+            
+            return benchmark_portfolio
             
         except Exception as e:
             self.logger.error(f"Error loading benchmark data: {str(e)}")
+            traceback.print_exc()
             return pd.Series()
 
     def _calculate_portfolio_stats(self, results):

@@ -3,12 +3,13 @@ import numpy as np
 import logging
 from datetime import datetime
 from pathlib import Path
-from src.core.config import config  # Add this import
+from typing import Dict, Any, List, Optional  # Add typing imports
+from src.core.config import config
 from dash import dcc  # Updated import to fix deprecation warning
 from dash import html
 import plotly.graph_objects as go
 
-from ..strategies.base import BaseStrategy  # Changed from Strategy to BaseStrategy
+from ..strategies.base import BaseStrategy
 from .data import DataLoader
 from .constants import CHART_THEME, BENCHMARK_TICKER
 
@@ -22,7 +23,7 @@ class BacktestEngine:
         self.logger = logging.getLogger(__name__)
         
     def run_backtest(self, ticker, data):
-        """Run a backtest for a single ticker"""
+        """Run a backtest for a single ticker with proper allocation limits"""
         try:
             # Check for required data
             if data is None or data.empty or 'Signal' not in data.columns:
@@ -31,9 +32,12 @@ class BacktestEngine:
             # Filter data by configured dates
             start_date = pd.to_datetime(config.START_DATE)
             end_date = pd.to_datetime(config.END_DATE)
-            data = data.loc[(data.index >= start_date) & (data.index <= end_date)]
             
-            if len(data) == 0:
+            # Get data before start date for initial signal generation
+            pre_period_data = data.loc[data.index < start_date].copy() if len(data.loc[data.index < start_date]) > 0 else None
+            trading_period_data = data.loc[(data.index >= start_date) & (data.index <= end_date)].copy()
+            
+            if len(trading_period_data) == 0:
                 return None
                 
             # Initialize portfolio metrics
@@ -43,8 +47,39 @@ class BacktestEngine:
             portfolio_values = []
             trades = []
             
-            # Process signals for each day
-            for date, row in data.iterrows():
+            # Process initial position based on pre-period signal if available
+            if pre_period_data is not None and len(pre_period_data) > 0 and 'Signal' in pre_period_data.columns:
+                initial_signal = pre_period_data['Signal'].iloc[-1]
+                
+                # If initial signal is buy (1)
+                if initial_signal > 0:
+                    first_date = trading_period_data.index[0]
+                    first_price = trading_period_data.iloc[0]['Close']
+                    
+                    # Calculate how many shares we can buy with our allocation
+                    shares_to_buy = int(cash / first_price)
+                    
+                    if shares_to_buy > 0:
+                        # Update positions and cash
+                        positions += shares_to_buy
+                        cost = shares_to_buy * first_price
+                        cash -= cost
+                        
+                        # Log the initial trade
+                        trades.append({
+                            'ticker': ticker,
+                            'entry_date': first_date,
+                            'exit_date': None,
+                            'entry_price': first_price,
+                            'exit_price': None,
+                            'shares': shares_to_buy,
+                            'direction': 'Long',
+                            'pnl': None,
+                            'status': 'Open'
+                        })
+            
+            # Process signals for each day in trading period
+            for date, row in trading_period_data.iterrows():
                 position_value = positions * row['Close']
                 total_value = cash + position_value
                 
@@ -57,9 +92,10 @@ class BacktestEngine:
                 # Process position changes
                 if 'Position' in row and not pd.isna(row['Position']):
                     # Buy signal (1)
-                    if row['Position'] > 0:
-                        # Calculate how many shares we can buy with our cash
+                    if row['Position'] > 0 and positions == 0:
+                        # Calculate how many shares we can buy with available cash
                         shares_to_buy = int(cash / row['Close'])
+                        
                         if shares_to_buy > 0:
                             # Update positions and cash
                             positions += shares_to_buy
@@ -98,8 +134,8 @@ class BacktestEngine:
             
             # Close any remaining open trades at the last price
             if positions > 0:
-                last_date = data.index[-1]
-                last_price = data.iloc[-1]['Close']
+                last_date = trading_period_data.index[-1]
+                last_price = trading_period_data.iloc[-1]['Close']
                 
                 # Find and close any open trades
                 for trade in trades:
@@ -112,10 +148,6 @@ class BacktestEngine:
                 # Update final portfolio value
                 cash += positions * last_price
                 positions = 0
-                
-                # Update the last portfolio value
-                if portfolio_values:
-                    portfolio_values[-1]['value'] = cash
             
             # Create portfolio series
             portfolio_series = pd.Series(

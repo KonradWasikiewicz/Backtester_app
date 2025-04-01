@@ -458,3 +458,50 @@ Traceback (most recent call last):
                                 ^^^^^^
 NameError: name 'config' is not defined
 2025-04-01 16:20:24,937 - src.core.backtest_manager - INFO - Backtest completed with 0 trades across 0 tickers
+2025-04-01 16:26:01,888 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 16:26:07,406 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-01 16:26:07,436 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-01 16:26:07,456 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:26:07,461 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-01 16:26:07,463 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-01 16:26:07,463 - src.core.backtest_manager - INFO - Running backtest with MA strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:26:07,840 - src.core.backtest_manager - INFO - Backtest completed with 80 trades across 7 tickers
+2025-04-01 16:26:08,089 - __main__ - INFO - Creating allocation chart with 80 trades
+2025-04-01 16:26:08,089 - __main__ - INFO - Found tickers: ['GOOGL', 'NVDA', 'TSLA', 'AAPL', 'AMZN', 'MSFT', 'META']
+2025-04-01 16:26:36,606 - src.core.backtest_manager - INFO - Running backtest with BB strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:26:36,954 - src.core.backtest_manager - INFO - Backtest completed with 71 trades across 7 tickers
+2025-04-01 16:26:37,029 - __main__ - INFO - Creating allocation chart with 71 trades
+2025-04-01 16:26:37,029 - __main__ - INFO - Found tickers: ['GOOGL', 'NVDA', 'TSLA', 'AAPL', 'AMZN', 'MSFT', 'META']
+2025-04-01 16:26:39,721 - src.core.backtest_manager - INFO - Running backtest with RSI strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:26:40,104 - src.core.backtest_manager - INFO - Backtest completed with 79 trades across 7 tickers
+2025-04-01 16:26:40,174 - __main__ - INFO - Creating allocation chart with 79 trades
+2025-04-01 16:26:40,174 - __main__ - INFO - Found tickers: ['GOOGL', 'NVDA', 'TSLA', 'AAPL', 'AMZN', 'MSFT', 'META']
+2025-04-01 16:38:02,051 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-01 16:38:02,077 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-01 16:38:02,095 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:38:02,095 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-01 16:38:02,095 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-01 16:38:02,095 - src.core.backtest_manager - INFO - Running backtest with MA strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:38:02,453 - src.core.backtest_manager - INFO - Backtest completed with 87 trades across 7 tickers
+2025-04-01 16:38:02,669 - __main__ - INFO - Creating allocation chart with 87 trades
+2025-04-01 16:38:02,669 - __main__ - INFO - Found tickers: ['GOOGL', 'TSLA', 'META', 'AMZN', 'MSFT', 'AAPL', 'NVDA']
+2025-04-01 16:38:10,567 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-01 16:38:13,936 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-01 16:38:13,961 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-01 16:38:13,980 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:38:13,980 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-01 16:38:13,980 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-01 16:38:13,980 - src.core.backtest_manager - INFO - Running backtest with MA strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:38:14,319 - src.core.backtest_manager - INFO - Backtest completed with 87 trades across 7 tickers
+2025-04-01 16:38:14,536 - __main__ - INFO - Creating allocation chart with 87 trades
+2025-04-01 16:38:14,536 - __main__ - INFO - Found tickers: ['MSFT', 'AAPL', 'META', 'AMZN', 'GOOGL', 'NVDA', 'TSLA']
+2025-04-01 16:39:01,655 - src.core.backtest_manager - INFO - Running backtest with BB strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:39:02,003 - src.core.backtest_manager - INFO - Backtest completed with 68 trades across 7 tickers
+2025-04-01 16:39:02,074 - __main__ - INFO - Creating allocation chart with 68 trades
+2025-04-01 16:39:02,074 - __main__ - INFO - Found tickers: ['MSFT', 'AAPL', 'META', 'AMZN', 'GOOGL', 'NVDA', 'TSLA']
+2025-04-01 16:39:05,959 - src.core.backtest_manager - INFO - Running backtest with RSI strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-01 16:39:06,320 - src.core.backtest_manager - INFO - Backtest completed with 77 trades across 7 tickers
+2025-04-01 16:39:06,394 - __main__ - INFO - Creating allocation chart with 77 trades
+2025-04-01 16:39:06,394 - __main__ - INFO - Found tickers: ['MSFT', 'AAPL', 'META', 'AMZN', 'GOOGL', 'NVDA', 'TSLA']
