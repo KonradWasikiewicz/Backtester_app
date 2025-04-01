@@ -3,6 +3,8 @@ import numpy as np
 import logging
 from typing import List, Dict, Any, Optional
 from dash import dcc  # Updated import to fix deprecation warning
+from dash import html
+import plotly.graph_objects as go
 
 from ..strategies.base import BaseStrategy  # Changed from Strategy to BaseStrategy
 from .data import DataLoader
@@ -30,12 +32,23 @@ class BacktestEngine:
             
             # Create list for portfolio values
             portfolio_values = []
+            portfolio_allocations = []  # Track daily allocations
             
             # Get trading period data only (avoid lookback period)
             trading_period = trading_data[trading_data.index >= pd.Timestamp('2020-01-01')]
             
             # Add first portfolio value (initial cash)
             portfolio_values.append(available_cash)
+            
+            # First day allocation (100% cash)
+            portfolio_allocations.append({
+                'date': trading_period.index[0] if len(trading_period) > 0 else pd.Timestamp('2020-01-01'),
+                'ticker': ticker,
+                'shares': 0,
+                'value': 0,
+                'cash': available_cash,
+                'total': available_cash
+            })
             
             # Process each day in trading period
             for i in range(len(trading_period)):
@@ -84,6 +97,16 @@ class BacktestEngine:
                 position_value = current_position * current_day['Close']
                 portfolio_value = position_value + available_cash
                 portfolio_values.append(portfolio_value)
+                
+                # Record allocation for this day
+                portfolio_allocations.append({
+                    'date': current_date,
+                    'ticker': ticker,
+                    'shares': current_position,
+                    'value': position_value,
+                    'cash': available_cash,
+                    'total': portfolio_value
+                })
             
             # Create series aligned with trading period index
             # Ensure length matches trading period
@@ -97,7 +120,8 @@ class BacktestEngine:
             
             return {
                 'Portfolio_Value': portfolio_series,
-                'trades': self.trades
+                'trades': self.trades,
+                'allocations': portfolio_allocations  # Add allocations to results
             }
             
         except Exception as e:
@@ -228,3 +252,179 @@ def create_styled_chart(figure_data, layout_title):
     except Exception as e:
         logging.error(f"Error creating chart: {str(e)}", exc_info=True)
         return create_empty_chart(layout_title)
+
+def create_allocation_chart(results):
+    """Create portfolio allocation chart showing position values and cash over time"""
+    if not results or 'allocations' not in results:
+        return html.Div("No allocation data available")
+        
+    # Extract allocation data
+    allocations = results.get('allocations', [])
+    if not allocations:
+        return html.Div("No allocation data available")
+        
+    # Convert allocations to DataFrame
+    alloc_records = []
+    for ticker_allocs in allocations.values():
+        for alloc in ticker_allocs:
+            alloc_records.append(alloc)
+            
+    if not alloc_records:
+        return html.Div("No allocation data available")
+        
+    # Create DataFrame from records
+    df_alloc = pd.DataFrame(alloc_records)
+    
+    # Group by date and aggregate
+    df_pivot = df_alloc.pivot_table(
+        index='date', 
+        columns='ticker', 
+        values='value',
+        aggfunc='sum'
+    ).fillna(0)
+    
+    # Add cash column
+    cash_by_date = df_alloc.groupby('date')['cash'].first()
+    df_pivot['Cash'] = cash_by_date
+    
+    # Calculate percentages
+    total_by_date = df_alloc.groupby('date')['total'].first()
+    for col in df_pivot.columns:
+        df_pivot[f'{col}_pct'] = (df_pivot[col] / total_by_date) * 100
+    
+    # Create figure for values
+    fig_values = go.Figure()
+    
+    # Add area traces for each ticker (stacked)
+    for ticker in df_pivot.columns:
+        if ticker != 'Cash' and not ticker.endswith('_pct'):
+            fig_values.add_trace(
+                go.Scatter(
+                    x=df_pivot.index,
+                    y=df_pivot[ticker],
+                    name=ticker,
+                    stackgroup='one',
+                    mode='lines',
+                    line=dict(width=0.5),
+                    hovertemplate='%{y:$,.2f}<extra>%{x|%Y-%m-%d}: ' + ticker + '</extra>'
+                )
+            )
+    
+    # Add cash as the bottom area
+    fig_values.add_trace(
+        go.Scatter(
+            x=df_pivot.index,
+            y=df_pivot['Cash'],
+            name='Cash',
+            stackgroup='one',
+            mode='lines',
+            line=dict(width=0.5),
+            fillcolor='rgba(200, 200, 200, 0.5)',
+            hovertemplate='%{y:$,.2f}<extra>%{x|%Y-%m-%d}: Cash</extra>'
+        )
+    )
+    
+    # Create figure for percentages
+    fig_pct = go.Figure()
+    
+    # Add area traces for percentages (stacked)
+    for ticker in [col for col in df_pivot.columns if not col.endswith('_pct') and col != 'Cash']:
+        fig_pct.add_trace(
+            go.Scatter(
+                x=df_pivot.index,
+                y=df_pivot[f'{ticker}_pct'],
+                name=ticker,
+                stackgroup='one',
+                mode='lines',
+                line=dict(width=0.5),
+                hovertemplate='%{y:.1f}%<extra>%{x|%Y-%m-%d}: ' + ticker + '</extra>'
+            )
+        )
+    
+    # Add cash percentage
+    fig_pct.add_trace(
+        go.Scatter(
+            x=df_pivot.index,
+            y=df_pivot['Cash_pct'],
+            name='Cash',
+            stackgroup='one',
+            mode='lines',
+            line=dict(width=0.5),
+            fillcolor='rgba(200, 200, 200, 0.5)',
+            hovertemplate='%{y:.1f}%<extra>%{x|%Y-%m-%d}: Cash</extra>'
+        )
+    )
+    
+    # Layout for values chart
+    fig_values.update_layout(
+        title='Portfolio Allocation (Values)',
+        template=CHART_THEME,
+        paper_bgcolor='#1e222d',
+        plot_bgcolor='#1e222d',
+        font={'color': '#ffffff'},
+        xaxis={
+            'gridcolor': '#2a2e39',
+            'showgrid': True,
+            'zeroline': False,
+            'title': 'Date'
+        },
+        yaxis={
+            'gridcolor': '#2a2e39',
+            'showgrid': True,
+            'zeroline': True,
+            'zerolinecolor': '#2a2e39',
+            'title': 'Allocation Value ($)'
+        },
+        margin={'t': 50, 'l': 60, 'r': 30, 'b': 50},
+        showlegend=True,
+        legend={
+            'orientation': 'h',
+            'y': 1.1,
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'color': '#ffffff'},
+            'bgcolor': '#1e222d'
+        },
+        height=300,
+        autosize=True
+    )
+    
+    # Layout for percentage chart
+    fig_pct.update_layout(
+        title='Portfolio Allocation (Percentages)',
+        template=CHART_THEME,
+        paper_bgcolor='#1e222d',
+        plot_bgcolor='#1e222d',
+        font={'color': '#ffffff'},
+        xaxis={
+            'gridcolor': '#2a2e39',
+            'showgrid': True,
+            'zeroline': False,
+            'title': 'Date'
+        },
+        yaxis={
+            'gridcolor': '#2a2e39',
+            'showgrid': True,
+            'zeroline': True,
+            'zerolinecolor': '#2a2e39',
+            'title': 'Allocation (%)'
+        },
+        margin={'t': 50, 'l': 60, 'r': 30, 'b': 50},
+        showlegend=True,
+        legend={
+            'orientation': 'h',
+            'y': 1.1,
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'color': '#ffffff'},
+            'bgcolor': '#1e222d'
+        },
+        height=300,
+        autosize=True
+    )
+    
+    # Return both charts
+    return html.Div([
+        dcc.Graph(figure=fig_values, config={'displayModeBar': True}),
+        dcc.Graph(figure=fig_pct, config={'displayModeBar': True})
+    ])

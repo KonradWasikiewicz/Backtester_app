@@ -1,201 +1,248 @@
-2025-03-31 15:19:57,761 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
-
-2025-03-31 15:20:03,261 - __main__ - ERROR - Backtest error: BacktestEngine.__init__() got an unexpected keyword argument 'strategy'
-2025-03-31 15:21:20,266 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
-
-2025-03-31 15:21:26,774 - __main__ - ERROR - Backtest error: name 'logger' is not defined
-2025-03-31 15:24:06,828 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
-
-2025-03-31 15:24:11,859 - src.core.backtest_manager - ERROR - Backtest manager error: 'str' object is not callable
-Traceback (most recent call last):
+import dash15:19:57,761 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+import dash_bootstrap_components as dbc
+import pandas as pd,261 - __main__ - ERROR - Backtest error: BacktestEngine.__init__() got an unexpected keyword argument 'strategy'
+import numpy as np0,266 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+from dash import dcc, html, dash_table
+from dash.dependencies import Input, Output, Stateest error: name 'logger' is not defined
+import sys 15:24:06,828 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+import traceback
+from pathlib import Path- src.core.backtest_manager - ERROR - Backtest manager error: 'str' object is not callable
+import loggingt recent call last):
   File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 157, in run_backtest
-    strategy = strategy_class(**strategy_params)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: 'str' object is not callable
-2025-03-31 15:24:12,340 - src.core.backtest_manager - ERROR - Backtest manager error: 'str' object is not callable
+# Konfiguracja logowaniaclass(**strategy_params)
+logging.basicConfig(^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    level=logging.INFO, is not callable
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',test manager error: 'str' object is not callable
+    handlers=[t recent call last):
+        logging.FileHandler("backtest.log"),cktest_manager.py", line 157, in run_backtest
+        logging.StreamHandler()*strategy_params)
+    ]          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+)ypeError: 'str' object is not callable
+logger = logging.getLogger(__name__)acktest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
 Traceback (most recent call last):
-  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 157, in run_backtest
-    strategy = strategy_class(**strategy_params)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: 'str' object is not callable
-2025-03-31 15:25:39,741 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
-Traceback (most recent call last):
-  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
-    data = self.data_loader.get_data()
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
+# Add project root to Python pathsrc\core\backtest_manager.py", line 160, in run_backtest
+project_root = Path(__file__).parent.absolute()
+sys.path.append(str(project_root))^^
 AttributeError: 'DataLoader' object has no attribute 'get_data'
-2025-03-31 15:33:52,613 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
-
-2025-03-31 15:33:58,318 - src.core.backtest_manager - ERROR - Backtest manager error: Can't instantiate abstract class MovingAverageCrossover with abstract method generate_signals
-Traceback (most recent call last):
-  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 157, in run_backtest
-    strategy = strategy_class(**strategy_params)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: Can't instantiate abstract class MovingAverageCrossover with abstract method generate_signals
-2025-03-31 15:34:16,681 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
-Traceback (most recent call last):
-  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
-    data = self.data_loader.get_data()
+# Now import local modulesdash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+from src.core.config import config
+from src.core.constants import AVAILABLE_STRATEGIES, CHART_THEMEcktest manager error: Can't instantiate abstract class MovingAverageCrossover with abstract method generate_signals
+from src.core.data import DataLoader
+from src.core.backtest_manager import BacktestManagernager.py", line 157, in run_backtest
+from src.visualization.visualizer import BacktestVisualizer
+from src.visualization.chart_utils import create_styled_chart, create_empty_chart, create_trade_histogram_figure
+from src.ui.components import create_metric_card, create_metric_card_with_tooltipmethod generate_signals
+from src.analysis.metrics import (.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
+    calculate_trade_statistics, calculate_alpha, calculate_beta, 
+    calculate_information_ratio, calculate_recovery_factor.py", line 160, in run_backtest
+)   data = self.data_loader.get_data()
            ^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'DataLoader' object has no attribute 'get_data'
-2025-03-31 15:34:20,377 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
-Traceback (most recent call last):
-  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
-    data = self.data_loader.get_data()
+# Initialize Dash app with dark themeas no attribute 'get_data'
+app = dash.Dash(:20,377 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
+    __name__, t recent call last):
+    external_stylesheets=[er_app\src\core\backtest_manager.py", line 160, in run_backtest
+        dbc.themes.DARKLY,r.get_data()
+        'https://use.fontawesome.com/releases/v5.15.4/css/all.css'
+    ],uteError: 'DataLoader' object has no attribute 'get_data'
+    meta_tags=[8:58,742 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+        {"name": "viewport", "content": "width=device-width, initial-scale=1"}
+    ]03-31 15:39:05,400 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
+)raceback (most recent call last):
+app.title = "Trading Strategy Backtester"\backtest_manager.py", line 160, in run_backtest
+server = app.server  # For production deployment
            ^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'DataLoader' object has no attribute 'get_data'
-2025-03-31 15:38:58,742 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
-
-2025-03-31 15:39:05,400 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
+# Initialize BacktestManager for handling all backtest operations
+backtest_manager = BacktestManager(initial_capital=10000)OR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
 Traceback (most recent call last):
-  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
-    data = self.data_loader.get_data()
+# Initialize visualizerester_app\src\core\backtest_manager.py", line 160, in run_backtest
+visualizer = BacktestVisualizer()ata()
            ^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'DataLoader' object has no attribute 'get_data'
-2025-03-31 15:39:10,736 - src.core.backtest_manager - ERROR - Backtest manager error: 'DataLoader' object has no attribute 'get_data'
-Traceback (most recent call last):
-  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 160, in run_backtest
-    data = self.data_loader.get_data()
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'DataLoader' object has no attribute 'get_data'
-2025-03-31 15:41:41,672 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
-
-2025-03-31 15:41:48,225 - src.core.data - INFO - Loaded data for 5 instruments
-2025-03-31 15:41:48,254 - root - INFO - Running backtest for AAPL
-2025-03-31 15:41:48,413 - root - INFO - Running backtest for MSFT
-2025-03-31 15:41:48,548 - root - INFO - Running backtest for AMZN
-2025-03-31 15:41:48,678 - root - INFO - Running backtest for GOOGL
+def create_empty_cards():er' object has no attribute 'get_data'
+    """Create empty metric cards""" - INFO - Dash is running on http://127.0.0.1:8050/
+    return dbc.Row([
+        dbc.Col(create_metric_card("Initial Capital", "N/A")),or 5 instruments
+        dbc.Col(create_metric_card("Final Capital", "N/A")), AAPL
+        dbc.Col(create_metric_card("Total Return", "N/A")),r MSFT
+        dbc.Col(create_metric_card("Total Trades", "N/A"))or AMZN
+    ])3-31 15:41:48,678 - root - INFO - Running backtest for GOOGL
 2025-03-31 15:41:48,800 - root - INFO - Running backtest for META
-2025-03-31 15:41:48,945 - src.core.data - INFO - Loaded benchmark data for SPY
-2025-03-31 15:41:48,948 - __main__ - INFO - Backtest completed for MA
-2025-03-31 15:41:48,949 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:41:48,949 - __main__ - INFO - Number of trades: 72
-2025-03-31 15:42:00,532 - root - INFO - Running backtest for AAPL
-2025-03-31 15:42:00,665 - root - INFO - Running backtest for MSFT
-2025-03-31 15:42:00,792 - root - INFO - Running backtest for AMZN
-2025-03-31 15:42:00,912 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:42:01,040 - root - INFO - Running backtest for META
-2025-03-31 15:42:01,163 - __main__ - INFO - Backtest completed for BB
-2025-03-31 15:42:01,163 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:42:01,164 - __main__ - INFO - Number of trades: 157
-2025-03-31 15:42:05,104 - root - INFO - Running backtest for AAPL
-2025-03-31 15:42:05,229 - root - INFO - Running backtest for MSFT
-2025-03-31 15:42:05,346 - root - INFO - Running backtest for AMZN
-2025-03-31 15:42:05,462 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:42:05,591 - root - INFO - Running backtest for META
-2025-03-31 15:42:05,724 - __main__ - INFO - Backtest completed for RSI
-2025-03-31 15:42:05,724 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:42:05,730 - __main__ - INFO - Number of trades: 185
-2025-03-31 15:43:29,341 - root - INFO - Running backtest for AAPL
-2025-03-31 15:43:29,475 - root - INFO - Running backtest for MSFT
-2025-03-31 15:43:29,616 - root - INFO - Running backtest for AMZN
-2025-03-31 15:43:29,740 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:43:29,857 - root - INFO - Running backtest for META
-2025-03-31 15:43:29,986 - __main__ - INFO - Backtest completed for BB
-2025-03-31 15:43:29,986 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:43:29,987 - __main__ - INFO - Number of trades: 157
-2025-03-31 15:43:33,871 - root - INFO - Running backtest for AAPL
+def create_metric_cards(stats):ore.data - INFO - Loaded benchmark data for SPY
+    """Create metric cards layout with advanced metrics and tooltips"""
+    tooltip_texts = {49 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+        'Initial Capital': "Starting capital at the beginning of the backtest period.",
+        'Final Capital': "Ending portfolio value at the end of the backtest period.",
+        'CAGR': "Compound Annual Growth Rate. Measures the mean annual growth rate of an investment over a specified time period longer than one year.",
+        'Total Return': "The overall return of the portfolio from start to finish, expressed as a percentage of initial capital.",
+        'Max Drawdown': "Largest peak-to-trough decline in portfolio value, expressed as a percentage. Measures the biggest historical loss.",
+        'Sharpe Ratio': "Risk-adjusted return metric. Calculated as (Portfolio Return - Risk Free Rate) / Portfolio Standard Deviation. Assumes 2% Risk Free Rate.",
+        'Sortino Ratio': "Similar to Sharpe ratio but only penalizes downside volatility. Calculated using 2% Risk Free Rate.",
+        'Information Ratio': "Measures portfolio returns above the benchmark per unit of risk. Higher values indicate better risk-adjusted performance vs benchmark.",
+        'Alpha': "Excess return of the investment relative to the return of the benchmark index. Expressed as percentage points.",
+        'Beta': "Measure of portfolio's volatility compared to the market. Beta > 1 means more volatile than market, Beta < 1 means less volatile.",
+        'Recovery Factor': "Absolute value of total profit divided by maximum drawdown. Higher values indicate better recovery from drawdowns."
+    }03-31 15:42:05,346 - root - INFO - Running backtest for AMZN
+    -03-31 15:42:05,462 - root - INFO - Running backtest for GOOGL
+    # Calculate additional metricsNFO - Running backtest for META
+    alpha = calculate_alpha(stats.get('Portfolio_Value'), stats.get('Benchmark', None))
+    beta = calculate_beta(stats.get('Portfolio_Value'), stats.get('Benchmark', None))', 'signals', 'Benchmark']
+    info_ratio = calculate_information_ratio(stats.get('Portfolio_Value'), stats.get('Benchmark', None))
+    recovery_factor = calculate_recovery_factor(backtest for AAPL
+        stats.get('total_return', 0), - Running backtest for MSFT
+        stats.get('max_drawdown', 1)O - Running backtest for AMZN
+    )03-31 15:43:29,740 - root - INFO - Running backtest for GOOGL
+    -03-31 15:43:29,857 - root - INFO - Running backtest for META
+    # Get initial and final capital values- Backtest completed for BB
+    initial_capital = config.INITIAL_CAPITALResults keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+    portfolio_values = stats.get('Portfolio_Value')of trades: 157
+    final_capital = portfolio_values.iloc[-1] if portfolio_values is not None and len(portfolio_values) > 0 else initial_capital
 2025-03-31 15:43:34,004 - root - INFO - Running backtest for MSFT
-2025-03-31 15:43:34,124 - root - INFO - Running backtest for AMZN
-2025-03-31 15:43:34,263 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:43:34,387 - root - INFO - Running backtest for META
-2025-03-31 15:43:34,509 - __main__ - INFO - Backtest completed for MA
-2025-03-31 15:43:34,515 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:43:34,518 - __main__ - INFO - Number of trades: 72
-2025-03-31 15:50:04,899 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
-
-2025-03-31 15:50:10,894 - src.core.data - INFO - Loaded data for 5 instruments
-2025-03-31 15:50:10,913 - root - INFO - Running backtest for AAPL
-2025-03-31 15:50:11,058 - root - INFO - Running backtest for MSFT
-2025-03-31 15:50:11,194 - root - INFO - Running backtest for AMZN
-2025-03-31 15:50:11,326 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:50:11,464 - root - INFO - Running backtest for META
-2025-03-31 15:50:11,616 - src.core.data - INFO - Loaded benchmark data for SPY
-2025-03-31 15:50:11,619 - __main__ - INFO - Backtest completed for MA
-2025-03-31 15:50:11,619 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:50:11,620 - __main__ - INFO - Number of trades: 72
-2025-03-31 15:50:11,908 - __main__ - ERROR - Callback error: 'Histogram' object has no attribute 'get'
-2025-03-31 15:52:01,957 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
-
-2025-03-31 15:52:07,807 - src.core.data - INFO - Loaded data for 5 instruments
-2025-03-31 15:52:07,831 - root - INFO - Running backtest for AAPL
-2025-03-31 15:52:07,994 - root - INFO - Running backtest for MSFT
-2025-03-31 15:52:08,153 - root - INFO - Running backtest for AMZN
-2025-03-31 15:52:08,310 - root - INFO - Running backtest for GOOGL
+    return html.Div([24 - root - INFO - Running backtest for AMZN
+        # First row - Capital metrics side by sidecktest for GOOGL
+        dbc.Row([34,387 - root - INFO - Running backtest for META
+            dbc.Col(create_metric_card_with_tooltip("Initial Capital", f"${initial_capital:,.2f}", tooltip_texts['Initial Capital']), width=6),
+            dbc.Col(create_metric_card_with_tooltip("Final Capital", f"${final_capital:,.2f}", tooltip_texts['Final Capital']), width=6)
+        ], className="mb-2"),  # Reduced marginber of trades: 72
+        31 15:50:04,899 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+        # Performance metrics in a compact grid
+        dbc.Row([10,894 - src.core.data - INFO - Loaded data for 5 instruments
+            dbc.Col([13 - root - INFO - Running backtest for AAPL
+                create_metric_card_with_tooltip("CAGR", f"{stats.get('cagr', 0):.2f}%", tooltip_texts['CAGR']),
+                create_metric_card_with_tooltip("Total Return", f"{stats.get('total_return', 0):.2f}%", tooltip_texts['Total Return']),
+                create_metric_card_with_tooltip("Alpha", f"{alpha:.2f}%", tooltip_texts['Alpha'])
+            ], width=4, className="px-1"),  # Reduced paddingMETA
+            dbc.Col([16 - src.core.data - INFO - Loaded benchmark data for SPY
+                create_metric_card_with_tooltip("Max Drawdown", f"{stats.get('max_drawdown', 0):.2f}%", tooltip_texts['Max Drawdown']),
+                create_metric_card_with_tooltip("Sharpe Ratio", f"{stats.get('sharpe_ratio', 0):.2f}", tooltip_texts['Sharpe Ratio']),
+                create_metric_card_with_tooltip("Beta", f"{beta:.2f}", tooltip_texts['Beta'])
+            ], width=4, className="px-1"),  # Reduced padding'Histogram' object has no attribute 'get'
+            dbc.Col([57 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+                create_metric_card_with_tooltip("Info Ratio", f"{info_ratio:.2f}", tooltip_texts['Information Ratio']),
+                create_metric_card_with_tooltip("Sortino Ratio", f"{stats.get('sortino_ratio', 0):.2f}", tooltip_texts['Sortino Ratio']),
+                create_metric_card_with_tooltip("Recovery Factor", f"{recovery_factor:.2f}", tooltip_texts['Recovery Factor'])
+            ], width=4, className="px-1")  # Reduced padding MSFT
+        ], className="g-2")  # Reduced gutters between columnsMZN
+    ])3-31 15:52:08,310 - root - INFO - Running backtest for GOOGL
 2025-03-31 15:52:08,460 - root - INFO - Running backtest for META
-2025-03-31 15:52:08,613 - src.core.data - INFO - Loaded benchmark data for SPY
-2025-03-31 15:52:08,618 - __main__ - INFO - Backtest completed for MA
-2025-03-31 15:52:08,618 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:52:08,618 - __main__ - INFO - Number of trades: 72
-2025-03-31 15:52:44,300 - root - INFO - Running backtest for AAPL
-2025-03-31 15:52:44,437 - root - INFO - Running backtest for MSFT
-2025-03-31 15:52:44,560 - root - INFO - Running backtest for AMZN
-2025-03-31 15:52:44,682 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:52:44,798 - root - INFO - Running backtest for META
-2025-03-31 15:52:44,923 - __main__ - INFO - Backtest completed for BB
-2025-03-31 15:52:44,923 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:52:44,928 - __main__ - INFO - Number of trades: 157
-2025-03-31 15:52:53,388 - root - INFO - Running backtest for AAPL
-2025-03-31 15:52:53,588 - root - INFO - Running backtest for MSFT
-2025-03-31 15:52:53,717 - root - INFO - Running backtest for AMZN
-2025-03-31 15:52:53,834 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:52:53,965 - root - INFO - Running backtest for META
-2025-03-31 15:52:54,094 - __main__ - INFO - Backtest completed for RSI
-2025-03-31 15:52:54,095 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:52:54,095 - __main__ - INFO - Number of trades: 185
-2025-03-31 15:53:32,110 - root - INFO - Running backtest for AAPL
-2025-03-31 15:53:32,282 - root - INFO - Running backtest for MSFT
-2025-03-31 15:53:32,406 - root - INFO - Running backtest for AMZN
-2025-03-31 15:53:32,523 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:53:32,639 - root - INFO - Running backtest for META
-2025-03-31 15:53:32,758 - __main__ - INFO - Backtest completed for BB
-2025-03-31 15:53:32,760 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:53:32,760 - __main__ - INFO - Number of trades: 157
-2025-03-31 15:54:07,862 - root - INFO - Running backtest for AAPL
-2025-03-31 15:54:08,021 - root - INFO - Running backtest for MSFT
-2025-03-31 15:54:08,140 - root - INFO - Running backtest for AMZN
-2025-03-31 15:54:08,256 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:54:08,375 - root - INFO - Running backtest for META
-2025-03-31 15:54:08,494 - __main__ - INFO - Backtest completed for MA
-2025-03-31 15:54:08,495 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:54:08,495 - __main__ - INFO - Number of trades: 72
-2025-03-31 15:59:44,622 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+def create_trade_histogram(trades):data - INFO - Loaded benchmark data for SPY
+    """Create enhanced trade return distribution histogram with statistics"""
+    if not trades:8,618 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+        return html.Div("No trades available")mber of trades: 72
+    -03-31 15:52:44,300 - root - INFO - Running backtest for AAPL
+    # Calculate trade statistics INFO - Running backtest for MSFT
+    stats = calculate_trade_statistics(trades)g backtest for AMZN
+    -03-31 15:52:44,682 - root - INFO - Running backtest for GOOGL
+    # Create histogram figuret - INFO - Running backtest for META
+    histogram = create_trade_histogram_figure(trades, stats)ed for BB
+    -03-31 15:52:44,923 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+    # Define tooltips for each metricINFO - Number of trades: 157
+    tooltip_texts = {88 - root - INFO - Running backtest for AAPL
+        'Win Rate': "Percentage of trades that resulted in a profit. Calculated as (Winning Trades / Total Trades) × 100.",
+        'Total Trades': "Total number of completed trades (both winners and losers).",
+        'Profit Factor': "Ratio of gross profits to gross losses. A value above 1 indicates overall profitability. Calculated as |Total Profits / Total Losses|.",
+        'Avg Win': "Average profit of winning trades in dollar terms.",
+        'Largest Win': "Largest single trade profit in dollar terms.",
+        'Winning Trades': "Total number of trades that resulted in a profit.",'trades', 'signals', 'Benchmark']
+        'Avg Loss': "Average loss of losing trades in dollar terms.",
+        'Largest Loss': "Largest single trade loss in dollar terms.",
+        'Losing Trades': "Total number of trades that resulted in a loss."
+    }03-31 15:53:32,406 - root - INFO - Running backtest for AMZN
+    -03-31 15:53:32,523 - root - INFO - Running backtest for GOOGL
+    # Create compact statistics table with tooltipsning backtest for META
+    stats_table = html.Div([main__ - INFO - Backtest completed for BB
+        dbc.Row([32,760 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+            dbc.Col(create_metric_card_with_tooltip("Total Trades", f"{stats['total_trades']}", tooltip_texts['Total Trades']), width=4, className="px-1"),60 - __main__ - INFO - Number of trades: 157
+            dbc.Col(create_metric_card_with_tooltip("Win Rate", f"{stats['win_rate']:.1f}%", tooltip_texts['Win Rate']), width=4, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Profit Factor", f"{stats['profit_factor']:.2f}", tooltip_texts['Profit Factor']), width=4, className="px-1")
+        ], className="g-1 mb-1"),
+        dbc.Row([- root - INFO - Running backtest for GOOGL
+            dbc.Col(create_metric_card_with_tooltip("Avg Win", f"${stats['avg_win_pnl']:.2f}", tooltip_texts['Avg Win']), width=4, className="px-1"),75 - root - INFO - Running backtest for META
+            dbc.Col(create_metric_card_with_tooltip("Avg Loss", f"${stats['avg_loss_pnl']:.2f}", tooltip_texts['Avg Loss']), width=4, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Largest Win", f"${stats['largest_win']:.2f}", tooltip_texts['Largest Win']), width=4, className="px-1")
+        ], className="g-1")
+    ])- dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+    
+    return html.Div([
+        histogram,
+        stats_table
+    ], className="pb-0")  # Reduced padding - root - INFO - Running backtest for AMZN
+ot - INFO - Running backtest for GOOGL
+def create_trade_table(trades):3-31 15:59:51,261 - root - INFO - Running backtest for META
+    """Create unified trade history table with error handling"""-03-31 15:59:51,414 - src.core.data - INFO - Loaded benchmark data for SPY
+    if not trades:18 - __main__ - INFO - Backtest completed for MA
+        return html.Div("No trades available")1,418 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+    ,419 - __main__ - INFO - Number of trades: 72
+    trade_records = []3-31 16:00:34,606 - root - INFO - Running backtest for AAPL
+    for trade in trades:2025-03-31 16:00:34,742 - root - INFO - Running backtest for MSFT
+        try:- INFO - Running backtest for AMZN
+            # Validate trade dataGL
+            if not isinstance(trade, dict):5,109 - root - INFO - Running backtest for META
+                continuecktest completed for BB
+                -03-31 16:00:35,229 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+            # Required fields with fallbacks9 - __main__ - INFO - Number of trades: 157
+            entry_date = pd.to_datetime(trade.get('entry_date', pd.NaT))- root - INFO - Running backtest for AAPL
+            exit_date = pd.to_datetime(trade.get('exit_date', pd.NaT))6:00:44,186 - root - INFO - Running backtest for MSFT
+            ticker = trade.get('ticker', '')INFO - Running backtest for AMZN
+            direction = trade.get('direction', '')ning backtest for GOOGL
+            shares = int(trade.get('shares', 0))- root - INFO - Running backtest for META
+            entry_price = float(trade.get('entry_price', 0)):44,706 - __main__ - INFO - Backtest completed for RSI
+            exit_price = float(trade.get('exit_price', 0))Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+            pnl = float(trade.get('pnl', 0))
+            /127.0.0.1:8050/
+            # Skip invalid trades
+            if pd.isna(entry_date) or pd.isna(exit_date) or shares <= 0:oaded data for 5 instruments
+                continuebacktest for AAPL
+                 MSFT
+            # Format for displayor AMZN
+            record = {ing backtest for GOOGL
+                'Date In': entry_date.strftime('%Y-%m-%d'),6:05:51,235 - root - INFO - Running backtest for META
+                'Date Out': exit_date.strftime('%Y-%m-%d'),e.data - INFO - Loaded benchmark data for SPY
+                'Ticker': ticker,
+                'Type': direction,- __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+                'Shares': f"{shares:,}",:51,401 - __main__ - INFO - Number of trades: 72
+                'Entry': f"${entry_price:.2f}",ash - INFO - Dash is running on http://127.0.0.1:8050/
+                'Exit': f"${exit_price:.2f}",
+                'P&L': f"${pnl:.2f}",a for 5 instruments
+                'Return': f"{(pnl / (entry_price * shares) * 100):.1f}%" if entry_price * shares != 0 else "N/A"r AAPL
+            }INFO - Running backtest for MSFT
+            trade_records.append(record)NFO - Running backtest for AMZN
+        except (KeyError, ValueError, TypeError, AttributeError) as e:Running backtest for GOOGL
+            logger.error(f"Error processing trade for table: {e}") backtest for META
+            continueO - Loaded benchmark data for SPY
+    INFO - Backtest completed for MA
+    if not trade_records:
+        return html.Div("No valid trades to display"):54:41,953 - __main__ - INFO - Number of trades: 72
+    Running backtest for AAPL
+    df = pd.DataFrame(trade_records)
+    
+    return dash_table.DataTable(719 - root - INFO - Running backtest for GOOGL
+        id='trade-table',-04-01 14:55:07,837 - root - INFO - Running backtest for META
+        columns=[ __main__ - INFO - Backtest completed for BB
+            {"name": i, "id": i} for i in df.columnseys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+        ],-04-01 14:55:07,953 - __main__ - INFO - Number of trades: 157
+        data=df.to_dict('records'),O - Running backtest for AAPL
+        sort_action="native",-04-01 14:55:10,702 - root - INFO - Running backtest for MSFT
+        style_table={ INFO - Running backtest for AMZN
+            'height': '640px', root - INFO - Running backtest for GOOGL
+            'overflowY': 'auto',11,036 - root - INFO - Running backtest for META
+            'minWidth': '100%', completed for RSI
+            'maxWidth': '100%' 14:55:11,169 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
+        },- INFO - Number of trades: 185
+        fixed_rows={'headers': True},        style_cell={            'backgroundColor': '#1e222d',            'color': '#e1e1e1',            'fontFamily': 'system-ui',            'fontSize': '13px',            'height': 'auto',            'minWidth': '70px',            'maxWidth': '100px',            'overflow': 'hidden',            'textOverflow': 'ellipsis',            'textAlign': 'left',            'padding': '8px 12px'        },        style_cell_conditional=[            {'if': {'column_id': 'Date In'}, 'width': '90px'},            {'if': {'column_id': 'Date Out'}, 'width': '90px'},            {'if': {'column_id': 'Ticker'}, 'width': '70px'},            {'if': {'column_id': 'Type'}, 'width': '70px'},            {'if': {'column_id': 'Shares'}, 'width': '80px'},            {'if': {'column_id': 'Entry'}, 'width': '90px'},            {'if': {'column_id': 'Exit'}, 'width': '90px'},            {'if': {'column_id': 'P&L'}, 'width': '90px'},            {'if': {'column_id': 'Return'}, 'width': '80px'}        ],        style_data={            'whiteSpace': 'nowrap',            'height': '30px',            'lineHeight': '30px'        },        style_header={            'backgroundColor': '#2a2e39',            'fontWeight': 'bold',            'border': '1px solid #2a2e39',            'whiteSpace': 'nowrap',            'height': '40px'        },        style_data_conditional=[            {                'if': {'filter_query': '{P&L} contains "+"'},                'color': '#17B897'            },            {                'if': {'filter_query': '{P&L} contains "-"'},                'color': '#FF6B6B'            }        ],        css=[{            'selector': '.dash-table-container',            'rule': 'max-height: 640px; font-family: system-ui;'        }, {            'selector': '::-webkit-scrollbar',            'rule': 'width: 8px; height: 8px;'        }, {            'selector': '::-webkit-scrollbar-track',            'rule': 'background: #1e222d;'        }, {            'selector': '::-webkit-scrollbar-thumb',            'rule': 'background: #2a2e39; border-radius: 4px;'        }, {            'selector': '::-webkit-scrollbar-thumb:hover',            'rule': 'background: #363b47;'        }]    )def run_backtest(strategy_type, strategy_params=None):    """Run backtest with specified parameters"""    try:        signals, combined_results, stats = backtest_manager.run_backtest(            strategy_type, **(strategy_params or {})        )        return signals, combined_results, stats    except Exception as e:        logger.error(f"Backtest error: {str(e)}")        traceback.print_exc()        return None, None, None# App layoutapp.layout = dbc.Container([    dbc.Row([        dbc.Col([            html.H1("Portfolio Backtester", className="text-center my-4")        ])    ]),    dbc.Row([        # Left column (Strategy Settings)        dbc.Col([            dbc.Card([                dbc.CardHeader("Strategy Settings"),                dbc.CardBody([                    dbc.Row([                        dbc.Col([                            html.Label("Select Strategy", className="text-light mb-2"),                            dcc.Dropdown(                                id="strategy-selector",                                options=[                                    {"label": "Bollinger Bands", "value": "BB"},                                    {"label": "Moving Average Crossover", "value": "MA"},                                    {"label": "RSI", "value": "RSI"}                                ],                                value="MA",                                className="mb-3",                                style={                                    'backgroundColor': '#1e222d',                                    'color': '#ffffff',                                },                                optionHeight=35,                                clearable=False,                            )                        ], width=12)                    ]),                    html.Div([                        html.Label("Backtest Period"),                        html.P(id="backtest-period", className="text-info"),                        html.Label("Portfolio Instruments"),                        html.Div(id="portfolio-instruments", className="text-info")                    ], className="mt-3"),                    dbc.Spinner(html.Div(id="calculation-status"))                ])            ], className="mb-4")        ], width=2),                # Center column (Equity Curve)        dbc.Col([            dbc.Row([                dbc.Col(html.Div(id="equity-curve-container", style={"height": "450px"}), className="mb-5")            ]),            dbc.Row([                dbc.Col(html.Div(id="metrics-container"), className="mb-5")            ]),            dbc.Row([                dbc.Col(html.Div(id="additional-charts"))            ])        ], width=6),                # Right column (Trade Distribution & History)        dbc.Col([            dbc.Card([                dbc.CardHeader("Trade Distribution"),                dbc.CardBody([                    html.Div(id="trade-distribution-container")                ])            ], className="mb-4"),            dbc.Card([                dbc.CardHeader("Trade History"),                dbc.CardBody([                    html.Div(id="trade-table-container")                ])            ])        ], width=4)    ])], fluid=True, style={"backgroundColor": "#131722"})@app.callback(    [Output("calculation-status", "children"),     Output("equity-curve-container", "children"),     Output("metrics-container", "children"),     Output("additional-charts", "children"),     Output("trade-distribution-container", "children"),     Output("trade-table-container", "children"),     Output("backtest-period", "children"),     Output("portfolio-instruments", "children")],    [Input("strategy-selector", "value")])def update_backtest(strategy):    # Add input validation    if not strategy or strategy not in ["MA", "RSI", "BB"]:        return (            html.Div("Please select a valid strategy", className="text-warning"),            [],            create_empty_cards(),            [],            html.Div("No trades available"),            html.Div("No trades available"),            "",            ""        )        try:        signals, results, stats = run_backtest(strategy)                if any(x is None for x in [signals, results, stats]):            return (                html.Div("Error running backtest", className="text-danger"),                [],                create_empty_cards(),                [],                html.Div("No trades available"),                html.Div("No trades available"),                "",                ""            )                    # Debug print statements to track progress        logger.info(f"Backtest completed for {strategy}")        logger.info(f"Results keys: {list(results.keys())}")        logger.info(f"Number of trades: {len(results.get('trades', []))}")                # Create equity curve with better error handling        portfolio_chart = create_styled_chart({            'Portfolio': results.get('Portfolio_Value', pd.Series()),            'Benchmark': results.get('Benchmark', pd.Series())        }, "Portfolio Performance")                # Create metric cards with stats        metrics = create_metric_cards(stats)                # Process trades with better error handling        trades = results.get('trades', [])                # Create trade distribution if trades exist        trade_dist = create_trade_histogram(trades)                # Create trade table if trades exist        trade_history = create_trade_table(trades)                # Get backtest period with error handling        portfolio_series = results.get('Portfolio_Value', pd.Series())        if len(portfolio_series) > 0:            start_date = portfolio_series.index[0].strftime('%Y-%m-%d')            end_date = portfolio_series.index[-1].strftime('%Y-%m-%d')            backtest_period = f"{start_date} to {end_date}"        else:            backtest_period = "N/A"                # Get portfolio instruments        instruments = ", ".join(sorted(signals.keys()))                return (            html.Div("Backtest completed successfully", className="text-success"),            portfolio_chart,            metrics,            [],  # No additional charts needed            trade_dist,            trade_history,            backtest_period,            instruments        )            except Exception as e:        logger.error(f"Callback error: {str(e)}")        traceback.print_exc()        return (            html.Div(f"Error: {str(e)}", className="text-danger"),            [],            create_empty_cards(),            [],            html.Div("No trades available"),            html.Div("No trades available"),            "",            ""        )if __name__ == "__main__":    app.run(debug=True)2025-04-01 15:12:32,301 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
 
-2025-03-31 15:59:50,710 - src.core.data - INFO - Loaded data for 5 instruments
-2025-03-31 15:59:50,735 - root - INFO - Running backtest for AAPL
-2025-03-31 15:59:50,870 - root - INFO - Running backtest for MSFT
-2025-03-31 15:59:51,004 - root - INFO - Running backtest for AMZN
-2025-03-31 15:59:51,131 - root - INFO - Running backtest for GOOGL
-2025-03-31 15:59:51,261 - root - INFO - Running backtest for META
-2025-03-31 15:59:51,414 - src.core.data - INFO - Loaded benchmark data for SPY
-2025-03-31 15:59:51,418 - __main__ - INFO - Backtest completed for MA
-2025-03-31 15:59:51,418 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 15:59:51,419 - __main__ - INFO - Number of trades: 72
-2025-03-31 16:00:34,606 - root - INFO - Running backtest for AAPL
-2025-03-31 16:00:34,742 - root - INFO - Running backtest for MSFT
-2025-03-31 16:00:34,868 - root - INFO - Running backtest for AMZN
-2025-03-31 16:00:34,985 - root - INFO - Running backtest for GOOGL
-2025-03-31 16:00:35,109 - root - INFO - Running backtest for META
-2025-03-31 16:00:35,228 - __main__ - INFO - Backtest completed for BB
-2025-03-31 16:00:35,229 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 16:00:35,229 - __main__ - INFO - Number of trades: 157
-2025-03-31 16:00:44,059 - root - INFO - Running backtest for AAPL
-2025-03-31 16:00:44,186 - root - INFO - Running backtest for MSFT
-2025-03-31 16:00:44,311 - root - INFO - Running backtest for AMZN
-2025-03-31 16:00:44,438 - root - INFO - Running backtest for GOOGL
-2025-03-31 16:00:44,584 - root - INFO - Running backtest for META
-2025-03-31 16:00:44,706 - __main__ - INFO - Backtest completed for RSI
-2025-03-31 16:00:44,707 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 16:00:44,708 - __main__ - INFO - Number of trades: 185
-2025-03-31 16:05:44,227 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
-
-2025-03-31 16:05:50,666 - src.core.data - INFO - Loaded data for 5 instruments
-2025-03-31 16:05:50,688 - root - INFO - Running backtest for AAPL
-2025-03-31 16:05:50,847 - root - INFO - Running backtest for MSFT
-2025-03-31 16:05:50,982 - root - INFO - Running backtest for AMZN
-2025-03-31 16:05:51,109 - root - INFO - Running backtest for GOOGL
-2025-03-31 16:05:51,235 - root - INFO - Running backtest for META
-2025-03-31 16:05:51,383 - src.core.data - INFO - Loaded benchmark data for SPY
-2025-03-31 16:05:51,387 - __main__ - INFO - Backtest completed for MA
-2025-03-31 16:05:51,387 - __main__ - INFO - Results keys: ['Portfolio_Value', 'trades', 'signals', 'Benchmark']
-2025-03-31 16:05:51,401 - __main__ - INFO - Number of trades: 72
+2025-04-01 15:12:39,417 - src.core.data - INFO - Loaded data for 5 instruments
+2025-04-01 15:12:39,456 - root - INFO - Running backtest for AAPL
+2025-04-01 15:12:39,601 - root - INFO - Running backtest for MSFT
+2025-04-01 15:12:39,742 - root - INFO - Running backtest for AMZN
+2025-04-01 15:12:39,867 - root - INFO - Running backtest for GOOGL
+2025-04-01 15:12:39,983 - root - INFO - Running backtest for META
+2025-04-01 15:12:40,147 - src.core.data - INFO - Loaded benchmark data for SPY
+2025-04-01 15:13:02,683 - root - INFO - Running backtest for AAPL
+2025-04-01 15:13:02,821 - root - INFO - Running backtest for MSFT
+2025-04-01 15:13:02,951 - root - INFO - Running backtest for AMZN
+2025-04-01 15:13:03,066 - root - INFO - Running backtest for GOOGL
+2025-04-01 15:13:03,199 - root - INFO - Running backtest for META
+2025-04-01 15:13:10,134 - root - INFO - Running backtest for AAPL
+2025-04-01 15:13:10,267 - root - INFO - Running backtest for MSFT
+2025-04-01 15:13:10,400 - root - INFO - Running backtest for AMZN
+2025-04-01 15:13:10,516 - root - INFO - Running backtest for GOOGL
+2025-04-01 15:13:10,633 - root - INFO - Running backtest for META
