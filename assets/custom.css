@@ -54,3 +54,16 @@
 .metric-card:hover {
     transform: translateY(-2px);
 }
+
+.metric-value {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
+    color: #e1e1e1;
+}
+
+/* Add this specifically for numeric values */
+.metric-card .metric-value {
+    font-family: 'Courier New', monospace;
+    letter-spacing: -0.05em;
+}

@@ -11,24 +11,25 @@ def create_metric_card(title, value, prefix="", suffix=""):
         className="mb-3 bg-dark"
     )
 
-def create_metric_card_with_tooltip(title, value, tooltip_text):
+def create_metric_card_with_tooltip(title, value, tooltip_text="", text_color=None):
     """Create a metric card with tooltip"""
-    return dbc.Card(
+    value_style = {}
+    if text_color:
+        value_style = {"color": text_color, "fontWeight": "bold"}
+        
+    return dbc.Card([
         dbc.CardBody([
             html.Div([
-                html.H6(title, className="card-subtitle text-muted d-inline-block me-2"),
-                html.I(
-                    className="fas fa-info-circle",
-                    id=f"tooltip-{title.lower().replace(' ', '-')}",
-                    style={'color': '#6c757d', 'fontSize': '14px'}
-                ),
-                dbc.Tooltip(
-                    tooltip_text,
-                    target=f"tooltip-{title.lower().replace(' ', '-')}",
-                    placement="top"
-                )
+                html.Span(title, className="metric-title d-inline-block"),
+                html.Span([
+                    html.I(className="fas fa-info-circle ms-1 text-muted")
+                ], id={"type": "tooltip", "index": title.replace(" ", "-").lower()})
             ]),
-            html.H4(value, className="card-title text-info")
-        ]),
-        className="mb-3 bg-dark"
+            html.Div(value, className="metric-value", style=value_style)
+        ], className="p-2")  # Reduced padding
+    ], className="h-100 metric-card border-0 shadow-sm"),
+    dbc.Tooltip(
+        tooltip_text,
+        target={"type": "tooltip", "index": title.replace(" ", "-").lower()},
+        placement="top"
     )

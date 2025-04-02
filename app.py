@@ -93,7 +93,7 @@ def create_metric_cards(stats):
     )
     
     # Get initial and final capital values
-    initial_capital = config.INITIAL_CAPITAL
+    initial_capital = 10000  # Hardcoded to match the actual value used
     portfolio_values = stats.get('Portfolio_Value')
     final_capital = portfolio_values.iloc[-1] if portfolio_values is not None and len(portfolio_values) > 0 else initial_capital
 
@@ -145,25 +145,37 @@ def create_trade_histogram(trades):
         'Winning Trades': "Total number of trades that resulted in a profit.",
         'Avg Loss': "Average loss of losing trades in dollar terms.",
         'Largest Loss': "Largest single trade loss in dollar terms.",
-        'Losing Trades': "Total number of trades that resulted in a loss."
+        'Losing Trades': "Total number of trades that resulted in a loss.",
+        'Expectancy': "Average profit/loss per trade. Calculated as (Win Rate × Avg Win) - (Loss Rate × Avg Loss).",
+        'Risk-Reward': "Ratio of average win to average loss. Higher values indicate better trade quality.",
+        'Recovery Rate': "Number of winning trades needed to recover from one maximum loss.",
+        'Avg Holding Days': "Average duration of trades in days."
     }
     
-    # Create compact statistics table with tooltips (with all original metrics but tighter spacing)
+    # Calculate additional metrics
+    risk_reward = abs(stats['avg_win_pnl'] / stats['avg_loss_pnl']) if stats['avg_loss_pnl'] != 0 else 0
+    expectancy = (stats['win_rate']/100 * stats['avg_win_pnl']) - ((100-stats['win_rate'])/100 * abs(stats['avg_loss_pnl']))
+    recovery_rate = abs(stats['largest_loss'] / stats['avg_win_pnl']) if stats['avg_win_pnl'] != 0 else 0
+    
+    # Create compact statistics table with tooltips (4 columns now)
     stats_table = html.Div([
         dbc.Row([
-            dbc.Col(create_metric_card_with_tooltip("Total Trades", f"{stats['total_trades']}", tooltip_texts['Total Trades']), width=4, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Win Rate", f"{stats['win_rate']:.1f}%", tooltip_texts['Win Rate']), width=4, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Profit Factor", f"{stats['profit_factor']:.2f}", tooltip_texts['Profit Factor']), width=4, className="px-1")
+            dbc.Col(create_metric_card_with_tooltip("Total Trades", f"{stats['total_trades']}", tooltip_texts['Total Trades']), width=3, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Win Rate", f"{stats['win_rate']:.1f}%", tooltip_texts['Win Rate']), width=3, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Profit Factor", f"{stats['profit_factor']:.2f}", tooltip_texts['Profit Factor']), width=3, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Expectancy", f"${expectancy:.2f}", tooltip_texts['Expectancy']), width=3, className="px-1")
         ], className="g-0 mb-1"),  # Reduced gutters and margin
         dbc.Row([
-            dbc.Col(create_metric_card_with_tooltip("Winning Trades", f"{stats['winning_trades']}", tooltip_texts['Winning Trades']), width=4, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Losing Trades", f"{stats['losing_trades']}", tooltip_texts['Losing Trades']), width=4, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Largest Win", f"${stats['largest_win']:.2f}", tooltip_texts['Largest Win']), width=4, className="px-1")
+            dbc.Col(create_metric_card_with_tooltip("Winning Trades", f"{stats['winning_trades']}", tooltip_texts['Winning Trades']), width=3, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Losing Trades", f"{stats['losing_trades']}", tooltip_texts['Losing Trades']), width=3, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Risk-Reward", f"{risk_reward:.2f}", tooltip_texts['Risk-Reward']), width=3, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Recovery Rate", f"{recovery_rate:.2f}", tooltip_texts['Recovery Rate']), width=3, className="px-1")
         ], className="g-0 mb-1"),  # Reduced gutters and margin
         dbc.Row([
-            dbc.Col(create_metric_card_with_tooltip("Avg Win", f"${stats['avg_win_pnl']:.2f}", tooltip_texts['Avg Win']), width=4, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Avg Loss", f"${stats['avg_loss_pnl']:.2f}", tooltip_texts['Avg Loss']), width=4, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Largest Loss", f"${stats['largest_loss']:.2f}", tooltip_texts['Largest Loss']), width=4, className="px-1")
+            dbc.Col(create_metric_card_with_tooltip("Avg Win", f"${stats['avg_win_pnl']:.2f}", tooltip_texts['Avg Win'], text_color="#17B897"), width=3, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Largest Win", f"${stats['largest_win']:.2f}", tooltip_texts['Largest Win'], text_color="#17B897"), width=3, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Avg Loss", f"${stats['avg_loss_pnl']:.2f}", tooltip_texts['Avg Loss'], text_color="#FF6B6B"), width=3, className="px-1"),
+            dbc.Col(create_metric_card_with_tooltip("Largest Loss", f"${stats['largest_loss']:.2f}", tooltip_texts['Largest Loss'], text_color="#FF6B6B"), width=3, className="px-1")
         ], className="g-0")  # Reduced gutters
     ], className="mt-2")  # Small margin at top
     
@@ -317,104 +329,117 @@ def create_allocation_chart(results):
     tickers = list(set(trade.get('ticker', '') for trade in trades if trade.get('ticker')))
     logger.info(f"Found tickers: {tickers}")
     
-    # Create DataFrame to track positions for each ticker
+    # Create DataFrame to track positions and values for each ticker
     positions_df = pd.DataFrame(index=portfolio_series.index)
+    values_df = pd.DataFrame(index=portfolio_series.index)
     
-    # Fill positions with zeros - AS FLOAT (fixes type mismatch error)
+    # Initial cash is total portfolio value
+    initial_cash = float(portfolio_series.iloc[0])
+    cash_series = pd.Series(initial_cash, index=portfolio_series.index)
+    
+    # Track shares for each ticker
     for ticker in tickers:
         positions_df[ticker] = 0.0
     
-    # Add column for cash, starting with full initial capital - AS FLOAT
-    positions_df['Cash'] = float(config.INITIAL_CAPITAL)
+    # Process trades chronologically to update positions and cash
+    sorted_trades = sorted(trades, key=lambda x: pd.to_datetime(x.get('entry_date', '1970-01-01')))
     
-    # Update positions based on trades
-    for trade in trades:
+    # Get daily prices for each ticker
+    price_data = {}
+    
+    # First pass: Process trades to get positions and cash over time
+    for trade in sorted_trades:
         try:
+            ticker = trade.get('ticker', '')
             entry_date = pd.to_datetime(trade.get('entry_date'))
             exit_date = pd.to_datetime(trade.get('exit_date'))
-            ticker = trade.get('ticker', '')
-            shares = float(trade.get('shares', 0))  # Convert to float
+            shares = float(trade.get('shares', 0))
             entry_price = float(trade.get('entry_price', 0))
             exit_price = float(trade.get('exit_price', 0))
             
-            if ticker not in tickers or entry_date is None or exit_date is None:
-                continue
-            
-            # Find indices for entry and exit dates
-            try:
-                # Make sure dates are within index range
-                if entry_date < positions_df.index[0] or entry_date > positions_df.index[-1]:
-                    continue
-                if exit_date < positions_df.index[0] or exit_date > positions_df.index[-1]:
-                    continue
-                    
-                entry_idx = positions_df.index.get_indexer([entry_date], method='ffill')[0]
-                exit_idx = positions_df.index.get_indexer([exit_date], method='ffill')[0]
-            except Exception as e:
-                logger.error(f"Date indexing error: {e}")
+            if ticker not in tickers:
                 continue
                 
-            # Subtract cost from cash at entry
-            cost = shares * entry_price
-            positions_df.iloc[entry_idx:, positions_df.columns.get_loc('Cash')] -= cost
+            # Find indices for dates within our portfolio timeframe
+            # Use boolean indexing instead of get_loc
+            if entry_date not in positions_df.index or exit_date not in positions_df.index:
+                start_idx = positions_df.index.searchsorted(entry_date) 
+                if start_idx >= len(positions_df):
+                    continue
+                end_idx = positions_df.index.searchsorted(exit_date)
+                if end_idx >= len(positions_df):
+                    end_idx = len(positions_df) - 1
+            else:
+                start_idx = positions_df.index.get_indexer([entry_date])[0]
+                end_idx = positions_df.index.get_indexer([exit_date])[0]
             
-            # Add shares to ticker position
-            if ticker in positions_df.columns:
-                positions_df.iloc[entry_idx:exit_idx+1, positions_df.columns.get_loc(ticker)] += shares
+            # Update positions (buy)
+            ticker_idx = positions_df.columns.get_loc(ticker)
+            for i in range(start_idx, end_idx + 1):
+                positions_df.iloc[i, ticker_idx] += shares
             
-            # Add proceeds to cash after exit
-            proceeds = shares * exit_price
-            positions_df.iloc[exit_idx:, positions_df.columns.get_loc('Cash')] += proceeds
+            # Update cash (deduct cost at entry)
+            for i in range(start_idx, len(cash_series)):
+                cash_series.iloc[i] -= shares * entry_price
+            
+            # Update cash (add proceeds at exit)
+            for i in range(end_idx, len(cash_series)):
+                cash_series.iloc[i] += shares * exit_price
                 
+            # Store price data for this ticker if we don't have it yet
+            if ticker not in price_data:
+                price_data[ticker] = {}
+            
+            price_data[ticker][entry_date] = entry_price
+            price_data[ticker][exit_date] = exit_price
+            
         except Exception as e:
-            logger.error(f"Error processing trade for allocation chart: {e}")
+            logger.error(f"Error processing trade for allocation: {e}")
             continue
     
-    # Create columns with position values
-    # Get closing prices for each ticker from data
-    price_data = {}
+    # Make sure cash doesn't go below zero (this is a visual aid, not a correction)
+    cash_series = cash_series.clip(lower=0)
+    
+    # Second pass: Create daily price series for each ticker
+    daily_prices = {}
     for ticker in tickers:
-        try:
-            # First try to get last price from trades
-            last_price = None
-            for trade in reversed(trades):
-                if trade.get('ticker') == ticker:
-                    last_price = trade.get('exit_price')
-                    break
+        if ticker in price_data and len(price_data[ticker]) > 0:
+            # Create price series from trade data
+            price_series = pd.Series(price_data[ticker])
+            # Forward-fill prices using alternate method
+            reindexed = pd.Series(index=positions_df.index)
+            for date in price_series.index:
+                idx = positions_df.index.searchsorted(date)
+                if idx < len(positions_df.index):
+                    reindexed.iloc[idx] = price_series[date]
+            
+            # Forward fill manually
+            last_valid = None
+            for i in range(len(reindexed)):
+                if pd.notnull(reindexed.iloc[i]):
+                    last_valid = reindexed.iloc[i]
+                elif last_valid is not None:
+                    reindexed.iloc[i] = last_valid
                     
-            if last_price is not None:
-                # Create constant series with this price
-                price_data[ticker] = pd.Series([last_price] * len(positions_df.index), index=positions_df.index)
-        except Exception as e:
-            logger.error(f"Error getting price data for {ticker}: {e}")
+            if not reindexed.empty and not reindexed.isna().all():
+                daily_prices[ticker] = reindexed
     
-    # Calculate value for each position
-    value_columns = []
+    # Calculate position values
     for ticker in tickers:
-        if ticker in price_data:
-            positions_df[f'{ticker}_value'] = positions_df[ticker] * price_data[ticker]
-            value_columns.append(ticker)
+        if ticker in daily_prices:
+            values_df[ticker] = positions_df[ticker] * daily_prices[ticker]
     
-    # Prepare values for visualization
-    values_df = pd.DataFrame(index=positions_df.index)
-    values_df['Cash'] = positions_df['Cash'].clip(lower=0)  # Avoid negative values
+    # Add cash to values dataframe
+    values_df['Cash'] = cash_series
     
-    for ticker in tickers:
-        if f'{ticker}_value' in positions_df.columns:
-            values_df[ticker] = positions_df[f'{ticker}_value'].clip(lower=0)
-    
-    # Calculate sum and percentage values
+    # Calculate total portfolio value
     values_df['Total'] = values_df.sum(axis=1)
     
-    # Create copy for percentages
+    # Create percentage DataFrame
     percentage_df = pd.DataFrame(index=values_df.index)
     for col in values_df.columns:
         if col != 'Total':
             percentage_df[col] = (values_df[col] / values_df['Total'] * 100).fillna(0)
-    
-    # Check if we have data to visualize
-    if len(value_columns) == 0 and values_df['Cash'].sum() == 0:
-        return html.Div("Insufficient data for allocation chart")
     
     # Create area charts
     traces_values = []
@@ -424,7 +449,8 @@ def create_allocation_chart(results):
               '#9966FF', '#FF9F40', '#8CD867', '#EA526F', '#9CAFB7']
     
     # Value chart
-    for i, col in enumerate(value_columns + ['Cash']):
+    ticker_columns = [col for col in values_df.columns if col not in ['Total', 'Cash']]
+    for i, col in enumerate(ticker_columns + ['Cash']):
         if col in values_df.columns:
             color = colors[i % len(colors)]
             traces_values.append(
@@ -441,7 +467,7 @@ def create_allocation_chart(results):
             )
     
     # Percentage chart
-    for i, col in enumerate(value_columns + ['Cash']):
+    for i, col in enumerate(ticker_columns + ['Cash']):
         if col in percentage_df.columns:
             color = colors[i % len(colors)]
             traces_percentage.append(

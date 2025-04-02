@@ -21,7 +21,7 @@ def get_base_layout(title: str = "", x_title: str = "", y_title: str = "") -> di
         'yaxis': {'gridcolor': CHART_THEME['grid_color']},
     }
 
-def create_empty_chart(layout_title: str) -> dcc.Graph:
+def create_empty_chart(layout_title: str = "No Data") -> dcc.Graph:
     """Create an empty chart with informative message"""
     figure = {
         'data': [],
@@ -151,227 +151,70 @@ def create_styled_chart(figure_data: Dict[str, pd.Series],
     )
 
 def create_trade_histogram_figure(trades, stats):
-    """
-    Create enhanced trade return distribution histogram with better bin distribution
-    and special handling for outliers
-    """
+    """Create trade return distribution histogram"""
     if not trades:
-        return dcc.Graph(figure={
-            'data': [],
-            'layout': {
-                'title': 'Trade Return Distribution',
-                'xaxis': {'visible': False},
-                'yaxis': {'visible': False},
-                'annotations': [{
-                    'text': 'No trade data available',
-                    'showarrow': False,
-                    'font': {'size': 16, 'color': '#ffffff'},
-                    'xref': 'paper',
-                    'yref': 'paper',
-                    'x': 0.5,
-                    'y': 0.5
-                }],
-                'paper_bgcolor': '#1e222d',
-                'plot_bgcolor': '#1e222d'
-            }
-        })
+        return create_empty_chart()
     
-    # Calculate trade returns as percentages
-    returns = []
+    # Calculate % returns for each trade
+    trade_returns = []
     for trade in trades:
-        try:
-            entry_price = trade.get('entry_price', 0)
-            exit_price = trade.get('exit_price', 0)
-            shares = trade.get('shares', 0)
+        if 'entry_price' in trade and 'exit_price' in trade and 'shares' in trade:
+            entry_price = float(trade['entry_price'])
+            exit_price = float(trade['exit_price'])
+            shares = float(trade['shares'])
             
             if entry_price > 0 and shares > 0:
-                trade_return = (exit_price - entry_price) / entry_price * 100
-                returns.append(trade_return)
-        except (KeyError, TypeError, ZeroDivisionError):
-            continue
+                profit = (exit_price - entry_price) * shares
+                percent_return = (profit / (entry_price * shares)) * 100
+                trade_returns.append(percent_return)
     
-    if not returns:
-        return dcc.Graph(figure={'data': [], 'layout': {'title': 'No valid returns data'}})
+    if not trade_returns:
+        return create_empty_chart()
     
-    # Calculate the min and max returns for bin sizing
-    min_return = min(returns)
-    max_return = max(returns)
-    
-    # Determine if we need outlier handling (ranges > +-20%)
-    needs_outlier_handling = min_return < -20 or max_return > 20
-    
-    # Define thresholds
-    if needs_outlier_handling:
-        upper_threshold = 20  # Zwroty powyżej 20% jako górne outliery
-        lower_threshold = -20  # Zwroty poniżej -20% jako dolne outliery
-    else:
-        # Dla wąskich rozkładów użyj faktycznych min/max z buforem
-        range_size = max_return - min_return
-        
-        if range_size <= 10:  # Bardzo wąski zakres
-            # Zaokrąglenie do najbliższego 1% z małym buforem
-            lower_threshold = math.floor(min_return - 1)
-            upper_threshold = math.ceil(max_return + 1)
-        else:
-            # Zaokrąglenie do najbliższego 5% z buforem
-            lower_threshold = math.floor(min_return / 5) * 5 - 5
-            upper_threshold = math.ceil(max_return / 5) * 5 + 5
-    
-    # Filtruj zwroty na normalne i outliery
-    normal_returns = [r for r in returns if lower_threshold <= r <= upper_threshold]
-    upper_outliers = [r for r in returns if r > upper_threshold]
-    lower_outliers = [r for r in returns if r < lower_threshold]
-    
-    # Oblicz odpowiedni rozmiar przedziału dla normalnego zakresu
-    # Dla wąskich zakresów (np. -4% do 4%), użyj mniejszych przedziałów
-    range_width = upper_threshold - lower_threshold
-    
-    if range_width <= 10:
-        # Użyj bardzo małych przedziałów dla wąskich rozkładów (1%)
-        bin_size = 1.0
-    elif range_width <= 20:
-        # Użyj małych przedziałów dla umiarkowanych rozkładów (2%)
-        bin_size = 2.0
-    else:
-        # Użyj adaptacyjnego rozmiaru przedziału w oparciu o ilość danych
-        min_bins = max(10, int(np.sqrt(len(normal_returns))))
-        bin_size = range_width / min_bins
-        # Zaokrąglij do najbliższego 0.5 dla czytelniejszych przedziałów
-        bin_size = math.ceil(bin_size * 2) / 2
-    
-    # Upewnij się, że 0 jest dokładnie na granicy przedziału
-    # Znajdź liczbę przedziałów poniżej zera
-    num_negative_bins = math.ceil(abs(lower_threshold) / bin_size)
-    # Dostosuj dolny próg, aby 0 było dokładnie na granicy przedziału
-    lower_threshold = -num_negative_bins * bin_size
-    
-    # Utwórz krawędzie przedziałów dla normalnego zakresu
-    bin_edges = np.arange(lower_threshold, upper_threshold + bin_size, bin_size)
-    
-    # Przygotuj histogram
+    # Create histogram figure
     fig = go.Figure()
     
-    # Dodaj oddzielny histogram dla każdego przedziału, aby mieć pełną kontrolę nad kolorami
-    for i in range(len(bin_edges) - 1):
-        left_edge = bin_edges[i]
-        right_edge = bin_edges[i+1]
-        
-        # Filtruj zwroty w tym przedziale
-        bin_returns = [r for r in normal_returns if left_edge <= r < right_edge]
-        
-        # Ustal kolor na podstawie wartości przedziału
-        if right_edge <= 0:
-            color = '#FF6B6B'  # Czerwony dla przedziałów całkowicie ujemnych
-        else:
-            color = '#17B897'  # Zielony dla przedziałów z wartościami >= 0
-        
-        # Dodaj histogram dla tego przedziału
-        fig.add_trace(go.Histogram(
-            x=bin_returns,
-            xbins=dict(
-                start=left_edge,
-                end=right_edge,
-                size=bin_size
-            ),
-            marker_color=color,
-            opacity=0.8,
-            showlegend=False,
-            name=f"{left_edge:.1f}% to {right_edge:.1f}%"
-        ))
+    # Add histogram
+    fig.add_trace(go.Histogram(
+        x=trade_returns,
+        nbinsx=20,
+        marker_color=['#FF6B6B' if x < 0 else '#17B897' for x in trade_returns],
+        name='Trade Returns'
+    ))
     
-    # Dodaj outliery jeśli istnieją
-    if upper_outliers:
-        fig.add_trace(go.Histogram(
-            x=upper_outliers,
-            xbins=dict(
-                start=upper_threshold,
-                end=max(upper_outliers) + 5,
-                size=5
-            ),
-            marker_color='#00E676',  # Jasny zielony dla wyjątkowych zwrotów
-            opacity=0.8,
-            name=f'Zwroty > {upper_threshold}%'
-        ))
+    # Add vertical line at 0%
+    fig.add_vline(
+        x=0, line_width=2, line_dash="dash", line_color="#ffffff", 
+        annotation_text="Breakeven", annotation_position="top right"
+    )
     
-    if lower_outliers:
-        fig.add_trace(go.Histogram(
-            x=lower_outliers,
-            xbins=dict(
-                start=min(lower_outliers) - 5,
-                end=lower_threshold,
-                size=5
-            ),
-            marker_color='#FF1744',  # Jasny czerwony dla dużych strat
-            opacity=0.8,
-            name=f'Zwroty < {lower_threshold}%'
-        ))
+    # Add mean return line
+    mean_return = np.mean(trade_returns)
+    fig.add_vline(
+        x=mean_return, line_width=2, line_dash="dot", line_color="#36A2EB", 
+        annotation_text=f"Avg: {mean_return:.1f}%", annotation_position="top right"
+    )
     
-    # Utwórz układ histogramu
+    # Update layout
     fig.update_layout(
-        title='Rozkład zwrotów z tradów',
-        barmode='overlay',
+        title='Trade Return Distribution',
+        template=CHART_THEME,
         paper_bgcolor='#1e222d',
         plot_bgcolor='#1e222d',
         font={'color': '#ffffff'},
         xaxis={
-            'title': 'Zwrot (%)',
+            'title': 'Return (%)',
             'gridcolor': '#2a2e39',
-            'zeroline': True,
-            'zerolinecolor': '#ff6b6b',
-            'zerolinewidth': 1
+            'zerolinecolor': '#2a2e39'
         },
         yaxis={
-            'title': 'Liczba tradów',
+            'title': 'Number of Trades',
             'gridcolor': '#2a2e39'
         },
         bargap=0.05,
-        bargroupgap=0.1,
-        margin={'t': 50, 'b': 50, 'l': 50, 'r': 20},
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1,
-            font=dict(color='#ffffff')
-        )
+        margin={'t': 30, 'l': 40, 'r': 30, 'b': 40},
+        showlegend=False,
+        height=250
     )
     
-    # Dodaj pionowe linie dla kluczowych statystyk
-    fig.add_shape(
-        type="line",
-        x0=0, y0=0,
-        x1=0, y1=1,
-        yref="paper",
-        line=dict(color="#ffffff", width=1, dash="dot"),
-    )
-    
-    fig.add_shape(
-        type="line",
-        x0=np.mean(returns), y0=0,
-        x1=np.mean(returns), y1=1,
-        yref="paper",
-        line=dict(color="#17B897", width=1, dash="dot"),
-    )
-    
-    # Dodaj adnotację ze średnim zwrotem
-    fig.add_annotation(
-        x=np.mean(returns),
-        y=0.85,
-        text=f'Średni zwrot: {np.mean(returns):.2f}%',
-        showarrow=True,
-        arrowhead=2,
-        arrowcolor='#ffffff',
-        arrowsize=1,
-        arrowwidth=1,
-        yref="paper",
-        ax=0,
-        ay=-40
-    )
-    
-    # Zwróć wykres w komponencie Dash Graph
-    return dcc.Graph(
-        id='trade-histogram',
-        figure=fig,
-        config={'displayModeBar': True}
-    )
+    return dcc.Graph(figure=fig, config={'displayModeBar': False})

@@ -505,3 +505,159 @@ NameError: name 'config' is not defined
 2025-04-01 16:39:06,320 - src.core.backtest_manager - INFO - Backtest completed with 77 trades across 7 tickers
 2025-04-01 16:39:06,394 - __main__ - INFO - Creating allocation chart with 77 trades
 2025-04-01 16:39:06,394 - __main__ - INFO - Found tickers: ['MSFT', 'AAPL', 'META', 'AMZN', 'GOOGL', 'NVDA', 'TSLA']
+2025-04-02 14:09:34,787 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-02 14:09:41,897 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-02 14:09:41,954 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-02 14:09:41,983 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:09:41,983 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-02 14:09:42,000 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-02 14:09:42,017 - src.core.backtest_manager - INFO - Running backtest with MA strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:09:42,394 - src.core.backtest_manager - INFO - Backtest completed with 87 trades across 7 tickers
+2025-04-02 14:09:42,765 - __main__ - INFO - Creating allocation chart with 87 trades
+2025-04-02 14:09:42,766 - __main__ - INFO - Found tickers: ['TSLA', 'META', 'MSFT', 'AMZN', 'NVDA', 'GOOGL', 'AAPL']
+2025-04-02 14:10:16,065 - src.core.backtest_manager - INFO - Running backtest with BB strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:10:16,477 - src.core.backtest_manager - INFO - Backtest completed with 68 trades across 7 tickers
+2025-04-02 14:10:16,548 - __main__ - INFO - Creating allocation chart with 68 trades
+2025-04-02 14:10:16,548 - __main__ - INFO - Found tickers: ['TSLA', 'META', 'MSFT', 'AMZN', 'NVDA', 'GOOGL', 'AAPL']
+2025-04-02 14:10:20,942 - src.core.backtest_manager - INFO - Running backtest with RSI strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:10:21,430 - src.core.backtest_manager - INFO - Backtest completed with 77 trades across 7 tickers
+2025-04-02 14:10:21,497 - __main__ - INFO - Creating allocation chart with 77 trades
+2025-04-02 14:10:21,498 - __main__ - INFO - Found tickers: ['TSLA', 'META', 'MSFT', 'AMZN', 'NVDA', 'GOOGL', 'AAPL']
+2025-04-02 14:31:40,452 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-02 14:31:47,316 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-02 14:31:47,347 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-02 14:31:47,371 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:31:47,375 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-02 14:31:47,375 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-02 14:31:47,376 - src.core.backtest_manager - INFO - Running backtest with MA strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:31:47,761 - src.core.backtest_manager - INFO - Backtest completed with 87 trades across 7 tickers
+2025-04-02 14:31:48,027 - __main__ - INFO - Creating allocation chart with 87 trades
+2025-04-02 14:31:48,030 - __main__ - INFO - Found tickers: ['META', 'AAPL', 'GOOGL', 'NVDA', 'AMZN', 'MSFT', 'TSLA']
+2025-04-02 14:31:48,034 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,035 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,036 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,037 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,038 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,038 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,039 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,039 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,040 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,040 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,041 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,041 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,042 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,042 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,042 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,043 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,043 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,043 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,044 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,045 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,046 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,046 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,047 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,048 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,049 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,050 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,050 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,050 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,051 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,052 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,054 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,054 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,055 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,055 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,056 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,056 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,057 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,057 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,058 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,058 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,059 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,059 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,060 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,064 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,065 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,065 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,065 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,066 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,066 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,067 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,067 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,067 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,068 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,068 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,072 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,072 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,073 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,074 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,074 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,075 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,075 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,076 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,076 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,077 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,078 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,079 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,081 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,081 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,082 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,082 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,082 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,083 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,083 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,083 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,084 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,084 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,084 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,085 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,087 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,088 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,089 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,089 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,090 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,090 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,090 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,091 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:31:48,091 - __main__ - ERROR - Error processing trade for allocation: DatetimeIndex.get_loc() got an unexpected keyword argument 'method'
+2025-04-02 14:35:26,924 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-02 14:35:35,981 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-02 14:35:36,013 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-02 14:35:36,061 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:35:36,062 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-02 14:35:36,062 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-02 14:35:36,062 - src.core.backtest_manager - INFO - Running backtest with MA strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:35:36,491 - src.core.backtest_manager - INFO - Backtest completed with 87 trades across 7 tickers
+2025-04-02 14:35:36,821 - __main__ - INFO - Creating allocation chart with 87 trades
+2025-04-02 14:35:36,822 - __main__ - INFO - Found tickers: ['GOOGL', 'AMZN', 'NVDA', 'TSLA', 'AAPL', 'MSFT', 'META']
+2025-04-02 14:36:22,049 - src.core.backtest_manager - INFO - Running backtest with BB strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:36:22,456 - src.core.backtest_manager - INFO - Backtest completed with 68 trades across 7 tickers
+2025-04-02 14:36:22,532 - __main__ - INFO - Creating allocation chart with 68 trades
+2025-04-02 14:36:22,532 - __main__ - INFO - Found tickers: ['GOOGL', 'AMZN', 'NVDA', 'TSLA', 'AAPL', 'MSFT', 'META']
+2025-04-02 14:36:40,738 - src.core.backtest_manager - INFO - Running backtest with RSI strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:36:41,175 - src.core.backtest_manager - INFO - Backtest completed with 77 trades across 7 tickers
+2025-04-02 14:36:41,251 - __main__ - INFO - Creating allocation chart with 77 trades
+2025-04-02 14:36:41,252 - __main__ - INFO - Found tickers: ['GOOGL', 'AMZN', 'NVDA', 'TSLA', 'AAPL', 'MSFT', 'META']
+2025-04-02 14:44:19,734 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-02 14:44:26,036 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-02 14:44:26,073 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-02 14:44:26,124 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:44:26,142 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-02 14:44:26,144 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-02 14:44:26,145 - src.core.backtest_manager - INFO - Running backtest with MA strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:44:26,529 - src.core.backtest_manager - INFO - Backtest completed with 87 trades across 7 tickers
+2025-04-02 14:44:27,565 - __main__ - INFO - Creating allocation chart with 87 trades
+2025-04-02 14:44:27,565 - __main__ - INFO - Found tickers: ['AMZN', 'GOOGL', 'MSFT', 'NVDA', 'META', 'TSLA', 'AAPL']
+2025-04-02 14:47:38,548 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-02 14:47:38,577 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-02 14:47:38,625 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:47:38,628 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-02 14:47:38,629 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-02 14:47:38,631 - src.core.backtest_manager - INFO - Running backtest with MA strategy for 7 tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 14:47:39,005 - src.core.backtest_manager - INFO - Backtest completed with 87 trades across 7 tickers
+2025-04-02 14:47:40,130 - __main__ - INFO - Creating allocation chart with 87 trades
+2025-04-02 14:47:40,130 - __main__ - INFO - Found tickers: ['MSFT', 'AAPL', 'META', 'AMZN', 'NVDA', 'GOOGL', 'TSLA']
