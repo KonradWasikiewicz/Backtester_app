@@ -43,6 +43,7 @@ def get_strategy_class(strategy_name):
         # Get the class from the module
         strategy_class = getattr(module, class_name)
         return strategy_class
+        
     except (ImportError, AttributeError) as e:
         logger.error(f"Strategy class not found: {strategy_name}. Error: {e}")
         return None

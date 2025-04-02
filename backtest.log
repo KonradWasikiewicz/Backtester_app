@@ -258,3 +258,24 @@
 2025-04-02 19:00:22,858 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
 2025-04-02 19:00:22,858 - src.core.data - INFO - All tickers have 1566 rows of data
 2025-04-02 19:00:22,858 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-02 20:32:10,423 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-02 20:32:45,743 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-02 20:32:45,769 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-02 20:32:45,789 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 20:32:45,790 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-02 20:32:45,790 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-02 20:44:52,339 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-02 20:45:30,332 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-02 20:45:30,356 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-02 20:45:30,376 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 20:45:30,377 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-02 20:45:30,377 - src.core.data - INFO - Loaded data for 7 instruments
+2025-04-02 20:51:36,224 - dash.dash - INFO - Dash is running on http://127.0.0.1:8050/
+
+2025-04-02 20:51:52,301 - src.core.data - INFO - Attempting to load data from: data/historical_prices.csv
+2025-04-02 20:51:52,326 - src.core.data - INFO - CSV loaded successfully with 12528 rows and 7 columns
+2025-04-02 20:51:52,357 - src.core.data - INFO - Found tickers: AAPL, AMZN, GOOGL, META, MSFT, NVDA, TSLA
+2025-04-02 20:51:52,359 - src.core.data - INFO - All tickers have 1566 rows of data
+2025-04-02 20:51:52,359 - src.core.data - INFO - Loaded data for 7 instruments
