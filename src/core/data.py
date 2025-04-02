@@ -3,6 +3,7 @@ import pandas as pd
 import traceback
 from pathlib import Path
 from src.core.config import config
+import os
 
 class DataLoader:
     """Data loading and preprocessing for backtesting"""
@@ -120,8 +121,38 @@ class DataLoader:
             return None
     
     def get_available_tickers(self):
-        """Return list of all available tickers"""
-        if not hasattr(self, 'available_tickers') or not self.available_tickers:
-            self.load_all_data()
+        """Get list of available tickers from data files"""
+        data_dir = "data"
+        tickers = set()
+        
+        try:
+            # Scan for CSV files and extract ticker names
+            for file in os.listdir(data_dir):
+                if file.endswith('.csv'):
+                    # If the file is historical_prices.csv, we need to parse its contents
+                    if file == "historical_prices.csv":
+                        try:
+                            # Load the file to extract tickers
+                            price_data = pd.read_csv(os.path.join(data_dir, file))
+                            if 'Ticker' in price_data.columns:
+                                # Extract unique ticker values
+                                unique_tickers = price_data['Ticker'].unique()
+                                for ticker in unique_tickers:
+                                    tickers.add(ticker)
+                        except Exception as e:
+                            self.logger.error(f"Error reading historical prices: {e}")
+                    else:
+                        # For individual ticker files, extract ticker from filename
+                        ticker = file.split('.')[0]
+                        tickers.add(ticker)
             
-        return self.available_tickers
+            # Filter out any benchmark ticker if needed
+            if self.benchmark_ticker in tickers:
+                tickers.remove(self.benchmark_ticker)
+                
+            # Return sorted list of tickers
+            return sorted(list(tickers))
+        
+        except Exception as e:
+            self.logger.error(f"Error getting available tickers: {e}")
+            return []

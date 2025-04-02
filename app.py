@@ -10,6 +10,33 @@ from pathlib import Path
 import logging
 import plotly.graph_objects as go
 
+# Add this function at the beginning of the file (or in a utils section)
+
+def get_available_tickers():
+    """Dynamically load available tickers from CSV files, excluding benchmark"""
+    import os
+    import pandas as pd
+    
+    # Path to data directory
+    data_dir = "data"
+    
+    # Get list of CSV files
+    tickers = set()
+    benchmark_ticker = "SPY"  # Define your benchmark ticker here to exclude it
+    
+    try:
+        # Scan the data directory for CSV files
+        for file in os.listdir(data_dir):
+            if file.endswith('.csv'):
+                ticker = file.split('.')[0]  # Extract ticker from filename
+                if ticker != benchmark_ticker:
+                    tickers.add(ticker)
+    except Exception as e:
+        logger.error(f"Error loading tickers from CSV: {e}")
+    
+    # Return list of unique tickers
+    return sorted(list(tickers))
+
 # Konfiguracja logowania
 logging.basicConfig(
     level=logging.INFO,
@@ -20,6 +47,11 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Reduce verbosity for specific modules
+logging.getLogger('src.portfolio.portfolio_manager').setLevel(logging.WARNING)
+logging.getLogger('src.portfolio.risk_manager').setLevel(logging.WARNING)
+logging.getLogger('src.core.backtest_manager').setLevel(logging.WARNING)
 
 # Add project root to Python path
 project_root = Path(__file__).parent.absolute()
@@ -36,7 +68,7 @@ from src.ui.components import create_metric_card, create_metric_card_with_toolti
 from src.analysis.metrics import (
     calculate_trade_statistics, calculate_alpha, calculate_beta, 
     calculate_information_ratio, calculate_recovery_factor,
-    analyze_trade_metrics  # Add this new import
+    analyze_trade_metrics
 )
 
 # Initialize Dash app with dark theme
@@ -127,556 +159,504 @@ def create_metric_cards(stats):
         ], className="g-0")  # No gutters between columns
     ], className="mb-1")  # Reduced bottom margin
 
-def create_trade_histogram(trades):
-    """Create enhanced trade return distribution histogram with statistics"""
-    if not trades:
-        return html.Div("No trades available")
-    
-    # Use the consolidated function instead
-    stats = analyze_trade_metrics(trades)
-    
-    # Create histogram figure
-    histogram = create_trade_histogram_figure(trades, stats)
-    
-    # Define tooltips for each metric
-    tooltip_texts = {
-        'Win Rate': "Percentage of trades that resulted in a profit. Calculated as (Winning Trades / Total Trades) × 100.",
-        'Total Trades': "Total number of completed trades (both winners and losers).",
-        'Profit Factor': "Ratio of gross profits to gross losses. A value above 1 indicates overall profitability. Calculated as |Total Profits / Total Losses|.",
-        'Avg Win': "Average profit of winning trades in dollar terms.",
-        'Largest Win': "Largest single trade profit in dollar terms.",
-        'Winning Trades': "Total number of trades that resulted in a profit.",
-        'Avg Loss': "Average loss of losing trades in dollar terms.",
-        'Largest Loss': "Largest single trade loss in dollar terms.",
-        'Losing Trades': "Total number of trades that resulted in a loss.",
-        'Expectancy': "Average profit/loss per trade. Calculated as (Win Rate × Avg Win) - (Loss Rate × Avg Loss).",
-        'Risk-Reward': "Ratio of average win to average loss. Higher values indicate better trade quality.",
-        'Recovery Rate': "Number of winning trades needed to recover from one maximum loss.",
-        'Avg Holding Days': "Average duration of trades in days."
-    }
-    
-    # Calculate additional metrics
-    risk_reward = abs(stats['avg_win_pnl'] / stats['avg_loss_pnl']) if stats['avg_loss_pnl'] != 0 else 0
-    expectancy = (stats['win_rate']/100 * stats['avg_win_pnl']) - ((100-stats['win_rate'])/100 * abs(stats['avg_loss_pnl']))
-    recovery_rate = abs(stats['largest_loss'] / stats['avg_win_pnl']) if stats['avg_win_pnl'] != 0 else 0
-    
-    # Create compact statistics table with tooltips (4 columns now)
-    stats_table = html.Div([
-        dbc.Row([
-            dbc.Col(create_metric_card_with_tooltip("Total Trades", f"{stats['total_trades']}", tooltip_texts['Total Trades']), width=3, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Win Rate", f"{stats['win_rate']:.1f}%", tooltip_texts['Win Rate']), width=3, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Profit Factor", f"{stats['profit_factor']:.2f}", tooltip_texts['Profit Factor']), width=3, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Expectancy", f"${expectancy:.2f}", tooltip_texts['Expectancy']), width=3, className="px-1")
-        ], className="g-0 mb-1"),  # Reduced gutters and margin
-        dbc.Row([
-            dbc.Col(create_metric_card_with_tooltip("Winning Trades", f"{stats['winning_trades']}", tooltip_texts['Winning Trades']), width=3, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Losing Trades", f"{stats['losing_trades']}", tooltip_texts['Losing Trades']), width=3, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Risk-Reward", f"{risk_reward:.2f}", tooltip_texts['Risk-Reward']), width=3, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Recovery Rate", f"{recovery_rate:.2f}", tooltip_texts['Recovery Rate']), width=3, className="px-1")
-        ], className="g-0 mb-1"),  # Reduced gutters and margin
-        dbc.Row([
-            dbc.Col(create_metric_card_with_tooltip("Avg Win", f"${stats['avg_win_pnl']:.2f}", tooltip_texts['Avg Win'], text_color="#17B897"), width=3, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Largest Win", f"${stats['largest_win']:.2f}", tooltip_texts['Largest Win'], text_color="#17B897"), width=3, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Avg Loss", f"${stats['avg_loss_pnl']:.2f}", tooltip_texts['Avg Loss'], text_color="#FF6B6B"), width=3, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Largest Loss", f"${stats['largest_loss']:.2f}", tooltip_texts['Largest Loss'], text_color="#FF6B6B"), width=3, className="px-1")
-        ], className="g-0")  # Reduced gutters
-    ], className="mt-2")  # Small margin at top
-    
-    return html.Div([
-        histogram,
-        stats_table
-    ], className="pb-0")  # Reduced padding
-
-def create_trade_table(trades):
-    """Create unified trade history table with error handling"""
-    if not trades:
-        return html.Div("No trades available")
-    
-    trade_records = []
-    for trade in trades:
-        try:
-            # Validate trade data
-            if not isinstance(trade, dict):
-                continue
-                
-            # Required fields with fallbacks
-            entry_date = pd.to_datetime(trade.get('entry_date', pd.NaT))
-            exit_date = pd.to_datetime(trade.get('exit_date', pd.NaT))
-            ticker = trade.get('ticker', '')
-            direction = trade.get('direction', '')
-            shares = int(trade.get('shares', 0))
-            entry_price = float(trade.get('entry_price', 0))
-            exit_price = float(trade.get('exit_price', 0))
-            pnl = float(trade.get('pnl', 0))
-            
-            # Skip invalid trades
-            if pd.isna(entry_date) or pd.isna(exit_date) or shares <= 0:
-                continue
-                
-            # Format for display
-            record = {
-                'Date In': entry_date.strftime('%Y-%m-%d'),
-                'Date Out': exit_date.strftime('%Y-%m-%d'),
-                'Ticker': ticker,
-                'Type': direction,
-                'Shares': f"{shares:,}",
-                'Entry': f"${entry_price:.2f}",
-                'Exit': f"${exit_price:.2f}",
-                'P&L': f"${pnl:.2f}",
-                'Return': f"{(pnl / (entry_price * shares) * 100):.1f}%" if entry_price * shares != 0 else "N/A"
-            }
-            trade_records.append(record)
-        except (KeyError, ValueError, TypeError, AttributeError) as e:
-            logger.error(f"Error processing trade for table: {e}")
-            continue
-    
-    if not trade_records:
-        return html.Div("No valid trades to display")
-    
-    df = pd.DataFrame(trade_records)
-    
-    return dash_table.DataTable(
-        id='trade-table',
-        columns=[
-            {"name": i, "id": i} for i in df.columns
-        ],
-        data=df.to_dict('records'),
-        sort_action="native",
-        style_table={
-            'height': '640px',
-            'overflowY': 'auto',
-            'minWidth': '100%',
-            'maxWidth': '100%'
-        },
-        fixed_rows={'headers': True},
-        style_cell={
-            'backgroundColor': '#1e222d',
-            'color': '#e1e1e1',
-            'fontFamily': 'system-ui',
-            'fontSize': '13px',
-            'height': 'auto',
-            'minWidth': '70px',
-            'maxWidth': '100px',
-            'overflow': 'hidden',
-            'textOverflow': 'ellipsis',
-            'textAlign': 'left',
-            'padding': '8px 12px'
-        },
-        style_cell_conditional=[
-            {'if': {'column_id': 'Date In'}, 'width': '90px'},
-            {'if': {'column_id': 'Date Out'}, 'width': '90px'},
-            {'if': {'column_id': 'Ticker'}, 'width': '70px'},
-            {'if': {'column_id': 'Type'}, 'width': '70px'},
-            {'if': {'column_id': 'Shares'}, 'width': '80px'},
-            {'if': {'column_id': 'Entry'}, 'width': '90px'},
-            {'if': {'column_id': 'Exit'}, 'width': '90px'},
-            {'if': {'column_id': 'P&L'}, 'width': '90px'},
-            {'if': {'column_id': 'Return'}, 'width': '80px'}
-        ],
-        style_data={
-            'whiteSpace': 'nowrap',
-            'height': '30px',
-            'lineHeight': '30px'
-        },
-        style_header={
-            'backgroundColor': '#2a2e39',
-            'fontWeight': 'bold',
-            'border': '1px solid #2a2e39',
-            'whiteSpace': 'nowrap',
-            'height': '40px'
-        },
-        style_data_conditional=[
-            {
-                'if': {'filter_query': '{P&L} contains "+"'},
-                'color': '#17B897'
-            },
-            {
-                'if': {'filter_query': '{P&L} contains "-"'},
-                'color': '#FF6B6B'
-            }
-        ],
-        css=[{
-            'selector': '.dash-table-container',
-            'rule': 'max-height: 640px; font-family: system-ui;'
-        }, {
-            'selector': '::-webkit-scrollbar',
-            'rule': 'width: 8px; height: 8px;'
-        }, {
-            'selector': '::-webkit-scrollbar-track',
-            'rule': 'background: #1e222d;'
-        }, {
-            'selector': '::-webkit-scrollbar-thumb',
-            'rule': 'background: #2a2e39; border-radius: 4px;'
-        }, {
-            'selector': '::-webkit-scrollbar-thumb:hover',
-            'rule': 'background: #363b47;'
-        }]
-    )
-
-def create_allocation_chart(results):
-    """Create portfolio allocation chart showing position values and cash over time"""
-    if not results or 'trades' not in results:
-        return html.Div("No allocation data available")
-    
-    # Get trade and portfolio data
-    trades = results.get('trades', [])
-    portfolio_series = results.get('Portfolio_Value', pd.Series())
-    
-    if len(trades) == 0 or len(portfolio_series) == 0:
-        return html.Div("No allocation data available")
-    
-    # Add log to check what we're receiving
-    logger.info(f"Creating allocation chart with {len(trades)} trades")
-    
-    # Get unique tickers from trades
-    tickers = list(set(trade.get('ticker', '') for trade in trades if trade.get('ticker')))
-    logger.info(f"Found tickers: {tickers}")
-    
-    # Create DataFrame to track positions and values for each ticker
-    positions_df = pd.DataFrame(index=portfolio_series.index)
-    values_df = pd.DataFrame(index=portfolio_series.index)
-    
-    # Initial cash is total portfolio value
-    initial_cash = float(portfolio_series.iloc[0])
-    cash_series = pd.Series(initial_cash, index=portfolio_series.index)
-    
-    # Track shares for each ticker
-    for ticker in tickers:
-        positions_df[ticker] = 0.0
-    
-    # Process trades chronologically to update positions and cash
-    sorted_trades = sorted(trades, key=lambda x: pd.to_datetime(x.get('entry_date', '1970-01-01')))
-    
-    # Get daily prices for each ticker
-    price_data = {}
-    
-    # First pass: Process trades to get positions and cash over time
-    for trade in sorted_trades:
-        try:
-            ticker = trade.get('ticker', '')
-            entry_date = pd.to_datetime(trade.get('entry_date'))
-            exit_date = pd.to_datetime(trade.get('exit_date'))
-            shares = float(trade.get('shares', 0))
-            entry_price = float(trade.get('entry_price', 0))
-            exit_price = float(trade.get('exit_price', 0))
-            
-            if ticker not in tickers:
-                continue
-                
-            # Find indices for dates within our portfolio timeframe
-            # Use boolean indexing instead of get_loc
-            entry_idx = -1
-            exit_idx = -1
-            
-            # Find the closest index positions
-            for i, date in enumerate(positions_df.index):
-                if date >= entry_date and entry_idx == -1:
-                    entry_idx = i
-                if date >= exit_date and exit_idx == -1:
-                    exit_idx = i
-                    break
-                    
-            if entry_idx == -1:
-                continue
-                
-            if exit_idx == -1:
-                exit_idx = len(positions_df) - 1
-            
-            # Update positions (buy)
-            ticker_idx = positions_df.columns.get_loc(ticker)
-            for i in range(entry_idx, exit_idx + 1):
-                positions_df.iloc[i, ticker_idx] += shares
-            
-            # Update cash (deduct cost at entry)
-            for i in range(entry_idx, len(cash_series)):
-                cash_series.iloc[i] -= shares * entry_price
-            
-            # Update cash (add proceeds at exit)
-            for i in range(exit_idx, len(cash_series)):
-                cash_series.iloc[i] += shares * exit_price
-                
-            # Store price data for this ticker if we don't have it yet
-            if ticker not in price_data:
-                price_data[ticker] = {}
-            
-            price_data[ticker][entry_date] = entry_price
-            price_data[ticker][exit_date] = exit_price
-            
-        except Exception as e:
-            logger.error(f"Error processing trade for allocation: {e}")
-            continue
-    
-    # Make sure cash doesn't go below zero (this is a visual aid, not a correction)
-    cash_series = cash_series.clip(lower=0)
-    
-    # Second pass: Create daily price series for each ticker
-    daily_prices = {}
-    for ticker in tickers:
-        if ticker in price_data and len(price_data[ticker]) > 0:
-            # Create price series from trade data
-            prices = price_data[ticker]
-            # Create a Series with the right index
-            reindexed = pd.Series(index=positions_df.index)
-            
-            # Manual forward fill approach
-            last_price = None
-            for date, row in positions_df.iterrows():
-                # Find the most recent price before this date
-                most_recent_price = None
-                most_recent_date = None
-                
-                for price_date in prices.keys():
-                    if price_date <= date and (most_recent_date is None or price_date > most_recent_date):
-                        most_recent_date = price_date
-                        most_recent_price = prices[price_date]
-                
-                # If we have a price, use it
-                if most_recent_price is not None:
-                    reindexed[date] = most_recent_price
-                elif last_price is not None:
-                    # Otherwise use the last valid price
-                    reindexed[date] = last_price
-                
-                # Update last price if we have a value for this date
-                if most_recent_price is not None:
-                    last_price = most_recent_price
-            
-            if not reindexed.empty and not reindexed.isna().all():
-                daily_prices[ticker] = reindexed
-    
-    # Calculate position values
-    for ticker in tickers:
-        if ticker in daily_prices:
-            values_df[ticker] = positions_df[ticker] * daily_prices[ticker]
-    
-    # Add cash to values dataframe
-    values_df['Cash'] = cash_series
-    
-    # Calculate total portfolio value
-    values_df['Total'] = values_df.sum(axis=1)
-    
-    # Create percentage DataFrame
-    percentage_df = pd.DataFrame(index=values_df.index)
-    for col in values_df.columns:
-        if col != 'Total':
-            percentage_df[col] = (values_df[col] / values_df['Total'] * 100).fillna(0)
-    
-    # Create area charts
-    traces_values = []
-    traces_percentage = []
-    
-    colors = ['#17B897', '#FF6B6B', '#36A2EB', '#FFCE56', '#4BC0C0', 
-              '#9966FF', '#FF9F40', '#8CD867', '#EA526F', '#9CAFB7']
-    
-    # Value chart
-    ticker_columns = [col for col in values_df.columns if col not in ['Total', 'Cash']]
-    for i, col in enumerate(ticker_columns + ['Cash']):
-        if col in values_df.columns:
-            color = colors[i % len(colors)]
-            traces_values.append(
-                go.Scatter(
-                    x=values_df.index,
-                    y=values_df[col],
-                    name=col,
-                    mode='lines',
-                    line=dict(width=0.5),
-                    stackgroup='one',
-                    fillcolor=color,
-                    hovertemplate='%{y:$,.2f}<extra>%{x|%Y-%m-%d}: ' + col + '</extra>'
-                )
-            )
-    
-    # Percentage chart
-    for i, col in enumerate(ticker_columns + ['Cash']):
-        if col in percentage_df.columns:
-            color = colors[i % len(colors)]
-            traces_percentage.append(
-                go.Scatter(
-                    x=percentage_df.index,
-                    y=percentage_df[col],
-                    name=col,
-                    mode='lines',
-                    line=dict(width=0.5),
-                    stackgroup='one',
-                    fillcolor=color,
-                    hovertemplate='%{y:.1f}%<extra>%{x|%Y-%m-%d}: ' + col + '</extra>'
-                )
-            )
-    
-    # Layout for value chart
-    fig_values = go.Figure(data=traces_values)
-    fig_values.update_layout(
-        title='Portfolio Allocation (Values)',
-        template=CHART_THEME,
-        paper_bgcolor='#1e222d',
-        plot_bgcolor='#1e222d',
-        font={'color': '#ffffff'},
-        xaxis={
-            'gridcolor': '#2a2e39',
-            'showgrid': True,
-            'zeroline': False,
-            'title': 'Date'
-        },
-        yaxis={
-            'gridcolor': '#2a2e39',
-            'showgrid': True,
-            'zeroline': True,
-            'zerolinecolor': '#2a2e39',
-            'title': 'Allocation Value ($)'
-        },
-        margin={'t': 50, 'l': 60, 'r': 30, 'b': 50},
-        showlegend=True,
-        legend={
-            'orientation': 'h',
-            'y': 1.1,
-            'x': 0.5,
-            'xanchor': 'center',
-            'font': {'color': '#ffffff'},
-            'bgcolor': '#1e222d'
-        },
-        height=300,
-        autosize=True
-    )
-    
-    # Layout for percentage chart
-    fig_percentage = go.Figure(data=traces_percentage)
-    fig_percentage.update_layout(
-        title='Portfolio Allocation (Percentages)',
-        template=CHART_THEME,
-        paper_bgcolor='#1e222d',
-        plot_bgcolor='#1e222d',
-        font={'color': '#ffffff'},
-        xaxis={
-            'gridcolor': '#2a2e39',
-            'showgrid': True,
-            'zeroline': False,
-            'title': 'Date'
-        },
-        yaxis={
-            'gridcolor': '#2a2e39',
-            'showgrid': True,
-            'zeroline': True,
-            'zerolinecolor': '#2a2e39',
-            'title': 'Allocation (%)'
-        },
-        margin={'t': 50, 'l': 60, 'r': 30, 'b': 50},
-        showlegend=True,
-        legend={
-            'orientation': 'h',
-            'y': 1.1,
-            'x': 0.5,
-            'xanchor': 'center',
-            'font': {'color': '#ffffff'},
-            'bgcolor': '#1e222d'
-        },
-        height=300,
-        autosize=True
-    )
-    
-    return html.Div([
-        dcc.Graph(figure=fig_values, config={'displayModeBar': False}),
-        dcc.Graph(figure=fig_percentage, config={'displayModeBar': False})
-    ])
-
-def run_backtest(strategy_type, strategy_params=None):
-    """Run backtest with specified parameters"""
+def create_risk_management_section():
+    """Create the risk management configuration UI section"""
     try:
-        signals, combined_results, stats = backtest_manager.run_backtest(
-            strategy_type, **(strategy_params or {})
-        )
-        return signals, combined_results, stats
+        # Get all available tickers
+        available_tickers = get_available_tickers()
+        ticker_options = [{"label": ticker, "value": ticker} for ticker in available_tickers]
+        
+        # Default to first ticker if available, otherwise None
+        default_ticker = available_tickers[0] if available_tickers else None
     except Exception as e:
-        logger.error(f"Backtest error: {str(e)}")
+        logger.error(f"Error getting tickers: {e}")
+        available_tickers = []
+        ticker_options = []
+        default_ticker = None
+    
+    return html.Div([
+        # Dynamic ticker selector
+        html.H6("Select Tickers", className="mt-1 mb-2"),
+        dcc.Dropdown(
+            id="ticker-selector",
+            options=ticker_options,
+            value=default_ticker,
+            multi=True,
+            className="mb-3"
+        ),
+        
+        # Radio buttons for enabling/disabling risk management
+        dbc.RadioItems(
+            id="risk-management-toggle",
+            options=[
+                {"label": "Do not apply additional risk management rules", "value": "disabled"},
+                {"label": "Apply additional risk management rules", "value": "enabled"}
+            ],
+            value="disabled",
+            className="mb-3"
+        ),
+        
+        # Container for risk management options (initially hidden)
+        html.Div([
+            # Position limits
+            html.H6("Position Limits", className="mt-2"),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Checkbox(id="use-max-position-size", className="mr-2"),
+                    html.Label("Maximum position size (%):")
+                ], width=6),
+                dbc.Col([
+                    dbc.Input(id="max-position-size", type="number", min=1, max=100, step=1, value=20, disabled=True)
+                ], width=6)
+            ], className="mb-2"),
+            
+            dbc.Row([ 
+                dbc.Col([
+                    dbc.Checkbox(id="use-min-position-size", className="mr-2"),
+                    html.Label("Minimum position size (%):")
+                ], width=6),
+                dbc.Col([
+                    dbc.Input(id="min-position-size", type="number", min=0.1, max=10, step=0.1, value=1, disabled=True)
+                ], width=6)
+            ], className="mb-2"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Checkbox(id="use-max-positions", className="mr-2"),
+                    html.Label("Maximum open positions:")
+                ], width=6),
+                dbc.Col([
+                    dbc.Input(id="max-open-positions", type="number", min=1, max=20, step=1, value=5, disabled=True)
+                ], width=6)
+            ], className="mb-3"),
+            
+            # Stop management
+            html.H6("Stop Management", className="mt-2"),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Checkbox(id="use-stop-loss", className="mr-2"),
+                    html.Label("Stop loss (%):")
+                ], width=6),
+                dbc.Col([
+                    dbc.Input(id="stop-loss-pct", type="number", min=0.5, max=10, step=0.5, value=2, disabled=True)
+                ], width=6)
+            ], className="mb-2"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Checkbox(id="use-profit-target", className="mr-2"),
+                    html.Label("Profit target ratio:")
+                ], width=6),
+                dbc.Col([
+                    dbc.Input(id="profit-target-ratio", type="number", min=1, max=10, step=0.5, value=2, disabled=True)
+                ], width=6)
+            ], className="mb-2"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Checkbox(id="use-trailing-stop", className="mr-2"),
+                    html.Label("Trailing stop:")
+                ], width=6),
+                dbc.Col([
+                    dbc.Input(id="trailing-stop-activation", type="number", min=0.5, max=10, step=0.5, value=2, 
+                            placeholder="Activation (%)", disabled=True, className="mb-1"),
+                    dbc.Input(id="trailing-stop-distance", type="number", min=0.5, max=10, step=0.5, value=1.5, 
+                            placeholder="Distance (%)", disabled=True)
+                ], width=6)
+            ], className="mb-3"),
+            
+            # Portfolio limits
+            html.H6("Portfolio Limits", className="mt-2"),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Checkbox(id="use-max-drawdown", className="mr-2"),
+                    html.Label("Maximum drawdown (%):")
+                ], width=6),
+                dbc.Col([
+                    dbc.Input(id="max-drawdown", type="number", min=5, max=50, step=1, value=20, disabled=True)
+                ], width=6)
+            ], className="mb-2"),
+            
+            dbc.Row([
+                dbc.Col([
+                    dbc.Checkbox(id="use-max-daily-loss", className="mr-2"),
+                    html.Label("Maximum daily loss (%):")
+                ], width=6),
+                dbc.Col([
+                    dbc.Input(id="max-daily-loss", type="number", min=1, max=20, step=0.5, value=5, disabled=True)
+                ], width=6)
+            ], className="mb-2"),
+            
+            # Market conditions
+            html.H6("Market Conditions", className="mt-2"),
+            dbc.Row([
+                dbc.Col([
+                    dbc.Checkbox(id="use-market-filter", className="mr-2"),
+                    html.Label("Only trade in favorable market conditions:")
+                ], width=6),
+                dbc.Col([
+                    dbc.Input(id="market-trend-lookback", type="number", min=20, max=200, step=10, value=100, 
+                           placeholder="Lookback period (days)", disabled=True)
+                ], width=6)
+            ], className="mb-3"),
+            
+        ], id="risk-management-options", style={"display": "none"}),
+        
+        # Run backtest button
+        dbc.Button("Run Backtest", id="run-backtest-button", color="primary", className="mt-3")
+    ], className="p-3 border rounded bg-light")
+
+# Add this function before the callback definitions - around line 350
+
+def run_simple_backtest(strategy_type):
+    """Run a simple backtest with default parameters - for strategy dropdown"""
+    try:
+        # Use the existing backtest manager to run a simple version (no risk management)
+        return backtest_manager.run_backtest(strategy_type)
+    except Exception as e:
+        logger.error(f"Simple backtest error: {str(e)}")
         traceback.print_exc()
         return None, None, None
 
-# App layout
-app.layout = dbc.Container([
-    dbc.Row([
-        dbc.Col([
-            html.H1("Portfolio Backtester", className="text-center my-4")
-        ])
-    ]),
+# Add this function before the create_backtest_results function - around line 590
 
-    dbc.Row([
-        # Left column (Strategy Settings)
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Strategy Settings"),
-                dbc.CardBody([
-                    dbc.Row([
-                        dbc.Col([
-                            html.Label("Select Strategy", className="text-light mb-2"),
-                            dcc.Dropdown(
-                                id="strategy-selector",
-                                options=[
-                                    {"label": "Bollinger Bands", "value": "BB"},
-                                    {"label": "Moving Average Crossover", "value": "MA"},
-                                    {"label": "RSI", "value": "RSI"}
-                                ],
-                                value="MA",
-                                className="mb-3",
-                                style={
-                                    'backgroundColor': '#1e222d',
-                                    'color': '#ffffff',
-                                },
-                                optionHeight=35,
-                                clearable=False,
-                            )
-                        ], width=12)
-                    ]),
-                    html.Div([
-                        html.Label("Backtest Period"),
-                        html.P(id="backtest-period", className="text-info"),
-                        html.Label("Portfolio Instruments"),
-                        html.Div(id="portfolio-instruments", className="text-info")
-                    ], className="mt-3"),
-                    dbc.Spinner(html.Div(id="calculation-status")),
-                    html.Div(id="strategy-params-container")  # New container for strategy parameters
-                ])
-            ], className="mb-4")
-        ], width=2),
+def run_portfolio_backtest(strategy, tickers, risk_params=None, **kwargs):
+    """Run a portfolio backtest with risk management parameters"""
+    try:
+        # Use the backtest manager with risk parameters
+        # This is different from run_simple_backtest as it applies risk management
+        return backtest_manager.run_portfolio_backtest(
+            strategy_type=strategy,
+            tickers=tickers, 
+            risk_params=risk_params,
+            **kwargs
+        )
+    except Exception as e:
+        logger.error(f"Portfolio backtest error: {str(e)}")
+        traceback.print_exc()
+        return None
+
+# Updated create_trade_histogram function with fixed statistics
+
+def create_trade_histogram(trades):
+    """Create a histogram of trade returns with statistics panel"""
+    if not trades or len(trades) == 0:
+        return html.Div("No trades available")
+    
+    # Calculate trade statistics directly instead of relying on analyze_trade_metrics
+    win_trades = [t for t in trades if t.get('pnl', 0) > 0]
+    loss_trades = [t for t in trades if t.get('pnl', 0) <= 0]
+    
+    total_trades = len(trades)
+    win_count = len(win_trades)
+    loss_count = len(loss_trades)
+    
+    # Calculate core statistics
+    win_rate = (win_count / total_trades * 100) if total_trades > 0 else 0
+    win_loss_ratio = (win_count / loss_count) if loss_count > 0 else float('inf')
+    
+    # Calculate PnL metrics
+    total_pnl = sum(t.get('pnl', 0) for t in trades)
+    win_pnl = sum(t.get('pnl', 0) for t in win_trades)
+    loss_pnl = sum(t.get('pnl', 0) for t in loss_trades)
+    
+    avg_win_pnl = (win_pnl / win_count) if win_count > 0 else 0
+    avg_loss_pnl = (loss_pnl / loss_count) if loss_count > 0 else 0
+    
+    # Calculate profit factor
+    profit_factor = (win_pnl / abs(loss_pnl)) if loss_pnl < 0 else float('inf')
+    
+    # Get histogram figure with custom colors for positive/negative trades
+    histogram = create_trade_histogram_figure(trades, {
+        'colorscale': [
+            [0, '#FF6B6B'],  # Red for negative returns
+            [0.5, '#FF6B6B'],  # Red for negative returns
+            [0.5, '#17B897'],  # Green for positive returns
+            [1, '#17B897']    # Green for positive returns
+        ]
+    })
+    
+    # Create a statistics panel with Calibri font
+    stats_panel = html.Div([
+        dbc.Row([
+            dbc.Col([
+                html.H6("Trade Statistics", className="text-center mb-3")
+            ], width=12)
+        ]),
+        dbc.Row([
+            dbc.Col([
+                html.Div([
+                    html.P([html.Span("Win Rate: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
+                           html.Span(f"{win_rate:.2f}%", style={"fontFamily": "Calibri"})], 
+                           className="mb-1"),
+                    html.P([html.Span("Profit Factor: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
+                           html.Span(f"{profit_factor:.2f}", style={"fontFamily": "Calibri"})], 
+                           className="mb-1"),
+                    html.P([html.Span("Avg Win: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
+                           html.Span(f"${avg_win_pnl:.2f}", style={"fontFamily": "Calibri"})], 
+                           className="mb-1"),
+                ], className="p-2")
+            ], width=6),
+            dbc.Col([
+                html.Div([
+                    html.P([html.Span("Total Trades: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
+                           html.Span(f"{total_trades}", style={"fontFamily": "Calibri"})], 
+                           className="mb-1"),
+                    html.P([html.Span("Win/Loss Ratio: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
+                           html.Span(f"{win_loss_ratio:.2f}", style={"fontFamily": "Calibri"})], 
+                           className="mb-1"),
+                    html.P([html.Span("Avg Loss: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
+                           html.Span(f"${avg_loss_pnl:.2f}", style={"fontFamily": "Calibri"})], 
+                           className="mb-1"),
+                ], className="p-2")
+            ], width=6)
+        ], className="mb-3"),
+    ], className="trade-stats-panel p-3 border rounded", 
+    style={"backgroundColor": "#1e222d", "fontFamily": "Calibri"})
+    
+    # Combine histogram and statistics (histogram first, stats below)
+    return html.Div([
+        histogram,
+        html.Div(className="mt-3"),
+        stats_panel
+    ])
+
+# Updated create_allocation_chart function to add dollar value chart in addition to percentage chart
+
+def create_allocation_chart(results):
+    """Create charts showing portfolio allocation over time"""
+    if not results or 'portfolio_values' not in results or results['portfolio_values'].empty:
+        return html.Div("No allocation data available")
+    
+    portfolio_values = results.get('portfolio_values', pd.Series())
+    trades = results.get('trades', [])
+    
+    if len(trades) == 0:
+        return html.Div("No allocation data available")
+    
+    # Group trades by ticker and date
+    positions = {}
+    
+    for trade in trades:
+        ticker = trade.get('ticker', '')
+        if not ticker:
+            continue
+            
+        entry_date = pd.to_datetime(trade.get('entry_date'))
+        exit_date = pd.to_datetime(trade.get('exit_date'))
+        shares = float(trade.get('shares', 0))
+        entry_price = float(trade.get('entry_price', 0))
+        exit_price = float(trade.get('exit_price', 0))
         
-        # Center column (Equity Curve & Portfolio Composition)
-        dbc.Col([
-            dbc.Row([
-                dbc.Col(html.Div(id="equity-curve-container", style={"height": "400px"}), className="mb-3")
-            ]),
-            dbc.Row([
-                dbc.Col(html.Div(id="metrics-container"), className="mb-3")
-            ]),
-            dbc.Row([
-                dbc.Col([
-                    dbc.Card([
-                        dbc.CardHeader("Portfolio Composition"),
-                        dbc.CardBody([
-                            html.Div(id="portfolio-composition-container")
-                        ])
-                    ])
-                ])
-            ]),
-            dbc.Row([
-                dbc.Col(html.Div(id="additional-charts"))
-            ])
-        ], width=6),
+        # Add position entry
+        if ticker not in positions:
+            positions[ticker] = []
         
-        # Right column (Trade Distribution & History)
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Trade Distribution"),
-                dbc.CardBody([
-                    html.Div(id="trade-distribution-container")
-                ], className="p-2")  # Reduced padding
-            ], className="mb-3"),  # Reduced margin
-            dbc.Card([
-                dbc.CardHeader("Trade History"),
-                dbc.CardBody([
-                    html.Div(id="trade-table-container")
-                ], className="p-2")  # Reduced padding
-            ])
-        ], width=4)
-    ], className="g-2")  # Reduced gutters
-], fluid=True, style={"backgroundColor": "#131722"})
+        positions[ticker].append({
+            'entry_date': entry_date,
+            'exit_date': exit_date,
+            'shares': shares,
+            'entry_price': entry_price,
+            'exit_price': exit_price
+        })
+    
+    # Create allocation dataframe with daily values
+    dates = portfolio_values.index
+    allocation_df = pd.DataFrame(index=dates)
+    
+    # Create cash series (starting with full initial capital)
+    initial_capital = portfolio_values.iloc[0]
+    cash_series = pd.Series(initial_capital, index=dates)
+    
+    # For each position, calculate its value through time
+    for ticker, position_list in positions.items():
+        allocation_df[ticker] = 0.0
+        
+        for position in position_list:
+            entry_date = position['entry_date']
+            exit_date = position['exit_date']
+            shares = position['shares']
+            entry_price = position['entry_price']
+            exit_price = position['exit_price']
+            
+            # Find positions in the date range
+            in_position = (dates >= entry_date) & (dates <= exit_date)
+            
+            # Update position value
+            if any(in_position):
+                try:
+                    # Calculate days since entry directly
+                    position_dates = dates[in_position]
+                    days_since_entry = [(d - entry_date).days for d in position_dates]
+                    
+                    max_days = (exit_date - entry_date).days
+                    
+                    if max_days > 0:
+                        # Linear interpolation
+                        price_range = [entry_price + (exit_price - entry_price) * day / max_days 
+                                      for day in days_since_entry]
+                    else:
+                        price_range = [entry_price] * len(days_since_entry)
+                    
+                    # Update position value
+                    for i, date in enumerate(position_dates):
+                        allocation_df.loc[date, ticker] += shares * price_range[i]
+                except Exception as e:
+                    logger.error(f"Error calculating position allocation: {e}")
+            
+            # Update cash: subtract at entry, add at exit
+            cash_indices = dates >= entry_date
+            cash_series.loc[cash_indices] -= shares * entry_price
+            
+            cash_indices = dates >= exit_date
+            cash_series.loc[cash_indices] += shares * exit_price
+    
+    # Add cash to allocation dataframe
+    allocation_df['Cash'] = cash_series
+    
+    # Calculate total portfolio value
+    allocation_df['Total'] = allocation_df.sum(axis=1)
+    
+    # Calculate percentages
+    for col in allocation_df.columns:
+        if col != 'Total':
+            allocation_df[f"{col}_pct"] = allocation_df[col] / allocation_df['Total'] * 100
+    
+    # Create percentage chart
+    pct_fig = go.Figure()
+    
+    # Add area chart for each ticker
+    tickers = [col for col in allocation_df.columns if col not in ['Total', 'Cash'] and not col.endswith('_pct')]
+    colors = ['#17B897', '#FF6B6B', '#36A2EB', '#FFCE56', '#8A2BE2', '#FF7F50', '#20B2AA', '#D2691E']
+    
+    # Add cash first (percentage)
+    pct_fig.add_trace(
+        go.Scatter(
+            x=dates,
+            y=allocation_df['Cash_pct'],
+            mode='lines',
+            stackgroup='one',
+            name='Cash',
+            line=dict(width=0),
+            fillcolor='#777777'
+        )
+    )
+    
+    # Add other tickers (percentage)
+    for i, ticker in enumerate(tickers):
+        color = colors[i % len(colors)]
+        pct_col = f"{ticker}_pct"
+        
+        pct_fig.add_trace(
+            go.Scatter(
+                x=dates,
+                y=allocation_df[pct_col],
+                mode='lines',
+                stackgroup='one',
+                name=ticker,
+                line=dict(width=0),
+                fillcolor=color
+            )
+        )
+    
+    # Update layout for percentage chart
+    pct_fig.update_layout(
+        title='Portfolio Allocation (Percentage)',
+        template=CHART_THEME,
+        xaxis=dict(
+            title='Date',
+            gridcolor='#2a2e39',
+            type='date'
+        ),
+        yaxis=dict(
+            title='Allocation (%)',
+            gridcolor='#2a2e39',
+            ticksuffix='%'
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5
+        ),
+        hovermode='x unified',
+        paper_bgcolor='#1e222d',
+        plot_bgcolor='#1e222d',
+        font=dict(color='white'),
+        height=300,
+        margin=dict(t=50, l=50, r=20, b=50)
+    )
+    
+    # Create dollar value chart
+    value_fig = go.Figure()
+    
+    # Add area chart for each ticker (dollar value)
+    # Add cash first (dollar value)
+    value_fig.add_trace(
+        go.Scatter(
+            x=dates,
+            y=allocation_df['Cash'],
+            mode='lines',
+            stackgroup='one',
+            name='Cash',
+            line=dict(width=0),
+            fillcolor='#777777'
+        )
+    )
+    
+    # Add other tickers (dollar value)
+    for i, ticker in enumerate(tickers):
+        color = colors[i % len(colors)]
+        
+        value_fig.add_trace(
+            go.Scatter(
+                x=dates,
+                y=allocation_df[ticker],
+                mode='lines',
+                stackgroup='one',
+                name=ticker,
+                line=dict(width=0),
+                fillcolor=color
+            )
+        )
+    
+    # Update layout for dollar value chart
+    value_fig.update_layout(
+        title='Portfolio Allocation (Dollar Value)',
+        template=CHART_THEME,
+        xaxis=dict(
+            title='Date',
+            gridcolor='#2a2e39',
+            type='date'
+        ),
+        yaxis=dict(
+            title='Allocation ($)',
+            gridcolor='#2a2e39',
+            ticksuffix='$'
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5
+        ),
+        hovermode='x unified',
+        paper_bgcolor='#1e222d',
+        plot_bgcolor='#1e222d',
+        font=dict(color='white'),
+        height=300,
+        margin=dict(t=50, l=50, r=20, b=50)
+    )
+    
+    # Combine both charts
+    return html.Div([
+        dcc.Graph(figure=pct_fig, config={'displayModeBar': False}),
+        dcc.Graph(figure=value_fig, config={'displayModeBar': False})
+    ])
+
+# Modify the update_backtest callback to use a button as input instead of strategy selector
 
 @app.callback(
     [Output("calculation-status", "children"),
@@ -687,10 +667,25 @@ app.layout = dbc.Container([
      Output("trade-table-container", "children"),
      Output("backtest-period", "children"),
      Output("portfolio-instruments", "children"),
-     Output("portfolio-composition-container", "children")],  # New output
-    [Input("strategy-selector", "value")]
+     Output("portfolio-composition-container", "children")],
+    [Input("run-backtest-button", "n_clicks")], # Change input to button click
+    [State("strategy-selector", "value")] # Use State to get strategy value without triggering callback
 )
-def update_backtest(strategy):
+def update_backtest(n_clicks, strategy):
+    # Don't run backtest on page load (when n_clicks is None)
+    if n_clicks is None:
+        return (
+            html.Div("Click 'Run Backtest' to start", className="text-warning"),
+            [],
+            create_empty_cards(),
+            [],
+            html.Div("No trades available"),
+            html.Div("No trades available"),
+            "",
+            "",
+            html.Div("No allocation data available")
+        )
+    
     # Add input validation
     if not strategy or strategy not in ["MA", "RSI", "BB"]:
         return (
@@ -702,114 +697,89 @@ def update_backtest(strategy):
             html.Div("No trades available"),
             "",
             "",
-            html.Div("No allocation data available")  # Empty portfolio composition
+            html.Div("No allocation data available")
         )
     
+    # Rest of function unchanged
     try:
-        signals, results, stats = run_backtest(strategy)
-        
-        if any(x is None for x in [signals, results, stats]):
-            return (
-                html.Div("Error running backtest", className="text-danger"),
-                [],
-                create_empty_cards(),
-                [],
-                html.Div("No trades available"),
-                html.Div("No trades available"),
-                "",
-                "",
-                html.Div("No allocation data available")  # Empty portfolio composition
-            )
-        
-        # Create equity curve
-        portfolio_chart = create_styled_chart({
-            'Portfolio': results.get('Portfolio_Value', pd.Series()),
-            'Benchmark': results.get('Benchmark', pd.Series())
-        }, "Portfolio Performance")
-        
-        # Create metric cards
-        metrics = create_metric_cards(stats)
-        
-        # Process trades
-        trades = results.get('trades', [])
-        trade_dist = create_trade_histogram(trades)
-        trade_history = create_trade_table(trades)
-        
-        # Create portfolio composition chart
-        portfolio_composition = create_allocation_chart(results)
-        
-        # Get backtest period
-        portfolio_series = results.get('Portfolio_Value', pd.Series())
-        if len(portfolio_series) > 0:
-            start_date = portfolio_series.index[0].strftime('%Y-%m-%d')
-            end_date = portfolio_series.index[-1].strftime('%Y-%m-%d')
-            backtest_period = f"{start_date} to {end_date}"
-        else:
-            backtest_period = "N/A"
-        
-        # Get portfolio instruments
-        instruments = ", ".join(sorted(signals.keys()))
-        
-        return (
-            html.Div("Backtest completed successfully", className="text-success"),
-            portfolio_chart,
-            metrics,
-            [],
-            trade_dist,
-            trade_history,
-            backtest_period,
-            instruments,
-            portfolio_composition  # Portfolio composition chart
-        )
-        
-    except Exception as e:
-        logger.error(f"Callback error: {str(e)}")
-        traceback.print_exc()
-        return (
-            html.Div(f"Error: {str(e)}", className="text-danger"),
-            [],
-            create_empty_cards(),
-            [],
-            html.Div("No trades available"),
-            html.Div("No trades available"),
-            "",
-            "",
-            html.Div("No allocation data available")  # Empty portfolio composition
-        )
+        signals, results, stats = run_simple_backtest(strategy)
+        # ... rest of the function ...
 
+# Modify app layout to show initial empty state
+
+app.layout = dbc.Container([
+    dbc.Row([
+        dbc.Col([
+            html.H1("Portfolio Backtester", className="text-center my-4")
+        ])
+    ]),
+
+    dbc.Row([
+        # Left column (Strategy Settings + Risk Management)
+        dbc.Col([
+            # Strategy settings card
+            dbc.Card([
+                dbc.CardHeader("Strategy Settings"),
+                dbc.CardBody([
+                    html.H6("Select Strategy", className="mb-2"),
+                    dcc.Dropdown(
+                        id="strategy-selector",
+                        options=[
+                            {"label": "Moving Average Crossover", "value": "MA"},
+                            {"label": "RSI Strategy", "value": "RSI"},
+                            {"label": "Bollinger Bands", "value": "BB"}
+                        ],
+                        value="MA",
+                        className="mb-3"
+                    ),
+                    # Other strategy settings...
+                ])
+            ], className="mb-4"),
+            
+            # Risk management card
+            dbc.Card([
+                dbc.CardHeader("Risk Management"),
+                dbc.CardBody([
+                    create_risk_management_section()
+                ])
+            ], className="mb-4")
+        ], width=3),
+        
+        # Center and right columns with initial empty state
+        dbc.Col([
+            # Initial message
+            html.Div(
+                "Select a strategy and click 'Run Backtest' to view results",
+                className="text-center p-5 text-muted"
+            ),
+            # Empty containers for results
+            html.Div(id="calculation-status"),
+            html.Div(id="equity-curve-container"),
+            html.Div(id="metrics-container"),
+            html.Div(id="additional-charts"),
+        ], width=9)
+    ], className="g-2"),
+    
+    # Results row (initially empty)
+    dbc.Row([
+        dbc.Col([
+            html.Div([
+                html.Div(id="trade-distribution-container"),
+                html.Div(id="trade-table-container"),
+                html.Div(id="backtest-period"),
+                html.Div(id="portfolio-instruments"),
+                html.Div(id="portfolio-composition-container")
+            ], id="backtest-results", style={"display": "none"})  # Hide initially
+        ])
+    ])
+], fluid=True, style={"backgroundColor": "#131722"})
+
+# Add callback to show results when available
 @app.callback(
-    Output("strategy-params-container", "children"),
-    [Input("strategy-selector", "value")]
+    Output("backtest-results", "style"),
+    [Input("calculation-status", "children")]
 )
-def update_strategy_params(strategy):
-    """
-    Update strategy parameter inputs based on selected strategy.
-    (Moved from callbacks.py)
-    """
-    if strategy == "MA":
-        return html.Div([
-            html.Label("Fast Period"),
-            dcc.Slider(id="ma-fast-period", min=5, max=50, step=1, value=20),
-            html.Label("Slow Period"),
-            dcc.Slider(id="ma-slow-period", min=20, max=200, step=5, value=50)
-        ])
-    elif strategy == "RSI":
-        return html.Div([
-            html.Label("RSI Period"),
-            dcc.Slider(id="rsi-period", min=5, max=30, step=1, value=14),
-            html.Label("Overbought Level"),
-            dcc.Slider(id="rsi-overbought", min=60, max=90, step=5, value=70),
-            html.Label("Oversold Level"),
-            dcc.Slider(id="rsi-oversold", min=10, max=40, step=5, value=30)
-        ])
-    elif strategy == "BB":
-        return html.Div([
-            html.Label("Window Size"),
-            dcc.Slider(id="bb-window", min=5, max=50, step=1, value=20),
-            html.Label("Standard Deviations"),
-            dcc.Slider(id="bb-std", min=0.5, max=4, step=0.5, value=2)
-        ])
-    return html.Div()
-
-if __name__ == "__main__":
-    app.run(debug=True)
+def show_results(status):
+    if status and "successfully" in str(status):
+        return {"display": "block"}
+    return {"display": "none"}

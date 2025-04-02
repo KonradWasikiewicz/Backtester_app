@@ -24,6 +24,29 @@ from ..analysis.metrics import (
     calculate_max_drawdown, calculate_calmar_ratio, calculate_pure_profit_score
 )
 
+def get_strategy_class(strategy_name):
+    """
+    Get the strategy class dynamically based on the strategy name.
+    Returns the class object for instantiation.
+    """
+    if strategy_name in AVAILABLE_STRATEGIES:
+        return AVAILABLE_STRATEGIES[strategy_name]
+    
+    try:
+        # Try to dynamically import the strategy
+        module_name = f"src.strategies.{strategy_name.lower()}"
+        class_name = f"{strategy_name}Strategy"
+        
+        # Import the module
+        module = __import__(module_name, fromlist=[class_name])
+        
+        # Get the class from the module
+        strategy_class = getattr(module, class_name)
+        return strategy_class
+    except (ImportError, AttributeError) as e:
+        logger.error(f"Strategy class not found: {strategy_name}. Error: {e}")
+        return None
+
 class BacktestManager:
     """Manager for running backtests across multiple strategies and instruments"""
     
@@ -32,28 +55,41 @@ class BacktestManager:
         self.data_loader = DataLoader()
         self.logger = logging.getLogger(__name__)
         
-    def run_backtest(self, strategy_type, **strategy_params):
-        """Run backtest with proper capital distribution"""
+    def run_backtest(self, strategy_type, tickers=None, **kwargs):
+        """Run backtest for the specified strategy type"""
         try:
+            # Import the strategy class
+            if strategy_type in AVAILABLE_STRATEGIES:
+                strategy_class = AVAILABLE_STRATEGIES[strategy_type]
+            else:
+                strategy_class = get_strategy_class(strategy_type)
+                
+            if not strategy_class:
+                logger.error(f"Strategy '{strategy_type}' not found")
+                return None, None, None
+                
+            # Get default tickers if none provided - FIXED
+            if tickers is None:
+                # Use our data loader to get available tickers
+                data_loader = DataLoader()
+                available_tickers = data_loader.get_available_tickers()
+                if available_tickers:
+                    tickers = [available_tickers[0]]  # Take first ticker as default
+                else:
+                    logger.error("No tickers available")
+                    return None, None, None
+            
+            # Create strategy instance
+            strategy = strategy_class(tickers, **kwargs)
+            
             # Get all available tickers
             available_tickers = self.data_loader.get_available_tickers()
             
             if not available_tickers:
                 raise ValueError("No ticker data available")
                 
-            # Create strategy instance
-            strategy_class = AVAILABLE_STRATEGIES.get(strategy_type)
-            if not strategy_class:
-                raise ValueError(f"Unknown strategy type: {strategy_type}")
-                
             # Calculate per-ticker allocation
             per_ticker_allocation = self.initial_capital / len(available_tickers)
-            
-            # Use all available tickers
-            strategy = strategy_class(
-                tickers=available_tickers,
-                **strategy_params
-            )
             
             # Log startup message
             self.logger.info(f"Running backtest with {strategy_type} strategy for {len(available_tickers)} tickers: {', '.join(available_tickers)}")
@@ -302,3 +338,30 @@ class BacktestManager:
         stats['trades'] = results.get('trades', [])
         
         return stats
+
+    def run_portfolio_backtest(self, strategy_type, tickers, risk_params=None, **kwargs):
+        """Run portfolio backtest with risk management parameters"""
+        from src.portfolio.risk_manager import RiskManager
+        
+        # Create risk manager with custom parameters
+        risk_manager = RiskManager(**(risk_params or {}))
+        
+        # Run backtest with risk management - FIX: Use consistent parameter style
+        signals, results, stats = self.run_backtest(
+            strategy_type, 
+            tickers=tickers,  # We can use keyword here since run_backtest will handle it correctly now
+            risk_manager=risk_manager,
+            **kwargs
+        )
+        
+        # Check for failed backtest
+        if results is None:
+            return None
+        
+        # Combine results in the format expected by the UI
+        return {
+            'portfolio_values': results.get('Portfolio_Value', pd.Series()),
+            'trades': results.get('trades', []),
+            'metrics': stats,
+            'signals': signals
+        }

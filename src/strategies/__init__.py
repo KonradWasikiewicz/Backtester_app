@@ -3,13 +3,6 @@ from .moving_average import MovingAverageCrossoverStrategy as MovingAverageStrat
 from .rsi import RSIStrategy
 from .bollinger import BollingerBandsStrategy
 
-__all__ = [
-    'MovingAverageStrategy',
-    'RSIStrategy',
-    'BollingerBandsStrategy',
-    'BaseStrategy'
-]
-
 # Strategy registry
 AVAILABLE_STRATEGIES = {
     "MA": MovingAverageStrategy,
