@@ -192,10 +192,10 @@ def create_trade_histogram_figure(trades, stats):
     mean_return = np.mean(trade_returns)
     fig.add_vline(
         x=mean_return, line_width=2, line_dash="dot", line_color="#36A2EB", 
-        annotation_text=f"Avg: {mean_return:.1f}%", annotation_position="top right"
+        annotation_text=f"Average: {mean_return:.1f}%", annotation_position="top right"
     )
     
-    # Update layout
+    # Update layout with English labels
     fig.update_layout(
         title='Trade Return Distribution',
         template=CHART_THEME,

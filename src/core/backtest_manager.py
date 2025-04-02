@@ -15,9 +15,10 @@ from src.core.constants import AVAILABLE_STRATEGIES, TRADING_DAYS_PER_YEAR
 from src.core.data import DataLoader
 from src.core.engine import BacktestEngine
 from .config import config
-from ..strategies.moving_average import MovingAverageCrossoverStrategy
+from ..strategies.base import BaseStrategy
+from ..strategies.moving_average import MovingAverageCrossoverStrategy as MovingAverageStrategy
 from ..strategies.rsi import RSIStrategy
-from ..strategies.bollinger_bands import BollingerBandsStrategy
+from ..strategies.bollinger import BollingerBandsStrategy
 from ..analysis.metrics import (
     calculate_cagr, calculate_sharpe_ratio, calculate_sortino_ratio,
     calculate_max_drawdown, calculate_calmar_ratio, calculate_pure_profit_score

@@ -35,7 +35,8 @@ from src.visualization.chart_utils import create_styled_chart, create_empty_char
 from src.ui.components import create_metric_card, create_metric_card_with_tooltip
 from src.analysis.metrics import (
     calculate_trade_statistics, calculate_alpha, calculate_beta, 
-    calculate_information_ratio, calculate_recovery_factor
+    calculate_information_ratio, calculate_recovery_factor,
+    analyze_trade_metrics  # Add this new import
 )
 
 # Initialize Dash app with dark theme
@@ -87,16 +88,16 @@ def create_metric_cards(stats):
     alpha = calculate_alpha(stats.get('Portfolio_Value'), stats.get('Benchmark', None))
     beta = calculate_beta(stats.get('Portfolio_Value'), stats.get('Benchmark', None))
     info_ratio = calculate_information_ratio(stats.get('Portfolio_Value'), stats.get('Benchmark', None))
-    recovery_factor = calculate_recovery_factor(
-        stats.get('total_return', 0), 
-        stats.get('max_drawdown', 1)
-    )
+    recovery_factor = calculate_recovery_factor(stats.get('total_return', 0), stats.get('max_drawdown', 1))
     
-    # Get initial and final capital values
-    initial_capital = 10000  # Hardcoded to match the actual value used
+    # Hardcode initial capital to match the actual value used
+    initial_capital = 10000
+    
+    # Get final capital from portfolio values
     portfolio_values = stats.get('Portfolio_Value')
     final_capital = portfolio_values.iloc[-1] if portfolio_values is not None and len(portfolio_values) > 0 else initial_capital
 
+    # We're using html.Div as a container now, so we return a list of rows
     return html.Div([
         # First row - Capital metrics side by side with minimal spacing
         dbc.Row([
@@ -104,18 +105,20 @@ def create_metric_cards(stats):
             dbc.Col(create_metric_card_with_tooltip("Final Capital", f"${final_capital:,.2f}", tooltip_texts['Final Capital']), width=6, className="px-1")
         ], className="g-0 mb-1"),  # Reduced gutters and margin
         
-        # Performance metrics in a very compact grid
+        # Second row - Three columns with metrics
         dbc.Row([
             dbc.Col([
                 create_metric_card_with_tooltip("CAGR", f"{stats.get('cagr', 0):.2f}%", tooltip_texts['CAGR']),
                 create_metric_card_with_tooltip("Total Return", f"{stats.get('total_return', 0):.2f}%", tooltip_texts['Total Return']),
                 create_metric_card_with_tooltip("Alpha", f"{alpha:.2f}%", tooltip_texts['Alpha'])
-            ], width=4, className="px-1 py-0"),  # Reduced padding
+            ], width=4, className="px-1 py-0"),
+            
             dbc.Col([
                 create_metric_card_with_tooltip("Max Drawdown", f"{stats.get('max_drawdown', 0):.2f}%", tooltip_texts['Max Drawdown']),
                 create_metric_card_with_tooltip("Sharpe Ratio", f"{stats.get('sharpe_ratio', 0):.2f}", tooltip_texts['Sharpe Ratio']),
                 create_metric_card_with_tooltip("Beta", f"{beta:.2f}", tooltip_texts['Beta'])
-            ], width=4, className="px-1 py-0"),  # Reduced padding
+            ], width=4, className="px-1 py-0"),
+            
             dbc.Col([
                 create_metric_card_with_tooltip("Info Ratio", f"{info_ratio:.2f}", tooltip_texts['Information Ratio']),
                 create_metric_card_with_tooltip("Sortino Ratio", f"{stats.get('sortino_ratio', 0):.2f}", tooltip_texts['Sortino Ratio']),
@@ -129,8 +132,8 @@ def create_trade_histogram(trades):
     if not trades:
         return html.Div("No trades available")
     
-    # Calculate trade statistics
-    stats = calculate_trade_statistics(trades)
+    # Use the consolidated function instead
+    stats = analyze_trade_metrics(trades)
     
     # Create histogram figure
     histogram = create_trade_histogram_figure(trades, stats)
@@ -362,28 +365,34 @@ def create_allocation_chart(results):
                 
             # Find indices for dates within our portfolio timeframe
             # Use boolean indexing instead of get_loc
-            if entry_date not in positions_df.index or exit_date not in positions_df.index:
-                start_idx = positions_df.index.searchsorted(entry_date) 
-                if start_idx >= len(positions_df):
-                    continue
-                end_idx = positions_df.index.searchsorted(exit_date)
-                if end_idx >= len(positions_df):
-                    end_idx = len(positions_df) - 1
-            else:
-                start_idx = positions_df.index.get_indexer([entry_date])[0]
-                end_idx = positions_df.index.get_indexer([exit_date])[0]
+            entry_idx = -1
+            exit_idx = -1
+            
+            # Find the closest index positions
+            for i, date in enumerate(positions_df.index):
+                if date >= entry_date and entry_idx == -1:
+                    entry_idx = i
+                if date >= exit_date and exit_idx == -1:
+                    exit_idx = i
+                    break
+                    
+            if entry_idx == -1:
+                continue
+                
+            if exit_idx == -1:
+                exit_idx = len(positions_df) - 1
             
             # Update positions (buy)
             ticker_idx = positions_df.columns.get_loc(ticker)
-            for i in range(start_idx, end_idx + 1):
+            for i in range(entry_idx, exit_idx + 1):
                 positions_df.iloc[i, ticker_idx] += shares
             
             # Update cash (deduct cost at entry)
-            for i in range(start_idx, len(cash_series)):
+            for i in range(entry_idx, len(cash_series)):
                 cash_series.iloc[i] -= shares * entry_price
             
             # Update cash (add proceeds at exit)
-            for i in range(end_idx, len(cash_series)):
+            for i in range(exit_idx, len(cash_series)):
                 cash_series.iloc[i] += shares * exit_price
                 
             # Store price data for this ticker if we don't have it yet
@@ -405,22 +414,33 @@ def create_allocation_chart(results):
     for ticker in tickers:
         if ticker in price_data and len(price_data[ticker]) > 0:
             # Create price series from trade data
-            price_series = pd.Series(price_data[ticker])
-            # Forward-fill prices using alternate method
+            prices = price_data[ticker]
+            # Create a Series with the right index
             reindexed = pd.Series(index=positions_df.index)
-            for date in price_series.index:
-                idx = positions_df.index.searchsorted(date)
-                if idx < len(positions_df.index):
-                    reindexed.iloc[idx] = price_series[date]
             
-            # Forward fill manually
-            last_valid = None
-            for i in range(len(reindexed)):
-                if pd.notnull(reindexed.iloc[i]):
-                    last_valid = reindexed.iloc[i]
-                elif last_valid is not None:
-                    reindexed.iloc[i] = last_valid
-                    
+            # Manual forward fill approach
+            last_price = None
+            for date, row in positions_df.iterrows():
+                # Find the most recent price before this date
+                most_recent_price = None
+                most_recent_date = None
+                
+                for price_date in prices.keys():
+                    if price_date <= date and (most_recent_date is None or price_date > most_recent_date):
+                        most_recent_date = price_date
+                        most_recent_price = prices[price_date]
+                
+                # If we have a price, use it
+                if most_recent_price is not None:
+                    reindexed[date] = most_recent_price
+                elif last_price is not None:
+                    # Otherwise use the last valid price
+                    reindexed[date] = last_price
+                
+                # Update last price if we have a value for this date
+                if most_recent_price is not None:
+                    last_price = most_recent_price
+            
             if not reindexed.empty and not reindexed.isna().all():
                 daily_prices[ticker] = reindexed
     
@@ -611,7 +631,8 @@ app.layout = dbc.Container([
                         html.Label("Portfolio Instruments"),
                         html.Div(id="portfolio-instruments", className="text-info")
                     ], className="mt-3"),
-                    dbc.Spinner(html.Div(id="calculation-status"))
+                    dbc.Spinner(html.Div(id="calculation-status")),
+                    html.Div(id="strategy-params-container")  # New container for strategy parameters
                 ])
             ], className="mb-4")
         ], width=2),
@@ -755,6 +776,40 @@ def update_backtest(strategy):
             "",
             html.Div("No allocation data available")  # Empty portfolio composition
         )
+
+@app.callback(
+    Output("strategy-params-container", "children"),
+    [Input("strategy-selector", "value")]
+)
+def update_strategy_params(strategy):
+    """
+    Update strategy parameter inputs based on selected strategy.
+    (Moved from callbacks.py)
+    """
+    if strategy == "MA":
+        return html.Div([
+            html.Label("Fast Period"),
+            dcc.Slider(id="ma-fast-period", min=5, max=50, step=1, value=20),
+            html.Label("Slow Period"),
+            dcc.Slider(id="ma-slow-period", min=20, max=200, step=5, value=50)
+        ])
+    elif strategy == "RSI":
+        return html.Div([
+            html.Label("RSI Period"),
+            dcc.Slider(id="rsi-period", min=5, max=30, step=1, value=14),
+            html.Label("Overbought Level"),
+            dcc.Slider(id="rsi-overbought", min=60, max=90, step=5, value=70),
+            html.Label("Oversold Level"),
+            dcc.Slider(id="rsi-oversold", min=10, max=40, step=5, value=30)
+        ])
+    elif strategy == "BB":
+        return html.Div([
+            html.Label("Window Size"),
+            dcc.Slider(id="bb-window", min=5, max=50, step=1, value=20),
+            html.Label("Standard Deviations"),
+            dcc.Slider(id="bb-std", min=0.5, max=4, step=0.5, value=2)
+        ])
+    return html.Div()
 
 if __name__ == "__main__":
     app.run(debug=True)

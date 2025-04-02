@@ -3,15 +3,15 @@ import numpy as np
 from typing import Dict
 from .base import BaseStrategy
 
-class BollingerBands:
+class BollingerBandsStrategy(BaseStrategy):
     """Bollinger Bands strategy implementation"""
     
     def __init__(self, tickers, window=20, num_std=2.0):
         """Initialize strategy with parameters"""
-        self.tickers = tickers
+        super().__init__(tickers)
         self.window = window
         self.num_std = num_std
-        
+    
     def generate_signals(self, ticker, data):
         """
         Generate buy/sell signals using Bollinger Bands.

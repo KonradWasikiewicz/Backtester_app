@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 
 # Import strategy classes
 from src.strategies.moving_average import MovingAverageCrossoverStrategy
-from src.strategies.bollinger_bands import BollingerBandsStrategy
+from src.strategies.bollinger import BollingerBandsStrategy
 from src.strategies.rsi import RSIStrategy
 
 class SignalType(Enum):

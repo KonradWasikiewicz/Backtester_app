@@ -481,4 +481,39 @@ def get_trade_bins_dynamic(returns: List[float]) -> Tuple[List[int], List[float]
     
     return bins, outliers_low, outliers_high
 
+def analyze_trade_metrics(trades):
+    """
+    Analyze trade metrics to get comprehensive statistics.
+    Consolidated from trade_analyzer.py
+    """
+    if not trades:
+        return {}
+    
+    # Calculate basic trade statistics
+    stats = calculate_trade_statistics(trades)
+    
+    # Add additional metrics
+    stats['avg_holding_days'] = calculate_avg_holding_period(trades)
+    stats['win_loss_ratio'] = stats['winning_trades'] / stats['losing_trades'] if stats['losing_trades'] > 0 else float('inf')
+    stats['expectancy'] = (stats['win_rate']/100 * stats['avg_win_pnl']) - ((100-stats['win_rate'])/100 * abs(stats['avg_loss_pnl']))
+    stats['recovery_factor'] = calculate_recovery_factor(stats['total_profit'], abs(stats['largest_loss'])) if abs(stats['largest_loss']) > 0 else float('inf')
+    stats['risk_reward_ratio'] = abs(stats['avg_win_pnl'] / stats['avg_loss_pnl']) if abs(stats['avg_loss_pnl']) > 0 else float('inf')
+    
+    return stats
+
+def calculate_avg_holding_period(trades):
+    """Calculate average holding period in days"""
+    if not trades:
+        return 0
+    
+    holding_days = []
+    for trade in trades:
+        entry_date = pd.to_datetime(trade.get('entry_date'))
+        exit_date = pd.to_datetime(trade.get('exit_date')) 
+        if pd.notnull(entry_date) and pd.notnull(exit_date):
+            days = (exit_date - entry_date).days
+            holding_days.append(days)
+    
+    return sum(holding_days) / len(holding_days) if holding_days else 0
+
 

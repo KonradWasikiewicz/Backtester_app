@@ -49,6 +49,8 @@
 
 .metric-card {
     transition: transform 0.2s;
+    height: 100%;
+    background-color: #1e222d;
 }
 
 .metric-card:hover {
@@ -59,11 +61,29 @@
     font-size: 1.1rem;
     font-weight: 500;
     margin-top: 0.25rem;
-    color: #e1e1e1;
+    font-family: 'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
 /* Add this specifically for numeric values */
 .metric-card .metric-value {
     font-family: 'Courier New', monospace;
     letter-spacing: -0.05em;
+}
+
+/* Fix for tooltip components */
+.tooltip-inner {
+    background-color: #2a2e39;
+    color: #ffffff;
+    max-width: 300px;
+    border-radius: 6px;
+}
+
+/* Reset fonts for the trade table */
+.dash-table-container {
+    font-family: 'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Ensure the metric wrapper takes full height */
+.metric-wrapper {
+    height: 100%;
 }
