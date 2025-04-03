@@ -2,208 +2,148 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Union, Any
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from dash import dcc, html
-import dash_bootstrap_components as dbc
+import logging
 
-from ..core.constants import CHART_THEME
-from .chart_utils import create_empty_chart, create_styled_chart
+logger = logging.getLogger(__name__)
+
+# Importuj funkcje pomocnicze do tworzenia wykresów
+try:
+    from .chart_utils import (
+        create_empty_chart,
+        create_styled_chart,
+        create_trade_histogram_figure,
+        create_allocation_chart # Importuj funkcję alokacji
+        # Importuj inne potrzebne funkcje, jeśli je dodasz/przywrócisz
+        # create_drawdown_chart,
+        # create_monthly_returns_heatmap
+    )
+except ImportError as e:
+    logger.error(f"Failed to import chart utilities in Visualizer: {e}")
+    # Definiuj puste funkcje jako fallback, aby uniknąć błędów atrybutów
+    def create_empty_chart(*args, **kwargs): return html.Div("Chart Utils Error")
+    def create_styled_chart(*args, **kwargs): return html.Div("Chart Utils Error")
+    def create_trade_histogram_figure(*args, **kwargs): return html.Div("Chart Utils Error")
+    def create_allocation_chart(*args, **kwargs): return html.Div("Chart Utils Error")
+
 
 class BacktestVisualizer:
-    """Class for creating backtest visualization"""
-    
+    """
+    Class responsible for generating Dash components (graphs and tables)
+    for visualizing backtest results. Uses utility functions from chart_utils.
+    """
+
     def __init__(self):
-        """Initialize visualizer with chart theme"""
-        self.chart_theme = CHART_THEME
+        """Initializes the visualizer."""
+        # Inicjalizacja może zawierać np. ustawienia domyślne, jeśli są potrzebne
+        logger.info("BacktestVisualizer initialized.")
 
-    def create_equity_curve(self, portfolio_values: pd.Series, 
-                          benchmark_values: Optional[pd.Series] = None) -> dict:
-        """Create equity curve chart
-        
-        Args:
-            portfolio_values: Portfolio value series
-            benchmark_values: Benchmark value series
-            
-        Returns:
-            Chart figure dict
+
+    def create_equity_curve_component(self,
+                                      portfolio_values: Optional[pd.Series],
+                                      benchmark_values: Optional[pd.Series] = None,
+                                      title: str = "Portfolio Performance",
+                                      height: int = 400) -> dcc.Graph:
         """
-        if portfolio_values.empty:
-            return create_empty_chart("Portfolio Performance")
-            
-        data = {'Portfolio': portfolio_values}
+        Creates a Dash Graph component for the equity curve.
+
+        Args:
+            portfolio_values (Optional[pd.Series]): Time series of portfolio values.
+            benchmark_values (Optional[pd.Series]): Time series of benchmark values (aligned).
+            title (str): Chart title.
+            height (int): Chart height.
+
+        Returns:
+            dcc.Graph: Dash component containing the equity curve chart or an empty chart.
+        """
+        figure_data = {}
+        if portfolio_values is not None and not portfolio_values.empty:
+            figure_data['Portfolio'] = portfolio_values
         if benchmark_values is not None and not benchmark_values.empty:
-            data['Benchmark'] = benchmark_values
-            
-        return create_styled_chart(data, "Portfolio Performance")
+            # Upewnij się, że benchmark ma nazwę dla legendy
+            benchmark_values.name = benchmark_values.name or "Benchmark"
+            figure_data[benchmark_values.name] = benchmark_values
 
-    def create_drawdown_chart(self, portfolio_values: pd.Series) -> dict:
-        """Create drawdown chart
-        
-        Args:
-            portfolio_values: Portfolio value series
-            
-        Returns:
-            Chart figure dict
-        """
-        if portfolio_values.empty:
-            return create_empty_chart("Portfolio Drawdown")
-            
-        # Calculate drawdown
-        rolling_max = portfolio_values.cummax()
-        drawdown = (portfolio_values - rolling_max) / rolling_max * 100
-        
+        # Użyj funkcji z chart_utils do stworzenia wykresu
+        # Ta funkcja zwraca dcc.Graph
         return create_styled_chart(
-            {'Drawdown': drawdown}, 
-            "Portfolio Drawdown", 
-            chart_type="area"
+            figure_data=figure_data,
+            layout_title=title,
+            yaxis_title="Portfolio Value",
+            yaxis_format="$", # Formatowanie osi Y jako waluta
+            height=height
         )
 
-    def create_monthly_returns_heatmap(self, portfolio_values: pd.Series) -> dict:
-        """Create monthly returns heatmap
-        
-        Args:
-            portfolio_values: Portfolio value series
-            
-        Returns:
-            Chart figure dict
+
+    def create_trade_distribution_component(self,
+                                            trades: Optional[List[Dict]],
+                                            height: int = 250) -> Union[dcc.Graph, html.Div]:
         """
-        if portfolio_values.empty or len(portfolio_values) < 30:
-            return create_empty_chart("Monthly Returns")
-            
-        # Calculate monthly returns
-        returns = portfolio_values.pct_change()
-        returns = returns[~returns.isna()]
-        
-        monthly_returns = returns.groupby([
-            returns.index.year.rename('Year'), 
-            returns.index.month.rename('Month')
-        ]).apply(lambda x: (1 + x).prod() - 1)
-        
-        # Create heatmap data
-        years = monthly_returns.index.get_level_values('Year').unique().sort_values()
-        months = list(range(1, 13))
-        
-        z_data = np.full((len(years), 12), np.nan)
-        
-        for i, year in enumerate(years):
-            for j, month in enumerate(months):
-                try:
-                    z_data[i, j] = monthly_returns.loc[(year, month)]
-                except KeyError:
-                    pass
-        
-        # Create heatmap
-        fig = go.Figure(data=go.Heatmap(
-            z=z_data * 100,  # Convert to percentage
-            x=[f"{m}" for m in months],
-            y=[str(y) for y in years],
-            colorscale=[
-                [0, 'rgb(165,0,38)'],
-                [0.5, 'rgb(49,54,149)'],
-                [1, 'rgb(0,104,55)']
-            ],
-            colorbar=dict(
-                title=dict(text="Return %", side="top"),
-                tickformat=".1f",
-                exponentformat="none"
-            ),
-            text=np.round(z_data * 100, 1),
-            hovertemplate="Year: %{y}<br>Month: %{x}<br>Return: %{z:.2f}%<extra></extra>",
-        ))
-        
-        fig.update_layout(
-            title="Monthly Returns (%)",
-            template=CHART_THEME,
-            paper_bgcolor='#1e222d',
-            plot_bgcolor='#1e222d',
-            font={'color': '#ffffff'},
-            margin={'t': 50, 'l': 50, 'r': 20, 'b': 50},
-            xaxis={'title': 'Month', 'gridcolor': '#2a2e39'},
-            yaxis={'title': 'Year', 'gridcolor': '#2a2e39'},
-        )
-        
-        return fig
+        Creates a Dash component for the trade P&L distribution histogram.
 
-    def create_trade_distribution(self, trades: List[Dict]) -> Union[dcc.Graph, html.Div]:
-        """Create trade distribution chart
-        
         Args:
-            trades: List of trade dictionaries
-            
+            trades (Optional[List[Dict]]): List of completed trade dictionaries.
+            height (int): Chart height.
+
         Returns:
-            Dash component with trade distribution
+            Union[dcc.Graph, html.Div]: Dash component with the histogram or a message.
         """
         if not trades:
-            return html.Div("No trades available", className="text-center text-muted my-5")
-            
-        # Extract returns from trades
-        returns = [t.get('return_pct', 0) for t in trades]
-        
-        # Create histogram
-        fig = go.Figure(data=go.Histogram(
-            x=returns,
-            marker_color=['#FF6B6B' if r < 0 else '#17B897' for r in returns],
-            opacity=0.7,
-            autobinx=False,
-            xbins=dict(
-                start=min(-50, min(returns)),
-                end=max(50, max(returns)),
-                size=5
-            )
-        ))
-        
-        fig.update_layout(
-            title="Trade Return Distribution",
-            template=CHART_THEME,
-            paper_bgcolor='#1e222d',
-            plot_bgcolor='#1e222d',
-            font={'color': '#ffffff'},
-            margin={'t': 50, 'l': 50, 'r': 20, 'b': 50},
-            xaxis={'title': 'Return (%)', 'gridcolor': '#2a2e39'},
-            yaxis={'title': 'Number of Trades', 'gridcolor': '#2a2e39'},
-        )
-        
-        return dcc.Graph(
-            figure=fig,
-            config={
-                'displayModeBar': True,
-                'responsive': True,
-                'modeBarButtonsToRemove': ['lasso2d', 'select2d']
-            }
-        )
+            return create_empty_chart("Trade P/L Distribution - No Trades", height=height)
 
-    def create_backtest_charts(self, portfolio_values: pd.Series, 
-                             benchmark_values: Optional[pd.Series] = None,
-                             trades: Optional[List[Dict]] = None) -> List[Any]:
-        """Create all backtest visualization charts
-        
-        Args:
-            portfolio_values: Portfolio value series
-            benchmark_values: Benchmark value series
-            trades: List of trade dictionaries
-            
-        Returns:
-            List of chart components
+        # Użyj funkcji z chart_utils, która zwraca go.Figure lub html.Div
+        fig_or_div = create_trade_histogram_figure(trades, {}) # Drugi argument (stats) nie jest używany w tej wersji
+
+        if isinstance(fig_or_div, go.Figure):
+            # Ustaw wysokość figury przed opakowaniem w dcc.Graph
+            fig_or_div.update_layout(height=height)
+            return dcc.Graph(figure=fig_or_div, config={'displayModeBar': False})
+        elif isinstance(fig_or_div, html.Div):
+            # Zwróć komunikat błędu/ostrzeżenia z chart_utils
+            return fig_or_div
+        else:
+            logger.error("create_trade_histogram_figure returned unexpected type.")
+            return create_empty_chart("Error Generating Histogram", height=height)
+
+
+    def create_allocation_component(self,
+                                    results: Optional[Dict],
+                                    height: int = 300) -> Union[dcc.Graph, html.Div]:
         """
-        charts = []
-        
-        # Create equity curve
-        equity_curve = self.create_equity_curve(portfolio_values, benchmark_values)
-        charts.append(equity_curve)
-        
-        # Create drawdown chart if enough data
-        if len(portfolio_values) > 20:
-            drawdown_chart = self.create_drawdown_chart(portfolio_values)
-            charts.append(drawdown_chart)
-        
-        # Create monthly returns heatmap if enough data
-        if len(portfolio_values) > 60:
-            monthly_chart = self.create_monthly_returns_heatmap(portfolio_values)
-            charts.append(monthly_chart)
-            
-        # Create trade distribution if trades available
-        if trades and len(trades) > 0:
-            trade_chart = self.create_trade_distribution(trades)
-            charts.append(trade_chart)
-            
-        return charts
+        Creates a Dash component for the portfolio allocation chart.
+
+        Args:
+            results (Optional[Dict]): Dictionary containing backtest results,
+                                      expected to have 'Portfolio_Value' and 'trades'.
+            height (int): Chart height.
+
+        Returns:
+            Union[dcc.Graph, html.Div]: Dash component with the allocation chart or a message.
+        """
+        if not results:
+            return create_empty_chart("Portfolio Allocation - No Results", height=height)
+
+        # Użyj funkcji z chart_utils, która zwraca dcc.Graph lub html.Div
+        # Ta funkcja już opakowuje w dcc.Graph, jeśli się uda
+        allocation_component = create_allocation_chart(results)
+
+        # Możemy dostosować wysokość, jeśli komponent to dcc.Graph
+        if isinstance(allocation_component, dcc.Graph):
+             allocation_component.figure.update_layout(height=height)
+             return allocation_component
+        elif isinstance(allocation_component, html.Div):
+             # Zwróć komunikat
+             return allocation_component
+        else:
+             logger.error("create_allocation_chart returned unexpected type.")
+             return create_empty_chart("Error Generating Allocation Chart", height=height)
+
+
+    # Możesz dodać tu inne metody, np.:
+    # def create_drawdown_component(self, portfolio_values: Optional[pd.Series], ...) -> dcc.Graph:
+    #     # Użyj create_styled_chart z odpowiednimi danymi drawdown
+    #     pass
+
+    # def create_monthly_heatmap_component(self, portfolio_values: Optional[pd.Series], ...) -> dcc.Graph:
+    #     # Wywołaj odpowiednią funkcję z chart_utils
+    #     pass
