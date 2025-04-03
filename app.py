@@ -2,949 +2,379 @@ import dash
 import dash_bootstrap_components as dbc
 import pandas as pd
 import numpy as np
-from dash import dcc, html, dash_table
-from dash.dependencies import Input, Output, State
+from dash import dcc, html, dash_table, callback, Output, Input, State, ALL, MATCH, ctx
 import sys
 import traceback
 from pathlib import Path
 import logging
 import plotly.graph_objects as go
+import inspect # Do inspekcji parametrów strategii
 
-# Add this function at the beginning of the file (or in a utils section)
-
-def get_available_tickers():
-    """Dynamically load available tickers from CSV files, excluding benchmark"""
-    import os
-    import pandas as pd
-    
-    # Path to data directory
-    data_dir = "data"
-    
-    # Get list of CSV files
-    tickers = set()
-    benchmark_ticker = "SPY"  # Define your benchmark ticker here to exclude it
-    
-    try:
-        # Scan the data directory for CSV files
-        for file in os.listdir(data_dir):
-            if file.endswith('.csv'):
-                ticker = file.split('.')[0]  # Extract ticker from filename
-                if ticker != benchmark_ticker:
-                    tickers.add(ticker)
-    except Exception as e:
-        logger.error(f"Error loading tickers from CSV: {e}")
-    
-    # Return list of unique tickers
-    return sorted(list(tickers))
-
-# Konfiguracja logowania
+# --- Konfiguracja Logowania ---
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("backtest.log"),
+        logging.FileHandler("backtest.log", mode='w'), # Tryb 'w' nadpisuje log przy każdym uruchomieniu
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
+# Zmniejszenie gadatliwości niektórych modułów
+logging.getLogger('src.portfolio.portfolio_manager').setLevel(logging.INFO) # Podnieśmy poziom dla debugowania
+logging.getLogger('src.portfolio.risk_manager').setLevel(logging.INFO)    # Podnieśmy poziom dla debugowania
+logging.getLogger('src.core.backtest_manager').setLevel(logging.INFO)     # Podnieśmy poziom dla debugowania
+logging.getLogger('src.core.data').setLevel(logging.INFO)                 # Podnieśmy poziom dla debugowania
+logging.getLogger('src.core.engine').setLevel(logging.INFO)               # Podnieśmy poziom dla debugowania
 
-# Reduce verbosity for specific modules
-logging.getLogger('src.portfolio.portfolio_manager').setLevel(logging.WARNING)
-logging.getLogger('src.portfolio.risk_manager').setLevel(logging.WARNING)
-logging.getLogger('src.core.backtest_manager').setLevel(logging.WARNING)
 
-# Add project root to Python path
+# --- Dodawanie Ścieżki i Importy Lokalne ---
 project_root = Path(__file__).parent.absolute()
 sys.path.append(str(project_root))
+try:
+    from src.core.config import config
+    from src.core.constants import AVAILABLE_STRATEGIES, CHART_THEME # AVAILABLE_STRATEGIES zawiera klasy
+    from src.core.data import DataLoader
+    from src.core.backtest_manager import BacktestManager
+    from src.portfolio.risk_manager import RiskManager # Import RiskManager do pobrania domyślnych wartości
+    from src.visualization.visualizer import BacktestVisualizer
+    from src.visualization.chart_utils import create_styled_chart, create_empty_chart, create_trade_histogram_figure, create_allocation_chart # Dodano create_allocation_chart
+    from src.ui.components import create_metric_card, create_metric_card_with_tooltip
+    from src.analysis.metrics import (
+        calculate_trade_statistics, calculate_alpha, calculate_beta,
+        calculate_information_ratio, calculate_recovery_factor
+    )
+except ImportError as e:
+    logger.error(f"CRITICAL: Failed to import local modules: {e}. Ensure script is run from project root or PYTHONPATH is set correctly.")
+    logger.error(traceback.format_exc())
+    sys.exit(1)
 
-# Now import local modules
-from src.core.config import config
-from src.core.constants import AVAILABLE_STRATEGIES, CHART_THEME
-from src.core.data import DataLoader
-from src.core.backtest_manager import BacktestManager
-from src.visualization.visualizer import BacktestVisualizer
-from src.visualization.chart_utils import create_styled_chart, create_empty_chart, create_trade_histogram_figure
-from src.ui.components import create_metric_card, create_metric_card_with_tooltip
-from src.analysis.metrics import (
-    calculate_trade_statistics, calculate_alpha, calculate_beta, 
-    calculate_information_ratio, calculate_recovery_factor,
-    analyze_trade_metrics
-)
 
-# Initialize Dash app with dark theme
+# --- Inicjalizacja Aplikacji Dash ---
+# Użyj ścieżki do folderu 'assets' dla CSS
 app = dash.Dash(
-    __name__, 
-    external_stylesheets=[
-        dbc.themes.DARKLY,
-        'https://use.fontawesome.com/releases/v5.15.4/css/all.css'
-    ],
-    meta_tags=[
-        {"name": "viewport", "content": "width=device-width, initial-scale=1"}
-    ]
+    __name__,
+    external_stylesheets=[dbc.themes.DARKLY, 'https://use.fontawesome.com/releases/v5.15.4/css/all.css'],
+    meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
+    assets_folder='assets', # Wskaż folder assets
+    suppress_callback_exceptions=True
 )
 app.title = "Trading Strategy Backtester"
-server = app.server  # For production deployment
+server = app.server
 
-# Initialize BacktestManager for handling all backtest operations
-backtest_manager = BacktestManager(initial_capital=10000)
+# --- Inicjalizacja Managerów i Wizualizatora ---
+try:
+    backtest_manager = BacktestManager(initial_capital=config.INITIAL_CAPITAL)
+    visualizer = BacktestVisualizer()
+    # DataLoader jest potrzebny do pobrania tickerów
+    data_loader = DataLoader(data_path=config.DATA_PATH)
+    logger.info("Managers and DataLoader initialized successfully.")
+except Exception as e:
+    logger.error(f"CRITICAL: Failed to initialize managers: {e}")
+    logger.error(traceback.format_exc())
+    sys.exit(1)
 
-# Initialize visualizer
-visualizer = BacktestVisualizer()
+# --- Funkcje Pomocnicze ---
 
-def create_empty_cards():
-    """Create empty metric cards"""
-    return dbc.Row([
-        dbc.Col(create_metric_card("Initial Capital", "N/A")),
-        dbc.Col(create_metric_card("Final Capital", "N/A")),
-        dbc.Col(create_metric_card("Total Return", "N/A")),
-        dbc.Col(create_metric_card("Total Trades", "N/A"))
-    ])
+def get_available_tickers():
+    """Dynamically load available tickers from the DataLoader."""
+    try:
+        tickers = data_loader.get_available_tickers()
+        if not tickers:
+             logger.warning("DataLoader returned no available tickers.")
+             return []
+        benchmark_ticker = config.BENCHMARK_TICKER
+        # Filtruj benchmark i sortuj
+        available = sorted([t for t in tickers if t != benchmark_ticker])
+        logger.info(f"Available tickers for selection: {available}")
+        return available
+    except Exception as e:
+        logger.error(f"Error getting available tickers via DataLoader: {e}")
+        traceback.print_exc() # Dodaj traceback dla lepszego debugowania
+        return []
 
-def create_metric_cards(stats):
+def create_metric_cards(stats: dict):
     """Create metric cards layout with advanced metrics and tooltips"""
+    if not stats: # Jeśli słownik stats jest pusty
+        return html.Div([
+             dbc.Row([
+                 dbc.Col(create_metric_card_with_tooltip("Status", "Run backtest to see metrics.", tooltip_text="Perform a backtest calculation to view performance details."), width=12)
+             ])
+        ], className="mb-1") # Dodaj margines dla spójności
+
     tooltip_texts = {
         'Initial Capital': "Starting capital at the beginning of the backtest period.",
         'Final Capital': "Ending portfolio value at the end of the backtest period.",
-        'CAGR': "Compound Annual Growth Rate. Measures the mean annual growth rate of an investment over a specified time period longer than one year.",
-        'Total Return': "The overall return of the portfolio from start to finish, expressed as a percentage of initial capital.",
-        'Max Drawdown': "Largest peak-to-trough decline in portfolio value, expressed as a percentage. Measures the biggest historical loss.",
-        'Sharpe Ratio': "Risk-adjusted return metric. Calculated as (Portfolio Return - Risk Free Rate) / Portfolio Standard Deviation. Assumes 2% Risk Free Rate.",
-        'Sortino Ratio': "Similar to Sharpe ratio but only penalizes downside volatility. Calculated using 2% Risk Free Rate.",
-        'Information Ratio': "Measures portfolio returns above the benchmark per unit of risk. Higher values indicate better risk-adjusted performance vs benchmark.",
-        'Alpha': "Excess return of the investment relative to the return of the benchmark index. Expressed as percentage points.",
-        'Beta': "Measure of portfolio's volatility compared to the market. Beta > 1 means more volatile than market, Beta < 1 means less volatile.",
-        'Recovery Factor': "Absolute value of total profit divided by maximum drawdown. Higher values indicate better recovery from drawdowns."
+        'Total Return': "The overall return (%) of the portfolio from start to finish.",
+        'CAGR': "Compound Annual Growth Rate (%). Measures the mean annual growth rate over the backtest period.",
+        'Max Drawdown': "Largest peak-to-trough decline (%) in portfolio value.",
+        'Annualized Volatility': "Annualized standard deviation (%) of portfolio returns.",
+        'Sharpe Ratio': f"Risk-adjusted return metric using {config.RISK_FREE_RATE*100:.1f}% risk-free rate.",
+        'Sortino Ratio': f"Similar to Sharpe, but only penalizes downside volatility, using {config.RISK_FREE_RATE*100:.1f}% risk-free rate.",
+        'Alpha': "Excess return (%) vs benchmark, adjusted for beta. Requires benchmark.",
+        'Beta': "Portfolio volatility relative to the benchmark. Requires benchmark.",
+        'Information Ratio': "Risk-adjusted return vs benchmark (active return / tracking error). Requires benchmark.",
+        'Recovery Factor': "Absolute total return divided by maximum drawdown.",
+        'Win Rate': "Percentage of trades that resulted in a profit.",
+        'Profit Factor': "Gross profits divided by gross losses. Inf means no losses.",
+        'Avg Win Pnl': "Average profit ($) per winning trade.", # Zmieniono klucz dla spójności
+        'Avg Loss Pnl': "Average loss ($) per losing trade.",  # Zmieniono klucz dla spójności
+        'Total Trades': "Total number of closed trades executed.",
     }
-    
-    # Calculate additional metrics
-    alpha = calculate_alpha(stats.get('Portfolio_Value'), stats.get('Benchmark', None))
-    beta = calculate_beta(stats.get('Portfolio_Value'), stats.get('Benchmark', None))
-    info_ratio = calculate_information_ratio(stats.get('Portfolio_Value'), stats.get('Benchmark', None))
-    recovery_factor = calculate_recovery_factor(stats.get('total_return', 0), stats.get('max_drawdown', 1))
-    
-    # Hardcode initial capital to match the actual value used
-    initial_capital = 10000
-    
-    # Get final capital from portfolio values
-    portfolio_values = stats.get('Portfolio_Value')
-    final_capital = portfolio_values.iloc[-1] if portfolio_values is not None and len(portfolio_values) > 0 else initial_capital
 
-    # We're using html.Div as a container now, so we return a list of rows
+    # Formatowanie wartości
+    def format_value(key, value):
+        if value is None or (isinstance(value, float) and (np.isnan(value) or np.isinf(value))):
+             return "N/A"
+        if isinstance(value, (int, float)):
+            # Formatowanie kwot
+            if key in ['Initial Capital', 'Final Capital', 'avg_win_pnl', 'avg_loss_pnl']:
+                return f"${value:,.2f}"
+            # Formatowanie procentów
+            elif key in ['Total Return', 'CAGR', 'Max Drawdown', 'Annualized Volatility', 'Alpha', 'win_rate']:
+                return f"{value:.2f}%"
+            # Formatowanie stosunków i innych liczb
+            elif key in ['Sharpe Ratio', 'Sortino Ratio', 'Beta', 'Information Ratio', 'Recovery Factor', 'profit_factor']:
+                return f"{value:.2f}"
+            # Formatowanie liczb całkowitych
+            elif key in ['total_trades', 'winning_trades', 'losing_trades']:
+                 return f"{int(value):,d}" # Formatuj jako liczbę całkowitą z separatorem tysięcy
+        return str(value) # Domyślnie jako string
+
+    # Przygotowanie metryk do wyświetlenia - dostosuj klucze do tych zwracanych przez _calculate_portfolio_stats
+    # Upewnij się, że nazwy kluczy ('Total Return', 'Max Drawdown' etc.) pasują do kluczy w słowniku `stats`
+    metrics_to_display = [
+        ('Initial Capital', 'Initial Capital'), ('Final Capital', 'Final Capital'),
+        ('Total Return', 'Total Return'), ('CAGR', 'CAGR'),
+        ('Max Drawdown', 'Max Drawdown'), ('Annualized Volatility', 'Annualized Volatility'),
+        ('Sharpe Ratio', 'Sharpe Ratio'), ('Sortino Ratio', 'Sortino Ratio'),
+        ('Recovery Factor', 'Recovery Factor'), ('Win Rate', 'win_rate'),
+        ('Profit Factor', 'profit_factor'), ('Total Trades', 'total_trades'),
+        ('Alpha', 'Alpha'), ('Beta', 'Beta'),
+        ('Information Ratio', 'Information Ratio'), ('Avg Win Pnl', 'avg_win_pnl'), # Używamy nowych kluczy
+        ('Avg Loss Pnl', 'avg_loss_pnl') # Używamy nowych kluczy
+    ]
+
+    cards_col1 = []
+    cards_col2 = []
+    col_target = cards_col1 # Start with the first column
+
+    for label, key in metrics_to_display:
+        # Jeśli metryka wymaga benchmarka, a go nie ma, pomiń ją
+        if key in ['Alpha', 'Beta', 'Information Ratio'] and stats.get(key) is None:
+             continue
+
+        # Pomiń Avg Win/Loss jeśli nie ma wygranych/przegranych
+        if key == 'avg_win_pnl' and stats.get('winning_trades', 0) == 0:
+             continue
+        if key == 'avg_loss_pnl' and stats.get('losing_trades', 0) == 0:
+             continue
+
+
+        value = stats.get(key) # Pobierz wartość, może być None
+        formatted = format_value(key, value)
+        tooltip = tooltip_texts.get(label, "") # Pobierz tooltip
+
+        card = create_metric_card_with_tooltip(label, formatted, tooltip)
+
+        col_target.append(card)
+
+        # Switch column target after adding a card
+        col_target = cards_col2 if col_target is cards_col1 else cards_col1
+
+
+    # Dodaj puste karty, jeśli kolumny mają różną długość
+    while len(cards_col1) < len(cards_col2):
+         cards_col1.append(html.Div(style={'height': '80px'})) # Placeholder o wysokości karty
+    while len(cards_col2) < len(cards_col1):
+         cards_col2.append(html.Div(style={'height': '80px'}))
+
     return html.Div([
-        # First row - Capital metrics side by side with minimal spacing
         dbc.Row([
-            dbc.Col(create_metric_card_with_tooltip("Initial Capital", f"${initial_capital:,.2f}", tooltip_texts['Initial Capital']), width=6, className="px-1"),
-            dbc.Col(create_metric_card_with_tooltip("Final Capital", f"${final_capital:,.2f}", tooltip_texts['Final Capital']), width=6, className="px-1")
-        ], className="g-0 mb-1"),  # Reduced gutters and margin
-        
-        # Second row - Three columns with metrics
-        dbc.Row([
-            dbc.Col([
-                create_metric_card_with_tooltip("CAGR", f"{stats.get('cagr', 0):.2f}%", tooltip_texts['CAGR']),
-                create_metric_card_with_tooltip("Total Return", f"{stats.get('total_return', 0):.2f}%", tooltip_texts['Total Return']),
-                create_metric_card_with_tooltip("Alpha", f"{alpha:.2f}%", tooltip_texts['Alpha'])
-            ], width=4, className="px-1 py-0"),
-            
-            dbc.Col([
-                create_metric_card_with_tooltip("Max Drawdown", f"{stats.get('max_drawdown', 0):.2f}%", tooltip_texts['Max Drawdown']),
-                create_metric_card_with_tooltip("Sharpe Ratio", f"{stats.get('sharpe_ratio', 0):.2f}", tooltip_texts['Sharpe Ratio']),
-                create_metric_card_with_tooltip("Beta", f"{beta:.2f}", tooltip_texts['Beta'])
-            ], width=4, className="px-1 py-0"),
-            
-            dbc.Col([
-                create_metric_card_with_tooltip("Info Ratio", f"{info_ratio:.2f}", tooltip_texts['Information Ratio']),
-                create_metric_card_with_tooltip("Sortino Ratio", f"{stats.get('sortino_ratio', 0):.2f}", tooltip_texts['Sortino Ratio']),
-                create_metric_card_with_tooltip("Recovery Factor", f"{recovery_factor:.2f}", tooltip_texts['Recovery Factor'])
-            ], width=4, className="px-1 py-0")  # Reduced padding
-        ], className="g-0")  # No gutters between columns
-    ], className="mb-1")  # Reduced bottom margin
+            dbc.Col(cards_col1, width=6, className="pe-1"), # Reduced padding right
+            dbc.Col(cards_col2, width=6, className="ps-1")  # Reduced padding left
+        ], className="g-2") # Reduced gutters
+    ], className="mb-1")
+
+
+# Helper do tworzenia wierszy z opcjami ryzyka
+def create_risk_input_row(checkbox_id_base, label_text, input_id_base, min_val, max_val, step_val, default_val, is_integer=False):
+    input_type = "number"
+    checkbox_id = {'type': 'risk-checkbox', 'index': checkbox_id_base}
+    input_id = {'type': 'risk-input', 'index': input_id_base}
+
+    # Formatowanie wartości domyślnej
+    if "%" in label_text or "ratio" in label_text.lower() or "pct" in input_id_base:
+         if isinstance(default_val, float) and default_val <= 1.0: # Prawdopodobnie ułamek, konwertuj na %
+              default_display_val = round(default_val * 100, 2) # Zaokrąglij
+         else:
+              default_display_val = default_val
+    else:
+         default_display_val = default_val
+
+    return dbc.Row([
+        dbc.Col(dbc.Checkbox(id=checkbox_id, value=False, className="me-2"), width="auto"),
+        dbc.Col(html.Label(label_text, className="form-check-label", style={'fontSize': '0.9em'}), width=True),
+        dbc.Col(dcc.Input(
+            id=input_id,
+            type=input_type,
+            min=min_val,
+            max=max_val,
+            step=step_val,
+            value=default_display_val,
+            disabled=True,
+            className="form-control form-control-sm",
+            debounce=True
+        ), width=4)
+    ], className="mb-2 align-items-center")
+
 
 def create_risk_management_section():
-    """Create the risk management configuration UI section"""
+    """Create the risk management configuration UI section."""
     try:
-        # Get all available tickers
         available_tickers = get_available_tickers()
         ticker_options = [{"label": ticker, "value": ticker} for ticker in available_tickers]
-        
-        # Default to first ticker if available, otherwise None
-        default_ticker = available_tickers[0] if available_tickers else None
+        default_tickers = available_tickers[:min(len(available_tickers), 5)]
     except Exception as e:
-        logger.error(f"Error getting tickers: {e}")
-        available_tickers = []
+        logger.error(f"Error getting tickers for risk section: {e}")
         ticker_options = []
-        default_ticker = None
-    
+        default_tickers = []
+
+    # Użyj wartości domyślnych z instancji RiskManagera
+    try:
+        default_risk = RiskManager()
+        stop_loss_default = default_risk.stop_loss_pct * 100
+        profit_target_default = default_risk.profit_target_ratio
+        trailing_activation_default = default_risk.trailing_stop_activation * 100
+        trailing_distance_default = default_risk.trailing_stop_distance * 100
+        max_pos_size_default = default_risk.max_position_size * 100
+        min_pos_size_default = default_risk.min_position_size * 100
+        max_open_pos_default = default_risk.max_open_positions
+        max_drawdown_default = default_risk.max_drawdown * 100
+        max_daily_loss_default = default_risk.max_daily_loss * 100
+        market_lookback_default = default_risk.market_trend_lookback
+    except Exception as e:
+        logger.error(f"Error getting default risk parameters: {e}. Using hardcoded defaults.")
+        # Hardcoded defaults as fallback
+        stop_loss_default, profit_target_default, trailing_activation_default, trailing_distance_default = 2.0, 2.0, 2.0, 1.5
+        max_pos_size_default, min_pos_size_default, max_open_pos_default = 20.0, 1.0, 5
+        max_drawdown_default, max_daily_loss_default, market_lookback_default = 20.0, 5.0, 100
+
     return html.Div([
-        # Dynamic ticker selector
-        html.H6("Select Tickers", className="mt-1 mb-2"),
+        html.H6("Select Tickers for Backtest", className="mt-1 mb-2"),
         dcc.Dropdown(
-            id="ticker-selector",
-            options=ticker_options,
-            value=default_ticker,
-            multi=True,
-            className="mb-3"
+            id="ticker-selector", options=ticker_options, value=default_tickers,
+            multi=True, className="mb-3", placeholder="Select tickers..."
         ),
-        
-        # Radio buttons for enabling/disabling risk management
         dbc.RadioItems(
             id="risk-management-toggle",
             options=[
-                {"label": "Do not apply additional risk management rules", "value": "disabled"},
-                {"label": "Apply additional risk management rules", "value": "enabled"}
-            ],
-            value="disabled",
-            className="mb-3"
+                {"label": "Disable Risk Management", "value": "disabled"},
+                {"label": "Enable Risk Management", "value": "enabled"}
+            ], value="disabled", className="mb-3"
         ),
-        
-        # Container for risk management options (initially hidden)
-        html.Div([
-            # Position limits
-            html.H6("Position Limits", className="mt-2"),
-            dbc.Row([
-                dbc.Col([
-                    dbc.Checkbox(id="use-max-position-size", className="mr-2"),
-                    html.Label("Maximum position size (%):")
-                ], width=6),
-                dbc.Col([
-                    dbc.Input(id="max-position-size", type="number", min=1, max=100, step=1, value=20, disabled=True)
-                ], width=6)
-            ], className="mb-2"),
-            
-            dbc.Row([ 
-                dbc.Col([
-                    dbc.Checkbox(id="use-min-position-size", className="mr-2"),
-                    html.Label("Minimum position size (%):")
-                ], width=6),
-                dbc.Col([
-                    dbc.Input(id="min-position-size", type="number", min=0.1, max=10, step=0.1, value=1, disabled=True)
-                ], width=6)
-            ], className="mb-2"),
-            
-            dbc.Row([
-                dbc.Col([
-                    dbc.Checkbox(id="use-max-positions", className="mr-2"),
-                    html.Label("Maximum open positions:")
-                ], width=6),
-                dbc.Col([
-                    dbc.Input(id="max-open-positions", type="number", min=1, max=20, step=1, value=5, disabled=True)
-                ], width=6)
-            ], className="mb-3"),
-            
-            # Stop management
-            html.H6("Stop Management", className="mt-2"),
-            dbc.Row([
-                dbc.Col([
-                    dbc.Checkbox(id="use-stop-loss", className="mr-2"),
-                    html.Label("Stop loss (%):")
-                ], width=6),
-                dbc.Col([
-                    dbc.Input(id="stop-loss-pct", type="number", min=0.5, max=10, step=0.5, value=2, disabled=True)
-                ], width=6)
-            ], className="mb-2"),
-            
-            dbc.Row([
-                dbc.Col([
-                    dbc.Checkbox(id="use-profit-target", className="mr-2"),
-                    html.Label("Profit target ratio:")
-                ], width=6),
-                dbc.Col([
-                    dbc.Input(id="profit-target-ratio", type="number", min=1, max=10, step=0.5, value=2, disabled=True)
-                ], width=6)
-            ], className="mb-2"),
-            
-            dbc.Row([
-                dbc.Col([
-                    dbc.Checkbox(id="use-trailing-stop", className="mr-2"),
-                    html.Label("Trailing stop:")
-                ], width=6),
-                dbc.Col([
-                    dbc.Input(id="trailing-stop-activation", type="number", min=0.5, max=10, step=0.5, value=2, 
-                            placeholder="Activation (%)", disabled=True, className="mb-1"),
-                    dbc.Input(id="trailing-stop-distance", type="number", min=0.5, max=10, step=0.5, value=1.5, 
-                            placeholder="Distance (%)", disabled=True)
-                ], width=6)
-            ], className="mb-3"),
-            
-            # Portfolio limits
-            html.H6("Portfolio Limits", className="mt-2"),
-            dbc.Row([
-                dbc.Col([
-                    dbc.Checkbox(id="use-max-drawdown", className="mr-2"),
-                    html.Label("Maximum drawdown (%):")
-                ], width=6),
-                dbc.Col([
-                    dbc.Input(id="max-drawdown", type="number", min=5, max=50, step=1, value=20, disabled=True)
-                ], width=6)
-            ], className="mb-2"),
-            
-            dbc.Row([
-                dbc.Col([
-                    dbc.Checkbox(id="use-max-daily-loss", className="mr-2"),
-                    html.Label("Maximum daily loss (%):")
-                ], width=6),
-                dbc.Col([
-                    dbc.Input(id="max-daily-loss", type="number", min=1, max=20, step=0.5, value=5, disabled=True)
-                ], width=6)
-            ], className="mb-2"),
-            
-            # Market conditions
-            html.H6("Market Conditions", className="mt-2"),
-            dbc.Row([
-                dbc.Col([
-                    dbc.Checkbox(id="use-market-filter", className="mr-2"),
-                    html.Label("Only trade in favorable market conditions:")
-                ], width=6),
-                dbc.Col([
-                    dbc.Input(id="market-trend-lookback", type="number", min=20, max=200, step=10, value=100, 
-                           placeholder="Lookback period (days)", disabled=True)
-                ], width=6)
-            ], className="mb-3"),
-            
-        ], id="risk-management-options", style={"display": "none"}),
-        
-        # Run backtest button
-        dbc.Button("Run Backtest", id="run-backtest-button", color="primary", className="mt-3")
-    ], className="p-3 border rounded bg-light")
+        dbc.Collapse([
+            dbc.Card(dbc.CardBody([
+                html.H6("Position Limits", className="mt-2 mb-2"),
+                # Zmieniono input_id_base na zgodne z atrybutami RiskManager
+                create_risk_input_row("use-max-position-size", "Max Position Size (%):", "max_position_size", 1, 100, 1, max_pos_size_default),
+                create_risk_input_row("use-min-position-size", "Min Position Size (%):", "min_position_size", 0.1, 10, 0.1, min_pos_size_default),
+                create_risk_input_row("use-max-positions", "Max Open Positions:", "max_open_positions", 1, 50, 1, max_open_pos_default, is_integer=True),
 
-# Add this function before the callback definitions - around line 350
+                html.H6("Stop Management", className="mt-3 mb-2"),
+                create_risk_input_row("use-stop-loss", "Stop Loss (%):", "stop_loss_pct", 0.1, 50, 0.1, stop_loss_default),
+                create_risk_input_row("use-profit-target", "Profit Target (R:R):", "profit_target_ratio", 0.1, 10, 0.1, profit_target_default),
 
-def run_simple_backtest(strategy_type):
-    """Run a simple backtest with default parameters - for strategy dropdown"""
-    try:
-        # Use the existing backtest manager to run a simple version (no risk management)
-        return backtest_manager.run_backtest(strategy_type)
-    except Exception as e:
-        logger.error(f"Simple backtest error: {str(e)}")
-        traceback.print_exc()
-        return None, None, None
+                dbc.Row([
+                    dbc.Col(dbc.Checkbox(id={'type': 'risk-checkbox', 'index': "use-trailing-stop"}, value=False, className="me-2"), width="auto"),
+                    dbc.Col(html.Label("Trailing Stop:", className="form-check-label", style={'fontSize': '0.9em'}), width=True),
+                    dbc.Col(dcc.Input(id={'type': 'risk-input', 'index': "trailing_stop_activation"}, type="number", min=0.1, max=50, step=0.1, value=trailing_activation_default,
+                                  placeholder="Activation (%)", disabled=True, className="form-control form-control-sm mb-1")),
+                    dbc.Col(dcc.Input(id={'type': 'risk-input', 'index': "trailing_stop_distance"}, type="number", min=0.1, max=50, step=0.1, value=trailing_distance_default,
+                                  placeholder="Distance (%)", disabled=True, className="form-control form-control-sm")),
+                ], className="mb-2 align-items-center"),
 
-# Add this function before the create_backtest_results function - around line 590
+                html.H6("Portfolio Limits", className="mt-3 mb-2"),
+                create_risk_input_row("use-max-drawdown", "Max Portfolio Drawdown (%):", "max_drawdown", 1, 99, 1, max_drawdown_default),
+                create_risk_input_row("use-max-daily-loss", "Max Daily Loss (%):", "max_daily_loss", 0.1, 50, 0.1, max_daily_loss_default),
 
-def run_portfolio_backtest(strategy, tickers, risk_params=None, **kwargs):
-    """Run a portfolio backtest with risk management parameters"""
-    try:
-        # Use the backtest manager with risk parameters
-        # This is different from run_simple_backtest as it applies risk management
-        return backtest_manager.run_portfolio_backtest(
-            strategy_type=strategy,
-            tickers=tickers, 
-            risk_params=risk_params,
-            **kwargs
-        )
-    except Exception as e:
-        logger.error(f"Portfolio backtest error: {str(e)}")
-        traceback.print_exc()
-        return None
+                html.H6("Market Conditions", className="mt-3 mb-2"),
+                 dbc.Row([
+                     dbc.Col(dbc.Checkbox(id={'type': 'risk-checkbox', 'index': "use-market-filter"}, value=False, className="me-2"), width="auto"),
+                     dbc.Col(html.Label("Enable Market Filter", className="form-check-label", style={'fontSize': '0.9em'}), width=True),
+                 ], className="mb-2 align-items-center"),
+                 dbc.Collapse(
+                    dcc.Input(id={'type': 'risk-input', 'index': "market_trend_lookback"}, type="number", min=10, max=300, step=10, value=market_lookback_default,
+                           placeholder="Lookback (days)", disabled=True, className="form-control form-control-sm"),
+                    id='market-filter-options-collapse', is_open=False
+                 )
 
-# Updated create_trade_histogram function with fixed statistics
+            ]), className="bg-secondary border-secondary")
+        ], id="risk-management-options-collapse", is_open=False),
+        dbc.Button("Run Backtest", id="run-backtest-button", color="primary", className="mt-3 w-100")
+    ], className="p-3 border rounded")
 
-def create_trade_histogram(trades):
-    """Create a histogram of trade returns with statistics panel"""
-    if not trades or len(trades) == 0:
-        return html.Div("No trades available")
-    
-    # Calculate trade statistics directly instead of relying on analyze_trade_metrics
-    win_trades = [t for t in trades if t.get('pnl', 0) > 0]
-    loss_trades = [t for t in trades if t.get('pnl', 0) <= 0]
-    
-    total_trades = len(trades)
-    win_count = len(win_trades)
-    loss_count = len(loss_trades)
-    
-    # Calculate core statistics
-    win_rate = (win_count / total_trades * 100) if total_trades > 0 else 0
-    win_loss_ratio = (win_count / loss_count) if loss_count > 0 else float('inf')
-    
-    # Calculate PnL metrics
-    total_pnl = sum(t.get('pnl', 0) for t in trades)
-    win_pnl = sum(t.get('pnl', 0) for t in win_trades)
-    loss_pnl = sum(t.get('pnl', 0) for t in loss_trades)
-    
-    avg_win_pnl = (win_pnl / win_count) if win_count > 0 else 0
-    avg_loss_pnl = (loss_pnl / loss_count) if loss_count > 0 else 0
-    
-    # Calculate profit factor
-    profit_factor = (win_pnl / abs(loss_pnl)) if loss_pnl < 0 else float('inf')
-    
-    # Get histogram figure with custom colors for positive/negative trades
-    histogram = create_trade_histogram_figure(trades, {
-        'colorscale': [
-            [0, '#FF6B6B'],  # Red for negative returns
-            [0.5, '#FF6B6B'],  # Red for negative returns
-            [0.5, '#17B897'],  # Green for positive returns
-            [1, '#17B897']    # Green for positive returns
-        ]
-    })
-    
-    # Create a statistics panel with Calibri font
-    stats_panel = html.Div([
-        dbc.Row([
-            dbc.Col([
-                html.H6("Trade Statistics", className="text-center mb-3")
-            ], width=12)
-        ]),
-        dbc.Row([
-            dbc.Col([
-                html.Div([
-                    html.P([html.Span("Win Rate: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
-                           html.Span(f"{win_rate:.2f}%", style={"fontFamily": "Calibri"})], 
-                           className="mb-1"),
-                    html.P([html.Span("Profit Factor: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
-                           html.Span(f"{profit_factor:.2f}", style={"fontFamily": "Calibri"})], 
-                           className="mb-1"),
-                    html.P([html.Span("Avg Win: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
-                           html.Span(f"${avg_win_pnl:.2f}", style={"fontFamily": "Calibri"})], 
-                           className="mb-1"),
-                ], className="p-2")
-            ], width=6),
-            dbc.Col([
-                html.Div([
-                    html.P([html.Span("Total Trades: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
-                           html.Span(f"{total_trades}", style={"fontFamily": "Calibri"})], 
-                           className="mb-1"),
-                    html.P([html.Span("Win/Loss Ratio: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
-                           html.Span(f"{win_loss_ratio:.2f}", style={"fontFamily": "Calibri"})], 
-                           className="mb-1"),
-                    html.P([html.Span("Avg Loss: ", style={"fontWeight": "bold", "fontFamily": "Calibri"}), 
-                           html.Span(f"${avg_loss_pnl:.2f}", style={"fontFamily": "Calibri"})], 
-                           className="mb-1"),
-                ], className="p-2")
-            ], width=6)
-        ], className="mb-3"),
-    ], className="trade-stats-panel p-3 border rounded", 
-    style={"backgroundColor": "#1e222d", "fontFamily": "Calibri"})
-    
-    # Combine histogram and statistics (histogram first, stats below)
-    return html.Div([
-        histogram,
-        html.Div(className="mt-3"),
-        stats_panel
-    ])
 
-# Updated create_allocation_chart function to add dollar value chart in addition to percentage chart
-
-def create_allocation_chart(results):
-    """Create charts showing portfolio allocation over time"""
-    if not results or 'portfolio_values' not in results or results['portfolio_values'].empty:
-        return html.Div("No allocation data available")
-    
-    portfolio_values = results.get('portfolio_values', pd.Series())
-    trades = results.get('trades', [])
-    
-    if len(trades) == 0:
-        return html.Div("No allocation data available")
-    
-    # Group trades by ticker and date
-    positions = {}
-    
-    for trade in trades:
-        ticker = trade.get('ticker', '')
-        if not ticker:
-            continue
-            
-        entry_date = pd.to_datetime(trade.get('entry_date'))
-        exit_date = pd.to_datetime(trade.get('exit_date'))
-        shares = float(trade.get('shares', 0))
-        entry_price = float(trade.get('entry_price', 0))
-        exit_price = float(trade.get('exit_price', 0))
-        
-        # Add position entry
-        if ticker not in positions:
-            positions[ticker] = []
-        
-        positions[ticker].append({
-            'entry_date': entry_date,
-            'exit_date': exit_date,
-            'shares': shares,
-            'entry_price': entry_price,
-            'exit_price': exit_price
-        })
-    
-    # Create allocation dataframe with daily values
-    dates = portfolio_values.index
-    allocation_df = pd.DataFrame(index=dates)
-    
-    # Create cash series (starting with full initial capital)
-    initial_capital = portfolio_values.iloc[0]
-    cash_series = pd.Series(initial_capital, index=dates)
-    
-    # For each position, calculate its value through time
-    for ticker, position_list in positions.items():
-        allocation_df[ticker] = 0.0
-        
-        for position in position_list:
-            entry_date = position['entry_date']
-            exit_date = position['exit_date']
-            shares = position['shares']
-            entry_price = position['entry_price']
-            exit_price = position['exit_price']
-            
-            # Find positions in the date range
-            in_position = (dates >= entry_date) & (dates <= exit_date)
-            
-            # Update position value
-            if any(in_position):
-                try:
-                    # Calculate days since entry directly
-                    position_dates = dates[in_position]
-                    days_since_entry = [(d - entry_date).days for d in position_dates]
-                    
-                    max_days = (exit_date - entry_date).days
-                    
-                    if max_days > 0:
-                        # Linear interpolation
-                        price_range = [entry_price + (exit_price - entry_price) * day / max_days 
-                                      for day in days_since_entry]
-                    else:
-                        price_range = [entry_price] * len(days_since_entry)
-                    
-                    # Update position value
-                    for i, date in enumerate(position_dates):
-                        allocation_df.loc[date, ticker] += shares * price_range[i]
-                except Exception as e:
-                    logger.error(f"Error calculating position allocation: {e}")
-            
-            # Update cash: subtract at entry, add at exit
-            cash_indices = dates >= entry_date
-            cash_series.loc[cash_indices] -= shares * entry_price
-            
-            cash_indices = dates >= exit_date
-            cash_series.loc[cash_indices] += shares * exit_price
-    
-    # Add cash to allocation dataframe
-    allocation_df['Cash'] = cash_series
-    
-    # Calculate total portfolio value
-    allocation_df['Total'] = allocation_df.sum(axis=1)
-    
-    # Calculate percentages
-    for col in allocation_df.columns:
-        if col != 'Total':
-            allocation_df[f"{col}_pct"] = allocation_df[col] / allocation_df['Total'] * 100
-    
-    # Create percentage chart
-    pct_fig = go.Figure()
-    
-    # Add area chart for each ticker
-    tickers = [col for col in allocation_df.columns if col not in ['Total', 'Cash'] and not col.endswith('_pct')]
-    colors = ['#17B897', '#FF6B6B', '#36A2EB', '#FFCE56', '#8A2BE2', '#FF7F50', '#20B2AA', '#D2691E']
-    
-    # Add cash first (percentage)
-    pct_fig.add_trace(
-        go.Scatter(
-            x=dates,
-            y=allocation_df['Cash_pct'],
-            mode='lines',
-            stackgroup='one',
-            name='Cash',
-            line=dict(width=0),
-            fillcolor='#777777'
-        )
-    )
-    
-    # Add other tickers (percentage)
-    for i, ticker in enumerate(tickers):
-        color = colors[i % len(colors)]
-        pct_col = f"{ticker}_pct"
-        
-        pct_fig.add_trace(
-            go.Scatter(
-                x=dates,
-                y=allocation_df[pct_col],
-                mode='lines',
-                stackgroup='one',
-                name=ticker,
-                line=dict(width=0),
-                fillcolor=color
-            )
-        )
-    
-    # Update layout for percentage chart
-    pct_fig.update_layout(
-        title='Portfolio Allocation (Percentage)',
-        template=CHART_THEME,
-        xaxis=dict(
-            title='Date',
-            gridcolor='#2a2e39',
-            type='date'
-        ),
-        yaxis=dict(
-            title='Allocation (%)',
-            gridcolor='#2a2e39',
-            ticksuffix='%'
-        ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5
-        ),
-        hovermode='x unified',
-        paper_bgcolor='#1e222d',
-        plot_bgcolor='#1e222d',
-        font=dict(color='white'),
-        height=300,
-        margin=dict(t=50, l=50, r=20, b=50)
-    )
-    
-    # Create dollar value chart
-    value_fig = go.Figure()
-    
-    # Add area chart for each ticker (dollar value)
-    # Add cash first (dollar value)
-    value_fig.add_trace(
-        go.Scatter(
-            x=dates,
-            y=allocation_df['Cash'],
-            mode='lines',
-            stackgroup='one',
-            name='Cash',
-            line=dict(width=0),
-            fillcolor='#777777'
-        )
-    )
-    
-    # Add other tickers (dollar value)
-    for i, ticker in enumerate(tickers):
-        color = colors[i % len(colors)]
-        
-        value_fig.add_trace(
-            go.Scatter(
-                x=dates,
-                y=allocation_df[ticker],
-                mode='lines',
-                stackgroup='one',
-                name=ticker,
-                line=dict(width=0),
-                fillcolor=color
-            )
-        )
-    
-    # Update layout for dollar value chart
-    value_fig.update_layout(
-        title='Portfolio Allocation (Dollar Value)',
-        template=CHART_THEME,
-        xaxis=dict(
-            title='Date',
-            gridcolor='#2a2e39',
-            type='date'
-        ),
-        yaxis=dict(
-            title='Allocation ($)',
-            gridcolor='#2a2e39',
-            ticksuffix='$'
-        ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5
-        ),
-        hovermode='x unified',
-        paper_bgcolor='#1e222d',
-        plot_bgcolor='#1e222d',
-        font=dict(color='white'),
-        height=300,
-        margin=dict(t=50, l=50, r=20, b=50)
-    )
-    
-    # Combine both charts
-    return html.Div([
-        dcc.Graph(figure=pct_fig, config={'displayModeBar': False}),
-        dcc.Graph(figure=value_fig, config={'displayModeBar': False})
-    ])
-
-# Fix the incomplete update_backtest function (around line 704)
-
-@app.callback(
-    [Output("calculation-status", "children"),
-     Output("equity-curve-container", "children"),
-     Output("metrics-container", "children"),
-     Output("additional-charts", "children"),
-     Output("trade-distribution-container", "children"),
-     Output("trade-table-container", "children"),
-     Output("backtest-period", "children"),
-     Output("portfolio-instruments", "children"),
-     Output("portfolio-composition-container", "children")],
-    [Input("run-backtest-button", "n_clicks")], 
-    [State("strategy-selector", "value")]
-)
-def update_backtest(n_clicks, strategy):
-    # Don't run backtest on page load (when n_clicks is None)
-    if n_clicks is None:
-        return (
-            html.Div("Click 'Run Backtest' to start", className="text-warning"),
-            [],
-            create_empty_cards(),
-            [],
-            html.Div("No trades available"),
-            html.Div("No trades available"),
-            "",
-            "",
-            html.Div("No allocation data available")
-        )
-    
-    # Add input validation
-    if not strategy or strategy not in ["MA", "RSI", "BB"]:
-        return (
-            html.Div("Please select a valid strategy", className="text-warning"),
-            [],
-            create_empty_cards(),
-            [],
-            html.Div("No trades available"),
-            html.Div("No trades available"),
-            "",
-            "",
-            html.Div("No allocation data available")
-        )
-    
-    try:
-        # Run the backtest
-        signals, results, stats = run_simple_backtest(strategy)
-        
-        if any(x is None for x in [signals, results, stats]):
-            return (
-                html.Div("Error running backtest", className="text-danger"),
-                [],
-                create_empty_cards(),
-                [],
-                html.Div("No trades available"),
-                html.Div("No trades available"),
-                "",
-                "",
-                html.Div("No allocation data available")
-            )
-        
-        # Create equity curve
-        portfolio_chart = create_styled_chart({
-            'Portfolio': results.get('Portfolio_Value', pd.Series()),
-            'Benchmark': results.get('Benchmark', pd.Series())
-        }, "Portfolio Performance")
-        
-        # Create metric cards
-        metrics = create_metric_cards(stats)
-        
-        # Process trades
-        trades = results.get('trades', [])
-        trade_dist = create_trade_histogram(trades)
-        trade_history = create_trade_table(trades)
-        
-        # Format results for allocation chart
-        formatted_results = {
-            'portfolio_values': results.get('Portfolio_Value', pd.Series()),
-            'trades': trades
-        }
-        
-        # Create portfolio composition chart
-        portfolio_composition = create_allocation_chart(formatted_results)
-        
-        # Get backtest period
-        portfolio_series = results.get('Portfolio_Value', pd.Series())
-        if len(portfolio_series) > 0:
-            start_date = portfolio_series.index[0].strftime('%Y-%m-%d')
-            end_date = portfolio_series.index[-1].strftime('%Y-%m-%d')
-            backtest_period = f"{start_date} to {end_date}"
-        else:
-            backtest_period = "N/A"
-        
-        # Get portfolio instruments
-        instruments = ", ".join(sorted(signals.keys()))
-        
-        return (
-            html.Div("Backtest completed successfully", className="text-success"),
-            portfolio_chart,
-            metrics,
-            [],
-            trade_dist,
-            trade_history,
-            backtest_period,
-            instruments,
-            portfolio_composition
-        )
-        
-    except Exception as e:
-        logger.error(f"Callback error: {str(e)}")
-        traceback.print_exc()
-        return (
-            html.Div(f"Error: {str(e)}", className="text-danger"),
-            [],
-            create_empty_cards(),
-            [],
-            html.Div("No trades available"),
-            html.Div("No trades available"),
-            "",
-            "",
-            html.Div("No allocation data available")
-        )
-
-# Add this function to app.py after create_trade_histogram
-
-def create_trade_table(trades):
-    """Create a table of trade history"""
-    if not trades or len(trades) == 0:
-        return html.Div("No trades available")
-    
-    # Process trades for display
-    trade_data = []
-    for trade in trades:
-        # Format dates
-        entry_date = pd.to_datetime(trade.get('entry_date')).strftime('%Y-%m-%d') if 'entry_date' in trade else 'N/A'
-        exit_date = pd.to_datetime(trade.get('exit_date')).strftime('%Y-%m-%d') if 'exit_date' in trade else 'N/A'
-        
-        # Calculate holding period
-        try:
-            entry = pd.to_datetime(trade.get('entry_date'))
-            exit = pd.to_datetime(trade.get('exit_date'))
-            holding_days = (exit - entry).days
-        except:
-            holding_days = 'N/A'
-        
-        # Format P&L with colors
-        pnl = trade.get('pnl', 0)
-        pnl_pct = trade.get('pnl_pct', 0)
-        
-        trade_data.append({
-            'Ticker': trade.get('ticker', 'N/A'),
-            'Entry Date': entry_date,
-            'Exit Date': exit_date,
-            'Holding Days': holding_days,
-            'Entry Price': f"${float(trade.get('entry_price', 0)):.2f}",
-            'Exit Price': f"${float(trade.get('exit_price', 0)):.2f}",
-            'Shares': trade.get('shares', 'N/A'),
-            'P&L': f"${pnl:.2f}",
-            'P&L %': f"{pnl_pct:.2f}%",
-            'Direction': 'Long' if trade.get('direction', 1) > 0 else 'Short'
-        })
-    
-    # Create the DataTable
-    return dash_table.DataTable(
-        id='trade-table',
-        columns=[
-            {'name': 'Ticker', 'id': 'Ticker'},
-            {'name': 'Entry Date', 'id': 'Entry Date'},
-            {'name': 'Exit Date', 'id': 'Exit Date'},
-            {'name': 'Days', 'id': 'Holding Days'},
-            {'name': 'Entry', 'id': 'Entry Price'},
-            {'name': 'Exit', 'id': 'Exit Price'},
-            {'name': 'Shares', 'id': 'Shares'},
-            {'name': 'P&L', 'id': 'P&L'},
-            {'name': 'P&L %', 'id': 'P&L %'},
-            {'name': 'Dir', 'id': 'Direction'}
-        ],
-        data=trade_data,
-        style_table={'overflowX': 'auto'},
-        style_cell={
-            'backgroundColor': '#1e222d',
-            'color': 'white',
-            'textAlign': 'center',
-            'fontSize': '12px',
-            'fontFamily': 'Calibri'
-        },
-        style_header={
-            'backgroundColor': '#131722',
-            'fontWeight': 'bold',
-            'color': 'white',
-            'fontFamily': 'Calibri'
-        },
-        style_data_conditional=[
-            {
-                'if': {
-                    'filter_query': '{P&L} contains "-"',
-                },
-                'color': '#FF6B6B'  # Red for negative P&L
-            },
-            {
-                'if': {
-                    'filter_query': '{P&L} contains "$" && !({P&L} contains "-")',
-                },
-                'color': '#17B897'  # Green for positive P&L
-            }
-        ],
-        page_size=10,
-        sort_action='native',
-        sort_mode='multi'
-    )
-
-# Update app layout to restore the proper 3-column structure
-
+# --- Główny Układ Aplikacji ---
 app.layout = dbc.Container([
+    dbc.Row(dbc.Col(html.H1("Trading Strategy Backtester", className="text-center my-4 text-primary"))),
     dbc.Row([
+        # Left column (Konfiguracja)
         dbc.Col([
-            html.H1("Portfolio Backtester", className="text-center my-4")
-        ])
-    ]),
-
-    dbc.Row([
-        # Left column (Strategy Settings + Risk Management)
-        dbc.Col([
-            # Strategy settings card
             dbc.Card([
-                dbc.CardHeader("Strategy Settings"),
+                dbc.CardHeader("Configuration"),
                 dbc.CardBody([
                     html.H6("Select Strategy", className="mb-2"),
                     dcc.Dropdown(
                         id="strategy-selector",
-                        options=[
-                            {"label": "Moving Average Crossover", "value": "MA"},
-                            {"label": "RSI Strategy", "value": "RSI"},
-                            {"label": "Bollinger Bands", "value": "BB"}
-                        ],
-                        value="MA",
-                        className="mb-3"
+                        options=[{"label": name, "value": name} for name in AVAILABLE_STRATEGIES.keys()],
+                        value=list(AVAILABLE_STRATEGIES.keys())[0],
+                        className="mb-3", clearable=False
                     ),
-                ])
-            ], className="mb-4"),
-            
-            # Risk management card
-            dbc.Card([
-                dbc.CardHeader("Risk Management"),
-                dbc.CardBody([
+                    html.H6("Strategy Parameters", className="mt-3 mb-2"),
+                    html.Div(id="strategy-parameters-container", className="mb-3 border rounded p-2 bg-secondary", style={'minHeight': '80px'}), # Dodano tło i min-height
+                    html.H6("Tickers & Risk Management", className="mt-3 mb-2"),
                     create_risk_management_section()
                 ])
-            ])
+            ], className="mb-4")
         ], width=3),
-        
-        # Center column (Equity Curve & Portfolio Composition)
+
+        # Center column (Wykresy Główne)
         dbc.Col([
             dbc.Card([
+                dbc.CardHeader("Backtest Results"),
                 dbc.CardBody([
-
-                    # Status and info
-                    html.Div(id="calculation-status", className="mb-2"),
-                    dbc.Row([
-                        dbc.Col([html.Span("Backtest Period: ", className="fw-bold")], width=3),
-                        dbc.Col([html.Span(id="backtest-period")], width=9)
-                    ], className="mb-1"),
-                    dbc.Row([
-                        dbc.Col([html.Span("Instruments: ", className="fw-bold")], width=3),
-                        dbc.Col([html.Span(id="portfolio-instruments")], width=9)
-                    ], className="mb-3"),
-                    
-                    # Equity curve
-                    html.Div(id="equity-curve-container", className="mb-4"),
-                    
-                    # Portfolio composition
-                    html.H5("Portfolio Composition", className="mt-3 mb-2"),
-                    html.Div(id="portfolio-composition-container")
+                    dcc.Loading(
+                        id="loading-indicator", type="default", fullscreen=False, # fullscreen=False lepsze dla częściowego ładowania
+                        children=[
+                            html.Div(id="calculation-status", className="mb-2"),
+                            dbc.Row([
+                                dbc.Col(html.Span("Backtest Period: ", className="fw-bold"), width="auto"),
+                                dbc.Col(html.Span(id="backtest-period"), width=True)
+                            ], className="mb-1 align-items-center"),
+                            dbc.Row([
+                                dbc.Col(html.Span("Instruments Tested: ", className="fw-bold"), width="auto"),
+                                dbc.Col(html.Span(id="portfolio-instruments"), width=True)
+                            ], className="mb-3 align-items-center"),
+                            html.Div(id="equity-curve-container", className="mb-4", style={'minHeight': '400px'}), # Min height dla wykresu
+                            html.H5("Portfolio Allocation Over Time", className="mt-3 mb-2"),
+                            html.Div(id="portfolio-composition-container", style={'minHeight': '300px'}) # Min height dla wykresu
+                        ]
+                    )
                 ])
             ])
         ], width=6),
-        
+
         # Right column (Metrics)
         dbc.Col([
             dbc.Card([
                 dbc.CardHeader("Performance Metrics"),
-                dbc.CardBody([
-                    html.Div(id="metrics-container"),
-                    html.Div(id="additional-charts")
-                ])
-            ])
+                dbc.CardBody(id="metrics-container") # Karty metryk będą tutaj wstawione
+            ], className="mb-4")
         ], width=3)
     ], className="mb-4"),
-    
-    # Bottom section (Trade Distribution & Table)
+
+    # Bottom section (Trade Analysis)
     dbc.Row([
         dbc.Col([
             dbc.Card([
@@ -952,13 +382,18 @@ app.layout = dbc.Container([
                 dbc.CardBody([
                     dbc.Row([
                         dbc.Col([
-                            html.H5("Trade Distribution", className="mb-2"),
-                            html.Div(id="trade-distribution-container", className="mb-4")
-                        ], width=12)
+                            html.H5("Trade P&L Distribution", className="mb-2 text-center"),
+                            html.Div(id="trade-distribution-container", style={'minHeight': '250px'}) # Min height
+                        ], width=6, className="border-end"),
+                        dbc.Col([
+                            html.H5("Trade Duration Distribution", className="mb-2 text-center"),
+                            html.Div(id="trade-duration-container", style={'minHeight': '250px'}) # Min height
+                        ], width=6)
                     ]),
+                    html.Hr(),
                     dbc.Row([
                         dbc.Col([
-                            html.H5("Trade History", className="mb-2"),
+                            html.H5("Trade History", className="mt-3 mb-2"),
                             html.Div(id="trade-table-container")
                         ], width=12)
                     ])
@@ -966,132 +401,400 @@ app.layout = dbc.Container([
             ])
         ], width=12)
     ])
-], fluid=True, style={"backgroundColor": "#131722"})
+], fluid=True, style={"backgroundColor": "#131722", "padding": "15px"})
 
-# Add callback to show results when available
+
+# --- Callbacki ---
+
 @app.callback(
-    Output("backtest-results", "style"),
-    [Input("calculation-status", "children")]
+    Output("strategy-parameters-container", "children"),
+    Input("strategy-selector", "value")
 )
-def show_results(status):
-    if status and "successfully" in str(status):
-        return {"display": "block"}
-    return {"display": "none"}
+def update_strategy_parameters(strategy_name):
+    if not strategy_name:
+        return html.P("Select a strategy.", className="text-muted")
 
-# Replace the create_trade_histogram_figure function around line 970
+    try:
+        strategy_class = AVAILABLE_STRATEGIES.get(strategy_name)
+        if not strategy_class:
+            logger.error(f"Strategy class for '{strategy_name}' not found.")
+            return html.P(f"Error: Strategy class '{strategy_name}' not found.", className="text-danger")
 
-def create_trade_histogram_figure(trades, options=None):
-    """Create a histogram of trade returns with proper coloring and fewer bins"""
-    if not trades or len(trades) == 0:
-        return html.Div("No trades available")
-    
-    # Extract PnL percentages
-    pnl_pcts = [trade.get('pnl_pct', 0) for trade in trades]
-    
-    # Determine outlier thresholds (using 2.0 * IQR method)
-    q1 = np.percentile(pnl_pcts, 25)
-    q3 = np.percentile(pnl_pcts, 75)
-    iqr = q3 - q1
-    upper_bound = q3 + 2.0 * iqr
-    lower_bound = q1 - 2.0 * iqr
-    
-    # Clip outliers for binning purposes
-    clipped_pnl = []
-    for pnl in pnl_pcts:
-        if pnl > upper_bound:
-            clipped_pnl.append(upper_bound)
-        elif pnl < lower_bound:
-            clipped_pnl.append(lower_bound)
+        sig = inspect.signature(strategy_class.__init__)
+        params_inputs = []
+
+        for name, param in sig.parameters.items():
+            if name in ['self', 'tickers', 'args', 'kwargs']:
+                continue
+
+            default_value = param.default if param.default is not inspect.Parameter.empty else None
+            input_type = 'text'
+            step = 'any'
+            placeholder = str(default_value) if default_value is not None else "Required"
+            required = default_value is None
+
+            annotation = param.annotation
+            target_type = type(default_value) if default_value is not None else (annotation if annotation != inspect.Parameter.empty else str)
+
+            if target_type == bool:
+                params_inputs.append(
+                    dbc.Row([
+                        dbc.Label(name.replace('_', ' ').title(), width=6, className="small"),
+                        dbc.Col(dbc.Checkbox(id={'type': 'strategy-param', 'index': name}, value=bool(default_value)), width=6)
+                    ], className="mb-2 align-items-center")
+                )
+                continue
+            elif target_type == int:
+                input_type = 'number'
+                step = 1
+            elif target_type == float:
+                input_type = 'number'
+                # Domyślny krok dla float - można dostosować
+                step = 0.1 if abs(default_value or 0.0) < 10 else (1 if abs(default_value or 0.0) < 100 else 10)
+
+
+            params_inputs.append(
+                dbc.Row([
+                    dbc.Label(name.replace('_', ' ').title(), width=6, className="small", html_for=str({'type': 'strategy-param', 'index': name})), # Użyj Label dla dostępności
+                    dbc.Col(dcc.Input(
+                        id={'type': 'strategy-param', 'index': name},
+                        type=input_type,
+                        value=default_value,
+                        step=step if input_type == 'number' else None,
+                        placeholder=placeholder,
+                        required=required,
+                        className="form-control form-control-sm",
+                        debounce=True
+                    ), width=6)
+                ], className="mb-2 align-items-center")
+            )
+
+        if not params_inputs:
+            return html.P("This strategy has no configurable parameters.", className="text-muted")
+
+        return html.Div(params_inputs)
+
+    except Exception as e:
+        logger.error(f"Error inspecting strategy parameters for {strategy_name}: {e}")
+        logger.error(traceback.format_exc())
+        return html.P(f"Error loading parameters for {strategy_name}.", className="text-danger")
+
+# Callback do pokazywania/ukrywania opcji ryzyka
+@app.callback(
+    Output("risk-management-options-collapse", "is_open"),
+    Input("risk-management-toggle", "value"),
+)
+def toggle_risk_options_visibility(toggle_value):
+    is_open = toggle_value == "enabled"
+    logger.debug(f"Risk management options visibility set to: {is_open}")
+    return is_open
+
+# Callback do włączania/wyłączania poszczególnych inputów ryzyka
+@app.callback(
+    Output({'type': 'risk-input', 'index': MATCH}, 'disabled'),
+    Input({'type': 'risk-checkbox', 'index': MATCH}, 'value'), # Użyj 'value' zamiast 'checked' dla Checkbox
+    State("risk-management-toggle", "value"), # Sprawdź, czy ryzyko jest w ogóle włączone
+    prevent_initial_call=True
+)
+def toggle_risk_input_disabled_state(checkbox_value, risk_mode):
+    # Wyłącz input, jeśli główne ryzyko jest wyłączone LUB jeśli odpowiedni checkbox nie jest zaznaczony
+    is_disabled = (risk_mode == "disabled") or (not checkbox_value)
+    #logger.debug(f"Input linked to checkbox {ctx.triggered_id['index']} disabled state: {is_disabled}")
+    return is_disabled
+
+# Specjalny callback dla trailing stop (dwa inputy zależne od jednego checkboxa)
+@app.callback(
+    [Output({'type': 'risk-input', 'index': "trailing_stop_activation"}, 'disabled'),
+     Output({'type': 'risk-input', 'index': "trailing_stop_distance"}, 'disabled')],
+    Input({'type': 'risk-checkbox', 'index': "use-trailing-stop"}, 'value'),
+    State("risk-management-toggle", "value"),
+    prevent_initial_call=True
+)
+def toggle_trailing_stop_inputs_disabled_state(checked, risk_mode):
+    is_disabled = (risk_mode == "disabled") or (not checked)
+    logger.debug(f"Trailing stop inputs disabled state: {is_disabled}")
+    return is_disabled, is_disabled
+
+# Specjalny callback dla market filter
+@app.callback(
+    Output('market-filter-options-collapse', 'is_open'),
+    Output({'type': 'risk-input', 'index': "market_trend_lookback"}, 'disabled'),
+    Input({'type': 'risk-checkbox', 'index': "use-market-filter"}, 'value'),
+    State("risk-management-toggle", "value"),
+    prevent_initial_call=True
+)
+def toggle_market_filter_input_visibility_and_disabled(checked, risk_mode):
+    is_open = (risk_mode == "enabled") and checked
+    is_disabled = (risk_mode == "disabled") or (not checked)
+    logger.debug(f"Market filter input visibility: {is_open}, disabled state: {is_disabled}")
+    return is_open, is_disabled
+
+# Funkcja pomocnicza do konwersji wartości parametrów ryzyka
+def parse_risk_param_value(input_id, input_value):
+    if input_value is None or input_value == '': return None
+    # Konwertuj wartości procentowe z powrotem na ułamki
+    if isinstance(input_id, str) and ("pct" in input_id or "size" in input_id or "drawdown" in input_id or "loss" in input_id or "activation" in input_id or "distance" in input_id):
+        try: return float(input_value) / 100.0
+        except (ValueError, TypeError): return None
+    # Konwertuj R:R ratio na float
+    elif isinstance(input_id, str) and "ratio" in input_id:
+        try: return float(input_value)
+        except (ValueError, TypeError): return None
+    # Konwertuj wartości całkowite
+    elif isinstance(input_id, str) and ("positions" in input_id or "lookback" in input_id):
+        try: return int(input_value)
+        except (ValueError, TypeError): return None
+    # Domyślnie zwróć wartość (może być None)
+    return input_value
+
+# Główny callback do uruchamiania backtestu
+@app.callback(
+    Output("calculation-status", "children", allow_duplicate=True),
+    Output("equity-curve-container", "children", allow_duplicate=True),
+    Output("metrics-container", "children", allow_duplicate=True),
+    Output("trade-distribution-container", "children", allow_duplicate=True),
+    Output("trade-table-container", "children", allow_duplicate=True),
+    Output("backtest-period", "children", allow_duplicate=True),
+    Output("portfolio-instruments", "children", allow_duplicate=True),
+    Output("portfolio-composition-container", "children", allow_duplicate=True),
+    Output("trade-duration-container", "children", allow_duplicate=True),
+    Input("run-backtest-button", "n_clicks"),
+    State("strategy-selector", "value"),
+    State("ticker-selector", "value"),
+    State("risk-management-toggle", "value"),
+    State({'type': 'strategy-param', 'index': ALL}, 'value'),
+    State({'type': 'strategy-param', 'index': ALL}, 'id'),
+    State({'type': 'risk-checkbox', 'index': ALL}, 'value'),
+    State({'type': 'risk-checkbox', 'index': ALL}, 'id'),
+    State({'type': 'risk-input', 'index': ALL}, 'value'),
+    State({'type': 'risk-input', 'index': ALL}, 'id'),
+    prevent_initial_call=True
+)
+def run_full_backtest(n_clicks, strategy_name, selected_tickers, risk_toggle_value,
+                      strategy_param_values, strategy_param_ids,
+                      risk_checkbox_values, risk_checkbox_ids,
+                      risk_input_values, risk_input_ids):
+
+    start_time = pd.Timestamp.now()
+    logger.info("="*50)
+    logger.info(f"Backtest triggered. Click: {n_clicks}")
+    logger.info(f"Strategy: {strategy_name}, Tickers: {selected_tickers}, Risk Mode: {risk_toggle_value}")
+
+    # Inicjalizacja pustych wyników
+    empty_metrics = create_metric_cards({}) # Puste karty metryk
+    empty_chart = create_empty_chart("Equity Curve")
+    empty_alloc_chart = create_empty_chart("Allocation")
+    empty_trade_hist = create_empty_chart("P/L Distribution")
+    empty_duration_hist = create_empty_chart("Duration Distribution")
+    empty_trade_table = html.Div("No trades to display.", className="text-muted text-center p-3")
+    initial_status = html.Div("Configuration ready. Click 'Run Backtest' to start.", className="text-info")
+
+    def return_empty_state(status_msg=initial_status):
+        return (status_msg, empty_chart, empty_metrics, empty_trade_hist,
+                empty_trade_table, "", "", empty_alloc_chart, empty_duration_hist)
+
+    # 1. Walidacja podstawowych danych wejściowych
+    if not strategy_name:
+        return return_empty_state(html.Div("Please select a strategy.", className="text-warning"))
+    if not selected_tickers:
+        return return_empty_state(html.Div("Please select at least one ticker.", className="text-warning"))
+
+    # Pokaż status ładowania
+    loading_status = html.Div([dbc.Spinner(size="sm", color="primary"), " Running backtest... Please wait."], className="text-info")
+    # Zwróć stan ładowania tylko dla statusu, reszta zostaje pusta (lub poprzednia)
+    # Trzeba by użyć dodatkowego Output dla dcc.Loading, co komplikuje. Prostsze jest zwrócenie dla wszystkich.
+    # return (loading_status, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update)
+    # Zwracamy pusty stan z komunikatem ładowania:
+    initial_outputs_with_loading = list(return_empty_state(loading_status))
+
+
+    try:
+        # 2. Zbierz parametry strategii
+        strategy_params = {}
+        strategy_class = AVAILABLE_STRATEGIES.get(strategy_name)
+        if not strategy_class:
+             raise ValueError(f"Strategy class {strategy_name} not found.")
+        sig = inspect.signature(strategy_class.__init__)
+
+        for i, param_id_dict in enumerate(strategy_param_ids):
+            param_name = param_id_dict['index']
+            param_value = strategy_param_values[i]
+            # Znajdź oczekiwany typ z sygnatury lub wartości domyślnej
+            expected_type = str # Domyślnie string
+            if param_name in sig.parameters:
+                 param_obj = sig.parameters[param_name]
+                 if param_obj.annotation != inspect.Parameter.empty:
+                     expected_type = param_obj.annotation
+                 elif param_obj.default is not inspect.Parameter.empty:
+                     expected_type = type(param_obj.default)
+
+            # Konwersja wartości
+            try:
+                if expected_type == bool:
+                    converted_value = bool(param_value)
+                elif expected_type == int:
+                    converted_value = int(param_value)
+                elif expected_type == float:
+                    converted_value = float(param_value)
+                else: # Domyślnie string lub zostaw jak jest
+                    converted_value = param_value
+                strategy_params[param_name] = converted_value
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Could not convert strategy parameter '{param_name}' value '{param_value}' to type {expected_type}. Error: {e}. Using raw value.")
+                strategy_params[param_name] = param_value # Użyj surowej wartości w razie błędu
+
+        logger.info(f"Collected strategy parameters: {strategy_params}")
+
+        # 3. Zbierz parametry ryzyka (tylko jeśli 'enabled')
+        risk_params = {}
+        risk_enabled = (risk_toggle_value == "enabled")
+        if risk_enabled:
+            checkbox_states = {cb_id['index']: checked for cb_id, checked in zip(risk_checkbox_ids, risk_checkbox_values)}
+            input_values = {inp_id['index']: value for inp_id, value in zip(risk_input_ids, risk_input_values)}
+
+            risk_mapping = {
+                "use-max-position-size": "max_position_size",
+                "use-min-position-size": "min_position_size",
+                "use-max-positions": "max_open_positions",
+                "use-stop-loss": "stop_loss_pct",
+                "use-profit-target": "profit_target_ratio",
+                "use-trailing-stop": ["trailing_stop_activation", "trailing_stop_distance"],
+                "use-max-drawdown": "max_drawdown",
+                "use-max-daily-loss": "max_daily_loss",
+                "use-market-filter": "use_market_filter", # Flaga
+            }
+
+            for checkbox_base_id, manager_param_keys in risk_mapping.items():
+                if checkbox_states.get(checkbox_base_id, False):
+                    if isinstance(manager_param_keys, list): # Np. trailing stop
+                        for param_key in manager_param_keys:
+                            parsed_value = parse_risk_param_value(param_key, input_values.get(param_key))
+                            if parsed_value is not None: risk_params[param_key] = parsed_value
+                    else: # Pojedynczy parametr
+                         param_key = manager_param_keys
+                         # Dla flagi use_market_filter, tylko ustawiamy ją i ew. lookback
+                         if param_key == "use_market_filter":
+                              risk_params["use_market_filter"] = True # Przekaż flagę do RiskManagera
+                              lookback_key = "market_trend_lookback"
+                              parsed_lookback = parse_risk_param_value(lookback_key, input_values.get(lookback_key))
+                              if parsed_lookback is not None: risk_params[lookback_key] = parsed_lookback
+                         else:
+                              parsed_value = parse_risk_param_value(param_key, input_values.get(param_key))
+                              if parsed_value is not None: risk_params[param_key] = parsed_value
+
+            logger.info(f"Risk Management ENABLED. Params: {risk_params}")
         else:
-            clipped_pnl.append(pnl)
-    
-    # Create histogram bins - FEWER BINS FOR READABILITY
-    bin_size = 2.0  # Use larger 2% bins instead of 0.5%
-    min_bin = min(lower_bound, -10)
-    max_bin = max(upper_bound, 10)
-    bins = np.arange(min_bin, max_bin + bin_size, bin_size)
-    
-    # Create figure
-    fig = go.Figure()
-    
-    # Add negative returns histogram (red)
-    neg_pnl = [p for p in clipped_pnl if p < 0]
-    if neg_pnl:
-        fig.add_trace(go.Histogram(
-            x=neg_pnl,
-            xbins=dict(start=min_bin, end=0, size=bin_size),
-            marker_color='#FF6B6B',
-            name='Negative Returns',
-            opacity=0.7
-        ))
-    
-    # Add positive returns histogram (green)
-    pos_pnl = [p for p in clipped_pnl if p >= 0]
-    if pos_pnl:
-        fig.add_trace(go.Histogram(
-            x=pos_pnl,
-            xbins=dict(start=0, end=max_bin, size=bin_size),
-            marker_color='#17B897',
-            name='Positive Returns',
-            opacity=0.7
-        ))
-    
-    # Update layout
+            logger.info("Risk Management DISABLED.")
+            risk_params = None
+
+        # 4. Uruchom Backtest
+        logger.info("Calling backtest_manager.run_backtest...")
+        signals, results, stats = backtest_manager.run_backtest(
+            strategy_type=strategy_name,
+            tickers=selected_tickers,
+            strategy_params=strategy_params,
+            risk_params=risk_params
+        )
+        logger.info("Backtest manager finished.")
+
+        # 5. Sprawdź wyniki
+        if results is None or stats is None:
+            logger.error("Backtest manager returned None for results or stats.")
+            return return_empty_state(html.Div("Error during backtest execution. Check logs.", className="text-danger"))
+
+        portfolio_values = results.get('Portfolio_Value', pd.Series())
+        benchmark_values = results.get('Benchmark') # Może być None
+        trades = results.get('trades', [])
+
+        if portfolio_values.empty:
+             logger.warning("Backtest completed, but no portfolio data generated.")
+             # Zwróć metryki, jeśli są dostępne (np. liczba transakcji = 0)
+             metrics_cards = create_metric_cards(stats)
+             trade_table = create_trade_table(trades) # Może być pusta tabela
+             return (
+                 html.Div("Backtest completed, but no portfolio equity generated (e.g., no trades or immediate failure).", className="text-warning"),
+                 empty_chart, metrics_cards, empty_trade_hist,
+                 trade_table, "", ", ".join(selected_tickers), empty_alloc_chart, empty_duration_hist
+            )
+
+        # 6. Generowanie Wyników
+        logger.info("Generating result components...")
+        equity_chart = create_styled_chart({'Portfolio': portfolio_values, 'Benchmark': benchmark_values}, "Portfolio Performance")
+        metrics_cards = create_metric_cards(stats)
+        trade_histogram = create_trade_histogram(trades)
+        trade_table = create_trade_table(trades)
+        duration_histogram = create_duration_histogram(trades)
+        allocation_chart = create_allocation_chart(results)
+
+        start_date_str = portfolio_values.index.min().strftime('%Y-%m-%d')
+        end_date_str = portfolio_values.index.max().strftime('%Y-%m-%d')
+        backtest_period = f"{start_date_str} to {end_date_str}"
+        instruments_str = ", ".join(sorted(selected_tickers))
+
+        end_time = pd.Timestamp.now()
+        duration = round((end_time - start_time).total_seconds(), 2)
+        status_msg = html.Div(f"Backtest completed successfully in {duration}s.", className="text-success")
+        logger.info(f"Backtest completed successfully in {duration}s.")
+
+        return (
+            status_msg, equity_chart, metrics_cards, trade_histogram, trade_table,
+            backtest_period, instruments_str, allocation_chart, duration_histogram
+        )
+
+    except Exception as e:
+        logger.error(f"CRITICAL Unhandled error in backtest callback: {str(e)}")
+        logger.error(traceback.format_exc())
+        return return_empty_state(html.Div(f"An critical error occurred: {str(e)}. Check logs.", className="text-danger"))
+
+# Dodaj funkcję do tworzenia histogramu czasu trwania transakcji
+def create_duration_histogram(trades):
+    """Create a histogram of trade durations."""
+    if not trades:
+        return create_empty_chart("Trade Duration")
+
+    durations = []
+    for trade in trades:
+        try:
+            entry = pd.to_datetime(trade.get('entry_date'))
+            exit_d = pd.to_datetime(trade.get('exit_date'))
+            if pd.notnull(entry) and pd.notnull(exit_d):
+                days = (exit_d - entry).days
+                if days >= 0: durations.append(days)
+        except Exception as e:
+            logger.warning(f"Could not calculate duration for trade: {trade}. Error: {e}")
+
+    if not durations:
+        return create_empty_chart("Trade Duration")
+
+    fig = go.Figure(data=[go.Histogram(x=durations, nbinsx=20, marker_color='#36A2EB', name='Duration')])
+
     fig.update_layout(
-        title=None,  # Remove title to save space
+        title=None,
         template=CHART_THEME,
-        xaxis=dict(
-            title='Return (%)',
-            gridcolor='#2a2e39',
-            tickformat='.0f',  # Whole numbers to save space
-            ticksuffix='%',
-            # Fewer tick marks for readability
-            tickmode='array',
-            tickvals=list(range(int(min_bin), int(max_bin) + 1, 4)),
-            ticktext=[f"{x}%" for x in range(int(min_bin), int(max_bin) + 1, 4)]
-        ),
-        yaxis=dict(
-            title='Count',  # Shorter title
-            gridcolor='#2a2e39'
-        ),
-        barmode='overlay',
-        bargap=0.1,
         paper_bgcolor='#1e222d',
         plot_bgcolor='#1e222d',
-        font=dict(color='white'),
-        height=250,  # Shorter height
-        margin=dict(t=20, l=40, r=20, b=40)  # Tighter margins
+        font={'color': '#ffffff'},
+        xaxis={'title': 'Duration (Days)', 'gridcolor': '#2a2e39'},
+        yaxis={'title': 'Number of Trades', 'gridcolor': '#2a2e39'},
+        bargap=0.1,
+        height=250,
+        margin=dict(t=20, l=40, r=20, b=40)
     )
-    
-    # Add annotation for outliers if they exist
-    has_upper_outliers = any(pnl > upper_bound for pnl in pnl_pcts)
-    has_lower_outliers = any(pnl < lower_bound for pnl in pnl_pcts)
-    
-    if has_upper_outliers:
-        num_upper_outliers = sum(1 for pnl in pnl_pcts if pnl > upper_bound)
-        fig.add_annotation(
-            x=upper_bound, y=0,
-            text=f"{num_upper_outliers} trades > {upper_bound:.0f}%",
-            showarrow=True,
-            arrowhead=1,
-            ax=0, ay=-30,
-            font=dict(color='#17B897', size=10)  # Smaller font
-        )
-    
-    if has_lower_outliers:
-        num_lower_outliers = sum(1 for pnl in pnl_pcts if pnl < lower_bound)
-        fig.add_annotation(
-            x=lower_bound, y=0,
-            text=f"{num_lower_outliers} trades < {lower_bound:.0f}%",
-            showarrow=True,
-            arrowhead=1,
-            ax=0, ay=-30,
-            font=dict(color='#FF6B6B', size=10)  # Smaller font
-        )
-    
     return dcc.Graph(figure=fig, config={'displayModeBar': False})
 
-# Add this at the very end of your app.py file
 
+# --- Uruchomienie Aplikacji ---
 if __name__ == '__main__':
-    app.run(debug=True)
+    logger.info("Starting Dash application...")
+    try:
+        # Sprawdzenie dostępności tickerów przy starcie
+        startup_tickers = get_available_tickers()
+        if not startup_tickers:
+             logger.warning("No tickers found during startup check. Ensure data is available and accessible.")
+        else:
+             logger.info(f"Found {len(startup_tickers)} tickers during startup.")
+    except Exception as e:
+        logger.error(f"Error during startup ticker check: {e}")
+
+    app.run(debug=True, host='0.0.0.0', port=8050)
+    logger.info("Dash application stopped.")

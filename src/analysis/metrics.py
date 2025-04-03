@@ -1,519 +1,432 @@
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
 from typing import Dict, Any, Callable, List, Union, Optional, Tuple
+import logging
 
-def calculate_return_series(series: pd.Series) -> pd.Series:
-    """
-    Calculates the return series of a given time series.
+# Użyj loggera zdefiniowanego w app.py lub globalnie
+logger = logging.getLogger(__name__)
 
-    >>> data = load_eod_data('VBB')
-    >>> close_series = data['close']
-    >>> return_series = return_series(close_series)
-
-    The first value will always be NaN.
-    """
-
-    shifted_series = series.shift(1, axis=0)
-    return series / shifted_series - 1
+# Importuj stałe, np. liczbę dni handlowych
+try:
+    from src.core.config import config # Użyj globalnego obiektu config
+    TRADING_DAYS_PER_YEAR = config.TRADING_DAYS_PER_YEAR
+except ImportError:
+    logger.warning("Could not import config for metrics. Using default TRADING_DAYS_PER_YEAR=252.")
+    TRADING_DAYS_PER_YEAR = 252
 
 
-def calculate_log_return_series(series: pd.Series) -> pd.Series:
-    """
-    Same as calculate_return_series but with log returns
-    """
-    shifted_series = series.shift(1, axis=0)
-    return pd.Series(np.log(series / shifted_series))
+# --- Helper Functions ---
+
+def _get_trading_periods_per_year(series_index: pd.DatetimeIndex) -> float:
+    """Estimates trading periods per year based on data frequency."""
+    if not isinstance(series_index, pd.DatetimeIndex) or len(series_index) < 2:
+        return TRADING_DAYS_PER_YEAR # Return default if index is invalid
+
+    # Detect frequency if possible
+    freq = pd.infer_freq(series_index)
+    if freq:
+        if 'D' in freq or 'B' in freq: # Daily or Business Day
+             return TRADING_DAYS_PER_YEAR
+        elif 'W' in freq: # Weekly
+            return 52
+        elif 'M' in freq: # Monthly
+            return 12
+        elif 'Q' in freq: # Quarterly
+             return 4
+        elif 'A' in freq or 'Y' in freq: # Annual / Yearly
+             return 1
+        # Add more frequencies if needed (hourly, minutely etc.)
+
+    # If frequency cannot be inferred, estimate based on time span
+    time_span_years = (series_index.max() - series_index.min()).days / 365.25
+    if time_span_years > 0:
+        return len(series_index) / time_span_years
+    else:
+        return TRADING_DAYS_PER_YEAR # Fallback to daily if span is too short
 
 
-def calculate_percent_return(series: pd.Series) -> float:
-    """
-    Takes the first and last value in a series to determine the percent return, 
-    assuming the series is in date-ascending order
-    """
-    return series.iloc[-1] / series.iloc[0] - 1
-
-
-def get_years_past(series: pd.Series) -> float:
-    """
-    Calculate the years past according to the index of the series for use with
-    functions that require annualization   
-    """
-    start_date = series.index[0]
-    end_date = series.index[-1]
-    return (end_date - start_date).days / 365.25
-
-
-def handle_nan_series(series: pd.Series) -> pd.Series:
-    """Clean series by removing NaN values and ensuring float type"""
-    return pd.Series(series, dtype=float).ffill().bfill()
-
-def calculate_cagr(series: pd.Series) -> float:
-    """Calculate compounded annual growth rate with better error handling"""
+def _handle_input_series(series: Optional[pd.Series], min_length: int = 2) -> Optional[pd.Series]:
+    """Validates and cleans an input pandas Series for metric calculations."""
+    if series is None or not isinstance(series, pd.Series) or series.empty:
+        # logger.debug("Input series is None, not a Series, or empty.")
+        return None
+    if len(series) < min_length:
+        # logger.debug(f"Input series has length {len(series)}, less than minimum {min_length}.")
+        return None
+    # Ensure numeric type and handle NaNs
     try:
-        series = handle_nan_series(series)
-        if len(series) < 2:
-            return 0.0
-        
-        start_price = series.iloc[0]
-        end_price = series.iloc[-1]
-        
-        if start_price <= 0 or end_price <= 0:
-            return 0.0
-            
-        value_factor = end_price / start_price
-        year_past = get_years_past(series)
-        
-        if year_past <= 0:
-            return 0.0
-            
-        return (value_factor ** (1 / year_past)) - 1
-    except Exception:
-        return 0.0
+        numeric_series = pd.to_numeric(series, errors='coerce')
+        # Forward fill first to carry last valid observation, then backfill start
+        cleaned_series = numeric_series.ffill().bfill()
+        if cleaned_series.isnull().any(): # Still has NaNs after filling
+             # logger.warning("Input series contains NaN values that could not be filled.")
+             return None # Or handle differently, e.g., dropna()
+        return cleaned_series
+    except Exception as e:
+        logger.error(f"Error cleaning input series: {e}")
+        return None
 
 
-def calculate_annualized_volatility(return_series: pd.Series) -> float:
-    """Calculate annualized volatility with error handling"""
-    try:
-        if len(return_series) < 2:
-            return 0.0
-            
-        years_past = get_years_past(return_series)
-        if years_past <= 0:
-            return 0.0
-            
-        entries_per_year = return_series.shape[0] / years_past
-        std = return_series.std()
-        
-        if pd.isna(std) or std == 0:
-            return 0.0
-            
-        return std * np.sqrt(entries_per_year)
-    except Exception:
-        return 0.0
+# --- Return Calculation Functions ---
+
+def calculate_return_series(series: pd.Series) -> Optional[pd.Series]:
+    """Calculates the simple return series (price / prev_price - 1)."""
+    cleaned_series = _handle_input_series(series, min_length=2)
+    if cleaned_series is None: return None
+    return cleaned_series.pct_change() # More direct way to calculate simple returns
 
 
-def calculate_sharpe_ratio(price_series: pd.Series, 
-    benchmark_rate: float=0) -> float:
-    """Calculates the Sharpe ratio with NaN handling"""
-    try:
-        price_series = handle_nan_series(price_series)
-        if len(price_series) < 2:
-            return 0.0
-        cagr = calculate_cagr(price_series)
-        return_series = calculate_return_series(price_series)
-        volatility = calculate_annualized_volatility(return_series)
-        return (cagr - benchmark_rate) / volatility if volatility != 0 else 0.0
-    except Exception:
-        return 0.0
+def calculate_log_return_series(series: pd.Series) -> Optional[pd.Series]:
+    """Calculates the log return series (ln(price / prev_price))."""
+    cleaned_series = _handle_input_series(series, min_length=2)
+    if cleaned_series is None: return None
+    # Avoid log(0) or log(<0) errors
+    if (cleaned_series <= 0).any():
+        logger.warning("Series contains non-positive values, cannot calculate log returns accurately.")
+        # Return simple returns instead or handle differently
+        return calculate_return_series(series)
+    return np.log(cleaned_series / cleaned_series.shift(1))
 
 
-def calculate_rolling_sharpe_ratio(price_series: pd.Series,
-    n: float=20) -> pd.Series:
+def calculate_cumulative_returns(return_series: pd.Series) -> Optional[pd.Series]:
+    """Calculates cumulative returns from a series of simple returns."""
+    cleaned_returns = _handle_input_series(return_series, min_length=1) # Need at least 1 return
+    if cleaned_returns is None: return None
+    # Drop first NaN if it exists (from pct_change)
+    cleaned_returns = cleaned_returns.iloc[1:] if pd.isna(cleaned_returns.iloc[0]) else cleaned_returns
+    if cleaned_returns.empty: return None
+    cumulative = (1 + cleaned_returns).cumprod() - 1
+    return cumulative
+
+
+def calculate_total_return(series: pd.Series) -> Optional[float]:
+    """Calculates the total percentage return over the series."""
+    cleaned_series = _handle_input_series(series, min_length=2)
+    if cleaned_series is None: return None
+    if cleaned_series.iloc[0] == 0: return None # Avoid division by zero
+
+    return (cleaned_series.iloc[-1] / cleaned_series.iloc[0] - 1)
+
+
+# --- Annualized Metrics ---
+
+def calculate_cagr(series: pd.Series) -> Optional[float]:
+    """Calculates Compound Annual Growth Rate (CAGR)."""
+    cleaned_series = _handle_input_series(series, min_length=2)
+    if cleaned_series is None: return None
+
+    start_value = cleaned_series.iloc[0]
+    end_value = cleaned_series.iloc[-1]
+
+    if start_value <= 0:
+        logger.warning("CAGR calculation failed: Start value is non-positive.")
+        return None # Cannot calculate CAGR if start value is zero or negative
+
+    if not isinstance(cleaned_series.index, pd.DatetimeIndex):
+         logger.warning("CAGR calculation failed: Series index is not DatetimeIndex.")
+         return None
+
+    time_span_years = (cleaned_series.index[-1] - cleaned_series.index[0]).days / 365.25
+
+    if time_span_years <= 0:
+        logger.warning(f"CAGR calculation failed: Time span is non-positive ({time_span_years:.2f} years).")
+        return None # Return None for non-positive time span
+
+    value_factor = end_value / start_value
+    # Handle potential negative returns correctly
+    if value_factor < 0:
+         # CAGR is undefined for negative terminal value relative to start
+         # We can return geometric mean - 1, but need to handle negative values carefully.
+         # For simplicity, return None or log an error.
+         logger.warning("CAGR calculation might be misleading: Negative value factor.")
+         # Approximate using average annual return or return None
+         # return None
+         # Or return the raw calculation, user should be aware
+         return (np.sign(value_factor) * (abs(value_factor)**(1/time_span_years))) - 1
+    else:
+        return (value_factor**(1 / time_span_years)) - 1
+
+
+def calculate_annualized_volatility(return_series: pd.Series) -> Optional[float]:
+    """Calculates the annualized volatility (standard deviation of returns)."""
+    cleaned_returns = _handle_input_series(return_series, min_length=2)
+    if cleaned_returns is None: return None
+
+    # Drop first NaN if it exists (from pct_change)
+    if pd.isna(cleaned_returns.iloc[0]):
+        cleaned_returns = cleaned_returns.iloc[1:]
+    if len(cleaned_returns) < 2: return None # Need at least 2 returns for std dev
+
+    if not isinstance(cleaned_returns.index, pd.DatetimeIndex):
+        logger.warning("Cannot annualize volatility: Return series index is not DatetimeIndex.")
+        return None
+
+    periods_per_year = _get_trading_periods_per_year(cleaned_returns.index)
+    if periods_per_year <= 0:
+        logger.warning("Could not determine valid periods per year for volatility annualization.")
+        return None
+
+    volatility = cleaned_returns.std()
+    annualized_volatility = volatility * np.sqrt(periods_per_year)
+    return annualized_volatility
+
+
+# --- Risk-Adjusted Return Metrics ---
+
+def calculate_sharpe_ratio(price_series: pd.Series, risk_free_rate: float = 0.0) -> Optional[float]:
+    """Calculates the annualized Sharpe ratio."""
+    cagr = calculate_cagr(price_series) # Returns None on error
+    if cagr is None: return None
+
+    return_series = calculate_return_series(price_series) # Returns None on error
+    if return_series is None: return None
+
+    volatility = calculate_annualized_volatility(return_series) # Returns None on error
+    if volatility is None or volatility == 0:
+        # Handle zero volatility case (e.g., flat returns)
+        return 0.0 if cagr == risk_free_rate else (np.inf if cagr > risk_free_rate else -np.inf)
+
+    return (cagr - risk_free_rate) / volatility
+
+
+def calculate_sortino_ratio(price_series: pd.Series, risk_free_rate: float = 0.0) -> Optional[float]:
+    """Calculates the annualized Sortino ratio."""
+    cagr = calculate_cagr(price_series)
+    if cagr is None: return None
+
+    return_series = calculate_return_series(price_series)
+    if return_series is None: return None
+
+    # Drop first NaN if it exists
+    if pd.isna(return_series.iloc[0]):
+        return_series = return_series.iloc[1:]
+    if len(return_series) < 2: return None
+
+    if not isinstance(return_series.index, pd.DatetimeIndex):
+        logger.warning("Cannot calculate Sortino Ratio: Return series index is not DatetimeIndex.")
+        return None
+
+    periods_per_year = _get_trading_periods_per_year(return_series.index)
+    if periods_per_year <= 0: return None
+
+    # Adjust risk-free rate to the period frequency
+    periodic_rf_rate = (1 + risk_free_rate)**(1 / periods_per_year) - 1
+
+    # Calculate downside returns relative to the periodic risk-free rate
+    downside_returns = return_series[return_series < periodic_rf_rate]
+
+    if downside_returns.empty:
+        # No returns below the target rate, Sortino is theoretically infinite if CAGR > RF
+        return np.inf if cagr > risk_free_rate else 0.0
+
+    # Calculate downside deviation
+    downside_deviation_periodic = np.sqrt((downside_returns - periodic_rf_rate).pow(2).sum() / len(return_series))
+    annualized_downside_deviation = downside_deviation_periodic * np.sqrt(periods_per_year)
+
+    if annualized_downside_deviation == 0:
+        return np.inf if cagr > risk_free_rate else 0.0
+
+    return (cagr - risk_free_rate) / annualized_downside_deviation
+
+
+# --- Drawdown Metrics ---
+
+def calculate_drawdown_series(series: pd.Series) -> Optional[pd.Series]:
+    """Calculates the percentage drawdown series from peak equity."""
+    cleaned_series = _handle_input_series(series, min_length=1)
+    if cleaned_series is None: return None
+
+    rolling_max = cleaned_series.cummax()
+    # Avoid division by zero if rolling_max is zero
+    rolling_max = rolling_max.replace(0, np.nan) # Replace 0 with NaN to avoid division issues
+    drawdown = (cleaned_series - rolling_max) / rolling_max
+    return drawdown.fillna(0) # Fill NaNs (e.g., at the start or where rolling_max was 0) with 0 drawdown
+
+
+def calculate_max_drawdown(series: pd.Series) -> Optional[float]:
+    """Calculates the maximum percentage drawdown."""
+    drawdown_series = calculate_drawdown_series(series)
+    if drawdown_series is None: return None
+    # Max drawdown is the minimum value of the drawdown series (most negative)
+    return drawdown_series.min()
+
+
+def calculate_recovery_factor(total_return_pct: Optional[float], max_drawdown_pct: Optional[float]) -> Optional[float]:
+    """Calculates the recovery factor (Total Return / Max Drawdown)."""
+    if total_return_pct is None or max_drawdown_pct is None:
+        return None
+    if max_drawdown_pct == 0:
+        # If no drawdown, factor is infinite if returns are positive, 0 otherwise
+        return np.inf if total_return_pct > 0 else 0.0
+
+    # Use absolute values for calculation
+    return abs(total_return_pct) / abs(max_drawdown_pct)
+
+
+# --- Benchmark Relative Metrics ---
+
+def _align_series(series1: pd.Series, series2: pd.Series) -> Tuple[Optional[pd.Series], Optional[pd.Series]]:
+    """Aligns two time series based on their common index."""
+    if series1 is None or series2 is None: return None, None
+    common_index = series1.index.intersection(series2.index)
+    if len(common_index) < 2: # Need at least two common points for cov/var
+        logger.warning("Could not align series or insufficient common data points.")
+        return None, None
+    return series1.loc[common_index], series2.loc[common_index]
+
+
+def calculate_beta(portfolio_price_series: pd.Series, benchmark_price_series: pd.Series) -> Optional[float]:
+    """Calculates the portfolio Beta relative to a benchmark."""
+    portfolio_returns = calculate_return_series(portfolio_price_series)
+    benchmark_returns = calculate_return_series(benchmark_price_series)
+
+    if portfolio_returns is None or benchmark_returns is None: return None
+
+    # Align return series
+    portfolio_aligned, benchmark_aligned = _align_series(portfolio_returns.iloc[1:], benchmark_returns.iloc[1:]) # Skip first NaN
+
+    if portfolio_aligned is None or benchmark_aligned is None or len(portfolio_aligned) < 2:
+        return None
+
+    # Calculate covariance and benchmark variance
+    # Use numpy for potentially better NaN handling if needed, but pandas should be fine
+    matrix = np.cov(portfolio_aligned, benchmark_aligned)
+    covariance = matrix[0, 1]
+    benchmark_variance = matrix[1, 1] # np.var(benchmark_aligned) gives biased estimator
+
+    if benchmark_variance == 0:
+        logger.warning("Benchmark variance is zero, cannot calculate Beta.")
+        return None # Or return 0 or 1 depending on desired behavior
+
+    beta = covariance / benchmark_variance
+    return beta
+
+
+def calculate_alpha(portfolio_price_series: pd.Series, benchmark_price_series: pd.Series,
+                      risk_free_rate: float = 0.0) -> Optional[float]:
+    """Calculates the annualized Jensen's Alpha."""
+    cagr_portfolio = calculate_cagr(portfolio_price_series)
+    cagr_benchmark = calculate_cagr(benchmark_price_series)
+    beta = calculate_beta(portfolio_price_series, benchmark_price_series)
+
+    if any(v is None for v in [cagr_portfolio, cagr_benchmark, beta]):
+        logger.warning("Cannot calculate Alpha due to missing required metrics (CAGR portfolio/benchmark or Beta).")
+        return None
+
+    # Jensen's Alpha formula: Alpha = Portfolio Return - [Risk-Free Rate + Beta * (Benchmark Return - Risk-Free Rate)]
+    alpha = cagr_portfolio - (risk_free_rate + beta * (cagr_benchmark - risk_free_rate))
+    return alpha
+
+
+def calculate_information_ratio(portfolio_price_series: pd.Series, benchmark_price_series: pd.Series) -> Optional[float]:
+    """Calculates the Information Ratio."""
+    portfolio_returns = calculate_return_series(portfolio_price_series)
+    benchmark_returns = calculate_return_series(benchmark_price_series)
+
+    if portfolio_returns is None or benchmark_returns is None: return None
+
+    portfolio_aligned, benchmark_aligned = _align_series(portfolio_returns.iloc[1:], benchmark_returns.iloc[1:])
+
+    if portfolio_aligned is None or benchmark_aligned is None or len(portfolio_aligned) < 2:
+        return None
+
+    # Calculate excess returns over benchmark (active returns)
+    active_returns = portfolio_aligned - benchmark_aligned
+
+    if len(active_returns) < 2: return None
+
+    # Calculate annualized active return
+    periods_per_year = _get_trading_periods_per_year(active_returns.index)
+    if periods_per_year <= 0: return None
+    annualized_active_return = active_returns.mean() * periods_per_year
+
+    # Calculate tracking error (annualized standard deviation of active returns)
+    tracking_error = active_returns.std() * np.sqrt(periods_per_year)
+
+    if tracking_error == 0:
+        logger.warning("Tracking error is zero, Information Ratio is undefined or infinite.")
+        # Return Inf if positive active return, -Inf if negative, 0 if zero
+        return np.inf if annualized_active_return > 0 else (-np.inf if annualized_active_return < 0 else 0.0)
+
+    return annualized_active_return / tracking_error
+
+
+# --- Trade Analysis Metrics ---
+
+def calculate_trade_statistics(trades: List[Dict]) -> Dict[str, Any]:
     """
-    Compute an approximation of the Sharpe ratio on a rolling basis. 
-    Intended for use as a preference value.
+    Calculates various statistics based on a list of completed trades.
+
+    Args:
+        trades (List[Dict]): A list where each dict represents a trade and must contain
+                             at least 'pnl' (float) and optionally 'pnl_pct' (float).
+
+    Returns:
+        Dict[str, Any]: A dictionary containing trade statistics.
     """
-    rolling_return_series = calculate_return_series(price_series).rolling(n)
-    return rolling_return_series.mean() / rolling_return_series.std()
-
-
-def calculate_annualized_downside_deviation(return_series: pd.Series,
-    benchmark_rate: float=0) -> float:
-    """
-    Calculates the downside deviation for use in the Sortino ratio.
-
-    Benchmark rate is assumed to be annualized. It will be adjusted according
-    to the number of periods per year seen in the data.
-    """
-
-    # For both de-annualizing the benchmark rate and annualizing result
-    years_past = get_years_past(return_series)
-    entries_per_year = return_series.shape[0] / years_past
-
-    adjusted_benchmark_rate = ((1+benchmark_rate) ** (1/entries_per_year)) - 1
-
-    downside_series = adjusted_benchmark_rate - return_series
-    downside_sum_of_squares = (downside_series[downside_series > 0] ** 2).sum()
-    denominator = return_series.shape[0] - 1
-    downside_deviation = np.sqrt(downside_sum_of_squares / denominator)
-
-    return downside_deviation * np.sqrt(entries_per_year)
-
-
-def calculate_sortino_ratio(price_series: pd.Series,
-    benchmark_rate: float=0) -> float:
-    """Calculates the Sortino ratio with NaN handling"""
-    try:
-        price_series = handle_nan_series(price_series)
-        if len(price_series) < 2:
-            return 0.0
-        cagr = calculate_cagr(price_series)
-        return_series = calculate_return_series(price_series)
-        downside_deviation = calculate_annualized_downside_deviation(return_series)
-        return (cagr - benchmark_rate) / downside_deviation if downside_deviation != 0 else 0.0
-    except Exception:
-        return 0.0
-
-
-def calculate_pure_profit_score(price_series: pd.Series) -> float:
-    """Calculates the pure profit score with NaN handling"""
-    try:
-        series = handle_nan_series(price_series)
-        if len(series) < 2:
-            return 0.0
-            
-        cagr = calculate_cagr(series)
-        t = np.arange(0, len(series)).reshape(-1, 1)
-        values = series.values.reshape(-1, 1)
-        
-        regression = LinearRegression().fit(t, values)
-        r_squared = regression.score(t, values)
-        
-        return cagr * r_squared
-    except Exception:
-        return 0.0
-
-def calculate_jensens_alpha(return_series: pd.Series, 
-    benchmark_return_series: pd.Series) -> float: 
-    """
-    Calculates Jensen's alpha. Prefers input series have the same index. Handles
-    NAs.
-    """
-
-    # Join series along date index and purge NAs
-    df = pd.concat([return_series, benchmark_return_series], sort=True, axis=1)
-    df = df.dropna()
-
-    # Get the appropriate data structure for scikit learn
-    clean_returns: pd.Series = df[df.columns.values[0]]
-    clean_benchmarks = pd.DataFrame(df[df.columns.values[1]])
-
-    # Fit a linear regression and return the alpha
-    regression = LinearRegression().fit(clean_benchmarks, y=clean_returns)
-    return regression.intercept_
-
-def calculate_jensens_alpha_with_benchmark(return_series: pd.Series, benchmark_data: pd.Series) -> float: 
-    """
-    Calculates Jensen's alpha using provided benchmark data
-    """
-    benchmark_return_series = calculate_log_return_series(benchmark_data)
-    return calculate_jensens_alpha(return_series, benchmark_return_series)
-    
-
-DRAWDOWN_EVALUATORS: Dict[str, Callable] = {
-    'dollar': lambda price, peak: peak - price,
-    'percent': lambda price, peak: -((price / peak) - 1),
-    'log': lambda price, peak: np.log(peak) - np.log(price),
-}
-
-def calculate_drawdown_series(series: pd.Series, method: str='log') -> pd.Series:
-    """
-    Returns the drawdown series
-    """
-    assert method in DRAWDOWN_EVALUATORS, \
-        f'Method "{method}" must by one of {list(DRAWDOWN_EVALUATORS.keys())}'
-
-    evaluator = DRAWDOWN_EVALUATORS[method]
-    return evaluator(series, series.cummax())
-
-def calculate_max_drawdown(series: pd.Series, method: str='log') -> float:
-    """
-    Simply returns the max drawdown as a float
-    """
-    return calculate_drawdown_series(series, method).max()
-
-def calculate_max_drawdown_with_metadata(series: pd.Series, 
-    method: str='log') -> Dict[str, Any]:
-    """
-    Calculates max_drawndown and stores metadata about when and where. Returns 
-    a dictionary of the form 
-        {
-            'max_drawdown': float,
-            'peak_date': pd.Timestamp,
-            'peak_price': float,
-            'trough_date': pd.Timestamp,
-            'trough_price': float,
-        }
-    """
-
-    assert method in DRAWDOWN_EVALUATORS, \
-        f'Method "{method}" must by one of {list(DRAWDOWN_EVALUATORS.keys())}'
-
-    evaluator = DRAWDOWN_EVALUATORS[method]
-
-    max_drawdown = 0
-    local_peak_date = peak_date = trough_date = series.index[0]
-    local_peak_price = peak_price = trough_price = series.iloc[0]
-
-    for date, price in series.iteritems():
-
-        # Keep track of the rolling max
-        if price > local_peak_price:
-            local_peak_date = date
-            local_peak_price = price
-
-        # Compute the drawdown
-        drawdown = evaluator(price, local_peak_price)
-
-        # Store new max drawdown values
-        if drawdown > max_drawdown:
-            max_drawdown = drawdown
-
-            peak_date = local_peak_date
-            peak_price = local_peak_price
-
-            trough_date = date
-            trough_price = price
-
-    return {
-        'max_drawdown': max_drawdown,
-        'peak_date': peak_date,
-        'peak_price': peak_price,
-        'trough_date': trough_date,
-        'trough_price': trough_price
-    }
-
-def calculate_log_max_drawdown_ratio(series: pd.Series) -> float:
-    log_drawdown = calculate_max_drawdown(series, method='log')
-    log_return = np.log(series.iloc[-1]) - np.log(series.iloc[0])
-    return log_return - log_drawdown
-
-def calculate_calmar_ratio(series: pd.Series, years_past: int=3) -> float:
-    """
-    Return the percent max drawdown ratio over the past three years, otherwise 
-    known as the Calmar Ratio
-    """
-
-    # Filter series on past three years
-    last_date = series.index[-1]
-    three_years_ago = last_date - pd.Timedelta(days=years_past*365.25)
-    series = series[series.index > three_years_ago]
-
-    # Compute annualized percent max drawdown ratio
-    percent_drawdown = calculate_max_drawdown(series, method='percent')
-    cagr = calculate_cagr(series)
-    return cagr / percent_drawdown
-
-def calculate_alpha(portfolio_values: pd.Series, benchmark_values: Optional[pd.Series], risk_free_rate: float = 0.02) -> float:
-    """Calculate portfolio alpha (Jensen's Alpha) relative to benchmark"""
-    if benchmark_values is None or len(portfolio_values) < 2 or len(benchmark_values) < 2:
-        return 0
-        
-    portfolio_returns = portfolio_values.pct_change().dropna()
-    benchmark_returns = benchmark_values.pct_change().dropna()
-    
-    # Align dates
-    common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
-    if len(common_dates) < 2:
-        return 0
-        
-    portfolio_returns = portfolio_returns[common_dates]
-    benchmark_returns = benchmark_returns[common_dates]
-    
-    # Calculate beta first
-    beta = calculate_beta(portfolio_values, benchmark_values)
-    
-    # Calculate alpha
-    portfolio_return = portfolio_returns.mean() * 252  # Annualized
-    benchmark_return = benchmark_returns.mean() * 252  # Annualized
-    alpha = portfolio_return - risk_free_rate - beta * (benchmark_return - risk_free_rate)
-    
-    return alpha * 100  # Convert to percentage
-
-def calculate_beta(portfolio_values: pd.Series, benchmark_values: Optional[pd.Series]) -> float:
-    """Calculate portfolio beta (volatility relative to benchmark)"""
-    if benchmark_values is None or len(portfolio_values) < 2 or len(benchmark_values) < 2:
-        return 1
-        
-    portfolio_returns = portfolio_values.pct_change().dropna()
-    benchmark_returns = benchmark_values.pct_change().dropna()
-    
-    # Align dates
-    common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
-    if len(common_dates) < 2:
-        return 1
-        
-    portfolio_returns = portfolio_returns[common_dates]
-    benchmark_returns = benchmark_returns[common_dates]
-    
-    # Calculate beta
-    covariance = portfolio_returns.cov(benchmark_returns)
-    variance = benchmark_returns.var()
-    
-    return covariance / variance if variance != 0 else 1
-
-def calculate_information_ratio(portfolio_values: pd.Series, benchmark_values: Optional[pd.Series]) -> float:
-    """Calculate information ratio (active return per unit of tracking error)"""
-    if benchmark_values is None or len(portfolio_values) < 2 or len(benchmark_values) < 2:
-        return 0
-        
-    portfolio_returns = portfolio_values.pct_change().dropna()
-    benchmark_returns = benchmark_values.pct_change().dropna()
-    
-    # Align dates
-    common_dates = portfolio_returns.index.intersection(benchmark_returns.index)
-    if len(common_dates) < 2:
-        return 0
-        
-    portfolio_returns = portfolio_returns[common_dates]
-    benchmark_returns = benchmark_returns[common_dates]
-    
-    # Calculate tracking error
-    excess_returns = portfolio_returns - benchmark_returns
-    tracking_error = excess_returns.std() * np.sqrt(252)  # Annualized
-    
-    # Calculate information ratio
-    active_return = (portfolio_returns.mean() - benchmark_returns.mean()) * 252  # Annualized
-    
-    return active_return / tracking_error if tracking_error != 0 else 0
-
-def calculate_recovery_factor(total_return: float, max_drawdown: float) -> float:
-    """Calculate recovery factor (total return divided by max drawdown)"""
-    if max_drawdown == 0:
-        return 0
-    return abs(total_return) / abs(max_drawdown)
-
-def calculate_trade_statistics(trades: List[Dict]) -> Dict:
-    """Calculate detailed trade statistics with comprehensive error handling"""
-    if not trades:
-        return {
-            'total_trades': 0,
-            'winning_trades': 0,
-            'losing_trades': 0,
-            'win_rate': 0,
-            'avg_return': 0,
-            'avg_win': 0,
-            'avg_loss': 0,
-            'avg_pnl': 0,
-            'avg_win_pnl': 0,
-            'avg_loss_pnl': 0,
-            'largest_win': 0,
-            'largest_loss': 0,
-            'profit_factor': 0
-        }
-    
-    # Calculate individual trade returns with error handling
-    returns = []
-    pnls = []
-    
-    for trade in trades:
-        try:
-            # Ensure we have valid numeric values
-            entry_price = float(trade['entry_price'])
-            exit_price = float(trade['exit_price'])
-            pnl = float(trade['pnl'])
-            
-            # Only calculate return if entry price is not zero
-            if entry_price > 0:
-                returns.append((exit_price - entry_price) / entry_price * 100)
-            pnls.append(pnl)
-        except (KeyError, ValueError, TypeError, ZeroDivisionError) as e:
-            print(f"Error processing trade: {e}")
-            continue
-    
-    # Handle empty lists case
-    if not returns or not pnls:
-        return {
-            'total_trades': len(trades),
-            'winning_trades': 0,
-            'losing_trades': 0,
-            'win_rate': 0,
-            'avg_return': 0,
-            'avg_win': 0,
-            'avg_loss': 0,
-            'avg_pnl': 0,
-            'avg_win_pnl': 0,
-            'avg_loss_pnl': 0,
-            'largest_win': 0,
-            'largest_loss': 0,
-            'profit_factor': 0
-        }
-    
-    # Split into wins and losses
-    wins = [r for r in returns if r > 0]
-    losses = [r for r in returns if r <= 0]
-    win_pnls = [p for p in pnls if p > 0]
-    loss_pnls = [p for p in pnls if p <= 0]
-    
-    # Calculate statistics with safe operations
     stats = {
-        'total_trades': len(trades),
-        'winning_trades': len(wins),
-        'losing_trades': len(losses),
-        'win_rate': (len(wins) / len(trades) * 100) if trades else 0,
-        'avg_return': sum(returns) / len(returns) if returns else 0,
-        'avg_win': sum(wins) / len(wins) if wins else 0,
-        'avg_loss': sum(losses) / len(losses) if losses else 0,
-        'avg_pnl': sum(pnls) / len(pnls) if pnls else 0,
-        'avg_win_pnl': sum(win_pnls) / len(win_pnls) if win_pnls else 0,
-        'avg_loss_pnl': sum(loss_pnls) / len(loss_pnls) if loss_pnls else 0,
-        'largest_win': max(win_pnls) if win_pnls else 0,
-        'largest_loss': min(loss_pnls) if loss_pnls else 0,
-        'profit_factor': abs(sum(win_pnls) / sum(loss_pnls)) if loss_pnls and sum(loss_pnls) != 0 else 1.0
+        'total_trades': 0, 'winning_trades': 0, 'losing_trades': 0,
+        'win_rate': 0.0, 'profit_factor': 0.0,
+        'total_pnl': 0.0, 'avg_trade_pnl': 0.0,
+        'avg_win_pnl': 0.0, 'avg_loss_pnl': 0.0,
+        'largest_win_pnl': 0.0, 'largest_loss_pnl': 0.0,
+        # Add more stats if needed (e.g., avg duration, avg pnl_pct)
     }
-    
-    return stats
 
-def get_trade_bins_dynamic(returns: List[float]) -> Tuple[List[int], List[float], List[float]]:
-    """Calculate dynamic histogram bins based on trade return distribution"""
-    if not returns:
-        return list(range(-50, 55, 5)), [], []
-    
-    min_ret = min(returns)
-    max_ret = max(returns)
-    
-    # Base bin size of 5%
-    bin_size = 5
-    
-    # Handle outliers
-    lower_bound = max(min_ret, -50)  # Cap at -50%
-    upper_bound = min(max_ret, 50)   # Cap at 50%
-    
-    # Create main bins
-    bins = list(range(int(lower_bound - (lower_bound % bin_size)), 
-                     int(upper_bound + bin_size + (bin_size - upper_bound % bin_size)), 
-                     bin_size))
-    
-    # Add outlier bins if needed
-    outliers_low = [r for r in returns if r < lower_bound]
-    outliers_high = [r for r in returns if r > upper_bound]
-    
-    return bins, outliers_low, outliers_high
-
-def analyze_trade_metrics(trades):
-    """
-    Analyze trade metrics to get comprehensive statistics.
-    Consolidated from trade_analyzer.py
-    """
     if not trades:
-        return {}
-    
-    # Calculate basic trade statistics
-    stats = calculate_trade_statistics(trades)
-    
-    # Add additional metrics
-    stats['avg_holding_days'] = calculate_avg_holding_period(trades)
-    stats['win_loss_ratio'] = stats['winning_trades'] / stats['losing_trades'] if stats['losing_trades'] > 0 else float('inf')
-    stats['expectancy'] = (stats['win_rate']/100 * stats['avg_win_pnl']) - ((100-stats['win_rate'])/100 * abs(stats['avg_loss_pnl']))
-    stats['recovery_factor'] = calculate_recovery_factor(stats['total_profit'], abs(stats['largest_loss'])) if abs(stats['largest_loss']) > 0 else float('inf')
-    stats['risk_reward_ratio'] = abs(stats['avg_win_pnl'] / stats['avg_loss_pnl']) if abs(stats['avg_loss_pnl']) > 0 else float('inf')
-    
-    return stats
+        return stats # Return defaults if no trades
 
-def calculate_avg_holding_period(trades):
-    """Calculate average holding period in days"""
-    if not trades:
-        return 0
-    
-    holding_days = []
+    pnls = []
+    win_pnls = []
+    loss_pnls = []
+
     for trade in trades:
-        entry_date = pd.to_datetime(trade.get('entry_date'))
-        exit_date = pd.to_datetime(trade.get('exit_date')) 
-        if pd.notnull(entry_date) and pd.notnull(exit_date):
-            days = (exit_date - entry_date).days
-            holding_days.append(days)
-    
-    return sum(holding_days) / len(holding_days) if holding_days else 0
+        pnl = trade.get('pnl')
+        if pnl is None or not isinstance(pnl, (int, float)) or np.isnan(pnl):
+            logger.warning(f"Skipping trade due to invalid PnL: {trade}")
+            continue
+
+        pnls.append(pnl)
+        if pnl > 0:
+            win_pnls.append(pnl)
+        elif pnl < 0:
+            loss_pnls.append(pnl)
+        # Trades with PnL == 0 are counted in total but not in win/loss counts here
+
+    total_trades = len(pnls)
+    winning_trades = len(win_pnls)
+    losing_trades = len(loss_pnls)
+
+    if total_trades == 0: return stats # No valid PnLs found
+
+    stats['total_trades'] = total_trades
+    stats['winning_trades'] = winning_trades
+    stats['losing_trades'] = losing_trades
+    stats['win_rate'] = (winning_trades / total_trades) * 100 if total_trades > 0 else 0.0
+
+    gross_profit = sum(win_pnls)
+    gross_loss = abs(sum(loss_pnls)) # Use absolute value for gross loss
+
+    stats['total_pnl'] = gross_profit - gross_loss # Same as sum(pnls)
+    stats['avg_trade_pnl'] = stats['total_pnl'] / total_trades
+
+    stats['profit_factor'] = gross_profit / gross_loss if gross_loss > 0 else np.inf
+
+    stats['avg_win_pnl'] = gross_profit / winning_trades if winning_trades > 0 else 0.0
+    stats['avg_loss_pnl'] = -gross_loss / losing_trades if losing_trades > 0 else 0.0 # Avg loss is negative
+
+    stats['largest_win_pnl'] = max(win_pnls) if winning_trades > 0 else 0.0
+    stats['largest_loss_pnl'] = min(loss_pnls) if losing_trades > 0 else 0.0 # Largest loss is most negative
+
+    # Calculate average holding period if dates are available
+    # holding_days = []
+    # for trade in trades:
+    #     entry_date = pd.to_datetime(trade.get('entry_date'), errors='coerce')
+    #     exit_date = pd.to_datetime(trade.get('exit_date'), errors='coerce')
+    #     if pd.notna(entry_date) and pd.notna(exit_date):
+    #         holding_days.append((exit_date - entry_date).days)
+    # if holding_days:
+    #     stats['avg_holding_days'] = np.mean(holding_days)
 
 
+    return stats
