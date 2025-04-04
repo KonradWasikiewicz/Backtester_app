@@ -586,8 +586,8 @@ def create_trade_table(trades):
         style_data_conditional=[
             {'if': {'column_id': 'P&L ($)', 'filter_query': '{P&L ($)} < 0'}, 'color': VIZ_CFG['colors']['loss']},
             {'if': {'column_id': 'P&L ($)', 'filter_query': '{P&L ($)} > 0'}, 'color': VIZ_CFG['colors']['profit']},
-            {'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%)} < 0'}, 'color': VIZ_CFG['colors']['loss']},
-            {'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%)} > 0'}, 'color': VIZ_CFG['colors']['profit']}
+            {'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%) < 0}'}, 'color': VIZ_CFG['colors']['loss']},
+            {'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%) > 0}'}, 'color': VIZ_CFG['colors']['profit']}
         ],
         page_size=10,
         sort_action='native',
@@ -618,6 +618,96 @@ def create_duration_histogram(trades):
 # ==============================================================
 # ===== KONIEC DEFINICJI create_duration_histogram =============
 # ==============================================================
+
+# Zaimplementuj własną funkcję pomocniczą do tworzenia wykresu alokacji
+
+def create_my_allocation_chart(results):
+    """Tworzy wykres alokacji portfela bez używania funkcji create_allocation_chart"""
+    try:
+        if not results or 'positions' not in results:
+            return create_empty_chart("No allocation data")
+        
+        # Dane pozycji dziennych
+        positions_data = results['positions']
+        if positions_data.empty:
+            return create_empty_chart("No position data")
+        
+        # Konwersja wartości pieniężnych na procenty
+        total_value = positions_data['Total']
+        pct_data = positions_data.div(total_value, axis=0).multiply(100)
+        
+        # Inicjalizacja wykresu
+        fig = go.Figure()
+        
+        # Dodaj gotówkę jako obszar
+        fig.add_trace(go.Scatter(
+            x=pct_data.index,
+            y=pct_data['Cash'],
+            name='Cash Allocation',
+            mode='lines',
+            stackgroup='one',
+            line=dict(width=0.5, color='#6c757d'),
+            fillcolor='rgba(108, 117, 125, 0.5)'
+        ))
+        
+        # Dodaj inwestycje jako obszar
+        # Sumuj wszystkie kolumny poza Cash i Total
+        investments = pct_data.drop(['Cash', 'Total'], axis=1).sum(axis=1)
+        fig.add_trace(go.Scatter(
+            x=pct_data.index,
+            y=investments,
+            name='Positions Allocation',
+            mode='lines',
+            stackgroup='one',
+            line=dict(width=0.5, color='#0d6efd'),
+            fillcolor='rgba(13, 110, 253, 0.5)'
+        ))
+        
+        # Układ
+        fig.update_layout(
+            height=300,
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="left",
+                x=0.01,
+                bgcolor='rgba(0,0,0,0)',
+                bordercolor='rgba(0,0,0,0)'
+            ),
+            margin=dict(l=50, r=10, t=10, b=40),
+            paper_bgcolor=VIZ_CFG['colors']['background'],
+            plot_bgcolor=VIZ_CFG['colors']['card_background'],
+            font=dict(
+                family="Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif",
+                color=VIZ_CFG['colors']['text_color']
+            ),
+            hovermode="x unified",
+            hoverlabel=dict(
+                bgcolor="#1e222d",
+                bordercolor="#2a2e39",
+                font=dict(color="#dee2e6"),
+            ),
+            xaxis=dict(
+                title="Date",
+                linecolor=GRID_COLOR,
+                gridcolor=GRID_COLOR,
+                zeroline=False,
+                automargin=True
+            ),
+            yaxis=dict(
+                title="Allocation (%)",
+                gridcolor=GRID_COLOR,
+                ticksuffix="%",
+                range=[0, 100]
+            )
+        )
+        
+        return fig
+    except Exception as e:
+        logger.error(f"Error in create_my_allocation_chart: {e}")
+        return create_empty_chart("Error creating chart")
 
 # --- Główny Układ Aplikacji ---
 app.layout = dbc.Container([
@@ -1032,28 +1122,21 @@ def run_full_backtest(n_clicks, strategy_name, selected_tickers, risk_toggle_val
         
         # Generuj wykres alokacji
         try:
-            # Sprawdź, czy create_allocation_chart zwraca Figure czy dcc.Graph
-            allocation_fig = create_allocation_chart(results)
+            # Użyj naszej własnej implementacji
+            allocation_fig = create_my_allocation_chart(results)
             
-            if hasattr(allocation_fig, 'children'):  # To oznacza, że zwraca dcc.Graph lub inny komponent Dash
-                # Jeśli zwraca komponent, użyj go bezpośrednio
-                allocation = dcc.Loading(
-                    id="loading-allocation",
-                    children=html.Div(allocation_fig),
-                    type="circle"
-                )
-            else:  # Zakładamy, że zwraca Figure z plotly
-                # Jeśli zwraca Figure, opakuj w dcc.Graph
-                allocation = dcc.Loading(
-                    id="loading-allocation",
-                    children=html.Div(
-                        dcc.Graph(
-                            figure=allocation_fig,
-                            config={'displayModeBar': False}
-                        )
-                    ),
-                    type="circle"
-                )
+            # Teraz allocation_fig na pewno jest obiektem Figure
+            allocation = dcc.Loading(
+                id="loading-allocation",
+                children=html.Div(
+                    dcc.Graph(
+                        id="allocation-graph",
+                        figure=allocation_fig,
+                        config={'displayModeBar': False}
+                    )
+                ),
+                type="circle"
+            )
         except Exception as e:
             logger.warning(f"Error creating allocation chart: {e}")
             allocation = dcc.Loading(
