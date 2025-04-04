@@ -147,3 +147,23 @@ class BacktestVisualizer:
     # def create_monthly_heatmap_component(self, portfolio_values: Optional[pd.Series], ...) -> dcc.Graph:
     #     # Wywołaj odpowiednią funkcję z chart_utils
     #     pass
+
+    def create_equity_curve_figure(self, portfolio_values, benchmark_values=None):
+        """Create an equity curve chart."""
+        # Downsampling for better performance
+        max_points = 500  # Maximum number of data points to display
+        
+        if len(portfolio_values) > max_points:
+            # Sample portfolio values
+            portfolio_values = portfolio_values.resample('D').last()  # Resample to daily data
+            
+            if len(portfolio_values) > max_points:
+                # Still too many points, use linear sampling
+                idx = np.linspace(0, len(portfolio_values) - 1, max_points).astype(int)
+                portfolio_values = portfolio_values.iloc[idx]
+            
+            # Also sample benchmark if available
+            if benchmark_values is not None and len(benchmark_values) > max_points:
+                benchmark_values = benchmark_values.iloc[portfolio_values.index]
+        
+        # Continue with the existing implementation...

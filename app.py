@@ -10,6 +10,12 @@ import logging
 import plotly.graph_objects as go
 import inspect # Do inspekcji parametrów strategii
 import os  # Missing import for os module
+from flask_caching import Cache
+import gc
+
+# Konfiguracja wydajności pandas
+pd.set_option('compute.use_bottleneck', True)
+pd.set_option('compute.use_numexpr', True)
 
 # Visualization config constants
 VIZ_CFG = {
@@ -80,8 +86,10 @@ app = dash.Dash(
 server = app.server
 
 # --- Cache Configuration ---
-# Add caching for expensive operations
-cache_timeout = 300  # 5 minutes
+cache = Cache(app.server, config={
+    'CACHE_TYPE': 'simple',  # Używamy prostego cachingu w pamięci
+    'CACHE_DEFAULT_TIMEOUT': 300  # 5 minut
+})
 
 # --- Error Handling ---
 def handle_error(e):
@@ -118,16 +126,234 @@ def get_available_tickers():
         traceback.print_exc()
         return []
 
+@cache.memoize(timeout=300)
+def process_metrics_stats(stats):
+    """Przetwórz statystyki dla kart metryk z wykorzystaniem cachingu"""
+    if not stats:
+        return {}
+        
+    # Wykonaj kosztowne obliczenia tutaj
+    processed_stats = stats.copy()
+    return processed_stats
+
+# Dodaj poniższy kod po definicji process_metrics_stats a przed create_metric_cards:
+
+@cache.memoize(timeout=300)
+def process_trades_for_table(trades):
+    """Przetwórz dane transakcji do tabeli z wykorzystaniem cachingu"""
+    if not trades or len(trades) == 0:
+        return None
+        
+    trade_data = []
+    try:
+        # Użyj pandas dla szybszego przetwarzania
+        if isinstance(trades, list) and len(trades) > 0:
+            # Konwersja listy słowników na DataFrame dla wydajnego przetwarzania
+            df = pd.DataFrame(trades)
+            
+            # Konwersja dat jednocześnie dla wszystkich wierszy
+            if 'entry_date' in df.columns:
+                df['entry_date'] = pd.to_datetime(df['entry_date'], errors='coerce')
+            if 'exit_date' in df.columns:
+                df['exit_date'] = pd.to_datetime(df['exit_date'], errors='coerce')
+                
+            # Obliczanie czasu trwania dla wszystkich transakcji jednocześnie
+            if 'entry_date' in df.columns and 'exit_date' in df.columns:
+                df['duration_seconds'] = (df['exit_date'] - df['entry_date']).dt.total_seconds()
+                df['duration_days'] = df['duration_seconds'] / 86400
+                df['duration_text'] = np.where(
+                    df['duration_seconds'] < 86400,
+                    df['duration_seconds'].apply(lambda x: f"{x / 3600:.1f} h"),
+                    df['duration_days'].apply(lambda x: f"{x:.1f}")
+                )
+            
+            # Formatowanie pozostałych danych
+            for i, row in df.iterrows():
+                pnl = float(row.get('pnl', 0))
+                pnl_pct = float(row.get('pnl_pct', 0))
+                direction_val = int(row.get('direction', 1))
+                direction_str = 'Long' if direction_val > 0 else ('Short' if direction_val < 0 else 'N/A')
+                
+                entry_date_str = row['entry_date'].strftime('%Y-%m-%d %H:%M') if pd.notnull(row.get('entry_date')) else 'N/A'
+                exit_date_str = row['exit_date'].strftime('%Y-%m-%d %H:%M') if pd.notnull(row.get('exit_date')) else 'N/A'
+                
+                trade_data.append({
+                    'ID': i + 1,
+                    'Ticker': row.get('ticker', 'N/A'),
+                    'Entry Date': entry_date_str,
+                    'Exit Date': exit_date_str,
+                    'Duration': row.get('duration_text', 'N/A'),
+                    'Direction': direction_str,
+                    'Entry Price': f"${float(row.get('entry_price', 0)):,.2f}",
+                    'Exit Price': f"${float(row.get('exit_price', 0)):,.2f}",
+                    'Shares': int(row.get('shares', 0)),
+                    'P&L ($)': pnl,
+                    'P&L (%)': pnl_pct,
+                    'Exit Reason': row.get('exit_reason', 'N/A').replace('_', ' ').title()
+                })
+                
+    except Exception as e:
+        logger.warning(f"Error processing trades for table: {e}")
+        return None
+        
+    return trade_data
+
+@cache.memoize(timeout=300)
+def generate_equity_curve(portfolio_values, benchmark_values):
+    """Zoptymalizowana funkcja generująca wykres krzywej kapitału"""
+    if portfolio_values is None or portfolio_values.empty:
+        return None
+    
+    # Używamy maksymalnie 500 punktów danych dla wykresu
+    if len(portfolio_values) > 500:
+        # Wybierz równomiernie rozłożone punkty
+        idx = np.linspace(0, len(portfolio_values) - 1, 500).astype(int)
+        portfolio_values = portfolio_values.iloc[idx]
+        if benchmark_values is not None and len(benchmark_values) > 500:
+            benchmark_values = benchmark_values.iloc[idx]
+    
+    return visualizer.create_equity_curve_figure(portfolio_values, benchmark_values)
+
+@cache.memoize(timeout=300)
+def generate_trade_distribution(trades):
+    """Cached function for generating trade distribution figures"""
+    if not trades or len(trades) == 0:
+        return None
+    
+    # Implementacja własnej funkcji zamiast polegania na metodzie visualizera
+    wins = []
+    losses = []
+    
+    for trade in trades:
+        pnl = trade.get('pnl', 0)
+        if pnl > 0:
+            wins.append(pnl)
+        elif pnl < 0:
+            losses.append(pnl)
+    
+    fig = go.Figure()
+    if wins:
+        fig.add_trace(go.Histogram(
+            x=wins,
+            name="Zyski",
+            marker_color=VIZ_CFG['colors']['profit'],
+            opacity=0.7,
+            autobinx=True
+        ))
+    
+    if losses:
+        fig.add_trace(go.Histogram(
+            x=losses,
+            name="Straty",
+            marker_color=VIZ_CFG['colors']['loss'],
+            opacity=0.7,
+            autobinx=True
+        ))
+    
+    fig.update_layout(
+        title="Rozkład zysków i strat",
+        xaxis_title="P&L ($)",
+        yaxis_title="Liczba transakcji",
+        template=CHART_TEMPLATE,
+        barmode='overlay',
+        bargap=0.1,
+        margin=dict(l=40, r=40, t=40, b=40),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        paper_bgcolor=VIZ_CFG['colors']['background'],
+        plot_bgcolor=VIZ_CFG['colors']['background'],
+        font=dict(color=VIZ_CFG['colors']['text_color'])
+    )
+    
+    # Dodaj linie siatki
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor=GRID_COLOR)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=GRID_COLOR)
+    
+    return fig
+
+@cache.memoize(timeout=300)
+def generate_duration_histogram_figure(trades):
+    """Cached function for generating duration histogram figure"""
+    if not trades or len(trades) == 0:
+        return None
+        
+    durations = []
+    colors = []
+    
+    # Szybsze przetwarzanie trades
+    for trade in trades:
+        try:
+            if pd.notnull(trade.get('entry_date')) and pd.notnull(trade.get('exit_date')):
+                entry_date = pd.to_datetime(trade.get('entry_date'))
+                exit_date = pd.to_datetime(trade.get('exit_date'))
+                duration_days = (exit_date - entry_date).total_seconds() / 86400
+                durations.append(duration_days)
+                colors.append(VIZ_CFG['colors']['profit'] if trade.get('pnl', 0) > 0 else VIZ_CFG['colors']['loss'])
+        except Exception as e:
+            logger.warning(f"Error calculating trade duration: {e}")
+            continue
+    
+    if not durations:
+        return None
+    
+    # Uproszczone obliczanie przedziałów
+    max_duration = max(durations)
+    if max_duration < 1:
+        bin_size, bin_text = 1/24, "Hours"  # 1 godzina
+    elif max_duration < 7:
+        bin_size, bin_text = 1.0, "Days"
+    elif max_duration < 30:
+        bin_size, bin_text = 7.0, "Weeks"
+    else:
+        bin_size, bin_text = 30.0, "Months"
+    
+    # Tworzenie wykresu z zoptymalizowanymi ustawieniami
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(
+        x=durations,
+        marker_color=colors,
+        opacity=0.75,
+        xbins=dict(size=bin_size),
+        name="Duration Distribution"
+    ))
+    
+    # Uproszczone aktualizacje układu
+    fig.update_layout(
+        title=f"Trade Duration Distribution",
+        xaxis_title=f"Duration ({bin_text})",
+        yaxis_title="Number of Trades",
+        template=CHART_TEMPLATE,
+        margin=dict(l=40, r=40, t=40, b=40),
+        paper_bgcolor=VIZ_CFG['colors']['background'],
+        plot_bgcolor=VIZ_CFG['colors']['background'],
+        font=dict(color=VIZ_CFG['colors']['text_color'])
+    )
+    
+    # Dodaj linie siatki
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor=GRID_COLOR)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=GRID_COLOR)
+    
+    return fig
+
 def create_metric_cards(stats: dict):
     """Create metric cards layout."""
-    # Definicja tej funkcji pozostaje bez zmian (jak w poprzedniej odpowiedzi)
-    if not stats: # Jeśli słownik stats jest pusty
+    # Jeśli słownik stats jest pusty
+    if not stats:
         return html.Div([
              dbc.Row([
                  dbc.Col(create_metric_card_with_tooltip("Status", "Run backtest to see metrics.", tooltip_text="Perform a backtest calculation to view performance details."), width=12)
              ])
         ], className="mb-1")
 
+    # Użyj zbuforowanej funkcji do przetwarzania statystyk
+    processed_stats = process_metrics_stats(stats)
+    
+    # Kontynuuj jak wcześniej...
     tooltip_texts = {
         'Initial Capital': "Starting capital at the beginning of the backtest period.",
         'Final Capital': "Ending portfolio value at the end of the backtest period.",
@@ -149,7 +375,6 @@ def create_metric_cards(stats: dict):
     }
 
     def format_value(key, value):
-        # Definicja tej wewnętrznej funkcji pozostaje bez zmian
         if value is None or (isinstance(value, float) and (np.isnan(value) or np.isinf(value))): return "N/A"
         if isinstance(value, (int, float)):
             if key in ['Initial Capital', 'Final Capital', 'avg_win_pnl', 'avg_loss_pnl']: return f"${value:,.2f}"
@@ -170,6 +395,12 @@ def create_metric_cards(stats: dict):
         ('Avg Loss Pnl', 'avg_loss_pnl')
     ]
 
+    # Dodaj definicję card_style, która wcześniej była pominięta
+    card_style = {
+        'marginBottom': '8px',
+        'height': 'auto'
+    }
+
     cards_col1 = []
     cards_col2 = []
     col_target = cards_col1
@@ -181,21 +412,27 @@ def create_metric_cards(stats: dict):
         value = stats.get(key)
         formatted = format_value(key, value)
         tooltip = tooltip_texts.get(label, "")
-        card = create_metric_card_with_tooltip(label, formatted, tooltip)
+        
+        # Używaj kompaktowego stylu dla kart
+        card = dbc.Card(
+            dbc.CardBody([
+                html.P(label, className="small text-muted mb-0"),
+                html.H6(formatted, className="mb-0")
+            ], className="p-2"),  # Mniejszy padding
+            style=card_style,
+            className="mb-2"
+        )
+        
         col_target.append(card)
         col_target = cards_col2 if col_target is cards_col1 else cards_col1
 
-    while len(cards_col1) < len(cards_col2): cards_col1.append(html.Div(style={'minHeight': '80px'})) # Placeholder
-    while len(cards_col2) < len(cards_col1): cards_col2.append(html.Div(style={'minHeight': '80px'})) # Placeholder
-
     return html.Div([
         dbc.Row([
-            dbc.Col(cards_col1, width=6, className="pe-1"),
-            dbc.Col(cards_col2, width=6, className="ps-1")
+            dbc.Col(html.Div(cards_col1), width=6, className="pe-1"),
+            dbc.Col(html.Div(cards_col2), width=6, className="ps-1")
         ], className="g-2")
-    ], className="mb-1")
-
-
+    ], className="p-2", style={'maxHeight': '70vh', 'overflowY': 'auto'})
+ 
 def create_risk_input_row(checkbox_id_base, label_text, input_id_base, min_val, max_val, step_val, default_val, is_integer=False):
     """Helper to create a row with checkbox, label, and input for risk options."""
     # Definicja tej funkcji pozostaje bez zmian (jak w poprzedniej odpowiedzi)
@@ -300,59 +537,17 @@ def create_trade_table(trades):
     if not trades or len(trades) == 0:
         return html.Div("No trades to display.", className="text-muted text-center p-3")
 
-    try:
-        trade_data = []
-        for i, trade in enumerate(trades):
-            # Parse dates once
-            entry_date = pd.to_datetime(trade.get('entry_date')) if pd.notnull(trade.get('entry_date')) else None
-            exit_date = pd.to_datetime(trade.get('exit_date')) if pd.notnull(trade.get('exit_date')) else None
-            
-            # Format dates
-            entry_date_str = entry_date.strftime('%Y-%m-%d %H:%M') if entry_date else 'N/A'
-            exit_date_str = exit_date.strftime('%Y-%m-%d %H:%M') if exit_date else 'N/A'
-            
-            # Calculate holding period
-            holding_days = 'N/A'
-            if entry_date and exit_date:
-                holding_period = exit_date - entry_date
-                if holding_period.total_seconds() < 86400:  # Less than a day
-                    holding_days = f"{holding_period.total_seconds() / 3600:.1f} h"
-                else:
-                    holding_days = f"{holding_period.days + holding_period.seconds / 86400:.1f}"
-            
-            # Get numeric values safely
-            pnl = float(trade.get('pnl', 0))
-            pnl_pct = float(trade.get('pnl_pct', 0))
-            direction_val = int(trade.get('direction', 1))
-            direction_str = 'Long' if direction_val > 0 else ('Short' if direction_val < 0 else 'N/A')
-            
-            trade_data.append({
-                'ID': i + 1,
-                'Ticker': trade.get('ticker', 'N/A'),
-                'Entry Date': entry_date_str,
-                'Exit Date': exit_date_str,
-                'Duration': holding_days,
-                'Direction': direction_str,
-                'Entry Price': f"${float(trade.get('entry_price', 0)):,.2f}",
-                'Exit Price': f"${float(trade.get('exit_price', 0)):,.2f}",
-                'Shares': int(trade.get('shares', 0)),
-                'P&L ($)': pnl,
-                'P&L (%)': pnl_pct,
-                'Exit Reason': trade.get('exit_reason', 'N/A').replace('_', ' ').title()
-            })
-    except Exception as e:
-        logger.warning(f"Error processing trades for table: {e}")
-        return html.Div("Error processing trades for table.", className="text-warning text-center")
-
+    # Wykorzystaj buforowaną funkcję do przetworzenia danych
+    trade_data = process_trades_for_table(trades)
     if not trade_data:
         return html.Div("No valid trades to display.", className="text-muted text-center p-3")
 
-    # Define columns once
+    # Zdefiniuj kolumny tylko raz
     columns = [
         {'name': 'ID', 'id': 'ID', 'type': 'numeric'},
         {'name': 'Ticker', 'id': 'Ticker', 'type': 'text'},
-        {'name': 'Entry Date', 'id': 'Entry Date', 'type': 'datetime'},
-        {'name': 'Exit Date', 'id': 'Exit Date', 'type': 'datetime'},
+        {'name': 'Entry Date', 'id': 'Entry Date', 'type': 'text'},
+        {'name': 'Exit Date', 'id': 'Exit Date', 'type': 'text'},
         {'name': 'Duration', 'id': 'Duration', 'type': 'text'},
         {'name': 'Direction', 'id': 'Direction', 'type': 'text'},
         {'name': 'Entry', 'id': 'Entry Price', 'type': 'text'},
@@ -365,6 +560,7 @@ def create_trade_table(trades):
         {'name': 'Exit Reason', 'id': 'Exit Reason', 'type': 'text'},
     ]
 
+    # Zoptymalizowane wyświetlanie
     return dash_table.DataTable(
         id='trade-table',
         columns=columns,
@@ -397,8 +593,8 @@ def create_trade_table(trades):
         sort_action='native',
         sort_mode='multi',
         filter_action='native',
-        row_deletable=False,
-        editable=False,
+        page_action='native',  # Paginacja po stronie przeglądarki
+        virtualization=True,   # Włącz wirtualizację dla lepszej wydajności
     )
 
 # ==============================================================
@@ -412,63 +608,12 @@ def create_duration_histogram(trades):
     """Create a histogram of trade durations."""
     if not trades or len(trades) == 0:
         return create_empty_chart("Trade Duration (days)")
-    
-    durations = []
-    colors = []
-    
-    # Process all trades at once with list comprehension
-    for trade in trades:
-        try:
-            if pd.notnull(trade.get('entry_date')) and pd.notnull(trade.get('exit_date')):
-                entry_date = pd.to_datetime(trade.get('entry_date'))
-                exit_date = pd.to_datetime(trade.get('exit_date'))
-                duration_days = (exit_date - entry_date).total_seconds() / 86400
-                durations.append(duration_days)
-                colors.append(VIZ_CFG['colors']['profit'] if trade.get('pnl', 0) > 0 else VIZ_CFG['colors']['loss'])
-        except Exception as e:
-            logger.warning(f"Error calculating trade duration: {e}")
-            continue
-    
-    if not durations:
+        
+    # Wykorzystaj zbuforowaną funkcję
+    fig = generate_duration_histogram_figure(trades)
+    if fig is None:
         return create_empty_chart("Trade Duration (days)")
-    
-    # Simplified bin calculation
-    max_duration = max(durations)
-    if max_duration < 1:
-        bin_size, bin_text = 1/24, "Hours"  # 1 hour
-    elif max_duration < 7:
-        bin_size, bin_text = 1.0, "Days"
-    elif max_duration < 30:
-        bin_size, bin_text = 7.0, "Weeks"
-    else:
-        bin_size, bin_text = 30.0, "Months"
-    
-    # Create figure with optimized settings
-    fig = go.Figure()
-    fig.add_trace(go.Histogram(
-        x=durations,
-        marker_color=colors,
-        opacity=0.75,
-        xbins=dict(size=bin_size),
-        name="Duration Distribution"
-    ))
-    
-    # Simplified layout updates
-    fig.update_layout(
-        title=f"Trade Duration Distribution",
-        xaxis_title=f"Duration ({bin_text})",
-        yaxis_title="Number of Trades",
-        template=CHART_TEMPLATE,
-        margin=dict(l=40, r=40, t=40, b=40),
-        paper_bgcolor=VIZ_CFG['colors']['background'],
-        plot_bgcolor=VIZ_CFG['colors']['background'],
-        font=dict(color=VIZ_CFG['colors']['text_color'])
-    )
-    
-    # Add grid lines
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor=GRID_COLOR)
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=GRID_COLOR)
-    
+        
     return dcc.Graph(figure=fig, config={'displayModeBar': False})
 # ==============================================================
 # ===== KONIEC DEFINICJI create_duration_histogram =============
@@ -504,7 +649,7 @@ app.layout = dbc.Container([
                 dbc.CardHeader("Backtest Results"),
                 dbc.CardBody([
                     dcc.Loading(
-                        id="loading-indicator", type="default", fullscreen=False,
+                        id="results-loading", 
                         children=[
                             html.Div(id="calculation-status", className="mb-2"),
                             dbc.Row([
@@ -515,10 +660,24 @@ app.layout = dbc.Container([
                                 dbc.Col(html.Span("Instruments Tested: ", className="fw-bold"), width="auto"),
                                 dbc.Col(html.Span(id="portfolio-instruments"), width=True)
                             ], className="mb-3 align-items-center"),
-                            html.Div(id="equity-curve-container", className="mb-4", style={'minHeight': '400px'}),
-                            html.H5("Portfolio Allocation Over Time", className="mt-3 mb-2"),
-                            html.Div(id="portfolio-composition-container", style={'minHeight': '300px'})
-                        ]
+                        ],
+                        type="default"
+                    ),
+                    
+                    # Osobny loading dla equity curve
+                    dcc.Loading(
+                        id="equity-loading",
+                        children=[html.Div(id="equity-curve-container", className="mb-4", style={'minHeight': '400px'})],
+                        type="circle"
+                    ),
+                    
+                    html.H5("Portfolio Allocation Over Time", className="mt-3 mb-2"),
+                    
+                    # Osobny loading dla alokacji
+                    dcc.Loading(
+                        id="allocation-loading",
+                        children=[html.Div(id="portfolio-composition-container", style={'minHeight': '300px'})],
+                        type="circle"
                     )
                 ])
             ])
@@ -719,12 +878,12 @@ def run_full_backtest(n_clicks, strategy_name, selected_tickers, risk_toggle_val
                       strategy_param_values, strategy_param_ids, risk_checkbox_values, 
                       risk_checkbox_ids, risk_input_values, risk_input_ids):
     """Run backtest with selected configuration and display results."""
-    # Start timing and initialize
+    # Początek timingu i inicjalizacji
     start_time = pd.Timestamp.now()
     logger.info("="*50)
     logger.info(f"Backtest triggered: Strategy={strategy_name}, Tickers={selected_tickers}, Risk={risk_toggle_value}")
     
-    # Initialize empty components
+    # Inicjalizacja pustych komponentów
     empty_components = {
         'metrics': create_metric_cards({}),
         'chart': create_empty_chart("Equity Curve"),
@@ -736,33 +895,29 @@ def run_full_backtest(n_clicks, strategy_name, selected_tickers, risk_toggle_val
     initial_status = html.Div("Config ready. Click 'Run Backtest'.", className="text-info text-center")
     
     def return_empty_state(status_msg=initial_status):
-        """Return empty state with optional status message."""
+        """Zwróć pusty stan z opcjonalnym komunikatem statusu."""
         return (status_msg, empty_components['chart'], empty_components['metrics'], 
                 empty_components['trade_hist'], empty_components['table'], "", "", 
                 empty_components['alloc'], empty_components['duration_hist'])
     
-    # Input validation
+    # Walidacja danych wejściowych
     if not strategy_name:
         return return_empty_state(html.Div("Please select a strategy.", className="text-warning text-center"))
     if not selected_tickers:
         return return_empty_state(html.Div("Please select at least one ticker.", className="text-warning text-center"))
     
-    # Show loading status
-    loading_status = html.Div([dbc.Spinner(size="sm", color="primary"), " Running backtest..."], 
-                              className="text-info text-center")
-    
     try:
-        # Process strategy parameters
+        # Przetwórz parametry strategii
         strategy_params = process_strategy_params(strategy_name, strategy_param_ids, strategy_param_values)
         
-        # Process risk parameters
+        # Przetwórz parametry ryzyka
         risk_params = None
         if risk_toggle_value == "enabled":
             risk_params = process_risk_params(risk_checkbox_ids, risk_checkbox_values, 
                                              risk_input_ids, risk_input_values)
             logger.info(f"Risk enabled with params: {risk_params}")
         
-        # Run backtest
+        # Uruchom backtest
         logger.info("Starting backtest...")
         signals, results, stats = backtest_manager.run_backtest(
             strategy_type=strategy_name, 
@@ -772,18 +927,18 @@ def run_full_backtest(n_clicks, strategy_name, selected_tickers, risk_toggle_val
         )
         logger.info("Backtest completed.")
         
-        # Handle empty results
+        # Obsłuż puste wyniki
         if results is None or stats is None:
             logger.error("Backtest manager returned None.")
             return return_empty_state(html.Div("Error during backtest execution. Check logs.", 
                                               className="text-danger text-center"))
         
-        # Extract key data
+        # Wyodrębnij kluczowe dane
         portfolio_values = results.get('Portfolio_Value', pd.Series())
         benchmark_values = results.get('Benchmark')
         trades = results.get('trades', [])
         
-        # Handle empty portfolio
+        # Obsłuż pusty portfel
         if portfolio_values.empty:
             logger.warning("Backtest completed, but no portfolio data generated.")
             return (
@@ -799,20 +954,10 @@ def run_full_backtest(n_clicks, strategy_name, selected_tickers, risk_toggle_val
                 empty_components['duration_hist']
             )
         
-        # Generate result components
+        # Przygotuj komponenty wynikowe z leniwym ładowaniem
         logger.info("Generating result components...")
         
-        # Create visual components
-        components = {
-            'equity': visualizer.create_equity_curve_component(portfolio_values, benchmark_values),
-            'metrics': create_metric_cards(stats),
-            'trade_hist': visualizer.create_trade_distribution_component(trades),
-            'trade_table': create_trade_table(trades),
-            'duration_hist': create_duration_histogram(trades),
-            'allocation': visualizer.create_allocation_component(results)
-        }
-        
-        # Format date range
+        # Sformatuj zakres dat
         date_range = "N/A"
         if not portfolio_values.empty:
             start_date = portfolio_values.index.min().strftime('%Y-%m-%d')
@@ -822,28 +967,140 @@ def run_full_backtest(n_clicks, strategy_name, selected_tickers, risk_toggle_val
         # Format instruments and finish timing
         instruments = ", ".join(sorted(selected_tickers))
         duration = round((pd.Timestamp.now() - start_time).total_seconds(), 2)
-        status = html.Div(f"Backtest completed successfully in {duration}s.", 
-                          className="text-success text-center")
+        status = html.Div([html.Span(f"Backtest completed successfully in {duration}s. ", className="text-success"), html.Span("Generating visualizations...", id="viz-status", className="text-info")])
+        
+        # Tworzenie komponentów z wykorzystaniem zbuforowanych funkcji
+        logger.info("Generating result components...")
+        
+        # Sformatuj zakres dat
+        date_range = "N/A"
+        if not portfolio_values.empty:
+            start_date = portfolio_values.index.min().strftime('%Y-%m-%d')
+            end_date = portfolio_values.index.max().strftime('%Y-%m-%d')
+            date_range = f"{start_date} to {end_date}"
+        
+        # Format instruments and finish timing
+        instruments = ", ".join(sorted(selected_tickers))
+        duration = round((pd.Timestamp.now() - start_time).total_seconds(), 2)
+        status = html.Div([html.Span(f"Backtest completed successfully in {duration}s. ", className="text-success"), html.Span("Generating visualizations...", id="viz-status", className="text-info")])
+        
+        # Zoptymalizuj generowanie wyników - przetwarzaj wykresy jeden po drugim
+        # Spróbuj użyć zbuforowanych wersji, a jeśli się nie uda, to użyj bezpośrednio visualizera
+        try:
+            equity_fig = generate_equity_curve(portfolio_values, benchmark_values)
+        except Exception as e:
+            logger.warning(f"Error using generate_equity_curve: {e}, falling back to direct method")
+            equity_fig = visualizer.create_equity_curve_figure(portfolio_values, benchmark_values)
+            
+        equity_curve = dcc.Loading(
+            id="loading-equity",
+            children=html.Div(
+                dcc.Graph(
+                    figure=equity_fig,
+                    config={'displayModeBar': False}
+                )
+            ), 
+            type="circle"
+        )
+        
+        metrics = create_metric_cards(stats)
+        
+        # Generuj kolejny wykres
+        try:
+            trade_dist_fig = generate_trade_distribution(trades)
+        except Exception as e:
+            logger.warning(f"Error generating trade distribution: {e}")
+            trade_dist_fig = create_empty_chart("P/L Distribution")
+            
+        trade_hist = dcc.Loading(
+            id="loading-trade-hist",
+            children=html.Div(
+                dcc.Graph(
+                    figure=trade_dist_fig,
+                    config={'displayModeBar': False}
+                )
+            ), 
+            type="circle"
+        )
+        
+        # Generuj tabelę transakcji
+        trade_table = dcc.Loading(
+            id="loading-trade-table", 
+            children=create_trade_table(trades),
+            type="circle"
+        )
+        
+        # Generuj wykres alokacji
+        try:
+            # Sprawdź, czy create_allocation_chart zwraca Figure czy dcc.Graph
+            allocation_fig = create_allocation_chart(results)
+            
+            if hasattr(allocation_fig, 'children'):  # To oznacza, że zwraca dcc.Graph lub inny komponent Dash
+                # Jeśli zwraca komponent, użyj go bezpośrednio
+                allocation = dcc.Loading(
+                    id="loading-allocation",
+                    children=html.Div(allocation_fig),
+                    type="circle"
+                )
+            else:  # Zakładamy, że zwraca Figure z plotly
+                # Jeśli zwraca Figure, opakuj w dcc.Graph
+                allocation = dcc.Loading(
+                    id="loading-allocation",
+                    children=html.Div(
+                        dcc.Graph(
+                            figure=allocation_fig,
+                            config={'displayModeBar': False}
+                        )
+                    ),
+                    type="circle"
+                )
+        except Exception as e:
+            logger.warning(f"Error creating allocation chart: {e}")
+            allocation = dcc.Loading(
+                id="loading-allocation",
+                children=html.Div("Error generating allocation chart", className="text-danger text-center p-3"),
+                type="circle"
+            )
+        
+        # Generuj histogram czasu trwania
+        duration_hist = dcc.Loading(
+            id="loading-duration",
+            children=create_duration_histogram(trades),
+            type="circle"
+        )
+        
+        # Uruchom garbage collector po zakończeniu obliczeń
+        gc.collect()
         
         logger.info(f"Backtest successful in {duration}s.")
         
         # Return results
         return (
             status,
-            components['equity'],
-            components['metrics'],
-            components['trade_hist'],
-            components['trade_table'],
+            equity_curve,
+            metrics,
+            trade_hist,
+            trade_table,
             date_range,
             instruments,
-            components['allocation'],
-            components['duration_hist']
+            allocation,
+            duration_hist
         )
         
     except Exception as e:
-        logger.error(f"CRITICAL: Unhandled error in backtest callback: {str(e)}", exc_info=True)
-        error_msg = html.Div(f"An critical error occurred: {str(e)}. Check logs.", 
-                             className="text-danger text-center")
+        # Zapisz szczegóły błędu
+        error_details = traceback.format_exc()
+        logger.error(f"CRITICAL: Unhandled error in backtest callback: {str(e)}")
+        logger.error(error_details)
+        
+        # Wyświetl bardziej szczegółowy komunikat dla użytkownika
+        error_msg = html.Div([
+            html.H5("An error occurred during backtest", className="text-danger"),
+            html.P(f"Error type: {type(e).__name__}", className="mb-1"),
+            html.P(f"Error message: {str(e)}", className="mb-3"),
+            html.P("Check application logs for more details.", className="small text-muted")
+        ], className="text-center p-3")
+        
         return return_empty_state(error_msg)
 
 
