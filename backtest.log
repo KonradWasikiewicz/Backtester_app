@@ -1,61 +1,54 @@
-2025-04-04 12:08:45,709 - src - INFO - Initializing 'src' package...
-2025-04-04 12:08:45,709 - src - INFO - Source package 'src' version 0.1.0 initialized.
-2025-04-04 12:08:45,709 - src.core.config - INFO - Configuration loaded.
-2025-04-04 12:08:45,721 - root - INFO - Registered strategies: ['MA', 'RSI', 'BB']
-2025-04-04 12:08:45,727 - src.portfolio - INFO - Portfolio package initialized.
-2025-04-04 12:08:45,730 - src.analysis - INFO - Analysis package initialized.
-2025-04-04 12:08:45,732 - src.core - INFO - Core package initialized.
-2025-04-04 12:08:45,897 - src.visualization - INFO - Visualization package initialized.
-2025-04-04 12:08:45,911 - src.ui - INFO - UI package initialized.
-2025-04-04 12:08:45,959 - src.core.data - INFO - DataLoader initialized. Data path: 'data\historical_prices.csv', Benchmark: 'SPY'
-2025-04-04 12:08:45,969 - src.core.backtest_manager - INFO - BacktestManager initialized with initial capital: $100,000.00 and data path: data/historical_prices.csv
-2025-04-04 12:08:45,969 - src.visualization.visualizer - INFO - BacktestVisualizer initialized.
-2025-04-04 12:08:45,969 - src.core.data - INFO - DataLoader initialized. Data path: 'data\historical_prices.csv', Benchmark: 'SPY'
-2025-04-04 12:08:45,969 - __main__ - INFO - Managers and DataLoader initialized successfully.
-2025-04-04 12:08:45,977 - src.core.data - INFO - Loading historical data from: data\historical_prices.csv...
-2025-04-04 12:08:46,005 - src.core.data - INFO - CSV loaded successfully: 12528 rows, 7 columns.
-2025-04-04 12:08:46,008 - __main__ - INFO - Available tickers for selection: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
-2025-04-04 12:08:46,008 - src.portfolio.risk_manager - INFO - RiskManager initialized with settings: max_pos_size=20.00%, min_pos_size=1.00%, max_open=5, stop=2.00%, R:R=2.0, trailing=False (act: 2.00%, dist: 1.50%), max_dd=20.00%, max_daily_loss=5.00%, market_filter=False (lookback: 100)
-2025-04-04 12:08:46,014 - __main__ - INFO - Starting Dash application...
-2025-04-04 12:08:46,014 - __main__ - INFO - Available tickers for selection: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
-2025-04-04 12:08:46,015 - __main__ - INFO - Found 7 tickers during startup.
-2025-04-04 12:08:46,015 - __main__ - INFO - Running app on 0.0.0.0:8050 with debug=True
-2025-04-04 12:08:50,407 - __main__ - INFO - ============================================2025-04-04 12:10:48,006 - __main__ - INFO - Dash application stopped.
-by: run-backtest-button. Click: 1
-2025-04-04 12:08:50,410 - __main__ - INFO - Strategy: MA, Tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT'], Risk Mode: disabled
-2025-04-04 12:08:51,284 - __main__ - INFO - Collected strategy parameters: {'short_window': 20, 'long_window': 50}
-2025-04-04 12:08:51,284 - __main__ - INFO - Risk Management DISABLED.
-2025-04-04 12:08:51,284 - __main__ - INFO - Calling backtest_manager.run_backtest...
-2025-04-04 12:08:51,284 - src.core.backtest_manager - INFO - --- Starting New Backtest ---
-2025-04-04 12:08:51,284 - src.core.backtest_manager - INFO - Strategy: MA, Tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT']
-2025-04-04 12:08:51,284 - src.core.backtest_manager - INFO - Strategy Params: {'short_window': 20, 'long_window': 50}, Risk Params: None
-2025-04-04 12:08:51,284 - src.core.backtest_manager - INFO - Initialized strategy 'MA' with params: {'short_window': 20, 'long_window': 50}
-2025-04-04 12:08:51,284 - src.portfolio.risk_manager - INFO - RiskManager initialized with settings: max_pos_size=20.00%, min_pos_size=1.00%, max_open=5, stop=2.00%, R:R=2.0, trailing=False (act: 2.00%, dist: 1.50%), max_dd=20.00%, max_daily_loss=5.00%, market_filter=False (lookback: 100)
-2025-04-04 12:08:51,284 - src.core.backtest_manager - INFO - Initialized RiskManager with default parameters.
-2025-04-04 12:08:51,284 - src.portfolio.portfolio_manager - INFO - PortfolioManager initialized with capital $100,000.00 and linked RiskManager.
-2025-04-04 12:08:51,284 - src.core.backtest_manager - INFO - Initialized PortfolioManager.
-2025-04-04 12:08:51,284 - src.core.data - INFO - Loading historical data from: data\historical_prices.csv...
-2025-04-04 12:08:51,322 - src.core.data - INFO - CSV loaded successfully: 12528 rows, 7 columns.
-2025-04-04 12:08:51,369 - src.core.data - INFO - Finished loading data for 7/7 requested tickers.
-2025-04-04 12:08:51,369 - src.core.backtest_manager - INFO - Using data for 5 tickers: AAPL, AMZN, GOOGL, META, MSFT
-2025-04-04 12:08:51,369 - src.core.backtest_manager - INFO - Combined data prepared. Shape: (1566, 25). Date range: 2020-01-02 00:00:00 to 2023-12-29 00:00:00
-2025-04-04 12:08:51,369 - src.core.backtest_manager - INFO - Generating signals for all tickers...
-2025-04-04 12:08:51,435 - src.core.backtest_manager - INFO - Signal generation complete for 5 tickers.
-2025-04-04 12:08:51,436 - src.core.backtest_manager - INFO - Starting backtest simulation loop...
-2025-04-04 12:08:51,584 - src.core.backtest_manager - ERROR - CRITICAL error during backtest execution: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
-2025-04-04 12:08:51,601 - src.core.backtest_manager - ERROR - Traceback (most recent call last):
-  File "x:\GitHub\Backtester_app\src\core\backtest_manager.py", line 306, in run_backtest
-    portfolio_manager.open_position(signal_data)
-  File "x:\GitHub\Backtester_app\src\portfolio\portfolio_manager.py", line 170, in open_position
-    shares_to_trade = self.risk_manager.calculate_position_size(
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "x:\GitHub\Backtester_app\src\portfolio\risk_manager.py", line 173, in calculate_position_size
-    target_shares = max(min_shares, target_shares)
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "X:\GitHub\Backtester_app\.venv\Lib\site-packages\pandas\core\generic.py", line 1577, in __nonzero__
-    raise ValueError(
-ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
-
-2025-04-04 12:08:51,616 - __main__ - INFO - Backtest manager finished.
-2025-04-04 12:08:51,622 - __main__ - ERROR - Backtest manager returned None for results or stats.
-2025-04-04 12:10:47,720 - __main__ - INFO - Dash application stopped.
+2025-04-04 13:33:44,422 - src - INFO - Initializing 'src' package...
+2025-04-04 13:33:44,422 - src - INFO - Source package 'src' version 0.1.0 initialized.
+2025-04-04 13:33:44,422 - src.core.config - INFO - Configuration loaded.
+2025-04-04 13:33:44,432 - root - INFO - Registered strategies: ['MA', 'RSI', 'BB']
+2025-04-04 13:33:44,443 - src.portfolio - INFO - Portfolio package initialized.
+2025-04-04 13:33:44,476 - src.analysis - INFO - Analysis package initialized.
+2025-04-04 13:33:44,478 - src.core - INFO - Core package initialized.
+2025-04-04 13:33:44,680 - src.visualization - INFO - Visualization package initialized.
+2025-04-04 13:33:44,683 - src.ui - INFO - UI package initialized.
+2025-04-04 13:33:44,738 - src.core.data - INFO - DataLoader initialized. Data path: 'data\historical_prices.csv', Benchmark: 'SPY'
+2025-04-04 13:33:44,741 - src.core.backtest_manager - INFO - BacktestManager initialized with initial capital: $100,000.00 and data path: data/historical_prices.csv
+2025-04-04 13:33:44,741 - src.visualization.visualizer - INFO - BacktestVisualizer initialized.
+2025-04-04 13:33:44,741 - src.core.data - INFO - DataLoader initialized. Data path: 'data\historical_prices.csv', Benchmark: 'SPY'
+2025-04-04 13:33:44,741 - __main__ - INFO - Managers and DataLoader initialized successfully.
+2025-04-04 13:33:44,751 - src.core.data - INFO - Loading historical data from: data\historical_prices.csv...
+2025-04-04 13:33:44,778 - src.core.data - INFO - CSV loaded successfully: 12528 rows, 7 columns.
+2025-04-04 13:33:44,783 - __main__ - INFO - Available tickers for selection: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
+2025-04-04 13:33:44,783 - src.portfolio.risk_manager - INFO - RiskManager initialized with settings: max_pos_size=20.00%, min_pos_size=1.00%, max_open=5, stop=2.00%, R:R=2.0, trailing=False (act: 2.00%, dist: 1.50%), max_dd=20.00%, max_daily_loss=5.00%, market_filter=False (lookback: 100)
+2025-04-04 13:33:44,788 - __main__ - INFO - Starting Dash application...
+2025-04-04 13:33:44,791 - __main__ - INFO - Available tickers for selection: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
+2025-04-04 13:33:44,812 - __main__ - INFO - Found 7 tickers during startup.
+2025-04-04 13:33:44,812 - __main__ - INFO - Running app on http://127.0.0.1:8050/ with debug=True
+2025-04-04 13:34:05,466 - __main__ - INFO - ==============================================2025-04-04 13:37:19,302 - __main__ - INFO - Dash application stopped.
+: run-backtest-button. Click: 1
+2025-04-04 13:34:05,467 - __main__ - INFO - Strategy: MA, Tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT'], Risk Mode: disabled
+2025-04-04 13:34:06,453 - __main__ - INFO - Strat Params: {'short_window': 20, 'long_window': 50}
+2025-04-04 13:34:06,470 - __main__ - INFO - Risk DISABLED.
+2025-04-04 13:34:06,470 - __main__ - INFO - Calling backtest_manager.run_backtest...
+2025-04-04 13:34:06,470 - src.core.backtest_manager - INFO - --- Starting New Backtest ---
+2025-04-04 13:34:06,490 - src.core.backtest_manager - INFO - Strategy: MA, Tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT']
+2025-04-04 13:34:06,497 - src.core.backtest_manager - INFO - Strategy Params: {'short_window': 20, 'long_window': 50}, Risk Params: None
+2025-04-04 13:34:06,497 - src.core.backtest_manager - INFO - Initialized strategy 'MA' with params: {'short_window': 20, 'long_window': 50}
+2025-04-04 13:34:06,507 - src.portfolio.risk_manager - INFO - RiskManager initialized with settings: max_pos_size=20.00%, min_pos_size=1.00%, max_open=5, stop=2.00%, R:R=2.0, trailing=False (act: 2.00%, dist: 1.50%), max_dd=20.00%, max_daily_loss=5.00%, market_filter=False (lookback: 100)
+2025-04-04 13:34:06,509 - src.core.backtest_manager - INFO - Initialized RiskManager with default parameters.
+2025-04-04 13:34:06,509 - src.portfolio.portfolio_manager - INFO - PortfolioManager initialized with capital $100,000.00 and linked RiskManager.
+2025-04-04 13:34:06,510 - src.core.backtest_manager - INFO - Initialized PortfolioManager.
+2025-04-04 13:34:06,511 - src.core.data - INFO - Loading historical data from: data\historical_prices.csv...
+2025-04-04 13:34:06,539 - src.core.data - INFO - CSV loaded successfully: 12528 rows, 7 columns.
+2025-04-04 13:34:06,589 - src.core.data - INFO - Finished loading data for 7/7 requested tickers.
+2025-04-04 13:34:06,589 - src.core.backtest_manager - INFO - Using data for 5 tickers: AAPL, AMZN, GOOGL, META, MSFT
+2025-04-04 13:34:06,589 - src.core.backtest_manager - INFO - Combined data prepared. Shape: (1006, 25). Date range: 2020-01-02 00:00:00 to 2023-12-29 00:00:00
+2025-04-04 13:34:06,605 - src.core.backtest_manager - INFO - Generating signals for all tickers...
+2025-04-04 13:34:06,649 - src.core.backtest_manager - INFO - Signal generation complete for 5 tickers.
+2025-04-04 13:34:06,650 - src.core.backtest_manager - INFO - Starting backtest simulation loop...
+2025-04-04 13:34:08,720 - src.core.backtest_manager - INFO - Backtest simulation loop finished.
+2025-04-04 13:34:08,720 - src.portfolio.portfolio_manager - WARNING - Closing all 0 open positions on 2023-12-29 due to: end_of_backtest
+2025-04-04 13:34:08,720 - src.portfolio.portfolio_manager - INFO - Closed 0 positions during final closure.
+2025-04-04 13:34:08,736 - src.core.backtest_manager - INFO - Benchmark data (SPY) processed and aligned.
+2025-04-04 13:34:08,756 - src.core.backtest_manager - INFO - Portfolio statistics calculated.
+2025-04-04 13:34:08,756 - src.core.backtest_manager - INFO - Backtest analysis complete. Final Portfolio Value: $104,363.57, Total Trades: 58
+2025-04-04 13:34:08,765 - __main__ - INFO - Backtest manager finished.
+2025-04-04 13:34:08,765 - __main__ - INFO - Generating result components...
+2025-04-04 13:34:09,766 - __main__ - INFO - Backtest successful in 4.3s.
+2025-04-04 13:37:16,667 - __main__ - INFO - Dash application stopped.

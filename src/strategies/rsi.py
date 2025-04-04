@@ -145,7 +145,7 @@ class RSIStrategy(BaseStrategy):
 
         # --- Determine Position ---
         # Position: Hold the position indicated by the last signal.
-        df['Position'] = df['Signal'].replace(0.0, method='ffill').fillna(0.0)
+        df['Position'] = df['Signal'].replace(0.0, np.nan).ffill().fillna(0.0)
 
         #logger.debug(f"RSI Strategy ({ticker}): Generated {int(sum(abs(df['Signal'])))} signals.")
 

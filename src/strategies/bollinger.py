@@ -114,7 +114,7 @@ class BollingerBandsStrategy(BaseStrategy):
         # Position: Hold the position indicated by the last signal.
         # For mean reversion, often you exit when price returns to the SMA.
         # Simple approach: Hold position based on last band touch signal.
-        df['Position'] = df['Signal'].replace(0.0, method='ffill').fillna(0.0)
+        df['Position'] = df['Signal'].replace(0.0, np.nan).ffill().fillna(0.0)
 
         # Example Exit Logic (Mean Reversion): Exit when price crosses back over SMA
         # position_holding = df['Position'].shift(1).fillna(0.0)

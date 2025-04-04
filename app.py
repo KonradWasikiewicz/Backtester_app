@@ -74,10 +74,20 @@ app = dash.Dash(
     external_stylesheets=[dbc.themes.DARKLY, 'https://use.fontawesome.com/releases/v5.15.4/css/all.css'],
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
     assets_folder='assets',
-    suppress_callback_exceptions=True
+    suppress_callback_exceptions=True,
+    title="Trading Strategy Backtester"
 )
-app.title = "Trading Strategy Backtester"
 server = app.server
+
+# --- Cache Configuration ---
+# Add caching for expensive operations
+cache_timeout = 300  # 5 minutes
+
+# --- Error Handling ---
+def handle_error(e):
+    """Uniform error handler for critical errors"""
+    logger.error(f"CRITICAL: {str(e)}", exc_info=True)
+    return html.Div(f"An error occurred: {str(e)}. Check logs.", className="text-danger text-center")
 
 # --- Inicjalizacja Managerów i Wizualizatora ---
 try:
@@ -290,66 +300,74 @@ def create_trade_table(trades):
     if not trades or len(trades) == 0:
         return html.Div("No trades to display.", className="text-muted text-center p-3")
 
-    trade_data = []
-    for i, trade in enumerate(trades):
-        try:
-            # Formatowanie dat
-            entry_date_str = pd.to_datetime(trade.get('entry_date')).strftime('%Y-%m-%d %H:%M') if pd.notnull(trade.get('entry_date')) else 'N/A'
-            exit_date_str = pd.to_datetime(trade.get('exit_date')).strftime('%Y-%m-%d %H:%M') if pd.notnull(trade.get('exit_date')) else 'N/A'
-
-            # Obliczanie czasu trwania
+    try:
+        trade_data = []
+        for i, trade in enumerate(trades):
+            # Parse dates once
+            entry_date = pd.to_datetime(trade.get('entry_date')) if pd.notnull(trade.get('entry_date')) else None
+            exit_date = pd.to_datetime(trade.get('exit_date')) if pd.notnull(trade.get('exit_date')) else None
+            
+            # Format dates
+            entry_date_str = entry_date.strftime('%Y-%m-%d %H:%M') if entry_date else 'N/A'
+            exit_date_str = exit_date.strftime('%Y-%m-%d %H:%M') if exit_date else 'N/A'
+            
+            # Calculate holding period
             holding_days = 'N/A'
-            if pd.notnull(trade.get('entry_date')) and pd.notnull(trade.get('exit_date')):
-                holding_period = pd.to_datetime(trade.get('exit_date')) - pd.to_datetime(trade.get('entry_date'))
-                # Dodajemy obsługę krótszych okresów
-                if holding_period.total_seconds() < 86400: # Mniej niż dzień
-                     holding_days = f"{holding_period.total_seconds() / 3600:.1f} h" # Godziny
+            if entry_date and exit_date:
+                holding_period = exit_date - entry_date
+                if holding_period.total_seconds() < 86400:  # Less than a day
+                    holding_days = f"{holding_period.total_seconds() / 3600:.1f} h"
                 else:
-                     holding_days = f"{holding_period.days + holding_period.seconds / 86400:.1f}" # Dni z częścią dziesiętną
-
-            # Pobieranie wartości numerycznych
+                    holding_days = f"{holding_period.days + holding_period.seconds / 86400:.1f}"
+            
+            # Get numeric values safely
             pnl = float(trade.get('pnl', 0))
             pnl_pct = float(trade.get('pnl_pct', 0))
             direction_val = int(trade.get('direction', 1))
             direction_str = 'Long' if direction_val > 0 else ('Short' if direction_val < 0 else 'N/A')
-
+            
             trade_data.append({
                 'ID': i + 1,
                 'Ticker': trade.get('ticker', 'N/A'),
                 'Entry Date': entry_date_str,
                 'Exit Date': exit_date_str,
-                'Duration': holding_days, # Zmieniona nazwa kolumny
+                'Duration': holding_days,
                 'Direction': direction_str,
-                'Entry Price': f"${float(trade.get('entry_price', 0)):,.2f}", # Dodano formatowanie tysięcy
+                'Entry Price': f"${float(trade.get('entry_price', 0)):,.2f}",
                 'Exit Price': f"${float(trade.get('exit_price', 0)):,.2f}",
                 'Shares': int(trade.get('shares', 0)),
-                'P&L ($)': pnl, # Numeryczne dla sortowania/formatowania
-                'P&L (%)': pnl_pct, # Numeryczne dla sortowania/formatowania
-                'Exit Reason': trade.get('exit_reason', 'N/A').replace('_', ' ').title() # Formatowanie powodu
+                'P&L ($)': pnl,
+                'P&L (%)': pnl_pct,
+                'Exit Reason': trade.get('exit_reason', 'N/A').replace('_', ' ').title()
             })
-        except Exception as e:
-            logger.warning(f"Error processing trade for table: {trade}. Error: {e}")
-            continue
+    except Exception as e:
+        logger.warning(f"Error processing trades for table: {e}")
+        return html.Div("Error processing trades for table.", className="text-warning text-center")
 
     if not trade_data:
-        return html.Div("Error processing trades for table.", className="text-warning text-center p-3")
+        return html.Div("No valid trades to display.", className="text-muted text-center p-3")
+
+    # Define columns once
+    columns = [
+        {'name': 'ID', 'id': 'ID', 'type': 'numeric'},
+        {'name': 'Ticker', 'id': 'Ticker', 'type': 'text'},
+        {'name': 'Entry Date', 'id': 'Entry Date', 'type': 'datetime'},
+        {'name': 'Exit Date', 'id': 'Exit Date', 'type': 'datetime'},
+        {'name': 'Duration', 'id': 'Duration', 'type': 'text'},
+        {'name': 'Direction', 'id': 'Direction', 'type': 'text'},
+        {'name': 'Entry', 'id': 'Entry Price', 'type': 'text'},
+        {'name': 'Exit', 'id': 'Exit Price', 'type': 'text'},
+        {'name': 'Shares', 'id': 'Shares', 'type': 'numeric', 'format': dash_table.Format.Format(group=',')},
+        {'name': 'P&L ($)', 'id': 'P&L ($)', 'type': 'numeric', 'format': dash_table.Format.Format(
+            scheme=dash_table.Format.Scheme.fixed, precision=2, group=',', sign=dash_table.Format.Sign.positive)},
+        {'name': 'P&L (%)', 'id': 'P&L (%)', 'type': 'numeric', 'format': dash_table.Format.Format(
+            scheme=dash_table.Format.Scheme.percentage, precision=2, sign=dash_table.Format.Sign.positive)},
+        {'name': 'Exit Reason', 'id': 'Exit Reason', 'type': 'text'},
+    ]
 
     return dash_table.DataTable(
         id='trade-table',
-        columns=[
-            {'name': 'ID', 'id': 'ID', 'type': 'numeric'},
-            {'name': 'Ticker', 'id': 'Ticker', 'type': 'text'},
-            {'name': 'Entry Date', 'id': 'Entry Date', 'type': 'datetime'},
-            {'name': 'Exit Date', 'id': 'Exit Date', 'type': 'datetime'},
-            {'name': 'Duration', 'id': 'Duration', 'type': 'text'}, # Zmieniono typ na text
-            {'name': 'Direction', 'id': 'Direction', 'type': 'text'},
-            {'name': 'Entry', 'id': 'Entry Price', 'type': 'text'},
-            {'name': 'Exit', 'id': 'Exit Price', 'type': 'text'},
-            {'name': 'Shares', 'id': 'Shares', 'type': 'numeric', 'format': dash_table.Format.Format(group=',')}, # Formatowanie tysięcy
-            {'name': 'P&L ($)', 'id': 'P&L ($)', 'type': 'numeric', 'format': dash_table.Format.Format(scheme=dash_table.Format.Scheme.fixed, precision=2, group=',', sign=dash_table.Format.Sign.positive)},
-            {'name': 'P&L (%)', 'id': 'P&L (%)', 'type': 'numeric', 'format': dash_table.Format.Format(scheme=dash_table.Format.Scheme.percentage, precision=2, sign=dash_table.Format.Sign.positive)},
-            {'name': 'Exit Reason', 'id': 'Exit Reason', 'type': 'text'},
-        ],
+        columns=columns,
         data=trade_data,
         style_table={'overflowX': 'auto', 'minWidth': '100%'},
         style_cell={
@@ -358,8 +376,8 @@ def create_trade_table(trades):
             'textAlign': 'center',
             'fontSize': '12px',
             'fontFamily': 'Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif',
-            'padding': '5px', # Dodano padding
-            'whiteSpace': 'normal', # Lepsze zawijanie tekstu
+            'padding': '5px',
+            'whiteSpace': 'normal',
             'height': 'auto',
         },
         style_header={
@@ -369,34 +387,91 @@ def create_trade_table(trades):
             'textAlign': 'center',
             'padding': '8px 5px'
         },
-        style_data_conditional=[ # Warunkowe kolorowanie P&L
-            {
-                'if': {'column_id': 'P&L ($)', 'filter_query': '{P&L ($)} < 0'},
-                'color': VIZ_CFG['colors']['loss']
-            },
-            {
-                'if': {'column_id': 'P&L ($)', 'filter_query': '{P&L ($)} > 0'},
-                'color': VIZ_CFG['colors']['profit']
-            },
-             {
-                'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%)} < 0'},
-                'color': VIZ_CFG['colors']['loss']
-            },
-            {
-                'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%)} > 0'},
-                'color': VIZ_CFG['colors']['profit']
-            }
+        style_data_conditional=[
+            {'if': {'column_id': 'P&L ($)', 'filter_query': '{P&L ($)} < 0'}, 'color': VIZ_CFG['colors']['loss']},
+            {'if': {'column_id': 'P&L ($)', 'filter_query': '{P&L ($)} > 0'}, 'color': VIZ_CFG['colors']['profit']},
+            {'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%)} < 0'}, 'color': VIZ_CFG['colors']['loss']},
+            {'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%)} > 0'}, 'color': VIZ_CFG['colors']['profit']}
         ],
-        page_size=10, # Paginacja
-        sort_action='native', # Sortowanie po stronie klienta
-        sort_mode='multi', # Sortowanie po wielu kolumnach
-        filter_action='native', # Filtrowanie po stronie klienta
+        page_size=10,
+        sort_action='native',
+        sort_mode='multi',
+        filter_action='native',
         row_deletable=False,
         editable=False,
     )
 
 # ==============================================================
 # ===== KONIEC DEFINICJI create_trade_table ====================
+# ==============================================================
+
+# ==============================================================
+# ===== DEFINICJA create_duration_histogram TUTAJ ==============
+# ==============================================================
+def create_duration_histogram(trades):
+    """Create a histogram of trade durations."""
+    if not trades or len(trades) == 0:
+        return create_empty_chart("Trade Duration (days)")
+    
+    durations = []
+    colors = []
+    
+    # Process all trades at once with list comprehension
+    for trade in trades:
+        try:
+            if pd.notnull(trade.get('entry_date')) and pd.notnull(trade.get('exit_date')):
+                entry_date = pd.to_datetime(trade.get('entry_date'))
+                exit_date = pd.to_datetime(trade.get('exit_date'))
+                duration_days = (exit_date - entry_date).total_seconds() / 86400
+                durations.append(duration_days)
+                colors.append(VIZ_CFG['colors']['profit'] if trade.get('pnl', 0) > 0 else VIZ_CFG['colors']['loss'])
+        except Exception as e:
+            logger.warning(f"Error calculating trade duration: {e}")
+            continue
+    
+    if not durations:
+        return create_empty_chart("Trade Duration (days)")
+    
+    # Simplified bin calculation
+    max_duration = max(durations)
+    if max_duration < 1:
+        bin_size, bin_text = 1/24, "Hours"  # 1 hour
+    elif max_duration < 7:
+        bin_size, bin_text = 1.0, "Days"
+    elif max_duration < 30:
+        bin_size, bin_text = 7.0, "Weeks"
+    else:
+        bin_size, bin_text = 30.0, "Months"
+    
+    # Create figure with optimized settings
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(
+        x=durations,
+        marker_color=colors,
+        opacity=0.75,
+        xbins=dict(size=bin_size),
+        name="Duration Distribution"
+    ))
+    
+    # Simplified layout updates
+    fig.update_layout(
+        title=f"Trade Duration Distribution",
+        xaxis_title=f"Duration ({bin_text})",
+        yaxis_title="Number of Trades",
+        template=CHART_TEMPLATE,
+        margin=dict(l=40, r=40, t=40, b=40),
+        paper_bgcolor=VIZ_CFG['colors']['background'],
+        plot_bgcolor=VIZ_CFG['colors']['background'],
+        font=dict(color=VIZ_CFG['colors']['text_color'])
+    )
+    
+    # Add grid lines
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor=GRID_COLOR)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=GRID_COLOR)
+    
+    return dcc.Graph(figure=fig, config={'displayModeBar': False})
+# ==============================================================
+# ===== KONIEC DEFINICJI create_duration_histogram =============
 # ==============================================================
 
 # --- Główny Układ Aplikacji ---
@@ -594,231 +669,299 @@ def update_all_risk_inputs(checkbox_values, checkbox_ids, risk_mode):
 
 # Funkcja pomocnicza do parsowania parametrów ryzyka
 def parse_risk_param_value(input_id, input_value):
-    # Definicja tej funkcji pozostaje bez zmian (jak w poprzedniej odpowiedzi)
-    if input_value is None or input_value == '': return None
-    if isinstance(input_id, str) and ("pct" in input_id or "size" in input_id or "drawdown" in input_id or "loss" in input_id or "activation" in input_id or "distance" in input_id):
-        try: return float(input_value) / 100.0
-        except (ValueError, TypeError): return None
-    elif isinstance(input_id, str) and "ratio" in input_id:
-        try: return float(input_value)
-        except (ValueError, TypeError): return None
-    elif isinstance(input_id, str) and ("positions" in input_id or "lookback" in input_id):
-        try: return int(input_value)
-        except (ValueError, TypeError): return None
-    return input_value
+    """Parse risk parameter values with better type handling."""
+    if input_value is None or input_value == '':
+        return None
+        
+    # Convert to appropriate types based on parameter name pattern
+    try:
+        if isinstance(input_id, str):
+            # Percentage values that need to be divided by 100
+            if any(x in input_id for x in ["pct", "size", "drawdown", "loss", "activation", "distance"]):
+                return float(input_value) / 100.0
+            # Standard float values
+            elif "ratio" in input_id:
+                return float(input_value)
+            # Integer values
+            elif any(x in input_id for x in ["positions", "lookback"]):
+                return int(input_value)
+        # Default case
+        return input_value
+    except (ValueError, TypeError):
+        logger.warning(f"Could not parse risk parameter {input_id}: {input_value}")
+        return None
 
 
 # Główny callback do uruchamiania backtestu
 @app.callback(
-    # Definicja Outputs pozostaje bez zmian
-    Output("calculation-status", "children", allow_duplicate=True),
-    Output("equity-curve-container", "children", allow_duplicate=True),
-    Output("metrics-container", "children", allow_duplicate=True),
-    Output("trade-distribution-container", "children", allow_duplicate=True),
-    Output("trade-table-container", "children", allow_duplicate=True),
-    Output("backtest-period", "children", allow_duplicate=True),
-    Output("portfolio-instruments", "children", allow_duplicate=True),
-    Output("portfolio-composition-container", "children", allow_duplicate=True),
-    Output("trade-duration-container", "children", allow_duplicate=True),
+    Output("calculation-status", "children"),
+    Output("equity-curve-container", "children"),
+    Output("metrics-container", "children"),
+    Output("trade-distribution-container", "children"),
+    Output("trade-table-container", "children"),
+    Output("backtest-period", "children"),
+    Output("portfolio-instruments", "children"),
+    Output("portfolio-composition-container", "children"),
+    Output("trade-duration-container", "children"),
     Input("run-backtest-button", "n_clicks"),
-    # Definicja States pozostaje bez zmian
     State("strategy-selector", "value"),
     State("ticker-selector", "value"),
     State("risk-management-toggle", "value"),
     State({'type': 'strategy-param', 'index': ALL}, 'value'),
     State({'type': 'strategy-param', 'index': ALL}, 'id'),
-    State({'type': 'risk-checkbox', 'index': ALL}, 'value'), # Używamy 'value' dla checkboxów
+    State({'type': 'risk-checkbox', 'index': ALL}, 'value'),
     State({'type': 'risk-checkbox', 'index': ALL}, 'id'),
     State({'type': 'risk-input', 'index': ALL}, 'value'),
     State({'type': 'risk-input', 'index': ALL}, 'id'),
     prevent_initial_call=True
 )
-def run_full_backtest(n_clicks, strategy_name, selected_tickers, risk_toggle_value,
-                      strategy_param_values, strategy_param_ids,
-                      risk_checkbox_values, risk_checkbox_ids,
-                      risk_input_values, risk_input_ids):
-
+def run_full_backtest(n_clicks, strategy_name, selected_tickers, risk_toggle_value, 
+                      strategy_param_values, strategy_param_ids, risk_checkbox_values, 
+                      risk_checkbox_ids, risk_input_values, risk_input_ids):
+    """Run backtest with selected configuration and display results."""
+    # Start timing and initialize
     start_time = pd.Timestamp.now()
-    triggered_input = ctx.triggered_id
     logger.info("="*50)
-    logger.info(f"Backtest triggered by: {triggered_input}. Click: {n_clicks}")
-    logger.info(f"Strategy: {strategy_name}, Tickers: {selected_tickers}, Risk Mode: {risk_toggle_value}")
-
-    # Inicjalizacja pustych wyników (używamy pustych komponentów)
-    empty_metrics = create_metric_cards({})
-    empty_chart = create_empty_chart("Equity Curve")
-    empty_alloc_chart = create_empty_chart("Allocation")
-    empty_trade_hist = create_empty_chart("P/L Distribution")
-    empty_duration_hist = create_empty_chart("Duration Distribution")
-    empty_trade_table = html.Div("Run backtest to see trades.", className="text-muted text-center p-3")
-    initial_status = html.Div("Configuration ready. Click 'Run Backtest'.", className="text-info")
-
+    logger.info(f"Backtest triggered: Strategy={strategy_name}, Tickers={selected_tickers}, Risk={risk_toggle_value}")
+    
+    # Initialize empty components
+    empty_components = {
+        'metrics': create_metric_cards({}),
+        'chart': create_empty_chart("Equity Curve"),
+        'alloc': create_empty_chart("Allocation"),
+        'trade_hist': create_empty_chart("P/L Distribution"),
+        'duration_hist': create_empty_chart("Duration Distribution"),
+        'table': html.Div("Run backtest to see trades.", className="text-muted text-center p-3")
+    }
+    initial_status = html.Div("Config ready. Click 'Run Backtest'.", className="text-info text-center")
+    
     def return_empty_state(status_msg=initial_status):
-        return (status_msg, empty_chart, empty_metrics, empty_trade_hist,
-                empty_trade_table, "", "", empty_alloc_chart, empty_duration_hist)
-
-    if not strategy_name: return return_empty_state(html.Div("Please select a strategy.", className="text-warning"))
-    if not selected_tickers: return return_empty_state(html.Div("Please select at least one ticker.", className="text-warning"))
-
-    loading_status = html.Div([dbc.Spinner(size="sm", color="primary"), " Running backtest..."], className="text-info")
-    # Zwracamy stan ładowania na początku
-    # Używamy initial_outputs_with_loading zdefiniowanego wcześniej może być problematyczne, lepiej zdefiniować tu
-    initial_outputs = list(return_empty_state(loading_status))
-    # Zwróć stan ładowania tylko dla statusu, reszta komponentów pozostaje pusta
-    # To wymagałoby multiple Output definitions for the same component ID, which Dash doesn't like without allow_duplicate=True
-    # With allow_duplicate=True, we can update just the status here, but let's return everything for now.
-    # return (loading_status, dash.no_update, ...) # This might be better with more complex state management
-
+        """Return empty state with optional status message."""
+        return (status_msg, empty_components['chart'], empty_components['metrics'], 
+                empty_components['trade_hist'], empty_components['table'], "", "", 
+                empty_components['alloc'], empty_components['duration_hist'])
+    
+    # Input validation
+    if not strategy_name:
+        return return_empty_state(html.Div("Please select a strategy.", className="text-warning text-center"))
+    if not selected_tickers:
+        return return_empty_state(html.Div("Please select at least one ticker.", className="text-warning text-center"))
+    
+    # Show loading status
+    loading_status = html.Div([dbc.Spinner(size="sm", color="primary"), " Running backtest..."], 
+                              className="text-info text-center")
+    
     try:
-        # --- Zbieranie parametrów (jak poprzednio) ---
-        strategy_params = {}
-        strategy_class = AVAILABLE_STRATEGIES.get(strategy_name)
-        if not strategy_class: raise ValueError(f"Strategy class {strategy_name} not found.")
-        sig = inspect.signature(strategy_class.__init__)
-        param_map = {pid['index']: val for pid, val in zip(strategy_param_ids, strategy_param_values)}
-
-        for name, param in sig.parameters.items():
-            if name in ['self', 'tickers', 'args', 'kwargs']: continue
-            param_value = param_map.get(name)
-            expected_type = str
-            if param.annotation != inspect.Parameter.empty: expected_type = param.annotation
-            elif param.default is not inspect.Parameter.empty: expected_type = type(param.default)
-            try:
-                if expected_type == bool: converted_value = bool(param_value)
-                elif expected_type == int: converted_value = int(param_value)
-                elif expected_type == float: converted_value = float(param_value)
-                else: converted_value = param_value # string or other
-                strategy_params[name] = converted_value
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Param Conversion Warning: Param '{name}', Value '{param_value}', Expected {expected_type}. Error: {e}. Using raw value.")
-                strategy_params[name] = param_value
-        logger.info(f"Collected strategy parameters: {strategy_params}")
-
-        risk_params = {}
-        risk_enabled = (risk_toggle_value == "enabled")
-        if risk_enabled:
-            # Mapowanie checkboxów i inputów (jak poprzednio)
-            checkbox_states = {cb_id['index']: checked for cb_id, checked in zip(risk_checkbox_ids, risk_checkbox_values)}
-            input_values = {inp_id['index']: value for inp_id, value in zip(risk_input_ids, risk_input_values)}
-            risk_mapping = {
-                "use-max-position-size": "max_position_size", "use-min-position-size": "min_position_size",
-                "use-max-positions": "max_open_positions", "use-stop-loss": "stop_loss_pct",
-                "use-profit-target": "profit_target_ratio", "use-trailing-stop": ["use_trailing_stop", "trailing_stop_activation", "trailing_stop_distance"], # Dodaj flagę 'use_trailing_stop'
-                "use-max-drawdown": "max_drawdown", "use-max-daily-loss": "max_daily_loss",
-                "use-market-filter": ["use_market_filter", "market_trend_lookback"] # Dodaj flagę 'use_market_filter'
-            }
-            for checkbox_base_id, manager_param_keys in risk_mapping.items():
-                if checkbox_states.get(checkbox_base_id, False):
-                     if isinstance(manager_param_keys, list):
-                         # Pierwszy element listy to flaga lub główny parametr
-                         main_param_key = manager_param_keys[0]
-                         risk_params[main_param_key] = True # Ustaw flagę 'use_...'
-                         # Przetwarzaj pozostałe powiązane parametry
-                         for param_key in manager_param_keys[1:]:
-                              parsed_value = parse_risk_param_value(param_key, input_values.get(param_key))
-                              if parsed_value is not None: risk_params[param_key] = parsed_value
-                     else: # Pojedynczy parametr powiązany z checkboxem
-                          param_key = manager_param_keys
-                          parsed_value = parse_risk_param_value(param_key, input_values.get(param_key))
-                          if parsed_value is not None: risk_params[param_key] = parsed_value
-            logger.info(f"Risk Management ENABLED. Params: {risk_params}")
-        else:
-            logger.info("Risk Management DISABLED.")
-            risk_params = None # Przekaż None, aby użyć domyślnego RiskManagera
-
-        # --- Uruchomienie Backtestu ---
-        logger.info("Calling backtest_manager.run_backtest...")
-        # Przekaż use_risk_management jako flagę, jeśli manager tego wymaga, lub polegaj na risk_params is None
+        # Process strategy parameters
+        strategy_params = process_strategy_params(strategy_name, strategy_param_ids, strategy_param_values)
+        
+        # Process risk parameters
+        risk_params = None
+        if risk_toggle_value == "enabled":
+            risk_params = process_risk_params(risk_checkbox_ids, risk_checkbox_values, 
+                                             risk_input_ids, risk_input_values)
+            logger.info(f"Risk enabled with params: {risk_params}")
+        
+        # Run backtest
+        logger.info("Starting backtest...")
         signals, results, stats = backtest_manager.run_backtest(
-            strategy_type=strategy_name, tickers=selected_tickers,
-            strategy_params=strategy_params, risk_params=risk_params
+            strategy_type=strategy_name, 
+            tickers=selected_tickers,
+            strategy_params=strategy_params,
+            risk_params=risk_params
         )
-        logger.info("Backtest manager finished.")
-
-        # --- Przetwarzanie Wyników ---
+        logger.info("Backtest completed.")
+        
+        # Handle empty results
         if results is None or stats is None:
-            logger.error("Backtest manager returned None for results or stats.")
-            return return_empty_state(html.Div("Error during backtest execution. Check logs.", className="text-danger"))
-
+            logger.error("Backtest manager returned None.")
+            return return_empty_state(html.Div("Error during backtest execution. Check logs.", 
+                                              className="text-danger text-center"))
+        
+        # Extract key data
         portfolio_values = results.get('Portfolio_Value', pd.Series())
-        benchmark_values = results.get('Benchmark') # Może być None
+        benchmark_values = results.get('Benchmark')
         trades = results.get('trades', [])
-
+        
+        # Handle empty portfolio
         if portfolio_values.empty:
             logger.warning("Backtest completed, but no portfolio data generated.")
-            metrics_cards = create_metric_cards(stats) # Spróbuj wyświetlić statystyki (np. liczbę transakcji)
-            trade_table = create_trade_table(trades)
             return (
-                 html.Div("Backtest completed, but no portfolio equity generated.", className="text-warning"),
-                 empty_chart, metrics_cards, empty_trade_hist, trade_table,
-                 "", ", ".join(selected_tickers), empty_alloc_chart, empty_duration_hist
+                html.Div("Backtest completed, no portfolio equity generated.", 
+                        className="text-warning text-center"),
+                empty_components['chart'],
+                create_metric_cards(stats),
+                empty_components['trade_hist'],
+                create_trade_table(trades),
+                "",
+                ", ".join(selected_tickers),
+                empty_components['alloc'],
+                empty_components['duration_hist']
             )
-
+        
+        # Generate result components
         logger.info("Generating result components...")
-        # Użyj visualizera do tworzenia komponentów
-        equity_chart_component = visualizer.create_equity_curve_component(portfolio_values, benchmark_values)
-        metrics_cards_component = create_metric_cards(stats) # Ta funkcja już zwraca komponent
-        trade_histogram_component = visualizer.create_trade_distribution_component(trades)
-        trade_table_component = create_trade_table(trades) # Ta funkcja zwraca komponent
-        duration_histogram_component = create_duration_histogram(trades) # Ta funkcja zwraca komponent
-        allocation_chart_component = visualizer.create_allocation_component(results)
-
-        # Informacje o okresie i instrumentach
-        start_date_str, end_date_str = "N/A", "N/A"
+        
+        # Create visual components
+        components = {
+            'equity': visualizer.create_equity_curve_component(portfolio_values, benchmark_values),
+            'metrics': create_metric_cards(stats),
+            'trade_hist': visualizer.create_trade_distribution_component(trades),
+            'trade_table': create_trade_table(trades),
+            'duration_hist': create_duration_histogram(trades),
+            'allocation': visualizer.create_allocation_component(results)
+        }
+        
+        # Format date range
+        date_range = "N/A"
         if not portfolio_values.empty:
-             start_date_str = portfolio_values.index.min().strftime('%Y-%m-%d')
-             end_date_str = portfolio_values.index.max().strftime('%Y-%m-%d')
-        backtest_period = f"{start_date_str} to {end_date_str}"
-        instruments_str = ", ".join(sorted(selected_tickers))
-
-        end_time = pd.Timestamp.now()
-        duration = round((end_time - start_time).total_seconds(), 2)
-        status_msg = html.Div(f"Backtest completed successfully in {duration}s.", className="text-success")
-        logger.info(f"Backtest completed successfully in {duration}s.")
-
+            start_date = portfolio_values.index.min().strftime('%Y-%m-%d')
+            end_date = portfolio_values.index.max().strftime('%Y-%m-%d')
+            date_range = f"{start_date} to {end_date}"
+        
+        # Format instruments and finish timing
+        instruments = ", ".join(sorted(selected_tickers))
+        duration = round((pd.Timestamp.now() - start_time).total_seconds(), 2)
+        status = html.Div(f"Backtest completed successfully in {duration}s.", 
+                          className="text-success text-center")
+        
+        logger.info(f"Backtest successful in {duration}s.")
+        
+        # Return results
         return (
-            status_msg, equity_chart_component, metrics_cards_component, trade_histogram_component, trade_table_component,
-            backtest_period, instruments_str, allocation_chart_component, duration_histogram_component
+            status,
+            components['equity'],
+            components['metrics'],
+            components['trade_hist'],
+            components['trade_table'],
+            date_range,
+            instruments,
+            components['allocation'],
+            components['duration_hist']
         )
-
+        
     except Exception as e:
-        logger.error(f"CRITICAL Unhandled error in backtest callback: {str(e)}", exc_info=True) # Dodano exc_info=True
-        return return_empty_state(html.Div(f"An critical error occurred: {str(e)}. Check logs.", className="text-danger"))
+        logger.error(f"CRITICAL: Unhandled error in backtest callback: {str(e)}", exc_info=True)
+        error_msg = html.Div(f"An critical error occurred: {str(e)}. Check logs.", 
+                             className="text-danger text-center")
+        return return_empty_state(error_msg)
 
 
-# Dodaj funkcję do tworzenia histogramu czasu trwania transakcji (jak poprzednio)
-def create_duration_histogram(trades):
-    """Create a histogram of trade durations."""
-    # Definicja tej funkcji pozostaje bez zmian (jak w poprzedniej odpowiedzi)
-    if not trades: return create_empty_chart("Trade Duration")
-    durations = []
-    for trade in trades:
+def process_strategy_params(strategy_name, strategy_param_ids, strategy_param_values):
+    """Process and validate strategy parameters."""
+    strategy_params = {}
+    strategy_class = AVAILABLE_STRATEGIES.get(strategy_name)
+    
+    if not strategy_class:
+        raise ValueError(f"Strategy class {strategy_name} not found.")
+    
+    # Map parameter IDs to values
+    param_map = {pid['index']: val for pid, val in zip(strategy_param_ids, strategy_param_values)}
+    
+    # Process each parameter from signature
+    sig = inspect.signature(strategy_class.__init__)
+    for name, param in sig.parameters.items():
+        if name in ['self', 'tickers', 'args', 'kwargs']:
+            continue
+            
+        param_value = param_map.get(name)
+        
+        # Determine expected type
+        expected_type = str
+        if param.annotation != inspect.Parameter.empty:
+            expected_type = param.annotation
+        elif param.default is not inspect.Parameter.empty:
+            expected_type = type(param.default)
+        
+        # Convert to expected type
         try:
-            entry, exit_d = pd.to_datetime(trade.get('entry_date')), pd.to_datetime(trade.get('exit_date'))
-            if pd.notna(entry) and pd.notna(exit_d):
-                days = (exit_d - entry).days
-                if days >= 0: durations.append(days)
-        except Exception as e: logger.warning(f"Duration calc error: {e}")
-    if not durations: return create_empty_chart("Trade Duration")
-    fig = go.Figure(data=[go.Histogram(x=durations, nbinsx=20, marker_color='#36A2EB', name='Duration')])
-    fig.update_layout(title=None, template=CHART_TEMPLATE, paper_bgcolor='#1e222d', plot_bgcolor='#1e222d',
-                      font={'color': '#ffffff'}, xaxis={'title': 'Duration (Days)', 'gridcolor': GRID_COLOR},
-                      yaxis={'title': 'Number of Trades', 'gridcolor': GRID_COLOR}, bargap=0.1, height=250,
-                      margin=dict(t=20, l=40, r=20, b=40))
-    return dcc.Graph(figure=fig, config={'displayModeBar': False})
+            if expected_type == bool:
+                converted_value = bool(param_value)
+            elif expected_type == int and param_value is not None:
+                converted_value = int(param_value)
+            elif expected_type == float and param_value is not None:
+                converted_value = float(param_value)
+            else:
+                converted_value = param_value
+                
+            if converted_value is not None:
+                strategy_params[name] = converted_value
+                
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Parameter conversion warning: {name}={param_value} ({expected_type}). Error: {e}")
+            strategy_params[name] = param_value
+            
+    logger.info(f"Strategy parameters: {strategy_params}")
+    return strategy_params
 
-# --- Uruchomienie Aplikacji ---
+def process_risk_params(risk_checkbox_ids, risk_checkbox_values, risk_input_ids, risk_input_values):
+    """Process and validate risk management parameters."""
+    risk_params = {}
+    
+    # Create mappings
+    checkbox_states = {cb_id['index']: checked for cb_id, checked in zip(risk_checkbox_ids, risk_checkbox_values)}
+    input_values = {inp_id['index']: value for inp_id, value in zip(risk_input_ids, risk_input_values)}
+    
+    # Define parameter mappings
+    risk_mapping = {
+        "use-max-position-size": "max_position_size",
+        "use-min-position-size": "min_position_size",
+        "use-max-positions": "max_open_positions",
+        "use-stop-loss": "stop_loss_pct",
+        "use-profit-target": "profit_target_ratio",
+        "use-trailing-stop": ["use_trailing_stop", "trailing_stop_activation", "trailing_stop_distance"],
+        "use-max-drawdown": "max_drawdown",
+        "use-max-daily-loss": "max_daily_loss",
+        "use-market-filter": ["use_market_filter", "market_trend_lookback"]
+    }
+    
+    # Process each parameter based on checkbox state
+    for checkbox_id, param_keys in risk_mapping.items():
+        if checkbox_states.get(checkbox_id, False):
+            if isinstance(param_keys, list):
+                # Handle multi-parameter cases (e.g. trailing stop)
+                main_param = param_keys[0]
+                risk_params[main_param] = True
+                
+                for param_key in param_keys[1:]:
+                    parsed_value = parse_risk_param_value(param_key, input_values.get(param_key))
+                    if parsed_value is not None:
+                        risk_params[param_key] = parsed_value
+            else:
+                # Handle single parameter cases
+                param_key = param_keys
+                parsed_value = parse_risk_param_value(param_key, input_values.get(param_key))
+                if parsed_value is not None:
+                    risk_params[param_key] = parsed_value
+                    
+    return risk_params
+
+# =============================================================================
+# ===== URUCHOMIENIE APLIKACJI ================================================
+# =============================================================================
 if __name__ == '__main__':
     logger.info("Starting Dash application...")
+    
+    # Check data availability before starting
     try:
         startup_tickers = get_available_tickers()
-        if not startup_tickers: logger.warning("No tickers found during startup check.")
-        else: logger.info(f"Found {len(startup_tickers)} tickers during startup.")
-    except Exception as e: logger.error(f"Error during startup ticker check: {e}")
-    # Użyj wartości z config lub domyślnych dla host/port
-    app_host = os.environ.get("HOST", "0.0.0.0")
+        if not startup_tickers:
+            logger.warning("No tickers found during startup check. Application may not function properly.")
+        else:
+            logger.info(f"Found {len(startup_tickers)} tickers during startup.")
+    except Exception as e:
+        logger.error(f"Error during startup ticker check: {e}", exc_info=True)
+    
+    # Configure server
+    app_host = os.environ.get("HOST", "127.0.0.1")
     app_port = int(os.environ.get("PORT", 8050))
-    app_debug = os.environ.get("DEBUG", "True").lower() == "true"
-    logger.info(f"Running app on {app_host}:{app_port} with debug={app_debug}")
-    app.run(debug=app_debug, host=app_host, port=app_port)
-    logger.info("Dash application stopped.")
+    app_debug = os.environ.get("DASH_DEBUG_MODE", "True").lower() in ['true', '1', 't']
+    
+    # Run application
+    logger.info(f"Running app on http://{app_host}:{app_port}/ with debug={app_debug}")
+    try:
+        app.run(debug=app_debug, host=app_host, port=app_port)
+        logger.info("Dash application stopped.")
+    except Exception as e:
+        logger.critical(f"Application crashed: {e}", exc_info=True)
+        sys.exit(1)

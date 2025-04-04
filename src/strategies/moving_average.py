@@ -113,7 +113,7 @@ class MovingAverageCrossoverStrategy(BaseStrategy):
         # Position: Represents the desired state (1 for long, -1 for short, 0 for flat).
         # Here, we simply hold the position indicated by the last non-zero signal.
         # Fill forward the last signal to represent holding the position.
-        df['Position'] = df['Signal'].replace(0.0, method='ffill').fillna(0.0)
+        df['Position'] = df['Signal'].replace(0.0, np.nan).ffill().fillna(0.0)
 
         #logger.debug(f"MA Strategy ({ticker}): Generated {int(sum(abs(df['Signal'])))} signals.")
 
