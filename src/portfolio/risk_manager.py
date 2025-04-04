@@ -112,9 +112,14 @@ class RiskManager:
         Returns:
             int: The number of shares to trade. Returns 0 if position cannot be opened.
         """
-        if price <= 0:
-            logger.warning("Cannot calculate position size: Price is zero or negative.")
-            return 0
+        if isinstance(price, pd.Series):
+            if price.empty or (price <= 0).any():
+                logger.warning(f"Cannot calculate position size - invalid price (Series): {price}")
+                return 0
+        else:
+            if price <= 0:
+                logger.warning(f"Cannot calculate position size - invalid price: {price}")
+                return 0
 
         # 1. Determine maximum capital allocation based on portfolio limits
         max_capital_per_position = current_portfolio_value * self.max_position_size
@@ -127,6 +132,20 @@ class RiskManager:
         capital_at_risk = current_portfolio_value * self.stop_loss_pct
         # Implied position size based on stop loss distance
         stop_distance = price * self.stop_loss_pct
+        
+        # FIX HERE - Check if stop_distance is a Series
+        if isinstance(stop_distance, pd.Series):
+            if stop_distance.empty or stop_distance.isna().all():
+                logger.warning("Stop distance is empty or all NaN. Using default.")
+                stop_distance = price * 0.02  # Default 2% stop
+            else:
+                # Use item() if it's a single value Series
+                stop_distance = stop_distance.iloc[0] if len(stop_distance) == 1 else stop_distance.mean()
+        
+        if stop_distance <= 0:
+            logger.warning("Stop distance is zero or negative. Using default.")
+            stop_distance = price * 0.02  # Default 2% stop
+        
         if stop_distance <= 0:
              logger.warning("Stop distance is zero or negative, cannot use risk-based sizing.")
              size_based_on_risk = np.inf # Effectively no limit from risk sizing

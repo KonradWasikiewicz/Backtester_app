@@ -6,6 +6,16 @@ from datetime import datetime
 import logging
 from .risk_manager import RiskManager # Importuj RiskManager
 
+# Define VIZ_CFG here too, since it's needed in this module
+VIZ_CFG = {
+    'colors': {
+        'profit': '#17B897',      # Green for profits
+        'loss': '#FF6B6B',        # Red for losses
+        'background': '#131722',  # Dark background
+        'text_color': '#dee2e6',  # Light text color
+    }
+}
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -131,12 +141,23 @@ class PortfolioManager:
         volatility = signal_data.get('volatility')
 
         # --- Pre-Trade Checks ---
-        if not all([ticker, entry_price, entry_date, direction]):
+        # Check each value individually to handle potential pandas Series objects
+        valid_ticker = ticker is not None and not (isinstance(ticker, pd.Series) and (ticker.empty or ticker.isna().all()))
+        valid_price = entry_price is not None and not (isinstance(entry_price, pd.Series) and (entry_price.empty or entry_price.isna().all()))
+        valid_date = entry_date is not None and not (isinstance(entry_date, pd.Series) and (entry_date.empty or entry_date.isna().all()))
+        valid_direction = direction is not None and not (isinstance(direction, pd.Series) and (direction.empty or direction.isna().all()))
+
+        if not (valid_ticker and valid_price and valid_date and valid_direction):
             logger.error(f"Missing required data in open_position signal: {signal_data}")
             return False
-        if entry_price <= 0:
-             logger.warning(f"Attempted to open position for {ticker} at invalid price ${entry_price:.2f}. Ignoring.")
-             return False
+        if isinstance(entry_price, pd.Series):
+            if entry_price.empty or (entry_price <= 0).any():
+                logger.warning(f"Invalid entry price for {ticker}: {entry_price}")
+                return False
+        else:
+            if entry_price <= 0:
+                logger.warning(f"Invalid entry price for {ticker}: {entry_price}")
+                return False
         if ticker in self.positions:
             logger.info(f"Position for {ticker} already exists. Ignoring new open signal on {entry_date}.")
             return False
@@ -357,3 +378,16 @@ class PortfolioManager:
     #     min_commission = 1.0   # Example minimum
     #     commission = abs(shares) * price * commission_rate
     #     return max(min_commission, commission)
+
+# Fix this in app.py around line 380-390
+# Change this:
+{
+    'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%) > 0'},
+    'color': VIZ_CFG['colors']['profit']
+}
+
+# To this (add the missing closing brace):
+{
+    'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%)} > 0'},
+    'color': VIZ_CFG['colors']['profit']
+}

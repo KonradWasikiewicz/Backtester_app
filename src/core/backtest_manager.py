@@ -299,7 +299,7 @@ class BacktestManager:
                                             'price': entry_price,
                                             'direction': 1,
                                             # Add volatility if needed by risk manager (calculate from historical data)
-                                            'volatility': all_ticker_data[ticker]['Close'].pct_change().rolling(risk_manager.volatility_lookback).std().loc[current_date] if risk_manager.volatility_lookback > 0 else 0.02 # Default vol
+                                            'volatility': all_ticker_data[ticker]['Close'].pct_change().rolling(getattr(risk_manager, 'volatility_lookback', 20)).std().loc[current_date] if getattr(risk_manager, 'volatility_lookback', 20) > 0 else 0.02
                                             # Add sector if available/needed
                                             # 'sector': get_sector(ticker)
                                         }

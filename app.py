@@ -383,7 +383,7 @@ def create_trade_table(trades):
                 'color': VIZ_CFG['colors']['loss']
             },
             {
-                'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%) > 0'},
+                'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%)} > 0'},
                 'color': VIZ_CFG['colors']['profit']
             }
         ],
