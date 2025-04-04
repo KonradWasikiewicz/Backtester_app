@@ -9,6 +9,23 @@ from pathlib import Path
 import logging
 import plotly.graph_objects as go
 import inspect # Do inspekcji parametrów strategii
+import os  # Missing import for os module
+
+# Visualization config constants
+VIZ_CFG = {
+    'colors': {
+        'background': '#131722',      # Dark background
+        'card_background': '#1e222d', # Slightly lighter card background
+        'profit': '#17B897',          # Green for profits
+        'loss': '#FF6B6B',            # Red for losses
+        'text_color': '#dee2e6',      # Light text color
+        'grid_color': '#2a2e39',      # Grid line color
+    }
+}
+
+# Chart constants
+CHART_TEMPLATE = "plotly_dark"  # Use plotly's dark theme
+GRID_COLOR = "#2a2e39"          # Grid color for charts
 
 # --- Konfiguracja Logowania ---
 logging.basicConfig(
@@ -366,7 +383,7 @@ def create_trade_table(trades):
                 'color': VIZ_CFG['colors']['loss']
             },
             {
-                'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%)} > 0'},
+                'if': {'column_id': 'P&L (%)', 'filter_query': '{P&L (%) > 0'},
                 'color': VIZ_CFG['colors']['profit']
             }
         ],
@@ -520,24 +537,60 @@ def update_strategy_parameters(strategy_name):
         return html.P(f"Error loading parameters for {strategy_name}.", className="text-danger")
 
 # Callbacki do obsługi interaktywności sekcji ryzyka
-@app.callback(Output("risk-management-options-collapse", "is_open"), Input("risk-management-toggle", "value"))
-def toggle_risk_options_visibility(toggle_value):
-    return toggle_value == "enabled"
-
-@app.callback(Output({'type': 'risk-input', 'index': MATCH}, 'disabled'), Input({'type': 'risk-checkbox', 'index': MATCH}, 'value'), State("risk-management-toggle", "value"), prevent_initial_call=True)
-def toggle_risk_input_disabled_state(checkbox_value, risk_mode):
-    return (risk_mode == "disabled") or (not checkbox_value)
-
-@app.callback([Output({'type': 'risk-input', 'index': "trailing_stop_activation"}, 'disabled'), Output({'type': 'risk-input', 'index': "trailing_stop_distance"}, 'disabled')], Input({'type': 'risk-checkbox', 'index': "use-trailing-stop"}, 'value'), State("risk-management-toggle", "value"), prevent_initial_call=True)
-def toggle_trailing_stop_inputs_disabled_state(checked, risk_mode):
-    is_disabled = (risk_mode == "disabled") or (not checked)
-    return is_disabled, is_disabled
-
-@app.callback(Output('market-filter-options-collapse', 'is_open'), Output({'type': 'risk-input', 'index': "market_trend_lookback"}, 'disabled'), Input({'type': 'risk-checkbox', 'index': "use-market-filter"}, 'value'), State("risk-management-toggle", "value"), prevent_initial_call=True)
-def toggle_market_filter_input_visibility_and_disabled(checked, risk_mode):
-    is_open = (risk_mode == "enabled") and checked
-    is_disabled = (risk_mode == "disabled") or (not checked)
-    return is_open, is_disabled
+@app.callback(
+    # Special outputs first (ones with unique IDs)
+    Output('market-filter-options-collapse', 'is_open'),
+    # Individual outputs for specific components with explicit IDs to avoid pattern conflicts
+    Output({'type': 'risk-input', 'index': "trailing_stop_activation"}, 'disabled'),
+    Output({'type': 'risk-input', 'index': "trailing_stop_distance"}, 'disabled'),
+    Output({'type': 'risk-input', 'index': "market_trend_lookback"}, 'disabled'),
+    Output({'type': 'risk-input', 'index': "max_position_size"}, 'disabled'),
+    Output({'type': 'risk-input', 'index': "min_position_size"}, 'disabled'),
+    Output({'type': 'risk-input', 'index': "max_open_positions"}, 'disabled'),
+    Output({'type': 'risk-input', 'index': "stop_loss_pct"}, 'disabled'),
+    Output({'type': 'risk-input', 'index': "profit_target_ratio"}, 'disabled'),
+    Output({'type': 'risk-input', 'index': "max_drawdown"}, 'disabled'),
+    Output({'type': 'risk-input', 'index': "max_daily_loss"}, 'disabled'),
+    # Inputs
+    Input({'type': 'risk-checkbox', 'index': ALL}, 'value'),
+    Input({'type': 'risk-checkbox', 'index': ALL}, 'id'),
+    Input("risk-management-toggle", "value"),
+    prevent_initial_call=True
+)
+def update_all_risk_inputs(checkbox_values, checkbox_ids, risk_mode):
+    # Create mapping of checkbox IDs to values
+    checkbox_states = {cb_id['index']: val for cb_id, val in zip(checkbox_ids, checkbox_values)}
+    risk_enabled = (risk_mode == "enabled")
+    
+    # Market filter collapse state
+    market_filter_open = risk_enabled and checkbox_states.get("use-market-filter", False)
+    
+    # Each input's disabled state depends on risk_enabled and its associated checkbox
+    trailing_stop_activation_disabled = (not risk_enabled) or (not checkbox_states.get("use-trailing-stop", False))
+    trailing_stop_distance_disabled = (not risk_enabled) or (not checkbox_states.get("use-trailing-stop", False))
+    market_trend_lookback_disabled = (not risk_enabled) or (not checkbox_states.get("use-market-filter", False))
+    max_position_size_disabled = (not risk_enabled) or (not checkbox_states.get("use-max-position-size", False))
+    min_position_size_disabled = (not risk_enabled) or (not checkbox_states.get("use-min-position-size", False))
+    max_open_positions_disabled = (not risk_enabled) or (not checkbox_states.get("use-max-positions", False))
+    stop_loss_pct_disabled = (not risk_enabled) or (not checkbox_states.get("use-stop-loss", False))
+    profit_target_ratio_disabled = (not risk_enabled) or (not checkbox_states.get("use-profit-target", False))
+    max_drawdown_disabled = (not risk_enabled) or (not checkbox_states.get("use-max-drawdown", False))
+    max_daily_loss_disabled = (not risk_enabled) or (not checkbox_states.get("use-max-daily-loss", False))
+    
+    # Return all states
+    return (
+        market_filter_open,
+        trailing_stop_activation_disabled,
+        trailing_stop_distance_disabled,
+        market_trend_lookback_disabled,
+        max_position_size_disabled,
+        min_position_size_disabled,
+        max_open_positions_disabled,
+        stop_loss_pct_disabled,
+        profit_target_ratio_disabled,
+        max_drawdown_disabled,
+        max_daily_loss_disabled
+    )
 
 # Funkcja pomocnicza do parsowania parametrów ryzyka
 def parse_risk_param_value(input_id, input_value):

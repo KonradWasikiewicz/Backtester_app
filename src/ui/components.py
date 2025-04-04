@@ -1,6 +1,7 @@
 import dash_bootstrap_components as dbc
 from dash import html, dcc # Import dcc dla potencjalnych przyszłych komponentów
 import logging
+from typing import Dict, Tuple, Optional, List
 
 logger = logging.getLogger(__name__)
 

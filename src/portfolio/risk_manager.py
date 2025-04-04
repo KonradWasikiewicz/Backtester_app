@@ -191,7 +191,7 @@ class RiskManager:
             Tuple[float, float]: (stop_loss_price, take_profit_price).
                                  Take-profit might be infinity if ratio is not applicable.
         """
-        if price <= 0: return 0.0, 0.0 # Avoid division by zero
+        if entry_price <= 0: return 0.0, 0.0 # Avoid division by zero
 
         stop_loss_distance = entry_price * self.stop_loss_pct
         stop_loss_price = entry_price - (stop_loss_distance * direction)

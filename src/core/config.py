@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import logging
+import traceback  # Add this line to fix the error
 
 logger = logging.getLogger(__name__)
 

@@ -283,7 +283,12 @@ class BacktestManager:
                             if signal_value != 0: # We have an entry/exit signal
                                 #logger.debug(f"Signal for {ticker} on {current_date}: {signal_value}")
                                 entry_price = current_market_data.get((ticker, 'Open'), current_market_data.get((ticker, 'Close'))) # Use Open if available, else Close
-                                if pd.isna(entry_price): continue # Skip if price is NaN
+                                if isinstance(entry_price, pd.Series):
+                                    if entry_price.empty or entry_price.isna().all():
+                                        continue  # Skip if Series is empty or all NaN
+                                else:
+                                    if pd.isna(entry_price): 
+                                        continue  # Skip if scalar price is NaN
 
                                 if signal_value > 0: # Buy Signal
                                     if ticker not in portfolio_manager.positions: # Only if not already in position
@@ -308,7 +313,15 @@ class BacktestManager:
 
                 # --- e) Update Portfolio Value for the day ---
                 # Use closing prices for end-of-day valuation
-                eod_prices = {ticker: current_market_data[(ticker, 'Close')] for ticker in valid_tickers if (ticker, 'Close') in current_market_data and pd.notna(current_market_data[(ticker, 'Close')])}
+                eod_prices = {}
+                for ticker in valid_tickers:
+                    if (ticker, 'Close') in current_market_data:
+                        price = current_market_data[(ticker, 'Close')]
+                        if isinstance(price, pd.Series):
+                            if not price.empty and not price.isna().all():
+                                eod_prices[ticker] = price
+                        elif not pd.isna(price):
+                            eod_prices[ticker] = price
                 current_portfolio_value = portfolio_manager.update_portfolio_value(eod_prices)
                 portfolio_history.append({'date': current_date, 'value': current_portfolio_value})
 

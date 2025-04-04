@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import logging
 from .base import BaseStrategy # Importuj klasę bazową
+from typing import Dict, Tuple, Optional, List
 
 logger = logging.getLogger(__name__)
 
