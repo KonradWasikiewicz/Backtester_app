@@ -58,6 +58,9 @@ class BaseStrategy(ABC):
                                     which might be useful for analysis or debugging.
                                     Returns None if signals cannot be generated (e.g., due to
                                     insufficient data).
+                                    
+                                    IMPORTANT: Must include the 'Close' or 'close' column from
+                                    the original data for visualization purposes.
         """
         pass
 
@@ -87,6 +90,17 @@ class BaseStrategy(ABC):
                 if ticker_data is not None and not ticker_data.empty:
                     try:
                         signals_df = self.generate_signals(ticker, ticker_data)
+                        
+                        # Ensure signals DataFrame contains price data for visualization
+                        if signals_df is not None:
+                            if 'Close' in ticker_data.columns and 'Close' not in signals_df.columns:
+                                signals_df['Close'] = ticker_data['Close']
+                            elif 'close' in ticker_data.columns and 'close' not in signals_df.columns:
+                                signals_df['close'] = ticker_data['close']
+                            # If neither Close nor close is in the original data, log a warning
+                            elif 'Close' not in ticker_data.columns and 'close' not in ticker_data.columns:
+                                logger.warning(f"No 'Close' or 'close' column in original data for {ticker}")
+                        
                         all_signals[ticker] = signals_df # Store DataFrame or None
                         if signals_df is None:
                              logger.info(f"Strategy {self.__class__.__name__}: No signals generated for {ticker} (returned None).")

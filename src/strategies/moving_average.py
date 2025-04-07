@@ -118,4 +118,4 @@ class MovingAverageCrossoverStrategy(BaseStrategy):
         #logger.debug(f"MA Strategy ({ticker}): Generated {int(sum(abs(df['Signal'])))} signals.")
 
         # Return only the relevant columns
-        return df[['SMA_Short', 'SMA_Long', 'Signal', 'Position']]
+        return df[['Close', 'SMA_Short', 'SMA_Long', 'Signal', 'Position']]

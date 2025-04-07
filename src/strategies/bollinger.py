@@ -127,4 +127,4 @@ class BollingerBandsStrategy(BaseStrategy):
         #logger.debug(f"Bollinger Strategy ({ticker}): Generated {int(sum(abs(df['Signal'])))} signals.")
 
         # Return relevant columns
-        return df[['SMA', 'Upper_Band', 'Lower_Band', 'Signal', 'Position']]
+        return df[['Close', 'SMA', 'Upper_Band', 'Lower_Band', 'Signal', 'Position']]

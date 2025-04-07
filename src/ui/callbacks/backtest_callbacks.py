@@ -80,7 +80,7 @@ def register_backtest_callbacks(app):
                 html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
                 {"display": "none"},
                 {"display": "block"},
-                [],
+                [], 
                 None
             )
         
@@ -96,7 +96,7 @@ def register_backtest_callbacks(app):
                 html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
                 {"display": "none"},
                 {"display": "block"},
-                [],
+                [], 
                 None
             )
         
@@ -108,7 +108,7 @@ def register_backtest_callbacks(app):
                 html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
                 {"display": "none"},
                 {"display": "block"},
-                [],
+                [], 
                 None
             )
         
@@ -182,7 +182,7 @@ def register_backtest_callbacks(app):
                     html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
                     {"display": "none"},
                     {"display": "block"},
-                    [],
+                    [], 
                     None
                 )
                 
@@ -193,7 +193,7 @@ def register_backtest_callbacks(app):
                 html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
                 {"display": "none"},
                 {"display": "block"},
-                [],
+                [], 
                 None
             )
     
@@ -377,11 +377,11 @@ def register_backtest_callbacks(app):
                     {"name": "Ticker", "id": "ticker"},
                     {"name": "Entry Date", "id": "entry_date"},
                     {"name": "Exit Date", "id": "exit_date"},
-                    {"name": "Entry Price", "id": "entry_price"},
-                    {"name": "Exit Price", "id": "exit_price"},
-                    {"name": "P/L ($)", "id": "profit_loss"},
-                    {"name": "P/L (%)", "id": "profit_loss_pct"},
-                    {"name": "Shares", "id": "shares"},
+                    {"name": "Entry Price", "id": "entry_price", "type": "numeric", "format": dash_table.FormatTemplate.money(2)},
+                    {"name": "Exit Price", "id": "exit_price", "type": "numeric", "format": dash_table.FormatTemplate.money(2)},
+                    {"name": "P/L ($)", "id": "profit_loss", "type": "numeric", "format": dash_table.FormatTemplate.money(2)},
+                    {"name": "P/L (%)", "id": "profit_loss_pct", "type": "numeric", "format": dash_table.FormatTemplate.percentage(2)},
+                    {"name": "Shares", "id": "shares", "type": "numeric", "format": {"specifier": ",d"}},
                     {"name": "Exit Reason", "id": "reason"}
                 ],
                 data=trades_data,
@@ -400,11 +400,11 @@ def register_backtest_callbacks(app):
                 },
                 style_data_conditional=[
                     {
-                        "if": {"filter_query": "{profit_loss_pct} contains '-'"},
+                        "if": {"filter_query": "{profit_loss_pct} < 0"},
                         "color": "#ff4a68"  # Red for losses
                     },
                     {
-                        "if": {"filter_query": "{profit_loss_pct} not contains '-'"},
+                        "if": {"filter_query": "{profit_loss_pct} >= 0"},
                         "color": "#00cc96"  # Green for gains
                     }
                 ],

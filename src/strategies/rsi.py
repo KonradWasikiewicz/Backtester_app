@@ -115,6 +115,7 @@ class RSIStrategy(BaseStrategy):
         df = pd.DataFrame(index=data.index)
         try:
             df['RSI'] = self._calculate_rsi(data['Close'])
+            df['Close'] = data['Close']  # Add Close column to output for visualization
         except Exception as e:
             logger.error(f"RSI Strategy ({ticker}): Error calculating RSI: {e}")
             return None
@@ -150,4 +151,4 @@ class RSIStrategy(BaseStrategy):
         #logger.debug(f"RSI Strategy ({ticker}): Generated {int(sum(abs(df['Signal'])))} signals.")
 
         # Return relevant columns
-        return df[['RSI', 'Signal', 'Position']]
+        return df[['Close', 'RSI', 'Signal', 'Position']]  # Include Close column in output

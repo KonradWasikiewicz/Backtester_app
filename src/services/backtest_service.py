@@ -250,11 +250,11 @@ class BacktestService:
                     "ticker": trade["ticker"],
                     "entry_date": trade["entry_date"].strftime("%Y-%m-%d"),
                     "exit_date": trade["exit_date"].strftime("%Y-%m-%d"),
-                    "entry_price": f"${trade['entry_price']:.2f}",
-                    "exit_price": f"${trade['exit_price']:.2f}",
-                    "profit_loss": f"${trade['pnl']:.2f}",
-                    "profit_loss_pct": f"{trade['pnl_pct']:.2f}%",
-                    "shares": f"{trade['shares']:.0f}",
+                    "entry_price": trade["entry_price"],  # Keep as raw number
+                    "exit_price": trade["exit_price"],    # Keep as raw number
+                    "profit_loss": trade["pnl"],          # Keep as raw number
+                    "profit_loss_pct": trade["pnl_pct"],  # Keep as raw number
+                    "shares": int(trade["shares"]),       # Convert to integer
                     "reason": trade["exit_reason"].capitalize()
                 }
                 formatted_trades.append(formatted_trade)
