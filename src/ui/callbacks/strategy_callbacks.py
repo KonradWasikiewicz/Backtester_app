@@ -1,7 +1,8 @@
-from dash import Input, Output, State, callback_context
+from dash import Input, Output, State, callback_context, dash, exceptions
 import dash_bootstrap_components as dbc
 import logging
 from typing import Dict, List, Any
+import pandas as pd
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -118,3 +119,93 @@ def register_strategy_callbacks(app):
         elif position_sizing == "volatility":
             return False, 1.0  # Default to 1x ATR risk
         return False, 2.0
+    
+    # Date range selection callbacks
+    @app.callback(
+        [Output("date-slider-container", "style"),
+         Output("manual-date-container", "style")],
+        [Input("manual-date-toggle", "value")]
+    )
+    def toggle_date_input_method(use_manual):
+        """
+        Toggle between date range slider and manual date picker.
+        
+        Args:
+            use_manual: Whether to use manual date picker
+            
+        Returns:
+            Styles for the date slider and manual date picker containers
+        """
+        if use_manual:
+            return {"display": "none"}, {"display": "block"}
+        else:
+            return {"display": "block"}, {"display": "none"}
+    
+    @app.callback(
+        [Output("selected-start-date", "children"),
+         Output("selected-end-date", "children"),
+         Output("backtest-daterange", "start_date"),
+         Output("backtest-daterange", "end_date")],
+        [Input("backtest-date-slider", "value")]
+    )
+    def update_selected_dates(date_range_timestamps):
+        """
+        Update the display of selected dates from the slider and synchronize with date picker.
+        
+        Args:
+            date_range_timestamps: List of [start_timestamp, end_timestamp] from the slider
+            
+        Returns:
+            Formatted start and end dates for display and date picker
+        """
+        if not date_range_timestamps or len(date_range_timestamps) != 2:
+            return "N/A", "N/A", None, None
+        
+        try:
+            # Convert timestamps (ms) back to datetime
+            start_ts, end_ts = date_range_timestamps
+            start_date = pd.to_datetime(start_ts, unit='ms')
+            end_date = pd.to_datetime(end_ts, unit='ms')
+            
+            # Format for display
+            start_date_str = start_date.strftime('%Y-%m-%d')
+            end_date_str = end_date.strftime('%Y-%m-%d')
+            
+            return start_date_str, end_date_str, start_date_str, end_date_str
+        except Exception as e:
+            logger.error(f"Error converting date range timestamps: {e}")
+            return "Error", "Error", None, None
+    
+    @app.callback(
+        Output("backtest-date-slider", "value"),
+        [Input("backtest-daterange", "start_date"),
+         Input("backtest-daterange", "end_date")]
+    )
+    def update_date_slider_from_picker(start_date_str, end_date_str):
+        """
+        Update the date slider when manual date picker changes.
+        
+        Args:
+            start_date_str: Start date string from date picker
+            end_date_str: End date string from date picker
+            
+        Returns:
+            List of [start_timestamp, end_timestamp] for the slider
+        """
+        ctx = callback_context
+        if not ctx.triggered or (not start_date_str or not end_date_str):
+            # Don't update if this is the initial load or dates are not set
+            raise dash.exceptions.PreventUpdate
+        
+        try:
+            # Convert date strings to timestamps
+            start_date = pd.to_datetime(start_date_str)
+            end_date = pd.to_datetime(end_date_str)
+            
+            start_ts = int(start_date.timestamp() * 1000)
+            end_ts = int(end_date.timestamp() * 1000)
+            
+            return [start_ts, end_ts]
+        except Exception as e:
+            logger.error(f"Error updating slider from date picker: {e}")
+            raise dash.exceptions.PreventUpdate

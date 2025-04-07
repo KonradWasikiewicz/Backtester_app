@@ -2,7 +2,7 @@ import logging
 import pandas as pd
 import traceback
 from pathlib import Path
-from typing import Dict, Optional, List, Union # Dodano Union
+from typing import Dict, Optional, List, Union, Tuple # Dodano Union, Tuple
 import os
 
 # Importuj konfigurację, aby uzyskać ścieżkę do danych i nazwę benchmarka
@@ -238,4 +238,25 @@ class DataLoader:
         except Exception as e:
             logger.error(f"Error extracting unique tickers from data: {e}")
             return []
+
+    def get_date_range(self) -> Tuple[pd.Timestamp, pd.Timestamp]:
+        """
+        Returns the earliest and latest dates available in the dataset.
         
+        Returns:
+            Tuple[pd.Timestamp, pd.Timestamp]: A tuple containing (min_date, max_date)
+                                               or (None, None) if data couldn't be loaded.
+        """
+        if self._full_data_cache is None:
+            if not self._load_and_cache_full_data():
+                logger.error("Failed to load data for date range retrieval")
+                return (None, None)
+        
+        try:
+            dates = pd.to_datetime(self._full_data_cache['Date'])
+            min_date = dates.min()
+            max_date = dates.max()
+            return (min_date, max_date)
+        except Exception as e:
+            logger.error(f"Error getting date range from data: {e}")
+            return (None, None)

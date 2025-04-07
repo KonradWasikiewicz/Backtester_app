@@ -42,7 +42,10 @@ def register_backtest_callbacks(app):
          Output("ticker-selector", "value")],
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-selector", "value"),
-         State("ticker-checklist", "value"),  # Updated: use checkbox values instead of text input
+         State("ticker-checklist", "value"),
+         # Date inputs - we'll need both the slider and the date picker
+         State("manual-date-toggle", "value"),
+         State("backtest-date-slider", "value"),
          State("backtest-daterange", "start_date"),
          State("backtest-daterange", "end_date"),
          # Strategy parameters pattern matching state
@@ -56,7 +59,8 @@ def register_backtest_callbacks(app):
          State("max-positions", "value"),
          State("use-market-filter", "value")]
     )
-    def run_backtest(n_clicks, strategy_type, selected_tickers, start_date, end_date,
+    def run_backtest(n_clicks, strategy_type, selected_tickers, 
+                    use_manual_dates, date_slider_values, manual_start_date, manual_end_date,
                     strategy_param_values, strategy_param_ids, position_sizing, risk_per_trade,
                     stop_loss_type, stop_loss_value, max_positions, use_market_filter):
         """
@@ -83,6 +87,27 @@ def register_backtest_callbacks(app):
                 [], 
                 None
             )
+        
+        # Determine which date selection method is being used and get the dates
+        if use_manual_dates:
+            # Using manual date picker
+            start_date = manual_start_date
+            end_date = manual_end_date
+        else:
+            # Using date slider
+            try:
+                if date_slider_values and len(date_slider_values) == 2:
+                    start_ts, end_ts = date_slider_values
+                    start_date = pd.to_datetime(start_ts, unit='ms').strftime('%Y-%m-%d')
+                    end_date = pd.to_datetime(end_ts, unit='ms').strftime('%Y-%m-%d')
+                else:
+                    # Fallback to default dates if slider values are invalid
+                    start_date = None
+                    end_date = None
+            except Exception as e:
+                logger.error(f"Error converting slider dates: {e}")
+                start_date = None
+                end_date = None
         
         # Check required inputs
         if not strategy_type or not selected_tickers or not start_date or not end_date:

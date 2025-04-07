@@ -4,9 +4,13 @@ from dash import html, dcc
 import logging
 import traceback
 from typing import Dict, Any, List
+import pandas as pd
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Import DataLoader
+from src.core.data import DataLoader
 
 def get_strategy_dropdown(available_strategies: Dict[str, Any]) -> dcc.Dropdown:
     """
@@ -141,20 +145,89 @@ def create_backtest_parameters() -> html.Div:
     Returns:
         html.Div: Container with backtest parameter inputs
     """
+    # Get available date range from data loader
+    try:
+        data_loader = DataLoader()
+        min_date, max_date = data_loader.get_date_range()
+        # Set default dates - start from beginning of data and end at latest date
+        default_start = pd.Timestamp('2020-01-01') if min_date is None else max(pd.Timestamp('2020-01-01'), min_date)
+        default_end = pd.Timestamp.today() if max_date is None else max_date
+        date_marks = {}
+        
+        # Convert dates to Unix timestamps (milliseconds) for the RangeSlider
+        if min_date is not None and max_date is not None:
+            date_range = pd.date_range(start=min_date, end=max_date, freq='MS')  # Monthly freq for marks
+            if len(date_range) > 12:  # If more than 12 months, show every 3 months
+                date_range = date_range[::3]
+            for date in date_range:
+                date_ts = int(date.timestamp() * 1000)
+                date_marks[date_ts] = date.strftime('%b %Y')
+            
+            # Add first and last date if they're not already included
+            first_ts = int(min_date.timestamp() * 1000)
+            last_ts = int(max_date.timestamp() * 1000)
+            if first_ts not in date_marks:
+                date_marks[first_ts] = min_date.strftime('%b %Y')
+            if last_ts not in date_marks:
+                date_marks[last_ts] = max_date.strftime('%b %Y')
+    except Exception as e:
+        logger.error(f"Error getting date range from DataLoader: {e}")
+        default_start = pd.Timestamp('2020-01-01')
+        default_end = pd.Timestamp.today()
+        date_marks = {}
+    
+    # Convert default dates to timestamps for the slider
+    default_start_ts = int(default_start.timestamp() * 1000)
+    default_end_ts = int(default_end.timestamp() * 1000)
+    min_date_ts = int(min_date.timestamp() * 1000) if min_date is not None else default_start_ts
+    max_date_ts = int(max_date.timestamp() * 1000) if max_date is not None else default_end_ts
+    
     return html.Div([
         html.Hr(className="my-3"),
         html.H5("Backtest Parameters", className="mb-3"),
         
-        # Date Range input
+        # Date Range Slider (default method)
         dbc.Row([
             dbc.Label("Date Range", width=4, className="col-form-label"),
             dbc.Col([
-                dcc.DatePickerRange(
-                    id="backtest-daterange",
-                    start_date_placeholder_text="Start Date",
-                    end_date_placeholder_text="End Date",
-                    className="w-100"
-                )
+                html.Div([
+                    # Timeline slider for date range selection
+                    dcc.RangeSlider(
+                        id="backtest-date-slider",
+                        min=min_date_ts,
+                        max=max_date_ts,
+                        value=[default_start_ts, default_end_ts],
+                        marks=date_marks,
+                        allowCross=False,
+                        className="mt-1 mb-3"
+                    ),
+                    # Display selected dates
+                    html.Div([
+                        html.Span(id="selected-start-date", className="badge bg-primary me-2"),
+                        html.Span(" to ", className="text-muted"),
+                        html.Span(id="selected-end-date", className="badge bg-primary ms-2"),
+                    ], className="d-flex justify-content-center mb-2"),
+                ], id="date-slider-container"),
+                
+                # Checkbox to toggle between slider and manual input
+                dbc.Checkbox(
+                    id="manual-date-toggle",
+                    label="Choose date range manually",
+                    value=False,
+                    className="mb-2"
+                ),
+                
+                # Manual date picker (initially hidden)
+                html.Div([
+                    dcc.DatePickerRange(
+                        id="backtest-daterange",
+                        start_date=default_start.strftime('%Y-%m-%d'),
+                        end_date=default_end.strftime('%Y-%m-%d'),
+                        start_date_placeholder_text="Start Date",
+                        end_date_placeholder_text="End Date",
+                        className="w-100"
+                    )
+                ], id="manual-date-container", style={"display": "none"})
             ], width=8)
         ], className="mb-3 align-items-center"),
         
@@ -175,7 +248,7 @@ def create_backtest_parameters() -> html.Div:
         # Run backtest button
         dbc.Button(
             [html.I(className="fas fa-play me-2"), "Run Backtest"],
-            id="run-backtest-button",  # Zmieniono id z "run-backtest" na "run-backtest-button"
+            id="run-backtest-button",
             color="primary",
             className="w-100 mt-2"
         ),
