@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 from src.core.backtest_manager import BacktestManager
 from src.core.constants import AVAILABLE_STRATEGIES
 from src.core.config import config
-from src.visualization.visualizer import create_portfolio_chart, create_monthly_returns_heatmap, create_signals_chart
+from src.visualization.visualizer import BacktestVisualizer
 from src.ui.components import create_metric_card_with_tooltip
 
 class BacktestService:
@@ -25,6 +25,7 @@ class BacktestService:
         """Initialize the BacktestService with a BacktestManager."""
         try:
             self.backtest_manager = BacktestManager()
+            self.visualizer = BacktestVisualizer()
             self.current_results = None
             self.current_signals = None
             self.current_stats = None
@@ -171,7 +172,7 @@ class BacktestService:
             portfolio_series = self.current_results["Portfolio_Value"]
             benchmark_series = self.current_results.get("Benchmark")
             
-            return create_portfolio_chart(
+            return self.visualizer.create_equity_curve_figure(
                 portfolio_series=portfolio_series,
                 benchmark_series=benchmark_series,
                 chart_type=chart_type,
@@ -193,7 +194,7 @@ class BacktestService:
         
         try:
             portfolio_series = self.current_results["Portfolio_Value"]
-            return create_monthly_returns_heatmap(portfolio_series)
+            return self.visualizer.create_monthly_returns_heatmap(portfolio_series)
         except Exception as e:
             logger.error(f"Error generating monthly returns heatmap: {e}", exc_info=True)
             return None
@@ -222,7 +223,7 @@ class BacktestService:
             if "trades" in self.current_results:
                 trades = [t for t in self.current_results["trades"] if t["ticker"] == ticker]
             
-            return create_signals_chart(ticker, signals_df, trades)
+            return self.visualizer.create_signals_chart(ticker, signals_df, trades)
         except Exception as e:
             logger.error(f"Error generating signals chart: {e}", exc_info=True)
             return None

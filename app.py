@@ -27,7 +27,7 @@ try:
     # Application entry point
     if __name__ == "__main__":
         logger.info("Starting Backtester application")
-        app.run_server(debug=True, port=8050)
+        app.run(debug=True, port=8050)
 except Exception as e:
     logger.error(f"Failed to initialize application: {e}", exc_info=True)
     print(f"ERROR: Failed to initialize application: {e}")

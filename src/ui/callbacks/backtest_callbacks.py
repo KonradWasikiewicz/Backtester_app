@@ -132,7 +132,8 @@ def register_backtest_callbacks(app):
             
             # Show a loading message
             status_div = html.Div([
-                dbc.Spinner(size="sm", color="primary", className="me-2"),
+                # Używamy spinner_class_name zamiast className dla komponentu dbc.Spinner
+                dbc.Spinner(size="sm", color="primary", spinner_class_name="me-2"),
                 "Running backtest..."
             ], className="text-primary")
             
