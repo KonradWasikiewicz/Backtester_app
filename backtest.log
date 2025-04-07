@@ -1,167 +1,22 @@
-2025-04-07 14:29:38,440 - src - INFO - Initializing 'src' package...
-2025-04-07 14:29:38,440 - src - INFO - Source package 'src' version 0.1.0 initialized.
-2025-04-07 14:29:38,445 - src.core.config - INFO - Configuration loaded.
-2025-04-07 14:29:38,491 - root - INFO - Registered strategies: ['MA', 'RSI', 'BB']
-2025-04-07 14:29:38,502 - src.portfolio - INFO - Portfolio package initialized.
-2025-04-07 14:29:38,505 - src.analysis - INFO - Analysis package initialized.
-2025-04-07 14:29:38,507 - src.core - INFO - Core package initialized.
-2025-04-07 14:29:38,659 - src.visualization - INFO - Visualization package initialized.
-2025-04-07 14:29:38,661 - src.ui - INFO - UI package initialized.
-2025-04-07 14:29:38,709 - src.core.data - INFO - DataLoader initialized. Data path: 'data\historical_prices.csv', Benchmark: 'SPY'
-2025-04-07 14:29:38,709 - src.core.backtest_manager - INFO - BacktestManager initialized with initial capital: $100,000.00 and data path: data/historical_prices.csv
-2025-04-07 14:29:38,711 - src.visualization.visualizer - INFO - BacktestVisualizer initialized.
-2025-04-07 14:29:38,712 - src.core.data - INFO - DataLoader initialized. Data path: 'data\historical_prices.csv', Benchmark: 'SPY'
-2025-04-07 14:29:38,712 - __main__ - INFO - Managers and DataLoader initialized successfully.
-2025-04-07 14:29:38,716 - src.core.data - INFO - Loading historical data from: data\historical_prices.csv...
-2025-04-07 14:29:38,740 - src.core.data - INFO - CSV loaded successfully: 12528 rows, 7 columns.
-2025-04-07 14:29:38,746 - __main__ - INFO - Available tickers for selection: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
-2025-04-07 14:29:38,746 - src.portfolio.risk_manager - INFO - RiskManager initialized with settings: max_pos_size=20.00%, min_pos_size=1.00%, max_open=5, stop=2.00%, R:R=2.0, trailing=False (act: 2.00%, dist: 1.50%), max_dd=20.00%, max_daily_loss=5.00%, market_filter=False (lookback: 100)
-2025-04-07 14:29:38,752 - __main__ - INFO - Starting Dash application...
-2025-04-07 14:29:38,775 - __main__ - INFO - Available tickers for selection: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
-2025-04-07 14:29:38,802 - __main__ - INFO - Found 7 tickers during startup.
-2025-04-07 14:29:38,820 - __main__ - INFO - Running app on http://127.0.0.1:8050/ with debug=True
-2025-04-07 14:29:46,620 - __main__ - INFO - ==============================================2025-04-07 14:32:13,828 - __main__ - INFO - Dash application stopped.
-trategy=MA, Tickers=['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT'], Risk=disabled
-2025-04-07 14:29:48,135 - __main__ - INFO - Strategy parameters: {'short_window': 20, 'long_window': 50}
-2025-04-07 14:29:48,135 - __main__ - INFO - Starting backtest...
-2025-04-07 14:29:48,136 - src.core.backtest_manager - INFO - --- Starting New Backtest ---
-2025-04-07 14:29:48,136 - src.core.backtest_manager - INFO - Strategy: MA, Tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT']
-2025-04-07 14:29:48,136 - src.core.backtest_manager - INFO - Strategy Params: {'short_window': 20, 'long_window': 50}, Risk Params: None
-2025-04-07 14:29:48,136 - src.core.backtest_manager - INFO - Initialized strategy 'MA' with params: {'short_window': 20, 'long_window': 50}
-2025-04-07 14:29:48,137 - src.portfolio.risk_manager - INFO - RiskManager initialized with settings: max_pos_size=20.00%, min_pos_size=1.00%, max_open=5, stop=2.00%, R:R=2.0, trailing=False (act: 2.00%, dist: 1.50%), max_dd=20.00%, max_daily_loss=5.00%, market_filter=False (lookback: 100)
-2025-04-07 14:29:48,137 - src.core.backtest_manager - INFO - Initialized RiskManager with default parameters.
-2025-04-07 14:29:48,137 - src.portfolio.portfolio_manager - INFO - PortfolioManager initialized with capital $100,000.00 and linked RiskManager.
-2025-04-07 14:29:48,138 - src.core.backtest_manager - INFO - Initialized PortfolioManager.
-2025-04-07 14:29:48,139 - src.core.data - INFO - Loading historical data from: data\historical_prices.csv...
-2025-04-07 14:29:48,171 - src.core.data - INFO - CSV loaded successfully: 12528 rows, 7 columns.
-2025-04-07 14:29:48,246 - src.core.data - INFO - Finished loading data for 7/7 requested tickers.
-2025-04-07 14:29:48,253 - src.core.backtest_manager - INFO - Using data for 5 tickers: AAPL, AMZN, GOOGL, META, MSFT
-2025-04-07 14:29:48,319 - src.core.backtest_manager - INFO - Combined data prepared. Shape: (1006, 25). Date range: 2020-01-02 00:00:00 to 2023-12-29 00:00:00
-2025-04-07 14:29:48,319 - src.core.backtest_manager - INFO - Generating signals for all tickers...
-2025-04-07 14:29:48,371 - src.core.backtest_manager - INFO - Signal generation complete for 5 tickers.
-2025-04-07 14:29:48,371 - src.core.backtest_manager - INFO - Starting backtest simulation loop...
-2025-04-07 14:29:50,777 - src.core.backtest_manager - INFO - Backtest simulation loop finished.
-2025-04-07 14:29:50,777 - src.portfolio.portfolio_manager - WARNING - Closing all 0 open positions on 2023-12-29 due to: end_of_backtest
-2025-04-07 14:29:50,799 - src.portfolio.portfolio_manager - INFO - Closed 0 positions during final closure.
-2025-04-07 14:29:50,812 - src.core.backtest_manager - INFO - Benchmark data (SPY) processed and aligned.
-2025-04-07 14:29:50,897 - src.core.backtest_manager - INFO - Portfolio statistics calculated.
-2025-04-07 14:29:50,897 - src.core.backtest_manager - INFO - Backtest analysis complete. Final Portfolio Value: $104,363.57, Total Trades: 58
-2025-04-07 14:29:50,898 - __main__ - INFO - Backtest completed.
-2025-04-07 14:29:50,898 - __main__ - INFO - Generating result components...
-2025-04-07 14:29:50,899 - __main__ - INFO - Generating result components...
-2025-04-07 14:29:50,988 - __main__ - WARNING - Error creating allocation chart: The `dcc.Graph` component (version 3.0.0) with the ID "allocation-graph" detected a Component for a prop other than `children`
-Prop figure has value Graph(config={'displayModeBar': False}, figure=Figure({
-    'data': [],
-    'layout': {'annotations': [{'font': {'color': '#6c757d', 'size': 18},
-                                'showarrow': False,
-                                'text': 'No allocation data',
-                                'x': 0.5,
-                                'xref': 'paper',
-                                'y': 0.5,
-                                'yref': 'paper'}],
-               'font': {'color': '#dee2e6', 'family': 'Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif'},
-               'height': 400,
-               'hoverlabel': {'bgcolor': '#1e222d', 'bordercolor': '#2a2e39', 'font': {'color': '#dee2e6'}},
-               'hovermode': 'x unified',
-               'legend': {'bgcolor': 'rgba(0,0,0,0)',
-                          'bordercolor': 'rgba(0,0,0,0)',
-                          'orientation': 'h',
-                          'x': 0.01,
-                          'xanchor': 'left',
-                          'y': 1.02,
-                          'yanchor': 'bottom'},
-               'margin': {'b': 40, 'l': 50, 'r': 20, 't': 50},
-               'paper_bgcolor': '#131722',
-               'plot_bgcolor': '#1e222d',
-               'template': '...',
-               'title': {'font': {'color': '#dee2e6', 'size': 16}, 'text': '', 'x': 0.05, 'xanchor': 'left'},
-               'xaxis': {'automargin': True,
-                         'gridcolor': '#2a2e39',
-                         'linecolor': '#2a2e39',
-                         'showgrid': False,
-                         'showticklabels': False,
-                         'zeroline': False},
-               'yaxis': {'automargin': True,
-                         'gridcolor': '#2a2e39',
-                         'linecolor': '#2a2e39',
-                         'showgrid': False,
-                         'showticklabels': False,
-                         'zeroline': False}}
-}), style={'height': '400px', 'width': '100%'})
-
-Did you forget to wrap multiple `children` in an array?
-For example, it must be html.Div(["a", "b", "c"]) not html.Div("a", "b", "c")
-
-2025-04-07 14:29:51,085 - __main__ - INFO - Backtest successful in 4.28s.
-2025-04-07 14:29:51,465 - __main__ - INFO - ==================================================
-2025-04-07 14:29:51,503 - __main__ - INFO - Backtest triggered: Strategy=MA, Tickers=['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT'], Risk=disabled
-2025-04-07 14:29:51,732 - __main__ - INFO - Strategy parameters: {'short_window': 20, 'long_window': 50}
-2025-04-07 14:29:51,766 - __main__ - INFO - Starting backtest...
-2025-04-07 14:29:51,774 - src.core.backtest_manager - INFO - --- Starting New Backtest ---
-2025-04-07 14:29:51,774 - src.core.backtest_manager - INFO - Strategy: MA, Tickers: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT']
-2025-04-07 14:29:51,775 - src.core.backtest_manager - INFO - Strategy Params: {'short_window': 20, 'long_window': 50}, Risk Params: None
-2025-04-07 14:29:51,775 - src.core.backtest_manager - INFO - Initialized strategy 'MA' with params: {'short_window': 20, 'long_window': 50}
-2025-04-07 14:29:51,776 - src.portfolio.risk_manager - INFO - RiskManager initialized with settings: max_pos_size=20.00%, min_pos_size=1.00%, max_open=5, stop=2.00%, R:R=2.0, trailing=False (act: 2.00%, dist: 1.50%), max_dd=20.00%, max_daily_loss=5.00%, market_filter=False (lookback: 100)
-2025-04-07 14:29:51,779 - src.core.backtest_manager - INFO - Initialized RiskManager with default parameters.
-2025-04-07 14:29:51,781 - src.portfolio.portfolio_manager - INFO - PortfolioManager initialized with capital $100,000.00 and linked RiskManager.
-2025-04-07 14:29:51,789 - src.core.backtest_manager - INFO - Initialized PortfolioManager.
-2025-04-07 14:29:51,790 - src.core.data - INFO - Finished loading data for 7/7 requested tickers.
-2025-04-07 14:29:51,791 - src.core.backtest_manager - INFO - Using data for 5 tickers: AAPL, AMZN, GOOGL, META, MSFT
-2025-04-07 14:29:51,801 - src.core.backtest_manager - INFO - Combined data prepared. Shape: (1006, 25). Date range: 2020-01-02 00:00:00 to 2023-12-29 00:00:00
-2025-04-07 14:29:51,801 - src.core.backtest_manager - INFO - Generating signals for all tickers...
-2025-04-07 14:29:51,841 - src.core.backtest_manager - INFO - Signal generation complete for 5 tickers.
-2025-04-07 14:29:51,842 - src.core.backtest_manager - INFO - Starting backtest simulation loop...
-2025-04-07 14:29:54,311 - src.core.backtest_manager - INFO - Backtest simulation loop finished.
-2025-04-07 14:29:54,311 - src.portfolio.portfolio_manager - WARNING - Closing all 0 open positions on 2023-12-29 due to: end_of_backtest
-2025-04-07 14:29:54,311 - src.portfolio.portfolio_manager - INFO - Closed 0 positions during final closure.
-2025-04-07 14:29:54,327 - src.core.backtest_manager - INFO - Benchmark data (SPY) processed and aligned.
-2025-04-07 14:29:54,350 - src.core.backtest_manager - INFO - Portfolio statistics calculated.
-2025-04-07 14:29:54,362 - src.core.backtest_manager - INFO - Backtest analysis complete. Final Portfolio Value: $104,363.57, Total Trades: 58
-2025-04-07 14:29:54,398 - __main__ - INFO - Backtest completed.
-2025-04-07 14:29:54,450 - __main__ - INFO - Generating result components...
-2025-04-07 14:29:54,466 - __main__ - INFO - Generating result components...
-2025-04-07 14:29:54,528 - __main__ - WARNING - Error creating allocation chart: The `dcc.Graph` component (version 3.0.0) with the ID "allocation-graph" detected a Component for a prop other than `children`
-Prop figure has value Graph(config={'displayModeBar': False}, figure=Figure({
-    'data': [],
-    'layout': {'annotations': [{'font': {'color': '#6c757d', 'size': 18},
-                                'showarrow': False,
-                                'text': 'No allocation data',
-                                'x': 0.5,
-                                'xref': 'paper',
-                                'y': 0.5,
-                                'yref': 'paper'}],
-               'font': {'color': '#dee2e6', 'family': 'Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif'},
-               'height': 400,
-               'hoverlabel': {'bgcolor': '#1e222d', 'bordercolor': '#2a2e39', 'font': {'color': '#dee2e6'}},
-               'hovermode': 'x unified',
-               'legend': {'bgcolor': 'rgba(0,0,0,0)',
-                          'bordercolor': 'rgba(0,0,0,0)',
-                          'orientation': 'h',
-                          'x': 0.01,
-                          'xanchor': 'left',
-                          'y': 1.02,
-                          'yanchor': 'bottom'},
-               'margin': {'b': 40, 'l': 50, 'r': 20, 't': 50},
-               'paper_bgcolor': '#131722',
-               'plot_bgcolor': '#1e222d',
-               'template': '...',
-               'title': {'font': {'color': '#dee2e6', 'size': 16}, 'text': '', 'x': 0.05, 'xanchor': 'left'},
-               'xaxis': {'automargin': True,
-                         'gridcolor': '#2a2e39',
-                         'linecolor': '#2a2e39',
-                         'showgrid': False,
-                         'showticklabels': False,
-                         'zeroline': False},
-               'yaxis': {'automargin': True,
-                         'gridcolor': '#2a2e39',
-                         'linecolor': '#2a2e39',
-                         'showgrid': False,
-                         'showticklabels': False,
-                         'zeroline': False}}
-}), style={'height': '400px', 'width': '100%'})
-
-Did you forget to wrap multiple `children` in an array?
-For example, it must be html.Div(["a", "b", "c"]) not html.Div("a", "b", "c")
-
-2025-04-07 14:29:54,645 - __main__ - INFO - Backtest successful in 3.0s.
-2025-04-07 14:32:13,511 - __main__ - INFO - Dash application stopped.
+2025-04-07 14:59:02,398 - src - INFO - Initializing 'src' package...
+2025-04-07 14:59:02,401 - src - INFO - Source package 'src' version 0.1.0 initialized.
+2025-04-07 14:59:02,414 - src.core.config - INFO - Configuration loaded.
+2025-04-07 14:59:02,428 - root - INFO - Registered strategies: ['MA', 'RSI', 'BB']
+2025-04-07 14:59:02,433 - src.portfolio - INFO - Portfolio package initialized.
+2025-04-07 14:59:02,436 - src.analysis - INFO - Analysis package initialized.
+2025-04-07 14:59:02,440 - src.core - INFO - Core package initialized.
+2025-04-07 14:59:02,695 - src.visualization - INFO - Visualization package initialized.
+2025-04-07 14:59:02,698 - src.ui - INFO - UI package initialized.
+2025-04-07 14:59:02,748 - src.core.data - INFO - DataLoader initialized. Data path: 'data\historical_prices.csv', Benchmark: 'SPY'
+2025-04-07 14:59:02,749 - src.core.backtest_manager - INFO - BacktestManager initialized with initial capital: $100,000.00 and data path: data/historical_prices.csv
+2025-04-07 14:59:02,749 - src.visualization.visualizer - INFO - BacktestVisualizer initialized.
+2025-04-07 14:59:02,749 - src.core.data - INFO - DataLoader initialized. Data path: 'data\historical_prices.csv', Benchmark: 'SPY'
+2025-04-07 14:59:02,750 - __main__ - INFO - Managers and DataLoader initialized successfully.
+2025-04-07 14:59:02,752 - src.core.data - INFO - Loading historical data from: data\historical_prices.csv...
+2025-04-07 14:59:02,779 - src.core.data - INFO - CSV loaded successfully: 12528 rows, 7 columns.
+2025-04-07 14:59:02,782 - __main__ - INFO - Available tickers for selection: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
+2025-04-07 14:59:02,782 - src.portfolio.risk_manager - INFO - RiskManager initialized with settings: max_pos_size=20.00%, min_pos_size=1.00%, max_open=5, stop=2.00%, R:R=2.0, trailing=False (act: 2.00%, dist: 1.50%), max_dd=20.00%, max_daily_loss=5.00%, market_filter=False (lookback: 100)
+2025-04-07 14:59:02,786 - __main__ - INFO - Starting Dash application...
+2025-04-07 14:59:02,786 - __main__ - INFO - Available tickers for selection: ['AAPL', 'AMZN', 'GOOGL', 'META', 'MSFT', 'NVDA', 'TSLA']
+2025-04-07 14:59:02,786 - __main__ - INFO - Found 7 tickers during startup.
+2025-04-07 14:59:02,787 - __main__ - INFO - Running app on http://127.0.0.1:8050/ with debug=True
