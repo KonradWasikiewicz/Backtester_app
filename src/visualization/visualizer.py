@@ -150,20 +150,27 @@ class BacktestVisualizer:
 
     def create_equity_curve_figure(self, portfolio_values, benchmark_values=None):
         """Create an equity curve chart."""
-        # Downsampling for better performance
-        max_points = 500  # Maximum number of data points to display
+        # Sprawdź, czy mamy dane
+        if portfolio_values is None or portfolio_values.empty:
+            return create_empty_chart("No portfolio data")
         
-        if len(portfolio_values) > max_points:
-            # Sample portfolio values
-            portfolio_values = portfolio_values.resample('D').last()  # Resample to daily data
-            
-            if len(portfolio_values) > max_points:
-                # Still too many points, use linear sampling
-                idx = np.linspace(0, len(portfolio_values) - 1, max_points).astype(int)
-                portfolio_values = portfolio_values.iloc[idx]
-            
-            # Also sample benchmark if available
-            if benchmark_values is not None and len(benchmark_values) > max_points:
-                benchmark_values = benchmark_values.iloc[portfolio_values.index]
+        # Przygotuj dane do wykresu
+        figure_data = {}
+        figure_data['Portfolio'] = portfolio_values
         
-        # Continue with the existing implementation...
+        if benchmark_values is not None and not benchmark_values.empty:
+            # Upewnij się, że benchmark ma nazwę dla legendy
+            benchmark_name = getattr(benchmark_values, 'name', 'Benchmark')
+            figure_data[benchmark_name] = benchmark_values
+        
+        # Użyj funkcji z chart_utils do stworzenia wykresu
+        chart = create_styled_chart(
+            figure_data=figure_data,
+            layout_title="Portfolio Performance",
+            yaxis_title="Portfolio Value",
+            yaxis_format="$",  # Formatowanie osi Y jako waluta
+            height=400
+        )
+        
+        # Zwróć figure, a nie komponent
+        return chart.figure
