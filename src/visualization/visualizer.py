@@ -443,7 +443,18 @@ class BacktestVisualizer:
             fig = go.Figure()
             
             # Add price data
-            if 'Close' in signals_df.columns:
+            if 'close' in signals_df.columns:
+                # Używamy małych liter dla nazw kolumn
+                fig.add_trace(go.Scatter(
+                    x=signals_df.index,
+                    y=signals_df['close'],
+                    mode='lines',
+                    name='Price',
+                    line=dict(color='#888888', width=1.5),
+                    hovertemplate="Date: %{x}<br>Price: $%{y:.2f}<extra></extra>"
+                ))
+            elif 'Close' in signals_df.columns:
+                # Alternatywnie, używamy wielkich liter
                 fig.add_trace(go.Scatter(
                     x=signals_df.index,
                     y=signals_df['Close'],
@@ -452,6 +463,12 @@ class BacktestVisualizer:
                     line=dict(color='#888888', width=1.5),
                     hovertemplate="Date: %{x}<br>Price: $%{y:.2f}<extra></extra>"
                 ))
+            else:
+                logger.warning(f"No 'Close' or 'close' column in signals DataFrame for {ticker}")
+                return create_empty_chart(f"Missing Price Data for {ticker}", height=500)
+            
+            # Określamy kolumnę ceny na podstawie dostępnych danych
+            price_col = 'close' if 'close' in signals_df.columns else 'Close'
             
             # Add buy signals
             if 'Signal' in signals_df.columns:
@@ -459,7 +476,7 @@ class BacktestVisualizer:
                 if not buy_signals.empty:
                     fig.add_trace(go.Scatter(
                         x=buy_signals.index,
-                        y=buy_signals['Close'],
+                        y=buy_signals[price_col],
                         mode='markers',
                         name='Buy Signal',
                         marker=dict(
@@ -476,7 +493,7 @@ class BacktestVisualizer:
                 if not sell_signals.empty:
                     fig.add_trace(go.Scatter(
                         x=sell_signals.index,
-                        y=sell_signals['Close'],
+                        y=sell_signals[price_col],
                         mode='markers',
                         name='Sell Signal',
                         marker=dict(
@@ -510,7 +527,7 @@ class BacktestVisualizer:
                 # Sell trades
                 exit_x = [pd.to_datetime(trade['exit_date']) for trade in trades]
                 exit_y = [float(trade['exit_price']) for trade in trades]
-                exit_colors = [self.viz_cfg["colors"]["profit"] if float(trade.get('profit_loss', 0)) >= 0 
+                exit_colors = [self.viz_cfg["colors"]["profit"] if float(trade.get('pnl', 0)) >= 0 
                             else self.viz_cfg["colors"]["loss"] for trade in trades]
                 fig.add_trace(go.Scatter(
                     x=exit_x,
@@ -532,7 +549,7 @@ class BacktestVisualizer:
                     exit_date = pd.to_datetime(trade['exit_date'])
                     entry_price = float(trade['entry_price'])
                     exit_price = float(trade['exit_price'])
-                    trade_color = self.viz_cfg["colors"]["profit"] if float(trade.get('profit_loss', 0)) >= 0 else self.viz_cfg["colors"]["loss"]
+                    trade_color = self.viz_cfg["colors"]["profit"] if float(trade.get('pnl', 0)) >= 0 else self.viz_cfg["colors"]["loss"]
                     
                     fig.add_shape(
                         type="line",

@@ -6,12 +6,14 @@ import os
 from pathlib import Path
 import sys
 from typing import Dict, Any
+import traceback
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Import local modules
 from src.core.constants import AVAILABLE_STRATEGIES
+from src.core.data import DataLoader  # Import DataLoader to get available tickers
 from src.ui.callbacks.strategy_callbacks import register_strategy_callbacks
 from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
 from src.ui.layouts.strategy_config import create_strategy_section
@@ -60,6 +62,15 @@ def create_app_layout() -> html.Div:
     try:
         logger.info("Creating application layout")
         
+        # Load available tickers from the data loader
+        try:
+            data_loader = DataLoader()
+            available_tickers = data_loader.get_available_tickers()
+            logger.info(f"Loaded {len(available_tickers)} available tickers")
+        except Exception as e:
+            logger.error(f"Error loading available tickers: {e}")
+            available_tickers = []
+        
         layout = html.Div([
             # Navbar
             dbc.Navbar(
@@ -93,7 +104,7 @@ def create_app_layout() -> html.Div:
                 dbc.Row([
                     # Left panel: Strategy configuration
                     dbc.Col([
-                        create_strategy_section(AVAILABLE_STRATEGIES)
+                        create_strategy_section(AVAILABLE_STRATEGIES, available_tickers)
                     ], md=4, lg=3),
                     
                     # Right panel: Results display

@@ -3,7 +3,7 @@ import inspect
 from dash import html, dcc
 import logging
 import traceback
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -106,30 +106,55 @@ def generate_strategy_parameters(strategy_class) -> html.Div:
         logger.error(f"Error inspecting strategy parameters: {e}", exc_info=True)
         return html.P(f"Error loading parameters: {str(e)}", className="text-danger")
 
-def create_strategy_section(available_strategies: Dict[str, Any]) -> dbc.Card:
+def create_ticker_checklist(available_tickers: List[str] = None) -> html.Div:
     """
-    Creates the complete strategy selection and configuration section.
+    Creates a checklist component for ticker selection.
     
     Args:
-        available_strategies: Dictionary of strategy names and their classes
+        available_tickers: List of available ticker symbols
         
     Returns:
-        dbc.Card: A card component containing strategy selection and configuration
+        html.Div: A container with the ticker selection checklist
+    """
+    if not available_tickers:
+        available_tickers = []
+    
+    return html.Div([
+        html.Label("Select Tickers", className="form-label"),
+        dcc.Checklist(
+            id="ticker-checklist",
+            options=[{"label": ticker, "value": ticker} for ticker in available_tickers],
+            value=[],  # Default: no tickers selected
+            className="ticker-checklist",
+            labelStyle={"display": "block", "margin-bottom": "5px"}
+        ),
+        html.Small(
+            "Select one or more tickers to include in the backtest.",
+            className="text-muted d-block mt-1"
+        )
+    ], className="mb-3")
+
+def create_strategy_section(available_strategies: Dict[str, Any], available_tickers: List[str] = None) -> dbc.Card:
+    """
+    Creates the strategy configuration UI section.
+    
+    Args:
+        available_strategies: Dictionary of available trading strategies
+        available_tickers: List of available ticker symbols
+        
+    Returns:
+        dbc.Card: A card component containing the strategy selection and configuration UI
     """
     return dbc.Card([
-        dbc.CardHeader("Configuration"),
+        dbc.CardHeader("Strategy Configuration"),
         dbc.CardBody([
-            html.H6("Select Strategy", className="mb-2"),
+            html.Label("Strategy", className="form-label"),
             get_strategy_dropdown(available_strategies),
             
-            html.H6("Strategy Parameters", className="mt-3 mb-2"),
-            html.Div(
-                id="strategy-parameters-container", 
-                className="mb-3 border rounded p-2 bg-secondary", 
-                style={'minHeight': '80px'}
-            ),
+            # Ticker selection with checklist instead of text input
+            create_ticker_checklist(available_tickers),
             
-            html.H6("Tickers & Risk Management", className="mt-3 mb-2"),
-            html.Div(id="risk-management-container")
+            html.Label("Strategy Parameters", className="form-label"),
+            html.Div(id="strategy-parameters")
         ])
-    ], className="mb-4")
+    ])

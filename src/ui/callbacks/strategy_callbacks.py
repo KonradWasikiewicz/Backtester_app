@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 # Import local modules
 from src.core.constants import AVAILABLE_STRATEGIES
+from src.core.data import DataLoader
 from src.ui.layouts.strategy_config import generate_strategy_parameters
 from src.ui.layouts.risk_management import create_risk_management_section
 
@@ -61,7 +62,11 @@ def register_strategy_callbacks(app):
             return "Please select a strategy first."
         
         try:
-            return create_risk_management_section()
+            # Get available tickers from the DataLoader
+            data_loader = DataLoader()
+            available_tickers = data_loader.get_available_tickers()
+            logger.info(f"Found {len(available_tickers)} tickers for UI: {available_tickers[:5]}...")
+            return create_risk_management_section(available_tickers)
         except Exception as e:
             logger.error(f"Error updating risk management UI: {e}", exc_info=True)
             return f"Error loading risk management: {str(e)}"

@@ -76,17 +76,20 @@ class BacktestService:
             self.current_results = results
             self.current_stats = stats
             
+            # Sprawdzanie czy operacja zakończyła się sukcesem
+            success = signals is not None and results is not None and stats is not None
+            
             return {
-                "success": signals is not None and results is not None and stats is not None,
-                "signals": signals is not None,
-                "results": results is not None,
-                "stats": stats is not None,
+                "success": success,
+                "signals": signals if signals is not None else {},  # Zwracamy faktyczne dane sygnałów
+                "results": results if results is not None else {},
+                "stats": stats if stats is not None else {},
                 "tickers": tickers
             }
         
         except Exception as e:
             logger.error(f"Error running backtest: {e}", exc_info=True)
-            return {"success": False, "error": str(e)}
+            return {"success": False, "error": str(e), "signals": {}, "results": {}, "stats": {}}
     
     def get_performance_metrics(self) -> Dict[str, Any]:
         """
@@ -169,12 +172,12 @@ class BacktestService:
             return None
         
         try:
-            portfolio_series = self.current_results["Portfolio_Value"]
+            portfolio_values = self.current_results["Portfolio_Value"]
             benchmark_series = self.current_results.get("Benchmark")
             
             return self.visualizer.create_equity_curve_figure(
-                portfolio_series=portfolio_series,
-                benchmark_series=benchmark_series,
+                portfolio_values=portfolio_values,
+                benchmark_values=benchmark_series,
                 chart_type=chart_type,
                 initial_capital=self.backtest_manager.initial_capital
             )
@@ -249,8 +252,8 @@ class BacktestService:
                     "exit_date": trade["exit_date"].strftime("%Y-%m-%d"),
                     "entry_price": f"${trade['entry_price']:.2f}",
                     "exit_price": f"${trade['exit_price']:.2f}",
-                    "profit_loss": f"${trade['profit_loss']:.2f}",
-                    "profit_loss_pct": f"{trade['profit_loss_percent']:.2f}%",
+                    "profit_loss": f"${trade['pnl']:.2f}",
+                    "profit_loss_pct": f"{trade['pnl_pct']:.2f}%",
                     "shares": f"{trade['shares']:.0f}",
                     "reason": trade["exit_reason"].capitalize()
                 }

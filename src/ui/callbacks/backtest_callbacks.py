@@ -42,7 +42,7 @@ def register_backtest_callbacks(app):
          Output("ticker-selector", "value")],
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-selector", "value"),
-         State("ticker-input", "value"),
+         State("ticker-checklist", "value"),  # Updated: use checkbox values instead of text input
          State("date-range-picker", "start_date"),
          State("date-range-picker", "end_date"),
          # Strategy parameters pattern matching state
@@ -56,7 +56,7 @@ def register_backtest_callbacks(app):
          State("max-positions", "value"),
          State("use-market-filter", "value")]
     )
-    def run_backtest(n_clicks, strategy_type, ticker_input, start_date, end_date,
+    def run_backtest(n_clicks, strategy_type, selected_tickers, start_date, end_date,
                     strategy_param_values, strategy_param_ids, position_sizing, risk_per_trade,
                     stop_loss_type, stop_loss_value, max_positions, use_market_filter):
         """
@@ -85,10 +85,10 @@ def register_backtest_callbacks(app):
             )
         
         # Check required inputs
-        if not strategy_type or not ticker_input or not start_date or not end_date:
+        if not strategy_type or not selected_tickers or not start_date or not end_date:
             missing = []
             if not strategy_type: missing.append("strategy")
-            if not ticker_input: missing.append("tickers")
+            if not selected_tickers: missing.append("tickers")
             if not start_date or not end_date: missing.append("date range")
             
             error_msg = f"Please provide required inputs: {', '.join(missing)}"
@@ -100,10 +100,10 @@ def register_backtest_callbacks(app):
                 None
             )
         
-        # Process ticker input
-        tickers = [t.strip().upper() for t in ticker_input.split(",") if t.strip()]
+        # Process tickers - now tickers are already a list from the checklist
+        tickers = selected_tickers  # These are already in uppercase from the DataLoader
         if not tickers:
-            error_msg = "Please enter at least one valid ticker symbol."
+            error_msg = "Please select at least one ticker."
             return (
                 html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
                 {"display": "none"},
@@ -121,14 +121,32 @@ def register_backtest_callbacks(app):
                 strategy_params[param_name] = param_value
             
             # Process risk parameters
-            risk_params = {
-                "position_sizing_method": position_sizing,
-                "risk_per_trade": risk_per_trade if position_sizing != "equal" else None,
-                "stop_loss_type": stop_loss_type,
-                "stop_loss_value": stop_loss_value if stop_loss_type != "none" else None,
-                "max_positions": max_positions,
-                "use_market_filter": bool(use_market_filter)
-            }
+            risk_params = {}
+            
+            # Mapowanie position_sizing_method na parametry RiskManager
+            if position_sizing == "risk":
+                risk_params["stop_loss_pct"] = float(risk_per_trade) / 100.0 if risk_per_trade is not None else 0.02
+            elif position_sizing == "equal":
+                # Dla equal sizing używamy minimalnego ryzyka i dostosowujemy max_position_size
+                risk_params["stop_loss_pct"] = 0.02  # domyślna wartość
+                risk_params["max_position_size"] = 1.0 / float(max_positions) if max_positions > 0 else 0.2
+            
+            # Mapowanie typu stop-loss
+            if stop_loss_type == "fixed":
+                risk_params["stop_loss_pct"] = float(stop_loss_value) / 100.0 if stop_loss_value is not None else 0.02
+            elif stop_loss_type == "trailing":
+                risk_params["use_trailing_stop"] = True
+                risk_params["trailing_stop_activation"] = 0.02  # 2% domyślnie
+                risk_params["trailing_stop_distance"] = float(stop_loss_value) / 100.0 if stop_loss_value is not None else 0.015
+            elif stop_loss_type == "none":
+                # Używamy bardzo dużej wartości jeśli nie ma stopu
+                risk_params["stop_loss_pct"] = 0.99
+            
+            # Ustawienie maksymalnej liczby pozycji
+            risk_params["max_open_positions"] = int(max_positions) if max_positions is not None else 5
+            
+            # Filtr rynkowy
+            risk_params["use_market_filter"] = bool(use_market_filter)
             
             # Show a loading message
             status_div = html.Div([

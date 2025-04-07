@@ -1,31 +1,10 @@
 import dash_bootstrap_components as dbc
 from dash import html, dcc
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-def create_ticker_input() -> html.Div:
-    """
-    Creates ticker input field with explanatory text.
-    
-    Returns:
-        html.Div: Container with ticker input
-    """
-    return html.Div([
-        dbc.Label("Tickers (comma-separated)", className="mb-1"),
-        dbc.Input(
-            id="ticker-input", 
-            type="text", 
-            placeholder="e.g. AAPL, MSFT, GOOG", 
-            className="mb-2"
-        ),
-        html.Small(
-            "Enter ticker symbols separated by commas for backtest", 
-            className="text-muted d-block mb-3"
-        )
-    ])
 
 def create_date_range_selector() -> html.Div:
     """
@@ -142,15 +121,12 @@ def create_risk_parameters() -> html.Div:
 
 def create_risk_management_section() -> html.Div:
     """
-    Creates the complete risk management UI section including tickers and dates.
+    Creates the complete risk management UI section including dates and risk parameters.
     
     Returns:
-        html.Div: Container with the full risk management section
+        html.Div: Container with the risk management section
     """
     return html.Div([
-        # Ticker input
-        create_ticker_input(),
-        
         # Date range selector
         create_date_range_selector(),
         
