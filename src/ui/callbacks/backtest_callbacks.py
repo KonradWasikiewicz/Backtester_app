@@ -43,8 +43,8 @@ def register_backtest_callbacks(app):
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-selector", "value"),
          State("ticker-checklist", "value"),  # Updated: use checkbox values instead of text input
-         State("date-range-picker", "start_date"),
-         State("date-range-picker", "end_date"),
+         State("backtest-daterange", "start_date"),
+         State("backtest-daterange", "end_date"),
          # Strategy parameters pattern matching state
          State({"type": "strategy-param", "index": ALL}, "value"),
          State({"type": "strategy-param", "index": ALL}, "id"),
@@ -123,35 +123,34 @@ def register_backtest_callbacks(app):
             # Process risk parameters
             risk_params = {}
             
-            # Mapowanie position_sizing_method na parametry RiskManager
+            # Map position_sizing_method to RiskManager parameters
             if position_sizing == "risk":
                 risk_params["stop_loss_pct"] = float(risk_per_trade) / 100.0 if risk_per_trade is not None else 0.02
             elif position_sizing == "equal":
-                # Dla equal sizing używamy minimalnego ryzyka i dostosowujemy max_position_size
-                risk_params["stop_loss_pct"] = 0.02  # domyślna wartość
+                # For equal sizing, use minimum risk and adjust max_position_size
+                risk_params["stop_loss_pct"] = 0.02  # default value
                 risk_params["max_position_size"] = 1.0 / float(max_positions) if max_positions > 0 else 0.2
             
-            # Mapowanie typu stop-loss
+            # Map stop-loss type
             if stop_loss_type == "fixed":
                 risk_params["stop_loss_pct"] = float(stop_loss_value) / 100.0 if stop_loss_value is not None else 0.02
             elif stop_loss_type == "trailing":
                 risk_params["use_trailing_stop"] = True
-                risk_params["trailing_stop_activation"] = 0.02  # 2% domyślnie
+                risk_params["trailing_stop_activation"] = 0.02  # 2% default
                 risk_params["trailing_stop_distance"] = float(stop_loss_value) / 100.0 if stop_loss_value is not None else 0.015
             elif stop_loss_type == "none":
-                # Używamy bardzo dużej wartości jeśli nie ma stopu
+                # Use a very large value if no stop
                 risk_params["stop_loss_pct"] = 0.99
             
-            # Ustawienie maksymalnej liczby pozycji
+            # Set maximum number of positions
             risk_params["max_open_positions"] = int(max_positions) if max_positions is not None else 5
             
-            # Filtr rynkowy
+            # Market filter
             risk_params["use_market_filter"] = bool(use_market_filter)
             
-            # Show a loading message
+            # Fixed: Show a loading message with proper spinner implementation
             status_div = html.Div([
-                # Używamy spinner_class_name zamiast className dla komponentu dbc.Spinner
-                dbc.Spinner(size="sm", color="primary", spinner_class_name="me-2"),
+                html.I(className="fas fa-spinner fa-spin me-2"),
                 "Running backtest..."
             ], className="text-primary")
             

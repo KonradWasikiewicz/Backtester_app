@@ -338,7 +338,8 @@ class BacktestVisualizer:
             daily_returns = portfolio_values.pct_change().fillna(0)
             
             # Resample to month end and calculate monthly returns
-            monthly_returns = (1 + daily_returns).resample('M').prod() - 1
+            # Use 'ME' instead of deprecated 'M'
+            monthly_returns = (1 + daily_returns).resample('ME').prod() - 1
             
             # Create dataframe with year and month
             returns_df = pd.DataFrame({

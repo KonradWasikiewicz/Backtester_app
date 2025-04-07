@@ -134,6 +134,58 @@ def create_ticker_checklist(available_tickers: List[str] = None) -> html.Div:
         )
     ], className="mb-3")
 
+def create_backtest_parameters() -> html.Div:
+    """
+    Creates a section for backtest configuration parameters.
+    
+    Returns:
+        html.Div: Container with backtest parameter inputs
+    """
+    return html.Div([
+        html.Hr(className="my-3"),
+        html.H5("Backtest Parameters", className="mb-3"),
+        
+        # Date Range input
+        dbc.Row([
+            dbc.Label("Date Range", width=4, className="col-form-label"),
+            dbc.Col([
+                dcc.DatePickerRange(
+                    id="backtest-daterange",
+                    start_date_placeholder_text="Start Date",
+                    end_date_placeholder_text="End Date",
+                    className="w-100"
+                )
+            ], width=8)
+        ], className="mb-3 align-items-center"),
+        
+        # Initial capital input
+        dbc.Row([
+            dbc.Label("Initial Capital", width=4, className="col-form-label"),
+            dbc.Col([
+                dbc.Input(
+                    id="backtest-capital",
+                    type="number",
+                    value=10000,
+                    min=1,
+                    step=1000
+                )
+            ], width=8)
+        ], className="mb-3 align-items-center"),
+        
+        # Run backtest button
+        dbc.Button(
+            [html.I(className="fas fa-play me-2"), "Run Backtest"],
+            id="run-backtest-button",  # Zmieniono id z "run-backtest" na "run-backtest-button"
+            color="primary",
+            className="w-100 mt-2"
+        ),
+        
+        # Status indicator for the backtest
+        html.Div([
+            html.Div(id="backtest-status", className="mt-2")
+        ])
+    ])
+
 def create_strategy_section(available_strategies: Dict[str, Any], available_tickers: List[str] = None) -> dbc.Card:
     """
     Creates the strategy configuration UI section.
@@ -155,6 +207,9 @@ def create_strategy_section(available_strategies: Dict[str, Any], available_tick
             create_ticker_checklist(available_tickers),
             
             html.Label("Strategy Parameters", className="form-label"),
-            html.Div(id="strategy-parameters")
+            html.Div(id="strategy-parameters"),
+            
+            # Add backtest parameters section with Run Backtest button
+            create_backtest_parameters()
         ])
     ])

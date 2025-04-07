@@ -18,6 +18,7 @@ from src.ui.callbacks.strategy_callbacks import register_strategy_callbacks
 from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
 from src.ui.layouts.strategy_config import create_strategy_section
 from src.ui.layouts.results_display import create_results_section
+from src.ui.layouts.risk_management import create_risk_management_section  # Add this import
 
 def create_app(debug: bool = False) -> dash.Dash:
     """
@@ -47,7 +48,7 @@ def create_app(debug: bool = False) -> dash.Dash:
     # Create application layout
     app.layout = create_app_layout()
     
-    # Register all callbacks
+    # Register all callbacks AFTER the layout is created
     register_callbacks(app)
     
     return app
@@ -70,6 +71,9 @@ def create_app_layout() -> html.Div:
         except Exception as e:
             logger.error(f"Error loading available tickers: {e}")
             available_tickers = []
+        
+        # Create risk management section first to ensure it's initialized
+        risk_management = create_risk_management_section()
         
         layout = html.Div([
             # Navbar
@@ -104,7 +108,9 @@ def create_app_layout() -> html.Div:
                 dbc.Row([
                     # Left panel: Strategy configuration
                     dbc.Col([
-                        create_strategy_section(AVAILABLE_STRATEGIES, available_tickers)
+                        create_strategy_section(AVAILABLE_STRATEGIES, available_tickers),
+                        html.Div(className="my-4"),  # Add spacing
+                        risk_management  # Use the pre-created risk management section
                     ], md=4, lg=3),
                     
                     # Right panel: Results display
