@@ -1,8 +1,10 @@
-from dash import Input, Output, State, callback_context, dash, exceptions
+from dash import Input, Output, State, callback_context, dash, exceptions, ALL
 import dash_bootstrap_components as dbc
 import logging
 from typing import Dict, List, Any
 import pandas as pd
+import base64
+import io
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -132,7 +134,8 @@ def register_strategy_callbacks(app):
          Input("slider-start-date-picker", "date"),
          Input("slider-end-date-picker", "date")],
         [State("backtest-date-slider", "min"),
-         State("backtest-date-slider", "max")]
+         State("backtest-date-slider", "max")],
+        prevent_initial_call=True
     )
     def update_all_date_components(date_range_timestamps, drag_value, start_date_picker, end_date_picker, min_allowed, max_allowed):
         """
@@ -306,3 +309,58 @@ def register_strategy_callbacks(app):
         except Exception as e:
             logger.error(f"Error updating slider from date pickers: {e}")
             return current_value
+
+    # Ticker selection callbacks
+    @app.callback(
+        [Output({"type": "ticker-checkbox", "index": ALL}, "value"),
+         Output({"type": "ticker-checkbox", "index": ALL}, "style")],
+        [Input("select-all-tickers", "n_clicks"),
+         Input("clear-all-tickers", "n_clicks"),
+         Input("ticker-search", "value")],
+        [State({"type": "ticker-checkbox", "index": ALL}, "id")]
+    )
+    def handle_ticker_selection(select_clicks, clear_clicks, search_term, checkbox_ids):
+        """
+        Handle ticker selection and filtering.
+        """
+        ctx = callback_context
+        if not ctx.triggered:
+            raise dash.exceptions.PreventUpdate
+        
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        
+        # Initialize values and styles
+        values = []
+        styles = []
+        
+        # Handle search filtering
+        if trigger_id == "ticker-search":
+            for ticker in checkbox_ids:
+                if not search_term or search_term.lower() in ticker["index"].lower():
+                    styles.append({"display": "block"})
+                else:
+                    styles.append({"display": "none"})
+            return [dash.no_update] * len(checkbox_ids), styles
+        
+        # Handle select/clear all
+        if trigger_id == "select-all-tickers":
+            values = [True] * len(checkbox_ids)
+        elif trigger_id == "clear-all-tickers":
+            values = [False] * len(checkbox_ids)
+        
+        return values, [dash.no_update] * len(checkbox_ids)
+    
+    @app.callback(
+        Output("import-tickers-modal", "is_open"),
+        [Input("import-tickers", "n_clicks"),
+         Input("import-tickers-close", "n_clicks"),
+         Input("import-tickers-submit", "n_clicks")],
+        [State("import-tickers-modal", "is_open")]
+    )
+    def toggle_import_modal(open_clicks, close_clicks, submit_clicks, is_open):
+        """
+        Toggle the import tickers modal.
+        """
+        if open_clicks or close_clicks or submit_clicks:
+            return not is_open
+        return is_open

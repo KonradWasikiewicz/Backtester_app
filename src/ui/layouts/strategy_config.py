@@ -136,28 +136,72 @@ def generate_strategy_parameters(strategy_class) -> html.Div:
 
 def create_ticker_checklist(available_tickers: List[str] = None) -> html.Div:
     """
-    Creates a checklist component for ticker selection.
+    Creates a checklist component for ticker selection with optimized layout.
     
     Args:
         available_tickers: List of available ticker symbols
         
     Returns:
-        html.Div: A container with the ticker selection checklist
+        html.Div: A container with the ticker selection interface
     """
     if not available_tickers:
         available_tickers = []
     
+    # Calculate number of columns and rows for the grid
+    num_columns = 4
+    num_rows = (len(available_tickers) + num_columns - 1) // num_columns
+    
+    # Find the longest ticker for column width
+    max_ticker_length = max(len(ticker) for ticker in available_tickers) if available_tickers else 0
+    ticker_col_width = f"{max_ticker_length * 0.7}em"  # Adjust multiplier based on font size
+    
+    # Create grid layout
+    grid_items = []
+    for i in range(num_rows):
+        row_items = []
+        for j in range(num_columns):
+            idx = i * num_columns + j
+            if idx < len(available_tickers):
+                ticker = available_tickers[idx]
+                row_items.append(
+                    dbc.Col([
+                        html.Div([
+                            html.Span(ticker, style={"width": ticker_col_width, "display": "inline-block"}),
+                            dbc.Checkbox(
+                                id={"type": "ticker-checkbox", "index": ticker},
+                                value=False,
+                                className="ms-2"
+                            )
+                        ], className="d-flex align-items-center")
+                    ], width="auto")
+                )
+            else:
+                row_items.append(dbc.Col(width="auto"))
+        grid_items.append(dbc.Row(row_items, className="mb-2"))
+    
     return html.Div(children=[
         html.Label("Select Tickers", className="form-label"),
-        dcc.Checklist(
-            id="ticker-checklist",
-            options=[{"label": ticker, "value": ticker} for ticker in available_tickers],
-            value=[],  # Default: no tickers selected
-            className="ticker-checklist",
-            labelStyle={"display": "block", "margin-bottom": "5px"}
+        
+        # Search input
+        dbc.Input(
+            id="ticker-search",
+            type="text",
+            placeholder="Search tickers...",
+            className="mb-2",
+            debounce=True
         ),
+        
+        # Ticker grid
+        html.Div(grid_items, className="ticker-grid mb-3", style={"max-height": "300px", "overflow-y": "auto"}),
+        
+        # Quick actions
+        html.Div([
+            dbc.Button("Select All", id="select-all-tickers", color="primary", size="sm", className="me-2"),
+            dbc.Button("Clear All", id="clear-all-tickers", color="secondary", size="sm"),
+        ], className="mt-2"),
+        
         html.Small(
-            "Select one or more tickers to include in the backtest.",
+            "Select one or more tickers to include in the backtest. Use search to filter tickers.",
             className="text-muted d-block mt-1"
         )
     ], className="mb-3")
@@ -329,19 +373,72 @@ def create_strategy_section(available_strategies: Dict[str, Any], available_tick
     Returns:
         dbc.Card: A card component containing the strategy selection and configuration UI
     """
-    return dbc.Card(children=[
-        dbc.CardHeader("Strategy Configuration"),
-        dbc.CardBody(children=[
-            html.Label("Strategy", className="form-label"),
-            get_strategy_dropdown(available_strategies),
-            
-            # Ticker selection with checklist instead of text input
-            create_ticker_checklist(available_tickers),
-            
-            html.Label("Strategy Parameters", className="form-label"),
-            html.Div(id="strategy-parameters"),
-            
-            # Add backtest parameters section with Run Backtest button
-            create_backtest_parameters()
-        ])
+    return html.Div([
+        dbc.Card(children=[
+            dbc.CardHeader("Strategy Configuration"),
+            dbc.CardBody(children=[
+                html.Label("Strategy", className="form-label"),
+                get_strategy_dropdown(available_strategies),
+                
+                # Ticker selection with new interface
+                create_ticker_checklist(available_tickers),
+                
+                html.Label("Strategy Parameters", className="form-label"),
+                html.Div(id="strategy-parameters"),
+                
+                # Add backtest parameters section with Run Backtest button
+                create_backtest_parameters()
+            ])
+        ]),
+        
+        # Import tickers modal
+        create_import_tickers_modal()
     ])
+
+def create_import_tickers_modal() -> dbc.Modal:
+    """
+    Creates a modal for importing tickers from a file or text.
+    """
+    return dbc.Modal([
+        dbc.ModalHeader("Import Tickers"),
+        dbc.ModalBody([
+            dbc.Tabs([
+                dbc.Tab([
+                    html.Div([
+                        dbc.Textarea(
+                            id="import-tickers-text",
+                            placeholder="Enter tickers, one per line",
+                            className="mb-3",
+                            style={"height": "200px"}
+                        ),
+                        dbc.Button("Import", id="import-tickers-submit", color="primary")
+                    ])
+                ], label="Text Input"),
+                dbc.Tab([
+                    html.Div([
+                        dcc.Upload(
+                            id="import-tickers-file",
+                            children=html.Div([
+                                "Drag and drop or ",
+                                html.A("select a file")
+                            ]),
+                            style={
+                                "width": "100%",
+                                "height": "200px",
+                                "lineHeight": "200px",
+                                "borderWidth": "1px",
+                                "borderStyle": "dashed",
+                                "borderRadius": "5px",
+                                "textAlign": "center"
+                            },
+                            multiple=False
+                        ),
+                        html.Div(id="import-tickers-file-output", className="mt-3")
+                    ])
+                ], label="File Upload")
+            ])
+        ]),
+        dbc.ModalFooter([
+            dbc.Button("Close", id="import-tickers-close", color="secondary")
+        ])
+    ], id="import-tickers-modal", size="lg")

@@ -30,26 +30,43 @@ def create_app(debug: bool = False) -> dash.Dash:
     Returns:
         dash.Dash: The configured Dash application
     """
-    # Set up the Dash app with Bootstrap theme
+    # Initialize the Dash app with Bootstrap theme
     app = dash.Dash(
         __name__,
-        external_stylesheets=[
-            dbc.themes.DARKLY,  # Dark theme
-            dbc.icons.FONT_AWESOME  # Icons
-        ],
+        external_stylesheets=[dbc.themes.BOOTSTRAP],
+        suppress_callback_exceptions=True,
         meta_tags=[
             {"name": "viewport", "content": "width=device-width, initial-scale=1"}
-        ],
-        suppress_callback_exceptions=True
+        ]
     )
     
-    app.title = "Trading Strategy Backtester"
+    # Configure the app layout
+    app.layout = dbc.Container([
+        # App title centered
+        html.Div([
+            html.H1("Backtester", className="text-center mb-4")
+        ], className="mt-4"),
+        
+        # Main content
+        dbc.Row([
+            # Strategy configuration
+            dbc.Col([
+                create_strategy_section(AVAILABLE_STRATEGIES, DataLoader().get_available_tickers())
+            ], width=12, lg=6),
+            
+            # Risk management
+            dbc.Col([
+                html.Div(id="risk-management-container")
+            ], width=12, lg=6)
+        ]),
+        
+        # Results section
+        html.Div(id="results-container", className="mt-4")
+    ], fluid=True)
     
-    # Create application layout
-    app.layout = create_app_layout()
-    
-    # Register all callbacks AFTER the layout is created
-    register_callbacks(app)
+    # Register all callbacks
+    register_strategy_callbacks(app)
+    register_backtest_callbacks(app)
     
     return app
 
