@@ -39,28 +39,26 @@ def register_backtest_callbacks(app):
          Output("results-section", "style"),
          Output("no-results-placeholder", "style"),
          Output("ticker-selector", "options"),
-         Output("ticker-selector", "value")],
+         Output("ticker-selector", "value", allow_duplicate=True)],
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-selector", "value"),
-         State("ticker-checklist", "value"),
+         State("ticker-selector", "value"),
          # Date inputs - we now use the direct date pickers
          State("slider-start-date-picker", "date"),
          State("slider-end-date-picker", "date"),
          # Strategy parameters pattern matching state
          State({"type": "strategy-param", "index": ALL}, "value"),
          State({"type": "strategy-param", "index": ALL}, "id"),
-         # Risk parameters
-         State("position-sizing-selector", "value"),
-         State("risk-per-trade", "value"),
-         State("stop-loss-selector", "value"),
+         # Risk parameters - używamy tylko tych, które istnieją w layoucie
+         State("max-risk-per-trade", "value"),
+         State("stop-loss-type", "value"),
          State("stop-loss-value", "value"),
-         State("max-positions", "value"),
-         State("use-market-filter", "value")]
+         State("max-position-size", "value")]
     )
     def run_backtest(n_clicks, strategy_type, selected_tickers, 
                     start_date, end_date,
-                    strategy_param_values, strategy_param_ids, position_sizing, risk_per_trade,
-                    stop_loss_type, stop_loss_value, max_positions, use_market_filter):
+                    strategy_param_values, strategy_param_ids, risk_per_trade,
+                    stop_loss_type, stop_loss_value, max_positions):
         """
         Execute backtest when the Run Backtest button is clicked.
         
@@ -102,8 +100,8 @@ def register_backtest_callbacks(app):
                 None
             )
         
-        # Process tickers - now tickers are already a list from the checklist
-        tickers = selected_tickers  # These are already in uppercase from the DataLoader
+        # Process tickers - now tickers are already a list from the dropdown
+        tickers = selected_tickers if isinstance(selected_tickers, list) else [selected_tickers]
         if not tickers:
             error_msg = "Please select at least one ticker."
             return (
@@ -122,33 +120,28 @@ def register_backtest_callbacks(app):
                 param_value = strategy_param_values[i]
                 strategy_params[param_name] = param_value
             
-            # Process risk parameters
+            # Process risk parameters - uproszczona logika
             risk_params = {}
             
-            # Map position_sizing_method to RiskManager parameters
-            if position_sizing == "risk":
-                risk_params["stop_loss_pct"] = float(risk_per_trade) / 100.0 if risk_per_trade is not None else 0.02
-            elif position_sizing == "equal":
-                # For equal sizing, use minimum risk and adjust max_position_size
-                risk_params["stop_loss_pct"] = 0.02  # default value
-                risk_params["max_position_size"] = 1.0 / float(max_positions) if max_positions > 0 else 0.2
-            
-            # Map stop-loss type
-            if stop_loss_type == "fixed":
+            # Set stop loss parameters
+            if stop_loss_type == "fixed" or stop_loss_type == "percent":
                 risk_params["stop_loss_pct"] = float(stop_loss_value) / 100.0 if stop_loss_value is not None else 0.02
             elif stop_loss_type == "trailing":
                 risk_params["use_trailing_stop"] = True
                 risk_params["trailing_stop_activation"] = 0.02  # 2% default
                 risk_params["trailing_stop_distance"] = float(stop_loss_value) / 100.0 if stop_loss_value is not None else 0.015
-            elif stop_loss_type == "none":
-                # Use a very large value if no stop
-                risk_params["stop_loss_pct"] = 0.99
+            elif stop_loss_type == "none" or stop_loss_type is None:
+                risk_params["stop_loss_pct"] = 0.99  # Use large value if none
             
-            # Set maximum number of positions
-            risk_params["max_open_positions"] = int(max_positions) if max_positions is not None else 5
+            # Risk per trade
+            if risk_per_trade is not None:
+                risk_params["risk_per_trade_pct"] = float(risk_per_trade) / 100.0
             
-            # Market filter
-            risk_params["use_market_filter"] = bool(use_market_filter)
+            # Max positions
+            if max_positions is not None:
+                risk_params["max_open_positions"] = int(max_positions)
+            else:
+                risk_params["max_open_positions"] = 5  # Default
             
             # Fixed: Show a loading message with proper spinner implementation
             status_div = html.Div([

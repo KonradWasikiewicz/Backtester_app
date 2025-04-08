@@ -168,10 +168,11 @@ try:
     patch_applied = apply_format_patches()
     if patch_applied:
         logger.info("Runtime format validation is active")
-        
+    
     # Add more specific exception handlers
     try:
-        app = create_app(debug=debug_mode)
+        # Dodaję suppress_callback_exceptions=True, żeby pozwolić na duplikujące się callbacki
+        app = create_app(debug=debug_mode, suppress_callback_exceptions=True)
     except ValueError as ve:
         if "invalid format" in str(ve).lower():
             logger.error("Format specification error in DataTable. Check all format strings in your table definitions.")

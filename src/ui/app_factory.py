@@ -20,12 +20,13 @@ from src.ui.layouts.strategy_config import create_strategy_config_section
 from src.ui.layouts.results_display import create_results_section
 from src.ui.layouts.risk_management import create_risk_management_section
 
-def create_app(debug: bool = False) -> dash.Dash:
+def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -> dash.Dash:
     """
     Creates and configures the Dash application.
     
     Args:
         debug: Whether to run the app in debug mode
+        suppress_callback_exceptions: Whether to suppress callback exceptions
         
     Returns:
         dash.Dash: Configured Dash application instance
@@ -34,7 +35,7 @@ def create_app(debug: bool = False) -> dash.Dash:
     app = dash.Dash(
         __name__,
         external_stylesheets=[dbc.themes.DARKLY],
-        suppress_callback_exceptions=True,
+        suppress_callback_exceptions=suppress_callback_exceptions,
         meta_tags=[
             {"name": "viewport", "content": "width=device-width, initial-scale=1"}
         ]
@@ -98,9 +99,8 @@ def create_app_layout() -> html.Div:
             logger.error(f"Error loading available tickers: {e}")
             available_tickers = []
         
-        # Create risk management section first to ensure it's initialized
-        risk_management = create_risk_management_section()
-        
+        # UWAGA: Ta funkcja nie jest faktycznie używana w aplikacji
+        # Główny layout jest definiowany bezpośrednio w create_app
         layout = html.Div([
             # Navbar
             dbc.Navbar(
@@ -134,9 +134,10 @@ def create_app_layout() -> html.Div:
                 dbc.Row([
                     # Left panel: Strategy configuration
                     dbc.Col([
-                        create_strategy_section(AVAILABLE_STRATEGIES, available_tickers),
-                        html.Div(className="my-4"),  # Add spacing
-                        risk_management  # Use the pre-created risk management section
+                        create_strategy_config_section(available_tickers),
+                        # Spacer
+                        html.Div(className="my-4")
+                        # Risk management section jest już zdefiniowany w create_app
                     ], md=4, lg=3),
                     
                     # Right panel: Results display

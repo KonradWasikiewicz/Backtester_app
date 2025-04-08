@@ -5,13 +5,27 @@ import logging
 import traceback
 from typing import Dict, Any, List
 import pandas as pd
+import os
+import sys
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Import DataLoader and constants
-from src.core.data import DataLoader
-from src.core.constants import AVAILABLE_STRATEGIES
+# Dodanie ścieżki głównego katalogu projektu do sys.path dla importów
+try:
+    # Próba importu z src (dla pełnej aplikacji)
+    from src.core.data import DataLoader
+    from src.core.constants import AVAILABLE_STRATEGIES
+except ModuleNotFoundError:
+    # Jeśli nie działa, dostosuj ścieżkę i zaimportuj ponownie
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_dir, '..', '..', '..'))
+    if project_root not in sys.path:
+        sys.path.append(project_root)
+    
+    # Ponowna próba importu
+    from src.core.data import DataLoader
+    from src.core.constants import AVAILABLE_STRATEGIES
 
 def get_strategy_dropdown(available_strategies: Dict[str, Any]) -> dcc.Dropdown:
     """
@@ -265,97 +279,114 @@ def create_backtest_parameters() -> html.Div:
         html.Hr(className="my-3"),
         html.H5("Backtest Parameters", className="mb-3"),
         
-        # Date Range Slider (default method)
+        # Date Range Selection - nowoczesny interfejs z ulepszonym stylem
         dbc.Row(children=[
-            dbc.Label("Date Range", width=4, className="col-form-label"),
+            dbc.Label("Date Range", width=4, className="col-form-label text-light"),
             dbc.Col(children=[
                 html.Div(children=[
-                    # Uproszczony komponent wyboru zakresu dat
-                    html.Div(children=[
-                        # Slider do wyboru zakresu dat
-                        dcc.RangeSlider(
-                            id="backtest-date-slider",
-                            min=min_date_ts,
-                            max=max_date_ts,
-                            value=[default_start_ts, default_end_ts],
-                            marks=date_marks,
-                            allowCross=False,
-                            className="mt-1 mb-3",
-                            updatemode="drag",
+                    # Slider do wyboru zakresu dat
+                    dcc.RangeSlider(
+                        id="backtest-date-slider",
+                        min=min_date_ts,
+                        max=max_date_ts,
+                        value=[default_start_ts, default_end_ts],
+                        marks=date_marks,
+                        allowCross=False,
+                        className="mt-1 mb-3",
+                        updatemode="drag",
+                    ),
+                    
+                    # Eleganckie wyświetlanie wybranych dat
+                    dbc.Row([
+                        # Data początkowa
+                        dbc.Col([
+                            html.Div([
+                                html.Span("Start Date:", className="text-light small d-block mb-1"),
+                                dbc.Card(
+                                    children=[
+                                        html.Div(
+                                            id="selected-start-date",
+                                            children=default_start.strftime('%Y-%m-%d'),
+                                            className="text-center py-2 fw-bold"
+                                        ),
+                                    ],
+                                    className="bg-dark border-primary",
+                                    style={"cursor": "pointer"}
+                                ),
+                            ], className="mb-2"),
+                        ], width=6),
+                        
+                        # Data końcowa
+                        dbc.Col([
+                            html.Div([
+                                html.Span("End Date:", className="text-light small d-block mb-1"),
+                                dbc.Card(
+                                    children=[
+                                        html.Div(
+                                            id="selected-end-date",
+                                            children=default_end.strftime('%Y-%m-%d'),
+                                            className="text-center py-2 fw-bold"
+                                        ),
+                                    ],
+                                    className="bg-dark border-primary",
+                                    style={"cursor": "pointer"}
+                                ),
+                            ], className="mb-2"),
+                        ], width=6),
+                    ], className="mb-2"),
+                    
+                    # Ukryte pola do wyboru daty
+                    html.Div([
+                        # Picker daty początkowej z poprawionym stylem
+                        dcc.DatePickerSingle(
+                            id='slider-start-date-picker',
+                            date=default_start.strftime('%Y-%m-%d'),
+                            display_format='YYYY-MM-DD',
+                            first_day_of_week=1,  # Monday as first day
+                            min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else default_start.strftime('%Y-%m-%d'),
+                            max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else default_end.strftime('%Y-%m-%d'),
+                            style={"display": "none"},  # Ukryty - będzie używany tylko jako backend
                         ),
                         
-                        # Wyświetlanie wybranych dat i przyciski do wywołania kalendarza
-                        html.Div(children=[
-                            # Data początkowa
-                            dbc.Button(
-                                id="selected-start-date", 
-                                outline=True,
-                                color="primary",
-                                size="sm",
-                                className="me-2",
-                                style={"min-width": "115px"}
-                            ),
-                            
-                            # Separator
-                            html.Span(" do ", className="text-muted mx-2"),
-                            
-                            # Data końcowa
-                            dbc.Button(
-                                id="selected-end-date", 
-                                outline=True,
-                                color="primary",
-                                size="sm",
-                                className="ms-2",
-                                style={"min-width": "115px"}
-                            ),
-                        ], className="d-flex justify-content-center align-items-center mb-4"),
-                        
-                        # Ukryte pola do wyboru daty - wyświetlane tylko po kliknięciu przycisku
-                        html.Div(
-                            children=[
-                                dcc.DatePickerSingle(
-                                    id='slider-start-date-picker',
-                                    date=default_start.strftime('%Y-%m-%d'),
-                                    display_format='YYYY-MM-DD',
-                                    className='d-none',
-                                    with_portal=True,
-                                ),
-                                dcc.DatePickerSingle(
-                                    id='slider-end-date-picker',
-                                    date=default_end.strftime('%Y-%m-%d'),
-                                    display_format='YYYY-MM-DD',
-                                    className='d-none',
-                                    with_portal=True,
-                                ),
-                            ]
+                        # Picker daty końcowej z poprawionym stylem
+                        dcc.DatePickerSingle(
+                            id='slider-end-date-picker',
+                            date=default_end.strftime('%Y-%m-%d'),
+                            display_format='YYYY-MM-DD',
+                            first_day_of_week=1,  # Monday as first day
+                            min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else default_start.strftime('%Y-%m-%d'),
+                            max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else default_end.strftime('%Y-%m-%d'),
+                            style={"display": "none"},  # Ukryty - będzie używany tylko jako backend
                         ),
-                    ], id="date-slider-container"),
-                
-                    # Manual date picker (initially hidden)
-                    html.Div(children=[
-                        dcc.DatePickerRange(
-                            id="backtest-daterange",
-                            start_date=default_start.strftime('%Y-%m-%d'),
-                            end_date=default_end.strftime('%Y-%m-%d'),
-                            start_date_placeholder_text="Start Date",
-                            end_date_placeholder_text="End Date",
-                            className="w-100"
-                        )
-                    ], id="manual-date-container", style={"display": "none"})
-                ]),
+                    ]),
+                    
+                    # Przyciski szybkiego wyboru zakresów dat
+                    dbc.ButtonGroup(
+                        [
+                            dbc.Button("1M", id="date-range-1m", size="sm", outline=True, color="primary", className="px-2"),
+                            dbc.Button("3M", id="date-range-3m", size="sm", outline=True, color="primary", className="px-2"),
+                            dbc.Button("6M", id="date-range-6m", size="sm", outline=True, color="primary", className="px-2"),
+                            dbc.Button("1Y", id="date-range-1y", size="sm", outline=True, color="primary", className="px-2"),
+                            dbc.Button("2Y", id="date-range-2y", size="sm", outline=True, color="primary", className="px-2"),
+                            dbc.Button("All", id="date-range-all", size="sm", outline=True, color="primary", className="px-2"),
+                        ],
+                        className="w-100 mb-2",
+                    ),
+                ], id="date-slider-container"),
             ], width=8)
-        ], className="mb-3 align-items-center"),
+        ], className="mb-4 align-items-start"),
         
         # Initial capital input
         dbc.Row(children=[
-            dbc.Label("Initial Capital", width=4, className="col-form-label"),
+            dbc.Label("Initial Capital", width=4, className="col-form-label text-light"),
             dbc.Col(children=[
                 dbc.Input(
                     id="backtest-capital",
                     type="number",
                     value=10000,
                     min=1,
-                    step=1000
+                    step=1000,
+                    className="bg-dark text-light border-secondary"
                 )
             ], width=8)
         ], className="mb-3 align-items-center"),
@@ -365,12 +396,12 @@ def create_backtest_parameters() -> html.Div:
             children=[html.I(className="fas fa-play me-2"), "Run Backtest"],
             id="run-backtest-button",
             color="primary",
-            className="w-100 mt-2"
+            className="w-100 mt-3"
         ),
         
         # Status indicator for the backtest
         html.Div(children=[
-            html.Div(id="backtest-status", className="mt-2")
+            html.Div(id="backtest-status", className="mt-3")
         ])
     ])
 
@@ -423,9 +454,6 @@ def create_strategy_config_section(available_tickers: List[str] = None) -> dbc.C
             
             # Strategy Parameters
             html.Div(id="strategy-parameters", className="mt-3"),
-            
-            # Risk Management
-            html.Div(id="risk-management-container", className="mt-3"),
             
             # Run Backtest Button
             dbc.Button(

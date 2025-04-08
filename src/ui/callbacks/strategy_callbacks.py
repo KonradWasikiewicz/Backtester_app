@@ -1,4 +1,4 @@
-from dash import html, dcc, callback, Output, Input, State, ALL, MATCH, no_update
+from dash import html, dcc, callback, Output, Input, State, ALL, MATCH, no_update, callback_context
 from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import logging
@@ -205,10 +205,11 @@ def register_strategy_callbacks(app):
     
     # Add a callback specifically for updating the display dates during slider movement
     @app.callback(
-        [Output("selected-start-date", "children"),
-         Output("selected-end-date", "children")],
+        [Output("selected-start-date", "children", allow_duplicate=True),
+         Output("selected-end-date", "children", allow_duplicate=True)],
         [Input("backtest-date-slider", "value"),
          Input("backtest-date-slider", "drag_value")],
+        prevent_initial_call=True
     )
     def update_date_display(date_range_timestamps, drag_value):
         """
@@ -236,29 +237,39 @@ def register_strategy_callbacks(app):
             logger.error(f"Error updating date display: {e}")
             return "Error", "Error"
 
-    # Callback do otwierania kalendarza po kliknięciu na przycisk daty początkowej
+    # Zastępuję problematyczne callbacky wykorzystujące nieistniejącą właściwość is_open
+    # Usunięcie callbacków otwierających kalendarz po kliknięciu na przycisk daty
     @app.callback(
-        Output("slider-start-date-picker", "is_open"),
+        [Output("slider-start-date-picker", "date", allow_duplicate=True),
+         Output("selected-start-date", "children")],
         Input("selected-start-date", "n_clicks"),
+        State("slider-start-date-picker", "date"),
         prevent_initial_call=True
     )
-    def open_start_date_picker(n_clicks):
-        """Otwiera kalendarz do wyboru daty początkowej po kliknięciu przycisku"""
+    def handle_start_date_click(n_clicks, current_date):
+        """Aktualizuje tekst wyświetlania daty po zmianie w datepicker"""
+        # Ten callback nie otwiera kalendarza (bo nie ma takiej właściwości), 
+        # ale wyświetla aktualną datę po kliknięciu
         if n_clicks:
-            return True
-        return False
+            if current_date:
+                formatted_date = pd.to_datetime(current_date).strftime('%Y-%m-%d')
+                return current_date, formatted_date
+        raise PreventUpdate
 
-    # Callback do otwierania kalendarza po kliknięciu na przycisk daty końcowej
     @app.callback(
-        Output("slider-end-date-picker", "is_open"),
+        [Output("slider-end-date-picker", "date", allow_duplicate=True),
+         Output("selected-end-date", "children", allow_duplicate=True)],
         Input("selected-end-date", "n_clicks"),
+        State("slider-end-date-picker", "date"),
         prevent_initial_call=True
     )
-    def open_end_date_picker(n_clicks):
-        """Otwiera kalendarz do wyboru daty końcowej po kliknięciu przycisku"""
+    def handle_end_date_click(n_clicks, current_date):
+        """Aktualizuje tekst wyświetlania daty po zmianie w datepicker"""
         if n_clicks:
-            return True
-        return False
+            if current_date:
+                formatted_date = pd.to_datetime(current_date).strftime('%Y-%m-%d')
+                return current_date, formatted_date
+        raise PreventUpdate
 
     # Callback do synchronizacji dat po zmianie w kalendarzu
     @app.callback(
@@ -311,46 +322,113 @@ def register_strategy_callbacks(app):
             logger.error(f"Error updating slider from date pickers: {e}")
             return current_value
 
-    # Ticker selection callbacks
+    # --- CAŁKOWITA REORGANIZACJA CALLBACKÓW TICKERÓW ---
+    # Usunięcie wszystkich poprzednich callbacków dotyczących tickerów
+    # i zastąpienie ich nowymi, lepiej zorganizowanymi callbackami
+    
+    # 1. Callback do filtrowania widoczności tickerów (tylko UI, nie wpływa na stan)
     @app.callback(
-        [Output({"type": "ticker-checkbox", "index": ALL}, "value"),
-         Output({"type": "ticker-checkbox", "index": ALL}, "style")],
-        [Input("select-all-tickers", "n_clicks"),
-         Input("clear-all-tickers", "n_clicks"),
-         Input("ticker-search", "value")],
-        [State({"type": "ticker-checkbox", "index": ALL}, "id")]
+        Output({"type": "ticker-checkbox-container", "index": ALL}, "style"),
+        Input("ticker-search", "value"),
+        State({"type": "ticker-checkbox", "index": ALL}, "id")
     )
-    def handle_ticker_selection(select_clicks, clear_clicks, search_term, checkbox_ids):
+    def filter_ticker_visibility(search_term, checkbox_ids):
         """
-        Handle ticker selection and filtering.
+        Filtruje widoczność tickerów na podstawie wyszukiwania.
         """
+        styles = []
+        if not search_term:
+            # Jeśli nie ma filtra, pokaż wszystkie
+            return [{"display": "block"} for _ in checkbox_ids]
+        
+        # Filtruj według wyszukiwanego tekstu
+        for ticker in checkbox_ids:
+            ticker_name = ticker["index"]
+            if search_term.lower() in ticker_name.lower():
+                styles.append({"display": "block"})
+            else:
+                styles.append({"display": "none"})
+        
+        return styles
+    
+    # 2. Główny callback do obsługi akcji przycisków Select All i Clear All
+    @app.callback(
+        Output({"type": "ticker-checkbox", "index": ALL}, "value"),
+        [Input("select-all-tickers", "n_clicks"),
+         Input("clear-all-tickers", "n_clicks")],
+        [State({"type": "ticker-checkbox", "index": ALL}, "id"),
+         State({"type": "ticker-checkbox", "index": ALL}, "value"),
+         State("ticker-search", "value")]
+    )
+    def handle_ticker_selection_buttons(select_clicks, clear_clicks, 
+                                       checkbox_ids, current_values, search_filter):
+        """
+        Obsługuje przyciski "Select All" i "Clear All" dla tickerów.
+        """
+        if not checkbox_ids:
+            raise PreventUpdate
+        
         ctx = callback_context
         if not ctx.triggered:
             raise PreventUpdate
         
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        # Sprawdź który przycisk został kliknięty
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         
-        # Initialize values and styles
-        values = []
-        styles = []
+        # Użyj bieżących wartości lub utwórz nowe jeśli nie istnieją
+        values = list(current_values) if current_values else [False] * len(checkbox_ids)
         
-        # Handle search filtering
-        if trigger_id == "ticker-search":
-            for ticker in checkbox_ids:
-                if not search_term or search_term.lower() in ticker["index"].lower():
-                    styles.append({"display": "block"})
-                else:
-                    styles.append({"display": "none"})
-            return [PreventUpdate] * len(checkbox_ids), styles
+        # Określ widoczne tickery (według filtra)
+        visible_tickers = []
+        for i, ticker in enumerate(checkbox_ids):
+            ticker_name = ticker["index"]
+            if not search_filter or search_filter.lower() in ticker_name.lower():
+                visible_tickers.append(i)
         
-        # Handle select/clear all
-        if trigger_id == "select-all-tickers":
-            values = [True] * len(checkbox_ids)
-        elif trigger_id == "clear-all-tickers":
-            values = [False] * len(checkbox_ids)
+        # Wykonaj odpowiednią akcję
+        if button_id == "select-all-tickers":
+            # Zaznacz wszystkie widoczne
+            for i in visible_tickers:
+                values[i] = True
+        elif button_id == "clear-all-tickers":
+            # Odznacz wszystkie widoczne
+            for i in visible_tickers:
+                values[i] = False
         
-        return values, [PreventUpdate] * len(checkbox_ids)
+        logger.info(f"Zaktualizowano wybór tickerów po akcji: {button_id}")
+        return values
     
+    # 3. Oddzielny callback do synchronizacji stanu przycisku "Run Backtest" i komponentu ticker-selector
+    @app.callback(
+        [Output("run-backtest-button", "disabled"),
+         Output("ticker-selector", "value")],
+        Input({"type": "ticker-checkbox", "index": ALL}, "value"),
+        State({"type": "ticker-checkbox", "index": ALL}, "id")
+    )
+    def update_backtest_button_state(checkbox_values, checkbox_ids):
+        """
+        Aktualizuje stan przycisku "Run Backtest" i listę wybranych tickerów.
+        """
+        if not checkbox_values or not checkbox_ids:
+            return True, []
+        
+        # Sprawdź czy którykolwiek ticker jest zaznaczony
+        any_selected = any(checkbox_values)
+        
+        # Zbierz zaznaczone tickery dla komponentu ticker-selector
+        selected_tickers = []
+        for i, is_checked in enumerate(checkbox_values):
+            if is_checked and i < len(checkbox_ids):
+                selected_tickers.append(checkbox_ids[i]["index"])
+        
+        # Ustaw disabled=True jeśli nie ma zaznaczonych tickerów
+        button_disabled = not any_selected
+        
+        logger.info(f"Stan przycisku Run Backtest zaktualizowany: disabled={button_disabled}, wybrano {len(selected_tickers)} tickerów")
+        return button_disabled, selected_tickers
+    
+    # Usuń możliwe konflikty - wyraźnie usuń duplikujące się callbacki
+
     @app.callback(
         Output("import-tickers-modal", "is_open"),
         [Input("import-tickers", "n_clicks"),
@@ -365,3 +443,55 @@ def register_strategy_callbacks(app):
         if open_clicks or close_clicks or submit_clicks:
             return not is_open
         return is_open
+
+    @app.callback(
+        Output("backtest-date-slider", "value", allow_duplicate=True),
+        [Input("date-range-1m", "n_clicks"),
+         Input("date-range-3m", "n_clicks"),
+         Input("date-range-6m", "n_clicks"),
+         Input("date-range-1y", "n_clicks"),
+         Input("date-range-2y", "n_clicks"),
+         Input("date-range-all", "n_clicks")],
+        [State("backtest-date-slider", "min"),
+         State("backtest-date-slider", "max")],
+        prevent_initial_call=True
+    )
+    def handle_quick_date_ranges(n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_2y, n_clicks_all, min_date_ts, max_date_ts):
+        """
+        Obsługuje przyciski szybkiego wyboru zakresów dat.
+        Ustawia zakres dat na podstawie klikniętego przycisku.
+        """
+        ctx = callback_context
+        if not ctx.triggered:
+            raise PreventUpdate
+            
+        # Identyfikujemy, który przycisk został kliknięty
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        now = pd.Timestamp.now()
+        
+        if button_id == "date-range-1m":
+            start_date = now - pd.DateOffset(months=1)
+        elif button_id == "date-range-3m":
+            start_date = now - pd.DateOffset(months=3)
+        elif button_id == "date-range-6m":
+            start_date = now - pd.DateOffset(months=6)
+        elif button_id == "date-range-1y":
+            start_date = now - pd.DateOffset(years=1)
+        elif button_id == "date-range-2y":
+            start_date = now - pd.DateOffset(years=2)
+        elif button_id == "date-range-all":
+            # Używamy pełnego dostępnego zakresu
+            return [min_date_ts, max_date_ts]
+        else:
+            raise PreventUpdate
+            
+        # Konwersja dat do timestampów dla slidera
+        start_ts = int(start_date.timestamp() * 1000)
+        end_ts = int(now.timestamp() * 1000)
+        
+        # Upewniamy się, że daty są w dopuszczalnym zakresie
+        start_ts = max(min_date_ts, min(max_date_ts, start_ts))
+        end_ts = max(min_date_ts, min(max_date_ts, end_ts))
+        
+        # Aktualizujemy slider i pola dat
+        return [start_ts, end_ts]
