@@ -87,3 +87,245 @@
 .metric-wrapper {
     height: 100%;
 }
+
+/* Custom styling for the date range slider */
+.rc-slider-track {
+    background-color: rgba(13, 110, 253, 0.3) !important;
+    height: 30px !important;
+    border-radius: 0 !important;
+    top: -12px !important;
+}
+
+.rc-slider-dot {
+    display: none !important;
+}
+
+.rc-slider-handle {
+    background-color: #0d6efd !important;
+    border: 2px solid #ffffff !important;
+    opacity: 1 !important;
+    width: 6px !important;
+    height: 30px !important;
+    margin-top: -12px !important;
+    border-radius: 1px !important;
+    transform: translateX(-3px) !important;
+    box-shadow: 0 0 5px rgba(13, 110, 253, 0.5) !important;
+}
+
+.rc-slider-handle:hover {
+    box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.3) !important;
+}
+
+.rc-slider-handle-active:active {
+    box-shadow: 0 0 0 5px rgba(13, 110, 253, 0.4) !important;
+}
+
+.rc-slider-mark-text {
+    color: #dee2e6 !important;
+    font-size: 12px !important;
+    margin-top: 10px !important;
+}
+
+.rc-slider {
+    height: 6px !important;
+    margin-top: 20px !important;
+    margin-bottom: 30px !important;
+}
+
+.rc-slider-rail {
+    height: 6px !important;
+    background-color: #2a2e39 !important;
+}
+
+/* Make the slider more visible with a slightly wider track */
+#backtest-date-slider {
+    padding-top: 10px;
+    padding-bottom: 25px;
+}
+
+/* Make the date spans show the pointer cursor to indicate they're clickable */
+#selected-start-date, #selected-end-date {
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
+    min-width: 100px;
+    display: inline-block;
+    text-align: center;
+}
+
+/* Style the date picker calendar components to match dark theme */
+.DateInput, .DateInput_input {
+    background-color: #1e222d !important;
+    color: white !important;
+    font-size: 0.9em !important;
+    border: none !important;
+}
+
+.CalendarMonth_caption {
+    color: white !important;
+}
+
+.CalendarDay {
+    background-color: #2a2e39 !important;
+    border: 1px solid #1e222d !important;
+    color: #e0e0e0 !important;
+}
+
+.CalendarDay__selected {
+    background-color: #0d6efd !important;
+    border: 1px solid #0d6efd !important;
+}
+
+.CalendarDay__selected_span {
+    background-color: rgba(13, 110, 253, 0.5) !important;
+    border: 1px solid rgba(13, 110, 253, 0.5) !important;
+}
+
+.CalendarDay__hovered_span, .CalendarDay__hovered_span:hover {
+    background-color: rgba(13, 110, 253, 0.3) !important;
+    border: 1px solid rgba(13, 110, 253, 0.3) !important;
+    color: white !important;
+}
+
+.CalendarDay__today {
+    font-weight: bold;
+    color: #0dcaf0 !important;
+}
+
+.CalendarMonth, .CalendarMonthGrid {
+    background-color: #2a2e39 !important;
+}
+
+.DayPickerNavigation_button {
+    background-color: #1e222d !important;
+    border: 1px solid #0d6efd !important;
+}
+
+.DayPickerNavigation_button svg {
+    fill: #e0e0e0 !important;
+}
+
+.DayPickerKeyboardShortcuts_show__bottomRight::before {
+    border-right-color: #0d6efd !important;
+}
+
+.DateRangePicker_picker, .SingleDatePicker_picker {
+    background-color: #2a2e39 !important;
+}
+
+.DateInput_fang {
+    display: none !important;
+}
+
+/* Style for the date display picker (transparent overlay) */
+.date-display-picker {
+    cursor: pointer;
+    z-index: 100;
+    background-color: #0d6efd !important;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem !important;
+    color: white !important;
+    min-width: 120px !important;
+    font-weight: normal !important;
+    text-align: center !important;
+}
+
+.date-display-picker .SingleDatePickerInput {
+    border: none !important;
+    background: transparent !important;
+}
+
+.date-display-picker .DateInput {
+    width: 100% !important;
+}
+
+.date-display-picker .DateInput_input {
+    padding: 0 !important;
+    border: none !important;
+    font-weight: normal !important;
+    text-align: center !important;
+}
+
+/* Date display and picker styling */
+.date-display {
+    min-width: 100px;
+    display: inline-block;
+    text-align: center;
+    padding: 6px 12px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Updated date badge styling */
+.date-badge {
+    background-color: #0d6efd;
+    color: white;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 14px;
+    min-width: 110px;
+    text-align: center;
+    display: inline-block;
+    font-weight: normal;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    pointer-events: none; /* Important: this allows clicks to pass through */
+}
+
+.date-display-container {
+    cursor: pointer;
+    min-width: 110px;
+    display: inline-block;
+    position: relative;
+}
+
+.date-picker-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    z-index: 10 !important;
+}
+
+/* Hide all redundant elements from the date picker */
+.SingleDatePickerInput {
+    border: none !important;
+    background-color: transparent !important;
+}
+
+.DateInput {
+    display: none !important;
+}
+
+/* Date badge styling */
+.date-badge {
+    background-color: #0d6efd;
+    color: white;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 14px;
+    min-width: 110px;
+    text-align: center;
+    cursor: pointer;
+    display: inline-block;
+    font-weight: normal;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.position-relative {
+    position: relative;
+}
+
+.date-picker-overlay {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    z-index: 10 !important;
+}
