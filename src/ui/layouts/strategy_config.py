@@ -9,8 +9,9 @@ import pandas as pd
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Import DataLoader
+# Import DataLoader and constants
 from src.core.data import DataLoader
+from src.core.constants import AVAILABLE_STRATEGIES
 
 def get_strategy_dropdown(available_strategies: Dict[str, Any]) -> dcc.Dropdown:
     """
@@ -153,7 +154,7 @@ def create_ticker_checklist(available_tickers: List[str] = None) -> html.Div:
     
     # Find the longest ticker for column width
     max_ticker_length = max(len(ticker) for ticker in available_tickers) if available_tickers else 0
-    ticker_col_width = f"{max_ticker_length * 0.7}em"  # Adjust multiplier based on font size
+    ticker_col_width = f"{max_ticker_length * 0.8}em"  # Adjust multiplier based on font size
     
     # Create grid layout
     grid_items = []
@@ -166,17 +167,23 @@ def create_ticker_checklist(available_tickers: List[str] = None) -> html.Div:
                 row_items.append(
                     dbc.Col([
                         html.Div([
-                            html.Span(ticker, style={"width": ticker_col_width, "display": "inline-block"}),
+                            html.Span(ticker, style={
+                                "width": ticker_col_width,
+                                "display": "inline-block",
+                                "vertical-align": "middle",
+                                "line-height": "1.5"
+                            }),
                             dbc.Checkbox(
                                 id={"type": "ticker-checkbox", "index": ticker},
                                 value=False,
-                                className="ms-2"
+                                className="ms-2",
+                                style={"transform": "scale(1.2)"}  # Make checkbox larger
                             )
-                        ], className="d-flex align-items-center")
-                    ], width="auto")
+                        ], className="d-flex align-items-center", style={"min-height": "2em"})
+                    ], width="auto", className="px-2")
                 )
             else:
-                row_items.append(dbc.Col(width="auto"))
+                row_items.append(dbc.Col(width="auto", className="px-2"))
         grid_items.append(dbc.Row(row_items, className="mb-2"))
     
     return html.Div(children=[
@@ -192,7 +199,12 @@ def create_ticker_checklist(available_tickers: List[str] = None) -> html.Div:
         ),
         
         # Ticker grid
-        html.Div(grid_items, className="ticker-grid mb-3", style={"max-height": "300px", "overflow-y": "auto"}),
+        html.Div(grid_items, className="ticker-grid mb-3", style={
+            "max-height": "300px",
+            "overflow-y": "auto",  # Only allow vertical scroll
+            "overflow-x": "hidden", # Hide horizontal scroll
+            "padding": "0.5rem"
+        }),
         
         # Quick actions
         html.Div([
@@ -362,38 +374,71 @@ def create_backtest_parameters() -> html.Div:
         ])
     ])
 
-def create_strategy_section(available_strategies: Dict[str, Any], available_tickers: List[str] = None) -> dbc.Card:
+def create_strategy_config_section(available_tickers: List[str] = None) -> dbc.Card:
     """
-    Creates the strategy configuration UI section.
+    Creates the strategy configuration section of the UI.
     
     Args:
-        available_strategies: Dictionary of available trading strategies
         available_tickers: List of available ticker symbols
         
     Returns:
-        dbc.Card: A card component containing the strategy selection and configuration UI
+        dbc.Card: A card component containing the strategy configuration UI
     """
-    return html.Div([
-        dbc.Card(children=[
-            dbc.CardHeader("Strategy Configuration"),
-            dbc.CardBody(children=[
-                html.Label("Strategy", className="form-label"),
-                get_strategy_dropdown(available_strategies),
-                
-                # Ticker selection with new interface
-                create_ticker_checklist(available_tickers),
-                
-                html.Label("Strategy Parameters", className="form-label"),
-                html.Div(id="strategy-parameters"),
-                
-                # Add backtest parameters section with Run Backtest button
-                create_backtest_parameters()
-            ])
-        ]),
-        
-        # Import tickers modal
-        create_import_tickers_modal()
-    ])
+    if not available_tickers:
+        available_tickers = []
+    
+    return dbc.Card([
+        dbc.CardHeader("Strategy Configuration", className="bg-dark text-light"),
+        dbc.CardBody([
+            # Strategy Selection
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("Select Strategy", html_for="strategy-selector", className="text-light"),
+                    get_strategy_dropdown(AVAILABLE_STRATEGIES)
+                ], width=12)
+            ], className="mb-3"),
+            
+            # Date Range Selection
+            dbc.Row([
+                dbc.Col([
+                    dbc.Label("Start Date", html_for="slider-start-date-picker", className="text-light"),
+                    dcc.DatePickerSingle(
+                        id="slider-start-date-picker",
+                        date=pd.Timestamp('2020-01-01'),
+                        className="bg-dark text-light"
+                    )
+                ], width=6),
+                dbc.Col([
+                    dbc.Label("End Date", html_for="slider-end-date-picker", className="text-light"),
+                    dcc.DatePickerSingle(
+                        id="slider-end-date-picker",
+                        date=pd.Timestamp.today(),
+                        className="bg-dark text-light"
+                    )
+                ], width=6)
+            ], className="mb-3"),
+            
+            # Ticker Selection
+            create_ticker_checklist(available_tickers),
+            
+            # Strategy Parameters
+            html.Div(id="strategy-parameters", className="mt-3"),
+            
+            # Risk Management
+            html.Div(id="risk-management-container", className="mt-3"),
+            
+            # Run Backtest Button
+            dbc.Button(
+                "Run Backtest",
+                id="run-backtest-button",
+                color="primary",
+                className="w-100 mt-3"
+            ),
+            
+            # Status indicator
+            html.Div(id="backtest-status", className="mt-2")
+        ], className="bg-dark")
+    ], className="border-secondary")
 
 def create_import_tickers_modal() -> dbc.Modal:
     """

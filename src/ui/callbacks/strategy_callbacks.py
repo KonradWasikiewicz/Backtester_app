@@ -1,7 +1,8 @@
-from dash import Input, Output, State, callback_context, dash, exceptions, ALL
+from dash import html, dcc, callback, Output, Input, State, ALL, MATCH, no_update
+from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 import logging
-from typing import Dict, List, Any
+from typing import List, Dict, Any
 import pandas as pd
 import base64
 import io
@@ -153,7 +154,7 @@ def register_strategy_callbacks(app):
             if triggered_id in ["slider-start-date-picker", "slider-end-date-picker"]:
                 # Get the dates from the date pickers
                 if not start_date_picker or not end_date_picker:
-                    raise dash.exceptions.PreventUpdate
+                    raise PreventUpdate
                 
                 start_date = pd.to_datetime(start_date_picker)
                 end_date = pd.to_datetime(end_date_picker)
@@ -185,7 +186,7 @@ def register_strategy_callbacks(app):
                 values_to_use = drag_value if drag_value is not None and triggered_id == "backtest-date-slider" else date_range_timestamps
                 
                 if not values_to_use or len(values_to_use) != 2:
-                    raise dash.exceptions.PreventUpdate
+                    raise PreventUpdate
                 
                 # Convert timestamps (ms) back to datetime
                 start_ts, end_ts = values_to_use
@@ -200,7 +201,7 @@ def register_strategy_callbacks(app):
                 
         except Exception as e:
             logger.error(f"Error updating date components: {e}")
-            raise dash.exceptions.PreventUpdate
+            raise PreventUpdate
     
     # Add a callback specifically for updating the display dates during slider movement
     @app.callback(
@@ -325,7 +326,7 @@ def register_strategy_callbacks(app):
         """
         ctx = callback_context
         if not ctx.triggered:
-            raise dash.exceptions.PreventUpdate
+            raise PreventUpdate
         
         trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
         
@@ -340,7 +341,7 @@ def register_strategy_callbacks(app):
                     styles.append({"display": "block"})
                 else:
                     styles.append({"display": "none"})
-            return [dash.no_update] * len(checkbox_ids), styles
+            return [PreventUpdate] * len(checkbox_ids), styles
         
         # Handle select/clear all
         if trigger_id == "select-all-tickers":
@@ -348,7 +349,7 @@ def register_strategy_callbacks(app):
         elif trigger_id == "clear-all-tickers":
             values = [False] * len(checkbox_ids)
         
-        return values, [dash.no_update] * len(checkbox_ids)
+        return values, [PreventUpdate] * len(checkbox_ids)
     
     @app.callback(
         Output("import-tickers-modal", "is_open"),

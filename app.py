@@ -14,6 +14,7 @@ sys.path.append(str(APP_ROOT))
 # Import factory functions
 try:
     from src.ui.app_factory import create_app, configure_logging
+    from dash import dcc
 except ImportError as e:
     print(f"Error importing modules: {e}")
     traceback.print_exc()
@@ -30,8 +31,6 @@ def apply_format_patches():
         
         # Import dash components we need to patch
         from dash import dash_table
-        # Use updated import style
-        from dash import dcc
         
         # Original DataTable class
         original_datatable = dash_table.DataTable

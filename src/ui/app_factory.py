@@ -1,11 +1,11 @@
 import dash
 import dash_bootstrap_components as dbc
-from dash import html
+from dash import html, dcc
 import logging
 import os
 from pathlib import Path
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, List
 import traceback
 
 # Configure logging
@@ -13,60 +13,69 @@ logger = logging.getLogger(__name__)
 
 # Import local modules
 from src.core.constants import AVAILABLE_STRATEGIES
-from src.core.data import DataLoader  # Import DataLoader to get available tickers
+from src.core.data import DataLoader
 from src.ui.callbacks.strategy_callbacks import register_strategy_callbacks
 from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
-from src.ui.layouts.strategy_config import create_strategy_section
+from src.ui.layouts.strategy_config import create_strategy_config_section
 from src.ui.layouts.results_display import create_results_section
-from src.ui.layouts.risk_management import create_risk_management_section  # Add this import
+from src.ui.layouts.risk_management import create_risk_management_section
 
 def create_app(debug: bool = False) -> dash.Dash:
     """
-    Create and configure the Dash application.
+    Creates and configures the Dash application.
     
     Args:
         debug: Whether to run the app in debug mode
-    
+        
     Returns:
-        dash.Dash: The configured Dash application
+        dash.Dash: Configured Dash application instance
     """
-    # Initialize the Dash app with Bootstrap theme
+    # Initialize the Dash app with Bootstrap components
     app = dash.Dash(
         __name__,
-        external_stylesheets=[dbc.themes.BOOTSTRAP],
+        external_stylesheets=[dbc.themes.DARKLY],
         suppress_callback_exceptions=True,
         meta_tags=[
             {"name": "viewport", "content": "width=device-width, initial-scale=1"}
         ]
     )
     
-    # Configure the app layout
-    app.layout = dbc.Container([
-        # App title centered
-        html.Div([
-            html.H1("Backtester", className="text-center mb-4")
-        ], className="mt-4"),
-        
-        # Main content
-        dbc.Row([
-            # Strategy configuration
-            dbc.Col([
-                create_strategy_section(AVAILABLE_STRATEGIES, DataLoader().get_available_tickers())
-            ], width=12, lg=6),
-            
-            # Risk management
-            dbc.Col([
-                html.Div(id="risk-management-container")
-            ], width=12, lg=6)
-        ]),
-        
-        # Results section
-        html.Div(id="results-container", className="mt-4")
-    ], fluid=True)
+    # Configure logging
+    configure_logging()
     
-    # Register all callbacks
-    register_strategy_callbacks(app)
-    register_backtest_callbacks(app)
+    # Get available tickers
+    available_tickers = get_available_tickers()
+    
+    # Create the app layout
+    app.layout = dbc.Container([
+        # App title
+        html.H1("Backtester", className="text-center mb-4 text-light"),
+        
+        # Main content row
+        dbc.Row([
+            # Left column - Configuration sections
+            dbc.Col([
+                # Strategy Configuration
+                create_strategy_config_section(available_tickers),
+                html.Div(className="mb-3"),  # Spacer
+                # Risk Management
+                create_risk_management_section(available_tickers)
+            ], width=3, className="pe-3"),
+            
+            # Right column - Results
+            dbc.Col([
+                create_results_section()
+            ], width=9)
+        ], className="g-0"),
+        
+        # Store components
+        dcc.Store(id='strategy-store'),
+        dcc.Store(id='risk-management-store'),
+        dcc.Store(id='results-store')
+    ], fluid=True, className="py-4")
+    
+    # Register callbacks
+    register_callbacks(app)
     
     return app
 
@@ -206,3 +215,17 @@ def configure_logging(log_level=logging.INFO) -> None:
     # Set level for some verbose libraries
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+def get_available_tickers() -> List[str]:
+    """
+    Get list of available tickers from the data loader.
+    
+    Returns:
+        List[str]: List of available ticker symbols
+    """
+    try:
+        data_loader = DataLoader()
+        return data_loader.get_available_tickers()
+    except Exception as e:
+        logger.error(f"Error getting available tickers: {e}")
+        return []
