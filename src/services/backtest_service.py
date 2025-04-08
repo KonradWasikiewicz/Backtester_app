@@ -212,8 +212,13 @@ class BacktestService:
         Returns:
             Plotly figure object
         """
+        # Handle case where ticker might be a list
+        if isinstance(ticker, list) and len(ticker) > 0:
+            ticker = ticker[0]  # Use the first ticker in the list
+            
         if (not self.current_signals or 
             not self.current_results or 
+            not isinstance(ticker, str) or
             ticker not in self.current_signals):
             return None
         

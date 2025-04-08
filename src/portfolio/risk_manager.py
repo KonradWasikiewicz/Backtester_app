@@ -22,6 +22,7 @@ class RiskManager:
 
                  # Stop management (as fractions or ratios)
                  stop_loss_pct: float = 0.02,        # Stop loss as fraction of entry price
+                 risk_per_trade_pct: float = 0.01,   # Maximum risk per trade as fraction of portfolio
                  profit_target_ratio: float = 2.0,   # Risk:Reward ratio (e.g., 2.0 means target is 2x stop loss distance)
                  use_trailing_stop: bool = False,    # Flag to enable/disable trailing stop logic
                  trailing_stop_activation: float = 0.02,  # Activate trailing stop after % gain (as fraction)
@@ -30,6 +31,7 @@ class RiskManager:
                  # Portfolio-level limits (as fractions)
                  max_drawdown: float = 0.20,         # Max allowed portfolio drawdown fraction
                  max_daily_loss: float = 0.05,       # Max allowed daily loss fraction
+                 continue_iterate: bool = False,     # Flag to continue iterating when risk limits are breached
 
                  # Market condition filters
                  use_market_filter: bool = False,    # Flag to enable/disable market filter logic
@@ -48,12 +50,14 @@ class RiskManager:
             min_position_size (float): Min allocation per position (e.g., 0.01 for 1%).
             max_open_positions (int): Max number of concurrent open positions.
             stop_loss_pct (float): Default stop loss as fraction (e.g., 0.02 for 2%).
+            risk_per_trade_pct (float): Maximum risk per trade as fraction of portfolio (e.g., 0.01 for 1%).
             profit_target_ratio (float): Desired risk:reward ratio (e.g., 2.0).
             use_trailing_stop (bool): Whether to use the trailing stop logic.
             trailing_stop_activation (float): Profit % (as fraction) to activate trailing stop.
             trailing_stop_distance (float): Trail distance % (as fraction) below the peak.
             max_drawdown (float): Max allowed portfolio drawdown (as fraction, e.g., 0.2 for 20%).
             max_daily_loss (float): Max allowed daily portfolio loss (as fraction, e.g., 0.05 for 5%).
+            continue_iterate (bool): Whether to continue iteration when risk limits are breached.
             use_market_filter (bool): Whether the backtest loop should consider market conditions.
                                       (Actual filtering logic happens outside RiskManager, this is a flag).
             market_trend_lookback (int): Lookback period for external market trend calculation.
@@ -66,6 +70,7 @@ class RiskManager:
         self.max_open_positions = max(1, int(max_open_positions))
 
         self.stop_loss_pct = max(0.001, float(stop_loss_pct)) # Ensure stop loss is at least 0.1%
+        self.risk_per_trade_pct = max(0.001, min(0.1, float(risk_per_trade_pct))) # Ensure risk per trade is at least 0.1% and at most 10%
         self.profit_target_ratio = max(0.1, float(profit_target_ratio)) # Ensure ratio is positive
         self.use_trailing_stop = bool(use_trailing_stop)
         self.trailing_stop_activation = max(0.0, float(trailing_stop_activation))
@@ -73,6 +78,7 @@ class RiskManager:
 
         self.max_drawdown = max(0.0, min(1.0, float(max_drawdown)))
         self.max_daily_loss = max(0.0, min(1.0, float(max_daily_loss)))
+        self.continue_iterate = bool(continue_iterate)
 
         self.use_market_filter = bool(use_market_filter) # Store the flag
         self.market_trend_lookback = max(10, int(market_trend_lookback)) # Min lookback of 10
@@ -91,9 +97,10 @@ class RiskManager:
 
         logger.info(f"RiskManager initialized with settings: max_pos_size={self.max_position_size:.2%}, "
                     f"min_pos_size={self.min_position_size:.2%}, max_open={self.max_open_positions}, "
-                    f"stop={self.stop_loss_pct:.2%}, R:R={self.profit_target_ratio:.1f}, "
+                    f"stop={self.stop_loss_pct:.2%}, risk_per_trade={self.risk_per_trade_pct:.2%}, R:R={self.profit_target_ratio:.1f}, "
                     f"trailing={self.use_trailing_stop} (act: {self.trailing_stop_activation:.2%}, dist: {self.trailing_stop_distance:.2%}), "
                     f"max_dd={self.max_drawdown:.2%}, max_daily_loss={self.max_daily_loss:.2%}, "
+                    f"continue_iterate={self.continue_iterate}, "
                     f"market_filter={self.use_market_filter} (lookback: {self.market_trend_lookback})")
 
 
@@ -125,11 +132,8 @@ class RiskManager:
         max_capital_per_position = current_portfolio_value * self.max_position_size
 
         # 2. Determine capital based on risk (stop-loss)
-        # Amount to risk per trade ($) = Portfolio Value * Stop Loss % (as fraction)
-        # This assumes the stop loss % applies to the entry value of this specific trade.
-        # A more common approach is % of *portfolio* value risked per trade.
-        # Let's use % of portfolio value risked:
-        capital_at_risk = current_portfolio_value * self.stop_loss_pct
+        # Amount to risk per trade ($) = Portfolio Value * Risk Per Trade % (as fraction)
+        capital_at_risk = current_portfolio_value * self.risk_per_trade_pct
         # Implied position size based on stop loss distance
         stop_distance = price * self.stop_loss_pct
         
@@ -160,13 +164,9 @@ class RiskManager:
         #     max_capital_per_position = min(max_capital_per_position, shares_based_on_vol * price)
 
         # 4. Determine final position size in shares
-        target_capital = max_capital_per_position # Start with the max allocation limit
-        # Note: We aren't directly using size_based_on_risk to set target_capital here,
-        # because max_capital_per_position already limits the overall exposure.
-        # The stop loss % mainly determines the *actual dollar risk* once the position is sized.
-
-        # Calculate target shares based on capital and price
-        target_shares = target_capital / price
+        # Calculate the maximum number of shares based on risk
+        max_shares_risk = min(size_based_on_risk, max_capital_per_position / price)
+        target_shares = max_shares_risk # Use risk-based position sizing as primary
 
         # Ensure it meets minimum size requirements
         min_shares = (current_portfolio_value * self.min_position_size) / price
@@ -303,6 +303,8 @@ class RiskManager:
 
         Returns:
             bool: True if within limits, False if a limit is breached.
+                 If continue_iterate is True, always returns True even if limits are breached.
+                 The limits breach is still logged as a warning.
         """
         if portfolio_value_history is None or portfolio_value_history.empty or len(portfolio_value_history) < 2:
             return True # Not enough data to check
@@ -311,13 +313,16 @@ class RiskManager:
         current_peak = portfolio_value_history.cummax().iloc[-1]
         self.highest_portfolio_value = max(self.highest_portfolio_value, current_peak) # Track overall peak
 
+        # Flag to track if any risk limits are breached
+        risk_limit_breached = False
+
         # Check Max Drawdown
         current_value = portfolio_value_history.iloc[-1]
         if self.highest_portfolio_value > 0:
              current_drawdown = (self.highest_portfolio_value - current_value) / self.highest_portfolio_value
              if current_drawdown > self.max_drawdown:
                  logger.warning(f"Portfolio Risk Breach: Max Drawdown limit ({self.max_drawdown:.2%}) exceeded. Current DD: {current_drawdown:.2%}")
-                 return False
+                 risk_limit_breached = True
 
         # Check Max Daily Loss
         # Requires comparing today's value with yesterday's
@@ -327,18 +332,12 @@ class RiskManager:
                  daily_loss_pct = (yesterday_value - current_value) / yesterday_value
                  if daily_loss_pct > self.max_daily_loss:
                       logger.warning(f"Portfolio Risk Breach: Max Daily Loss limit ({self.max_daily_loss:.2%}) exceeded. Today's Loss: {daily_loss_pct:.2%}")
-                      return False
+                      risk_limit_breached = True
 
-        return True # Within limits
+        # If continue_iterate is True, we'll log the breach but continue anyway
+        if risk_limit_breached and self.continue_iterate:
+            logger.info("Continuing backtest despite risk limit breach due to 'Continue to iterate' setting")
+            return True
 
-    # Reset daily PnL tracking - Requires modification if used
-    # def reset_daily_tracking(self):
-    #     self.daily_pnl_tracker = 0.0
-
-    # Update sector exposure - Requires external call with sector info
-    # def update_sector_exposure(self, sector_allocations: Dict[str, float]):
-    #     self.sector_exposure = sector_allocations
-    #     for sector, exposure in sector_allocations.items():
-    #         if exposure > self.max_sector_exposure:
-    #             logger.warning(f"Portfolio Risk Alert: Sector exposure for '{sector}' ({exposure:.2%}) exceeds limit ({self.max_sector_exposure:.2%})")
-    #             # Action could be taken here or flagged to the main loop
+        # Return False if limits are breached and continue_iterate is False
+        return not risk_limit_breached

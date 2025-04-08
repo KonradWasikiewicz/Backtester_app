@@ -50,15 +50,17 @@ def register_backtest_callbacks(app):
          State({"type": "strategy-param", "index": ALL}, "value"),
          State({"type": "strategy-param", "index": ALL}, "id"),
          # Risk parameters - używamy tylko tych, które istnieją w layoucie
+         State("risk-features-checklist", "value"),
          State("max-risk-per-trade", "value"),
          State("stop-loss-type", "value"),
          State("stop-loss-value", "value"),
-         State("max-position-size", "value")]
+         State("max-position-size", "value")],
+        prevent_initial_call=True
     )
     def run_backtest(n_clicks, strategy_type, selected_tickers, 
                     start_date, end_date,
-                    strategy_param_values, strategy_param_ids, risk_per_trade,
-                    stop_loss_type, stop_loss_value, max_positions):
+                    strategy_param_values, strategy_param_ids, risk_features,
+                    risk_per_trade, stop_loss_type, stop_loss_value, max_positions):
         """
         Execute backtest when the Run Backtest button is clicked.
         
@@ -122,6 +124,19 @@ def register_backtest_callbacks(app):
             
             # Process risk parameters - uproszczona logika
             risk_params = {}
+            
+            # Process risk features checklist
+            risk_features = risk_features or []  # Default empty list if None
+            
+            # Process continue_iterate option
+            risk_params["continue_iterate"] = "continue_iterate" in risk_features
+            
+            # Process other risk feature options
+            risk_params["use_position_sizing"] = "position_sizing" in risk_features
+            risk_params["use_stop_loss"] = "stop_loss" in risk_features
+            risk_params["use_take_profit"] = "take_profit" in risk_features
+            risk_params["use_market_filter"] = "market_filter" in risk_features
+            risk_params["use_drawdown_protection"] = "drawdown_protection" in risk_features
             
             # Set stop loss parameters
             if stop_loss_type == "fixed" or stop_loss_type == "percent":
@@ -339,7 +354,9 @@ def register_backtest_callbacks(app):
             return {}
         
         try:
-            return backtest_service.get_signals_chart(ticker)
+            # If ticker is a list, use only the first element
+            ticker_value = ticker[0] if isinstance(ticker, list) and len(ticker) > 0 else ticker
+            return backtest_service.get_signals_chart(ticker_value)
         except Exception as e:
             logger.error(f"Error updating signals chart: {e}", exc_info=True)
             return {}

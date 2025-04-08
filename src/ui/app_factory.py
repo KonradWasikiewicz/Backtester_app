@@ -16,6 +16,7 @@ from src.core.constants import AVAILABLE_STRATEGIES
 from src.core.data import DataLoader
 from src.ui.callbacks.strategy_callbacks import register_strategy_callbacks
 from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
+from src.ui.callbacks.risk_management_callbacks import register_risk_management_callbacks
 from src.ui.layouts.strategy_config import create_strategy_config_section
 from src.ui.layouts.results_display import create_results_section
 from src.ui.layouts.risk_management import create_risk_management_section
@@ -186,6 +187,9 @@ def register_callbacks(app: dash.Dash) -> None:
         
         # Register backtest execution and results display callbacks
         register_backtest_callbacks(app)
+        
+        # Register risk management callbacks
+        register_risk_management_callbacks(app)
         
     except Exception as e:
         logger.error(f"Error registering callbacks: {e}", exc_info=True)
