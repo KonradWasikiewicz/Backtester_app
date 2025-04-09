@@ -50,7 +50,23 @@ class PortfolioManager:
         self.closed_trades: List[Dict] = []
         self.portfolio_value_history: List[Tuple[pd.Timestamp, float]] = []
         self.risk_manager = risk_manager if risk_manager is not None else RiskManager()
+        # Store risk feature flags for easy access
+        self.use_stop_loss = False  # Will be set when RiskManager has stop_loss enabled
+        self.use_take_profit = False  # Will be set when RiskManager has take_profit enabled
+        self._update_risk_features()
         logger.info(f"PortfolioManager initialized with capital ${initial_capital:,.2f} and linked RiskManager.")
+        
+    def _update_risk_features(self):
+        """Update internal flags based on risk manager settings"""
+        if self.risk_manager:
+            # Check if risk features are explicitly enabled
+            # This is determined by the risk_params dict in BacktestManager.run_backtest()
+            self.use_stop_loss = getattr(self.risk_manager, '_use_stop_loss', False)
+            self.use_take_profit = getattr(self.risk_manager, '_use_take_profit', False)
+            logger.info(f"Risk features: stop_loss={self.use_stop_loss}, take_profit={self.use_take_profit}")
+        else:
+            self.use_stop_loss = False
+            self.use_take_profit = False
 
     def get_current_portfolio_value(self, current_prices: Dict[str, float]) -> float:
         """Calculates the total current value of the portfolio."""
@@ -132,21 +148,25 @@ class PortfolioManager:
             position.update_peak_prices(current_price)
             exit_reason, exit_price = None, current_price
 
-            # Check Stops/Profits
+            # Check Stops/Profits only if their respective features are enabled
             if position.direction > 0: # Long
-                if current_price <= position.stop_loss_price: exit_reason, exit_price = "stop_loss", position.stop_loss_price
-                elif current_price >= position.take_profit_price: exit_reason, exit_price = "take_profit", position.take_profit_price
+                if self.use_stop_loss and current_price <= position.stop_loss_price: 
+                    exit_reason, exit_price = "stop_loss", position.stop_loss_price
+                elif self.use_take_profit and current_price >= position.take_profit_price: 
+                    exit_reason, exit_price = "take_profit", position.take_profit_price
             else: # Short
-                if current_price >= position.stop_loss_price: exit_reason, exit_price = "stop_loss", position.stop_loss_price
-                elif current_price <= position.take_profit_price: exit_reason, exit_price = "take_profit", position.take_profit_price
+                if self.use_stop_loss and current_price >= position.stop_loss_price: 
+                    exit_reason, exit_price = "stop_loss", position.stop_loss_price
+                elif self.use_take_profit and current_price <= position.take_profit_price: 
+                    exit_reason, exit_price = "take_profit", position.take_profit_price
 
             if exit_reason:
                  logger.debug(f"{exit_reason.replace('_',' ').title()} triggered for {ticker}: Price ${current_price:.2f} vs Level ${exit_price:.2f}")
                  positions_to_close.append((ticker, exit_price, exit_reason))
                  continue
 
-            # Update Trailing Stop
-            if position.use_trailing:
+            # Update Trailing Stop only if trailing stop feature is enabled
+            if position.use_trailing and self.use_stop_loss:
                 new_stop_loss = self.risk_manager.update_trailing_stop(entry_price=position.entry_price, highest_price_since_entry=position.highest_price_since_entry, lowest_price_since_entry=position.lowest_price_since_entry, current_stop=position.stop_loss_price, direction=position.direction)
                 if new_stop_loss != position.stop_loss_price:
                     position.stop_loss_price = new_stop_loss

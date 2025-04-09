@@ -37,6 +37,13 @@ class RiskManager:
                  use_market_filter: bool = False,    # Flag to enable/disable market filter logic
                  market_trend_lookback: int = 100,   # Lookback period for market trend calculation
 
+                 # Feature flags (used to determine if risk features are enabled)
+                 _use_position_sizing: bool = False, # Flag to enable/disable position sizing
+                 _use_stop_loss: bool = False,       # Flag to enable/disable stop loss
+                 _use_take_profit: bool = False,     # Flag to enable/disable take profit
+                 _use_risk_per_trade: bool = False,  # Flag to enable/disable risk per trade limits
+                 _use_drawdown_protection: bool = False, # Flag to enable/disable drawdown protection
+                 
                  # Volatility management (can be added later if needed)
                  # volatility_lookback: int = 20,
                  # volatility_cap: float = 0.03,
@@ -61,8 +68,21 @@ class RiskManager:
             use_market_filter (bool): Whether the backtest loop should consider market conditions.
                                       (Actual filtering logic happens outside RiskManager, this is a flag).
             market_trend_lookback (int): Lookback period for external market trend calculation.
+            _use_position_sizing (bool): Flag to enable/disable position sizing logic completely.
+            _use_stop_loss (bool): Flag to enable/disable stop loss logic completely.
+            _use_take_profit (bool): Flag to enable/disable take profit logic completely.
+            _use_risk_per_trade (bool): Flag to enable/disable risk per trade limits.
+            _use_drawdown_protection (bool): Flag to enable/disable drawdown protection.
             kwargs: Allows for extra parameters that might be passed but not used by this version.
         """
+
+        # --- Risk Feature Flags ---
+        # These flags control whether specific risk management features are enabled
+        self._use_position_sizing = bool(_use_position_sizing)
+        self._use_stop_loss = bool(_use_stop_loss)
+        self._use_take_profit = bool(_use_take_profit)
+        self._use_risk_per_trade = bool(_use_risk_per_trade)
+        self._use_drawdown_protection = bool(_use_drawdown_protection)
 
         # --- Parameter Validation and Storage ---
         self.max_position_size = max(0.0, min(1.0, float(max_position_size)))
@@ -83,18 +103,13 @@ class RiskManager:
         self.use_market_filter = bool(use_market_filter) # Store the flag
         self.market_trend_lookback = max(10, int(market_trend_lookback)) # Min lookback of 10
 
-        # Volatility params (can be uncommented and validated if used)
-        # self.volatility_lookback = max(2, int(kwargs.get('volatility_lookback', 20)))
-        # self.volatility_cap = max(0.001, float(kwargs.get('volatility_cap', 0.03)))
-
         # --- Runtime Tracking Variables ---
         self.highest_portfolio_value = 0.0 # Tracks peak equity for drawdown calculation
-        # self.daily_pnl_tracker = 0.0 # Tracks PnL within a single day (needs reset logic)
-        # self.sector_exposure = {} # Tracks exposure per sector (needs external updates)
 
         if kwargs:
              logger.warning(f"RiskManager received unused parameters: {kwargs.keys()}")
 
+        # Log initialization with feature flags
         logger.info(f"RiskManager initialized with settings: max_pos_size={self.max_position_size:.2%}, "
                     f"min_pos_size={self.min_position_size:.2%}, max_open={self.max_open_positions}, "
                     f"stop={self.stop_loss_pct:.2%}, risk_per_trade={self.risk_per_trade_pct:.2%}, R:R={self.profit_target_ratio:.1f}, "
@@ -102,6 +117,11 @@ class RiskManager:
                     f"max_dd={self.max_drawdown:.2%}, max_daily_loss={self.max_daily_loss:.2%}, "
                     f"continue_iterate={self.continue_iterate}, "
                     f"market_filter={self.use_market_filter} (lookback: {self.market_trend_lookback})")
+        
+        logger.info(f"Risk features enabled: position_sizing={self._use_position_sizing}, "
+                    f"stop_loss={self._use_stop_loss}, take_profit={self._use_take_profit}, "
+                    f"risk_per_trade={self._use_risk_per_trade}, "
+                    f"drawdown_protection={self._use_drawdown_protection}")
 
 
     def calculate_position_size(self, current_portfolio_value: float, available_cash: float,

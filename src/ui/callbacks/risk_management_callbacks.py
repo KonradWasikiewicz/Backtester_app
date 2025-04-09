@@ -16,64 +16,93 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
     """
     logger.info("Registering risk management callbacks")
     
-    # Register the clientside callback for toggling visibility of risk management sections
+    # Create callbacks for toggling the visibility of each container
+    features = [
+        "position_sizing",
+        "stop_loss",
+        "take_profit",
+        "risk_per_trade",
+        "market_filter",
+        "drawdown_protection"
+    ]
+    
+    for i, feature in enumerate(features):
+        # Register clientside callback for each feature checkbox
+        clientside_callback(
+            f"""
+            function(isChecked) {{
+                return isChecked.length > 0 ? {{"display": "block", "marginLeft": "20px", "marginBottom": "15px"}} : {{"display": "none"}};
+            }}
+            """,
+            Output(f"{feature}-container", "style"),
+            Input(f"{feature}-checkbox", "value"),
+            prevent_initial_call=False
+        )
+        
+        # Also update the hidden combined checklist to maintain compatibility with existing code
+        clientside_callback(
+            f"""
+            function(isChecked, currentValues) {{
+                let newValues = currentValues || [];
+                if(isChecked.length > 0) {{
+                    if(!newValues.includes("{feature}")) {{
+                        newValues.push("{feature}");
+                    }}
+                }} else {{
+                    newValues = newValues.filter(value => value !== "{feature}");
+                }}
+                return newValues;
+            }}
+            """,
+            Output("risk-features-checklist", "value", allow_duplicate=True),
+            Input(f"{feature}-checkbox", "value"),
+            State("risk-features-checklist", "value"),
+            prevent_initial_call=True
+        )
+    
+    # Special handling for continue_iterate checkbox
     clientside_callback(
         """
-        function(checkedValues) {
-            // Default style (hidden)
-            const hiddenStyle = {display: 'none'};
-            const visibleStyle = {display: 'block'};
-            
-            // Initialize all containers as hidden
-            let positionSizingStyle = {...hiddenStyle};
-            let stopLossStyle = {...hiddenStyle};
-            let takeProfitStyle = {...hiddenStyle};
-            let riskPerTradeStyle = {...hiddenStyle};
-            let marketFilterStyle = {...hiddenStyle};
-            let drawdownProtectionStyle = {...hiddenStyle};
-            
-            // Show containers based on checklist values
-            if(checkedValues.includes('position_sizing')) {
-                positionSizingStyle = {...visibleStyle};
+        function(isChecked, currentValues) {
+            let newValues = currentValues || [];
+            if(isChecked.length > 0) {
+                if(!newValues.includes("continue_iterate")) {
+                    newValues.push("continue_iterate");
+                }
+            } else {
+                newValues = newValues.filter(value => value !== "continue_iterate");
             }
-            
-            if(checkedValues.includes('stop_loss')) {
-                stopLossStyle = {...visibleStyle};
-            }
-            
-            if(checkedValues.includes('take_profit')) {
-                takeProfitStyle = {...visibleStyle};
-            }
-            
-            if(checkedValues.includes('risk_per_trade')) {
-                riskPerTradeStyle = {...visibleStyle};
-            }
-            
-            if(checkedValues.includes('market_filter')) {
-                marketFilterStyle = {...visibleStyle};
-            }
-            
-            if(checkedValues.includes('drawdown_protection')) {
-                drawdownProtectionStyle = {...visibleStyle};
-            }
-            
-            return [
-                positionSizingStyle,
-                stopLossStyle,
-                takeProfitStyle,
-                riskPerTradeStyle,
-                marketFilterStyle,
-                drawdownProtectionStyle
-            ];
+            return newValues;
         }
         """,
-        [Output('position-sizing-container', 'style'),
-         Output('stop-loss-container', 'style'),
-         Output('take-profit-container', 'style'),
-         Output('risk-per-trade-container', 'style'),
-         Output('market-filter-container', 'style'),
-         Output('drawdown-protection-container', 'style')],
-        [Input('risk-features-checklist', 'value')],
+        Output("risk-features-checklist", "value", allow_duplicate=True),
+        Input("continue-iterate-checkbox", "value"),
+        State("risk-features-checklist", "value"),
+        prevent_initial_call=True
+    )
+    
+    # Sync from hidden checklist back to individual checkboxes (for initializing from saved state)
+    for feature in features:
+        clientside_callback(
+            f"""
+            function(combinedValues) {{
+                return combinedValues.includes("{feature}") ? ["{feature}"] : [];
+            }}
+            """,
+            Output(f"{feature}-checkbox", "value"),
+            Input("risk-features-checklist", "value"),
+            prevent_initial_call=False
+        )
+    
+    # Sync the continue_iterate checkbox
+    clientside_callback(
+        """
+        function(combinedValues) {
+            return combinedValues.includes("continue_iterate") ? ["continue_iterate"] : [];
+        }
+        """,
+        Output("continue-iterate-checkbox", "value"),
+        Input("risk-features-checklist", "value"),
         prevent_initial_call=False
     )
 

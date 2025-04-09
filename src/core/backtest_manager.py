@@ -59,9 +59,38 @@ class BacktestManager:
             try: strategy = strategy_class(tickers=tickers, **strategy_params); logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
             except Exception as e: logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True); return None, None, None
 
-            use_risk_management = risk_params is not None
-            try: risk_manager = RiskManager(**(risk_params or {})); log_msg = f"Initialized RiskManager with {'custom' if use_risk_management else 'default'} parameters."; logger.info(log_msg)
-            except Exception as e: logger.error(f"Error initializing RiskManager: {e}. Using default.", exc_info=True); risk_manager = RiskManager()
+            # Process risk parameters and feature flags
+            risk_params = risk_params or {}
+            
+            # Extract risk management feature flags from the risk_params, if any
+            # These flags indicate which risk management features are actually enabled in the UI
+            _use_position_sizing = risk_params.pop('_use_position_sizing', False)
+            _use_stop_loss = risk_params.pop('_use_stop_loss', False)
+            _use_take_profit = risk_params.pop('_use_take_profit', False)
+            _use_risk_per_trade = risk_params.pop('_use_risk_per_trade', False)
+            _use_drawdown_protection = risk_params.pop('_use_drawdown_protection', False)
+            
+            # Add the feature flags back to the risk_params dict so they're passed to RiskManager
+            feature_flags = {
+                '_use_position_sizing': _use_position_sizing,
+                '_use_stop_loss': _use_stop_loss,
+                '_use_take_profit': _use_take_profit,
+                '_use_risk_per_trade': _use_risk_per_trade,
+                '_use_drawdown_protection': _use_drawdown_protection,
+            }
+            risk_params.update(feature_flags)
+            
+            # Explicitly log which risk features are enabled
+            enabled_features = [k.replace('_use_', '') for k, v in feature_flags.items() if v]
+            logger.info(f"Risk management enabled features: {', '.join(enabled_features) if enabled_features else 'None'}")
+            
+            try: 
+                risk_manager = RiskManager(**risk_params)
+                log_msg = f"Initialized RiskManager with {'custom' if risk_params else 'default'} parameters."
+                logger.info(log_msg)
+            except Exception as e: 
+                logger.error(f"Error initializing RiskManager: {e}. Using default.", exc_info=True)
+                risk_manager = RiskManager(**feature_flags)  # Still pass the feature flags even if using defaults for other params
 
             portfolio_manager = PortfolioManager(initial_capital=self.initial_capital, risk_manager=risk_manager)
             logger.info("Initialized PortfolioManager.")
