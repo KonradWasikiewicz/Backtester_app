@@ -35,12 +35,160 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
     # Initialize the Dash app with Bootstrap components
     app = dash.Dash(
         __name__,
-        external_stylesheets=[dbc.themes.DARKLY],
+        external_stylesheets=[
+            dbc.themes.DARKLY,  # Using Darkly for dark theme
+            "https://use.fontawesome.com/releases/v6.0.0/css/all.css"  # Font Awesome icons
+        ],
         suppress_callback_exceptions=suppress_callback_exceptions,
         meta_tags=[
             {"name": "viewport", "content": "width=device-width, initial-scale=1"}
         ]
     )
+    
+    # Add custom CSS for datepickers in dark mode
+    app.index_string = '''
+    <!DOCTYPE html>
+    <html>
+        <head>
+            {%metas%}
+            <title>{%title%}</title>
+            {%favicon%}
+            {%css%}
+            <style>
+                /* Custom styles for date pickers */
+                .DateInput_input {
+                    background-color: #1e222d !important;
+                    color: #ffffff !important;
+                    border-radius: 4px !important;
+                    border: 1px solid #444 !important;
+                    font-size: 14px !important;
+                }
+                
+                .CalendarMonth_caption {
+                    color: #ffffff !important;
+                }
+                
+                .DayPicker_weekHeader {
+                    color: #ffffff !important;
+                }
+                
+                .CalendarDay__default {
+                    background-color: #2a2e39 !important;
+                    border-color: #444 !important;
+                    color: #ffffff !important;
+                }
+                
+                .CalendarDay__selected, 
+                .CalendarDay__selected:hover {
+                    background-color: #375a7f !important;
+                    border-color: #375a7f !important;
+                    color: white !important;
+                }
+                
+                .CalendarDay__hovered_span,
+                .CalendarDay__selected_span {
+                    background-color: #4d6f94 !important;
+                    color: white !important;
+                }
+                
+                .DayPickerNavigation_button {
+                    background-color: #1e222d !important;
+                    border-color: #444 !important;
+                }
+                
+                .DayPickerNavigation_svg {
+                    fill: #ffffff !important;
+                }
+                
+                .DateRangePicker, .SingleDatePicker {
+                    background-color: transparent !important;
+                }
+                
+                .DateRangePickerInput, .SingleDatePickerInput {
+                    background-color: #1e222d !important;
+                    border-color: #444 !important;
+                }
+                
+                .DayPicker {
+                    background-color: #2a2e39 !important;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+                }
+                
+                /* Additional styles for complete dark mode */
+                .CalendarMonth, .CalendarMonthGrid {
+                    background-color: #2a2e39 !important;
+                }
+                
+                .DayPicker_weekHeaders {
+                    background-color: #2a2e39 !important;
+                }
+                
+                .CalendarDay__blocked_out_of_range {
+                    color: #666 !important;
+                    background-color: #222 !important;
+                }
+                
+                .DateInput, .DateInput_1 {
+                    background-color: transparent !important;
+                }
+                
+                .DateRangePickerInput_arrow {
+                    color: white !important;
+                }
+                
+                /* Fix select dropdown styling */
+                .Select-control, .Select.is-focused>.Select-control {
+                    background-color: #1e222d !important;
+                    color: white !important;
+                    border-color: #444 !important;
+                }
+                
+                .Select-menu-outer {
+                    background-color: #2a2e39 !important;
+                    color: white !important;
+                    border-color: #444 !important;
+                }
+                
+                .Select-option {
+                    background-color: #2a2e39 !important;
+                    color: white !important;
+                }
+                
+                .Select-option.is-focused {
+                    background-color: #375a7f !important;
+                }
+                
+                .Select-value-label {
+                    color: white !important;
+                }
+                
+                .has-value.Select--single>.Select-control .Select-value .Select-value-label {
+                    color: white !important;
+                }
+                
+                .Select-placeholder, .Select--single>.Select-control .Select-value {
+                    color: #ccc !important;
+                }
+                
+                /* Fix for overlapping callbacks error */
+                .error-container {
+                    display: none !important;
+                }
+            </style>
+        </head>
+        <body>
+            {%app_entry%}
+            <footer>
+                {%config%}
+                {%scripts%}
+                {%renderer%}
+            </footer>
+        </body>
+    </html>
+    '''
+    
+    # Set app title
+    app.title = "Financial Backtester"
     
     # Configure logging
     configure_logging()

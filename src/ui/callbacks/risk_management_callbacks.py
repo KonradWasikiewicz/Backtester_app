@@ -27,7 +27,7 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
     ]
     
     for i, feature in enumerate(features):
-        # Register clientside callback for each feature checkbox
+        # Tylko rejestrujemy callback dla widoczności kontenera
         clientside_callback(
             f"""
             function(isChecked) {{
@@ -38,50 +38,8 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
             Input(f"{feature}-checkbox", "value"),
             prevent_initial_call=False
         )
-        
-        # Also update the hidden combined checklist to maintain compatibility with existing code
-        clientside_callback(
-            f"""
-            function(isChecked, currentValues) {{
-                let newValues = currentValues || [];
-                if(isChecked.length > 0) {{
-                    if(!newValues.includes("{feature}")) {{
-                        newValues.push("{feature}");
-                    }}
-                }} else {{
-                    newValues = newValues.filter(value => value !== "{feature}");
-                }}
-                return newValues;
-            }}
-            """,
-            Output("risk-features-checklist", "value", allow_duplicate=True),
-            Input(f"{feature}-checkbox", "value"),
-            State("risk-features-checklist", "value"),
-            prevent_initial_call=True
-        )
     
-    # Special handling for continue_iterate checkbox
-    clientside_callback(
-        """
-        function(isChecked, currentValues) {
-            let newValues = currentValues || [];
-            if(isChecked.length > 0) {
-                if(!newValues.includes("continue_iterate")) {
-                    newValues.push("continue_iterate");
-                }
-            } else {
-                newValues = newValues.filter(value => value !== "continue_iterate");
-            }
-            return newValues;
-        }
-        """,
-        Output("risk-features-checklist", "value", allow_duplicate=True),
-        Input("continue-iterate-checkbox", "value"),
-        State("risk-features-checklist", "value"),
-        prevent_initial_call=True
-    )
-    
-    # Sync from hidden checklist back to individual checkboxes (for initializing from saved state)
+    # Sync the hidden checklist for initial state only
     for feature in features:
         clientside_callback(
             f"""

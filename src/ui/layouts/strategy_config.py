@@ -292,8 +292,7 @@ def create_backtest_parameters() -> html.Div:
                         value=[default_start_ts, default_end_ts],
                         marks=date_marks,
                         allowCross=False,
-                        className="mt-1 mb-3",
-                        updatemode="drag",
+                        className="mt-1 mb-3"
                     ),
                     
                     # Eleganckie wyświetlanie wybranych dat
@@ -418,6 +417,60 @@ def create_strategy_config_section(available_tickers: List[str] = None) -> dbc.C
     if not available_tickers:
         available_tickers = []
     
+    # Strategy descriptions for tooltips
+    strategy_descriptions = {
+        'MA': {
+            'name': 'Moving Average Crossover',
+            'description': [
+                'Uses crossing of two moving averages to generate signals',
+                'Buy when fast MA crosses above slow MA',
+                'Sell when fast MA crosses below slow MA',
+                'Effective in trending markets'
+            ]
+        },
+        'RSI': {
+            'name': 'Relative Strength Index',
+            'description': [
+                'Uses overbought/oversold conditions to generate signals',
+                'Buy when RSI crosses above oversold threshold',
+                'Sell when RSI crosses below overbought threshold',
+                'Effective in ranging markets'
+            ]
+        },
+        'BB': {
+            'name': 'Bollinger Bands',
+            'description': [
+                'Uses price movement relative to volatility bands',
+                'Buy when price touches lower band and starts rising',
+                'Sell when price touches upper band and starts falling',
+                'Adapts to changing market volatility'
+            ]
+        }
+    }
+    
+    # Create strategy dropdown with full names
+    strategy_dropdown = dcc.Dropdown(
+        id="strategy-selector",
+        options=[
+            {"label": strategy_descriptions[key]['name'], "value": key} 
+            for key in AVAILABLE_STRATEGIES.keys()
+        ],
+        value=list(AVAILABLE_STRATEGIES.keys())[0] if AVAILABLE_STRATEGIES else None,
+        style={
+            'backgroundColor': '#1e222d',
+            'color': '#ffffff',
+            'border': '1px solid #444'
+        },
+        className="w-100"
+    )
+    
+    # Create strategy description div
+    strategy_description = html.Div(
+        id="strategy-description",
+        className="mt-2 px-2 py-2",
+        style={'backgroundColor': '#2a2e39', 'borderRadius': '5px'}
+    )
+    
     return dbc.Card([
         dbc.CardHeader("Strategy Configuration", className="bg-dark text-light"),
         dbc.CardBody([
@@ -425,7 +478,8 @@ def create_strategy_config_section(available_tickers: List[str] = None) -> dbc.C
             dbc.Row([
                 dbc.Col([
                     dbc.Label("Select Strategy", html_for="strategy-selector", className="text-light"),
-                    get_strategy_dropdown(AVAILABLE_STRATEGIES)
+                    strategy_dropdown,
+                    strategy_description
                 ], width=12)
             ], className="mb-3"),
             
@@ -436,7 +490,14 @@ def create_strategy_config_section(available_tickers: List[str] = None) -> dbc.C
                     dcc.DatePickerSingle(
                         id="slider-start-date-picker",
                         date=pd.Timestamp('2020-01-01'),
-                        className="bg-dark text-light"
+                        display_format='YYYY-MM-DD',
+                        first_day_of_week=1,
+                        min_date_allowed=pd.Timestamp('2010-01-01'),
+                        max_date_allowed=pd.Timestamp.today(),
+                        initial_visible_month=pd.Timestamp('2020-01-01'),
+                        className="w-100",
+                        style={'backgroundColor': '#1e222d', 'color': '#ffffff', 'borderRadius': '5px'},
+                        calendar_orientation='vertical'
                     )
                 ], width=6),
                 dbc.Col([
@@ -444,7 +505,14 @@ def create_strategy_config_section(available_tickers: List[str] = None) -> dbc.C
                     dcc.DatePickerSingle(
                         id="slider-end-date-picker",
                         date=pd.Timestamp.today(),
-                        className="bg-dark text-light"
+                        display_format='YYYY-MM-DD',
+                        first_day_of_week=1,
+                        min_date_allowed=pd.Timestamp('2010-01-01'),
+                        max_date_allowed=pd.Timestamp.today(),
+                        initial_visible_month=pd.Timestamp.today(),
+                        className="w-100",
+                        style={'backgroundColor': '#1e222d', 'color': '#ffffff', 'borderRadius': '5px'},
+                        calendar_orientation='vertical'
                     )
                 ], width=6)
             ], className="mb-3"),

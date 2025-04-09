@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 import pandas as pd
 import base64
 import io
+import inspect
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -14,7 +15,8 @@ logger = logging.getLogger(__name__)
 from src.core.constants import AVAILABLE_STRATEGIES
 from src.core.data import DataLoader
 from src.ui.layouts.strategy_config import generate_strategy_parameters
-from src.ui.layouts.risk_management import create_risk_management_section
+# Usuwam, gdy nie potrzebujemy tworzyć tej sekcji ponownie
+# from src.ui.layouts.risk_management import create_risk_management_section
 
 def register_strategy_callbacks(app):
     """
@@ -24,56 +26,132 @@ def register_strategy_callbacks(app):
         app: The Dash application instance
     """
     
+    # Define strategy descriptions for display
+    strategy_descriptions = {
+        'MA': {
+            'name': 'Moving Average Crossover',
+            'description': [
+                'Uses crossing of two moving averages to generate signals',
+                'Buy when fast MA crosses above slow MA',
+                'Sell when fast MA crosses below slow MA',
+                'Effective in trending markets'
+            ]
+        },
+        'RSI': {
+            'name': 'Relative Strength Index',
+            'description': [
+                'Uses overbought/oversold conditions to generate signals',
+                'Buy when RSI crosses above oversold threshold',
+                'Sell when RSI crosses below overbought threshold',
+                'Effective in ranging markets'
+            ]
+        },
+        'BB': {
+            'name': 'Bollinger Bands',
+            'description': [
+                'Uses price movement relative to volatility bands',
+                'Buy when price touches lower band and starts rising',
+                'Sell when price touches upper band and starts falling',
+                'Adapts to changing market volatility'
+            ]
+        }
+    }
+    
     @app.callback(
-        Output("strategy-parameters-container", "children"),
+        Output("strategy-description", "children"),
+        Input("strategy-selector", "value")
+    )
+    def update_strategy_description(strategy_type):
+        """
+        Update the strategy description when a strategy is selected.
+        
+        Args:
+            strategy_type: The selected strategy type
+            
+        Returns:
+            List of HTML components with the strategy description
+        """
+        if not strategy_type or strategy_type not in strategy_descriptions:
+            return []
+        
+        description = strategy_descriptions[strategy_type]
+        
+        return [
+            html.H6(description['name'], className="text-light mb-2"),
+            html.Ul([
+                html.Li(point, className="text-light small") 
+                for point in description['description']
+            ], className="ps-3")
+        ]
+    
+    @app.callback(
+        Output("strategy-parameters", "children"),
         Input("strategy-selector", "value")
     )
     def update_strategy_parameters(strategy_type):
         """
-        Update the strategy parameters UI when a strategy is selected.
+        Update the strategy parameters UI based on the selected strategy.
         
         Args:
-            strategy_type: Selected strategy type
+            strategy_type: The selected strategy type
             
         Returns:
-            HTML component with strategy parameters
+            HTML div with strategy-specific parameter controls
         """
         if not strategy_type or strategy_type not in AVAILABLE_STRATEGIES:
-            return "Please select a valid strategy."
-        
-        try:
-            strategy_class = AVAILABLE_STRATEGIES[strategy_type]
-            return generate_strategy_parameters(strategy_class)
-        except Exception as e:
-            logger.error(f"Error updating strategy parameters: {e}", exc_info=True)
-            return f"Error loading parameters: {str(e)}"
-    
-    @app.callback(
-        Output("risk-management-container", "children"),
-        Input("strategy-selector", "value")
-    )
-    def update_risk_management(strategy_type):
-        """
-        Update the risk management UI when a strategy is selected.
-        
-        Args:
-            strategy_type: Selected strategy type
+            return []
             
-        Returns:
-            HTML component with risk management form
-        """
-        if not strategy_type:
-            return "Please select a strategy first."
+        strategy_class = AVAILABLE_STRATEGIES[strategy_type]
         
-        try:
-            # Get available tickers from the DataLoader
-            data_loader = DataLoader()
-            available_tickers = data_loader.get_available_tickers()
-            logger.info(f"Found {len(available_tickers)} tickers for UI: {available_tickers[:5]}...")
-            return create_risk_management_section(available_tickers)
-        except Exception as e:
-            logger.error(f"Error updating risk management UI: {e}", exc_info=True)
-            return f"Error loading risk management: {str(e)}"
+        # Extract default params from the strategy class
+        strategy_init = inspect.signature(strategy_class.__init__)
+        params = {}
+        
+        # Skip self parameter
+        for param_name, param in list(strategy_init.parameters.items())[1:]:
+            if param.default is not inspect.Parameter.empty:
+                params[param_name] = param.default
+                
+        if not params:
+            return html.Div(
+                "This strategy has no configurable parameters.",
+                className="text-light font-italic"
+            )
+            
+        # Build parameter inputs
+        parameter_inputs = []
+        
+        for i, (param_name, default_value) in enumerate(params.items()):
+            # Create a more user-friendly name
+            display_name = " ".join(word.capitalize() for word in param_name.split("_"))
+            
+            # Create parameter control based on type
+            if isinstance(default_value, bool):
+                # Boolean parameter gets a switch
+                parameter_control = create_boolean_parameter(param_name, default_value, i)
+            elif isinstance(default_value, int) or isinstance(default_value, float):
+                # Numeric parameters get a slider or number input
+                parameter_control = create_numeric_parameter(param_name, default_value, i)
+            else:
+                # Text parameters get a text input
+                parameter_control = create_text_parameter(param_name, default_value, i)
+            
+            parameter_row = dbc.Row(
+                dbc.Col([
+                    dbc.Label(display_name, html_for=f"param-{param_name}", className="text-light mb-1"),
+                    parameter_control,
+                    html.Small(
+                        f"Default: {default_value}",
+                        className="text-muted d-block mt-1"
+                    )
+                ])
+            )
+            parameter_inputs.append(parameter_row)
+        
+        return html.Div([
+            html.H6("Strategy Parameters", className="text-light mb-3"),
+            *parameter_inputs
+        ], style={"backgroundColor": "#2a2e39", "padding": "15px", "borderRadius": "5px"})
     
     @app.callback(
         [Output("stop-loss-value", "disabled"), 
@@ -495,3 +573,52 @@ def register_strategy_callbacks(app):
         
         # Aktualizujemy slider i pola dat
         return [start_ts, end_ts]
+
+def create_boolean_parameter(param_name, default_value, index):
+    """Creates a boolean parameter input."""
+    return dbc.Checkbox(
+        id={"type": "strategy-param", "index": param_name},
+        value=default_value,
+        className="form-check-input"
+    )
+    
+def create_numeric_parameter(param_name, default_value, index):
+    """Creates a numeric parameter input."""
+    # Determine if integer or float
+    step = 1 if isinstance(default_value, int) else 0.1
+    
+    # Set reasonable min/max based on parameter name and default value
+    if "period" in param_name.lower() or "window" in param_name.lower():
+        # For periods or windows, range from 2 to 200
+        min_val = 2
+        max_val = 200
+    elif "threshold" in param_name.lower() or "level" in param_name.lower():
+        # For thresholds, range from 0 to 100
+        min_val = 0
+        max_val = 100
+    else:
+        # Default ranges
+        min_val = 0 if default_value > 0 else default_value * 2
+        max_val = default_value * 5 if default_value > 0 else abs(default_value) * 5
+        max_val = max(max_val, min_val + 10*step)
+    
+    return dbc.InputGroup([
+        dbc.Input(
+            id={"type": "strategy-param", "index": param_name},
+            type="number",
+            value=default_value,
+            step=step,
+            min=min_val,
+            max=max_val,
+            className="bg-dark text-light border-secondary"
+        )
+    ])
+    
+def create_text_parameter(param_name, default_value, index):
+    """Creates a text parameter input."""
+    return dbc.Input(
+        id={"type": "strategy-param", "index": param_name},
+        type="text",
+        value=str(default_value),
+        className="bg-dark text-light border-secondary"
+    )
