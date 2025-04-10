@@ -1,84 +1,103 @@
 # Backtester App
 
-A Python-based backtesting application for trading strategies.
+Aplikacja do testowania strategii inwestycyjnych na danych historycznych.
 
-## Setup
+## O projekcie
 
-1. Make sure you have Python 3.8+ installed
-2. Run the setup script:
-   ```
-   python setup.py
-   ```
-3. Activate the virtual environment:
-   - Windows:
-     ```
-     .venv\Scripts\activate
-     ```
-   - Linux/Mac:
-     ```
-     source .venv/bin/activate
-     ```
+Backtester App to narzędzie pozwalające na testowanie i analizę strategii tradingowych na historycznych danych giełdowych. Umożliwia konfigurację różnych strategii, zarządzanie ryzykiem oraz wizualizację wyników w formie interaktywnych wykresów i tabel.
 
-## Usage
+## Funkcjonalności
 
-1. First, fetch historical data:
-   ```
-   python fetch_data.py
-   ```
+- Testowanie predefiniowanych strategii (Moving Average Crossover, RSI, Bollinger Bands)
+- Konfiguracja parametrów strategii
+- Zarządzanie ryzykiem z wieloma opcjami (sizing pozycji, stop-loss, take-profit)
+- Analiza wyników z kluczowymi metrykami (CAGR, Sharpe Ratio, max drawdown)
+- Interaktywne wizualizacje (wykresy equity, heatmapa zwrotów, wykresy sygnałów)
 
-2. Run the backtester:
+## Instalacja
+
+1. Upewnij się, że masz zainstalowany Python 3.8 lub nowszy
+2. Sklonuj repozytorium
    ```
-   python run_backtest.py
+   git clone [URL_REPOZYTORIUM]
+   cd Backtester_app
+   ```
+3. Zainstaluj wymagane zależności
+   ```
+   pip install -r requirements.txt
    ```
 
-## Project Structure
+## Uruchomienie aplikacji
 
-- `src/` - Source code for the backtesting engine and strategies
-- `data/` - Directory for storing historical price data
-- `requirements.txt` - Python package dependencies
+```
+python app.py
+```
 
-## Features
+Aplikacja będzie dostępna pod adresem http://127.0.0.1:8050/ w przeglądarce.
 
-- Multiple built-in trading strategies:
-  - Moving Average Crossover
-  - RSI (Relative Strength Index)
-  - Bollinger Bands
-- Interactive strategy and ticker selection through GUI
-- Detailed performance visualization
-- Risk management capabilities
-- Historical data fetching from Yahoo Finance
-- Comprehensive performance metrics
+## System wersjonowania
 
-## Available Strategies
+Projekt wykorzystuje **Semantic Versioning (SemVer)** w formacie MAJOR.MINOR.PATCH:
+- **MAJOR**: Zmiany łamiące kompatybilność wsteczną
+- **MINOR**: Nowe funkcje zachowujące kompatybilność wsteczną
+- **PATCH**: Poprawki błędów zachowujące kompatybilność wsteczną
 
-### Moving Average Crossover
-- Uses two moving averages (short and long-term)
-- Generates buy signals when short MA crosses above long MA
-- Generates sell signals when short MA crosses below long MA
+## Zarządzanie wersjami
 
-### RSI Strategy
-- Uses Relative Strength Index
-- Generates buy signals at oversold levels
-- Generates sell signals at overbought levels
+Projekt zawiera zestaw skryptów do zarządzania wersjami, które ułatwiają pracę z SemVer i Git:
 
-### Bollinger Bands Strategy
-- Uses price movement in relation to Bollinger Bands
-- Generates buy signals when price touches lower band
-- Generates sell signals when price touches upper band
+### Aktualizacja wersji
 
-## Performance Metrics
+```
+python scripts/update_version.py --minor --changes "Dodano nową strategię" "Poprawiono błędy interfejsu"
+```
 
-- Total Return
-- Win Rate
-- Average Profit
-- Maximum Drawdown
-- Total Number of Trades
-- Profit Factor
+Dostępne opcje:
+- `--major`: Zwiększa wersję główną (MAJOR)
+- `--minor`: Zwiększa wersję pomniejszą (MINOR)
+- `--patch`: Zwiększa wersję z poprawką (PATCH)
+- `--pre`: Dodaje etykietę pre-release (np. alpha, beta, rc)
+- `--pre-num`: Numer wersji pre-release (np. dla beta.1)
+- `--build`: Metadane budowania
+- `--changes`: Lista zmian do dodania do changeloga
 
-## License
+### Tagowanie wersji w repozytorium Git
 
-MIT License
+```
+python scripts/tag_version.py
+```
 
-## Contributing
+Skrypt automatycznie:
+1. Pobiera aktualną wersję z `src/version.py`
+2. Tworzy tag Git z prefiksem "v" (np. v1.2.3)
+3. Dodaje informacje z changeloga do opisu tagu
+4. Opcjonalnie publikuje tag w repozytorium zdalnym
 
-Contributions are welcome! Please feel free to submit pull requests.
+### Przywracanie poprzedniej wersji
+
+```
+python scripts/restore_version.py --list
+python scripts/restore_version.py --version v1.0.0 --deps
+```
+
+Dostępne opcje:
+- `--list`: Wyświetla listę dostępnych wersji
+- `--version`: Określa wersję do przywrócenia
+- `--deps`: Instaluje zależności dla przywróconej wersji
+- `--force`: Wymusza checkout (porzuca lokalne zmiany)
+
+Bez podania wersji skrypt wyświetli interaktywne menu wyboru.
+
+## Dokumentacja
+
+Bardziej szczegółowa dokumentacja znajduje się w katalogu `docs/`:
+- [Product Design Specification](docs/product_design_specification.md)
+- [Specyfikacja Techniczna](docs/technical_specification.md)
+
+## Licencja
+
+[Informacja o licencji]
+
+## Kontakt
+
+[Dane kontaktowe]
