@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 from src.core.backtest_manager import BacktestManager
 from src.core.constants import AVAILABLE_STRATEGIES
 from src.core.config import config
-from src.visualization.visualizer import BacktestVisualizer
-from src.ui.components import create_metric_card_with_tooltip
+from src.services.data_service import DataService
+from src.services.visualization_service import VisualizationService
 
 class BacktestService:
     """
@@ -22,13 +22,20 @@ class BacktestService:
     """
     
     def __init__(self):
-        """Initialize the BacktestService with a BacktestManager."""
+        """Initialize the BacktestService with required services and managers."""
         try:
+            # Initialize related services
+            self.data_service = DataService()
+            self.visualization_service = VisualizationService()
+            
+            # Initialize core business logic
             self.backtest_manager = BacktestManager()
-            self.visualizer = BacktestVisualizer()
+            
+            # Result storage
             self.current_results = None
             self.current_signals = None
             self.current_stats = None
+            
             logger.info("BacktestService initialized")
         except Exception as e:
             logger.error(f"Error initializing BacktestService: {e}", exc_info=True)
@@ -76,12 +83,12 @@ class BacktestService:
             self.current_results = results
             self.current_stats = stats
             
-            # Sprawdzanie czy operacja zakończyła się sukcesem
+            # Check if operation was successful
             success = signals is not None and results is not None and stats is not None
             
             return {
                 "success": success,
-                "signals": signals if signals is not None else {},  # Zwracamy faktyczne dane sygnałów
+                "signals": signals if signals is not None else {},
                 "results": results if results is not None else {},
                 "stats": stats if stats is not None else {},
                 "tickers": tickers
@@ -93,10 +100,10 @@ class BacktestService:
     
     def get_performance_metrics(self) -> Dict[str, Any]:
         """
-        Generate UI components for performance metrics.
+        Generate performance metrics from current backtest results.
         
         Returns:
-            Dict of metric components keyed by metric ID
+            Dict of formatted metric values
         """
         if not self.current_stats:
             return {}
@@ -134,7 +141,7 @@ class BacktestService:
     
     def get_portfolio_chart(self, chart_type: str = "value"):
         """
-        Generate a portfolio performance chart.
+        Generate a portfolio performance chart using the visualization service.
         
         Args:
             chart_type: Type of chart to generate (value, returns, drawdown)
@@ -149,7 +156,7 @@ class BacktestService:
             portfolio_values = self.current_results["Portfolio_Value"]
             benchmark_series = self.current_results.get("Benchmark")
             
-            return self.visualizer.create_equity_curve_figure(
+            return self.visualization_service.create_portfolio_chart(
                 portfolio_values=portfolio_values,
                 benchmark_values=benchmark_series,
                 chart_type=chart_type,
@@ -161,7 +168,7 @@ class BacktestService:
     
     def get_monthly_returns_heatmap(self):
         """
-        Generate monthly returns heatmap.
+        Generate monthly returns heatmap using the visualization service.
         
         Returns:
             Plotly figure object
@@ -171,14 +178,14 @@ class BacktestService:
         
         try:
             portfolio_series = self.current_results["Portfolio_Value"]
-            return self.visualizer.create_monthly_returns_heatmap(portfolio_series)
+            return self.visualization_service.create_monthly_returns_heatmap(portfolio_series)
         except Exception as e:
             logger.error(f"Error generating monthly returns heatmap: {e}", exc_info=True)
             return None
     
     def get_signals_chart(self, ticker: str):
         """
-        Generate signals and trades chart for a specific ticker.
+        Generate signals and trades chart for a specific ticker using the visualization service.
         
         Args:
             ticker: Ticker symbol to display
@@ -205,7 +212,7 @@ class BacktestService:
             if "trades" in self.current_results:
                 trades = [t for t in self.current_results["trades"] if t["ticker"] == ticker]
             
-            return self.visualizer.create_signals_chart(ticker, signals_df, trades)
+            return self.visualization_service.create_signals_chart(ticker, signals_df, trades)
         except Exception as e:
             logger.error(f"Error generating signals chart: {e}", exc_info=True)
             return None
@@ -222,122 +229,16 @@ class BacktestService:
         
         try:
             trades = self.current_results["trades"]
-            formatted_trades = []
-            
-            for trade in trades:
-                formatted_trade = {
-                    "ticker": trade["ticker"],
-                    "entry_date": trade["entry_date"].strftime("%Y-%m-%d"),
-                    "exit_date": trade["exit_date"].strftime("%Y-%m-%d"),
-                    "entry_price": trade["entry_price"],  # Keep as raw number
-                    "exit_price": trade["exit_price"],    # Keep as raw number
-                    "profit_loss": trade["pnl"],          # Keep as raw number
-                    "profit_loss_pct": trade["pnl_pct"],  # Keep as raw number
-                    "shares": int(trade["shares"]),       # Convert to integer
-                    "reason": trade["exit_reason"].capitalize()
-                }
-                formatted_trades.append(formatted_trade)
-            
-            return formatted_trades
+            return self.visualization_service.prepare_trades_for_table(trades)
         except Exception as e:
             logger.error(f"Error formatting trades table data: {e}", exc_info=True)
             return []
-    
-    def _get_color_for_value(self, value: float) -> str:
-        """Helper method to determine color based on value sign."""
-        if value > 0:
-            return "#00cc96"  # Green for positive
-        elif value < 0:
-            return "#ff4a68"  # Red for negative
-        return "#a9a9a9"      # Gray for zero
-    
-    def _get_color_for_sharpe(self, value: float) -> str:
-        """Helper method to determine color based on Sharpe ratio value."""
-        if value >= 1.0:
-            return "#00cc96"  # Green for good
-        elif value >= 0.5:
-            return "#ffa15a"  # Orange for okay
-        return "#ff4a68"      # Red for poor
-    
-    def _get_color_for_win_rate(self, value: float) -> str:
-        """Helper method to determine color based on win rate value."""
-        win_rate = value * 100 if value <= 1.0 else value  # Convert to percentage if needed
-        if win_rate >= 50:
-            return "#00cc96"  # Green for good
-        elif win_rate >= 40:
-            return "#ffa15a"  # Orange for okay
-        return "#ff4a68"      # Red for poor
-    
-    def _get_color_for_profit_factor(self, value: float) -> str:
-        """Helper method to determine color based on profit factor value."""
-        if value >= 1.5:
-            return "#00cc96"  # Green for good
-        elif value >= 1.0:
-            return "#ffa15a"  # Orange for okay
-        return "#ff4a68"      # Red for poor
-    
-    def get_equity_curve(self) -> pd.DataFrame:
+            
+    def get_available_strategies(self) -> Dict[str, Dict]:
         """
-        Get equity curve data for plotting.
+        Get available trading strategies with descriptions.
         
         Returns:
-            DataFrame with equity curve data
+            Dict of strategy information
         """
-        if not self.current_results or "portfolio" not in self.current_results:
-            return pd.DataFrame()
-        
-        try:
-            portfolio = self.current_results["portfolio"]
-            return portfolio[["equity"]].copy()
-        except Exception as e:
-            logger.error(f"Error getting equity curve: {e}", exc_info=True)
-            return pd.DataFrame()
-    
-    def get_benchmark_data(self) -> pd.DataFrame:
-        """
-        Get benchmark data for comparison with the strategy.
-        
-        Returns:
-            DataFrame with benchmark data
-        """
-        if not self.current_results or "benchmark" not in self.current_results:
-            return pd.DataFrame()
-        
-        try:
-            benchmark = self.current_results["benchmark"].copy()
-            benchmark.columns = ["value"]
-            return benchmark
-        except Exception as e:
-            logger.error(f"Error getting benchmark data: {e}", exc_info=True)
-            return pd.DataFrame()
-    
-    def get_monthly_returns(self) -> pd.DataFrame:
-        """
-        Get monthly returns data for heatmap.
-        
-        Returns:
-            DataFrame with monthly returns data (index: year, month)
-        """
-        if not self.current_results or "portfolio" not in self.current_results:
-            return pd.DataFrame()
-        
-        try:
-            portfolio = self.current_results["portfolio"]
-            
-            # Convert to monthly returns
-            monthly_returns = portfolio["equity"].resample("M").last().pct_change()
-            monthly_returns = monthly_returns.dropna()
-            
-            # Create MultiIndex with year and month
-            years = monthly_returns.index.year
-            months = monthly_returns.index.month
-            
-            # Create DataFrame with MultiIndex
-            df = pd.DataFrame({
-                "return": monthly_returns.values
-            }, index=pd.MultiIndex.from_arrays([years, months], names=["year", "month"]))
-            
-            return df
-        except Exception as e:
-            logger.error(f"Error calculating monthly returns: {e}", exc_info=True)
-            return pd.DataFrame()
+        return AVAILABLE_STRATEGIES

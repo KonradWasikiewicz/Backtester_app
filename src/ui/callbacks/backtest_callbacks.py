@@ -12,10 +12,14 @@ logger = logging.getLogger(__name__)
 
 # Import local modules
 from src.services.backtest_service import BacktestService
+from src.services.data_service import DataService
+from src.services.visualization_service import VisualizationService
 from src.core.constants import AVAILABLE_STRATEGIES
 
-# Create a shared backtest service instance
+# Create shared service instances
 backtest_service = None
+data_service = None
+visualization_service = None
 
 def register_backtest_callbacks(app):
     """
@@ -24,15 +28,23 @@ def register_backtest_callbacks(app):
     Args:
         app: The Dash application instance
     """
-    global backtest_service
+    global backtest_service, data_service, visualization_service
     
-    # Initialize the backtest service
-    if backtest_service is None:
-        try:
+    # Initialize the services
+    try:
+        if backtest_service is None:
             backtest_service = BacktestService()
-        except Exception as e:
-            logger.error(f"Failed to initialize BacktestService: {e}", exc_info=True)
-            # We'll handle this in the callbacks
+        
+        if data_service is None:
+            data_service = DataService()
+            
+        if visualization_service is None:
+            visualization_service = VisualizationService()
+            
+        logger.info("Services initialized for backtest callbacks")
+    except Exception as e:
+        logger.error(f"Failed to initialize services: {e}", exc_info=True)
+        # We'll handle this in the callbacks
     
     @app.callback(
         [Output("backtest-status", "children"),
@@ -43,13 +55,13 @@ def register_backtest_callbacks(app):
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-selector", "value"),
          State("ticker-selector", "value"),
-         # Date inputs - we now use the direct date pickers
+         # Date inputs
          State("slider-start-date-picker", "date"),
          State("slider-end-date-picker", "date"),
          # Strategy parameters pattern matching state
          State({"type": "strategy-param", "index": ALL}, "value"),
          State({"type": "strategy-param", "index": ALL}, "id"),
-         # Risk parameters - używamy tylko tych, które istnieją w layoucie
+         # Risk parameters
          State("risk-features-checklist", "value"),
          State("max-risk-per-trade", "value"),
          State("stop-loss-type", "value"),
@@ -76,8 +88,8 @@ def register_backtest_callbacks(app):
                 None
             )
         
-        if not backtest_service:
-            error_msg = "Backtest service initialization failed. Please check the logs."
+        if not all([backtest_service, data_service, visualization_service]):
+            error_msg = "Service initialization failed. Please check the logs."
             return (
                 html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
                 {"display": "none"},
@@ -122,7 +134,7 @@ def register_backtest_callbacks(app):
                 param_value = strategy_param_values[i]
                 strategy_params[param_name] = param_value
             
-            # Process risk parameters - uproszczona logika
+            # Process risk parameters
             risk_params = {}
             
             # Process risk features checklist
@@ -158,13 +170,13 @@ def register_backtest_callbacks(app):
             else:
                 risk_params["max_open_positions"] = 5  # Default
             
-            # Fixed: Show a loading message with proper spinner implementation
+            # Show a loading message with spinner implementation
             status_div = html.Div([
                 html.I(className="fas fa-spinner fa-spin me-2"),
                 "Running backtest..."
             ], className="text-primary")
             
-            # Run the backtest
+            # Run the backtest using the service
             result = backtest_service.run_backtest(
                 strategy_type=strategy_type,
                 tickers=tickers,
@@ -291,71 +303,9 @@ def register_backtest_callbacks(app):
             return {}
         
         try:
-            # Get equity curve and benchmark data
-            equity_data = backtest_service.get_equity_curve()
-            benchmark_data = backtest_service.get_benchmark_data()
-            
-            if equity_data is None or equity_data.empty:
-                return {
-                    "data": [],
-                    "layout": {
-                        "title": "No portfolio data available",
-                        "paper_bgcolor": "#2a2e39",
-                        "plot_bgcolor": "#2a2e39",
-                        "font": {"color": "#e0e0e0"}
-                    }
-                }
-            
-            # Create figure with improved styling
-            fig = {
-                "data": [
-                    {
-                        "x": equity_data.index,
-                        "y": equity_data["equity"],
-                        "type": "scatter",
-                        "mode": "lines",
-                        "name": "Strategy",
-                        "line": {"color": "#00cc96", "width": 2}
-                    }
-                ],
-                "layout": {
-                    "title": {
-                        "text": "Portfolio Performance",
-                        "font": {"size": 20, "color": "#e0e0e0"}
-                    },
-                    "paper_bgcolor": "#2a2e39",
-                    "plot_bgcolor": "#2a2e39",
-                    "font": {"color": "#e0e0e0"},
-                    "xaxis": {
-                        "title": "Date",
-                        "gridcolor": "#444",
-                        "zeroline": False
-                    },
-                    "yaxis": {
-                        "title": "Value ($)",
-                        "gridcolor": "#444",
-                        "zeroline": False
-                    },
-                    "legend": {"bgcolor": "#1e222d", "font": {"color": "#e0e0e0"}},
-                    "margin": {"t": 30, "b": 50, "l": 60, "r": 20},
-                    "hovermode": "closest",
-                    "showlegend": True
-                }
-            }
-            
-            # Add benchmark if available
-            if benchmark_data is not None and not benchmark_data.empty:
-                benchmark_trace = {
-                    "x": benchmark_data.index,
-                    "y": benchmark_data["value"],
-                    "type": "scatter",
-                    "mode": "lines",
-                    "name": "Benchmark",
-                    "line": {"color": "#ff4a68", "width": 2}
-                }
-                fig["data"].append(benchmark_trace)
-            
-            return fig
+            # Get portfolio chart from the backtest service
+            # This now uses the visualization service internally
+            return backtest_service.get_portfolio_chart(chart_type="value") or {}
         except Exception as e:
             logger.error(f"Error updating portfolio chart: {e}", exc_info=True)
             return {}
@@ -378,94 +328,9 @@ def register_backtest_callbacks(app):
             return {}
         
         try:
-            # Get monthly returns data
-            monthly_returns = backtest_service.get_monthly_returns()
-            
-            if monthly_returns is None or monthly_returns.empty:
-                return {
-                    "data": [],
-                    "layout": {
-                        "title": "No monthly returns data available",
-                        "paper_bgcolor": "#2a2e39",
-                        "plot_bgcolor": "#2a2e39",
-                        "font": {"color": "#e0e0e0"}
-                    }
-                }
-            
-            # Prepare data for heatmap
-            years = monthly_returns.index.get_level_values(0).unique()
-            months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-            z_data = []
-            
-            for year in years:
-                year_data = []
-                for month in range(1, 13):
-                    try:
-                        value = monthly_returns.loc[(year, month), 'return'] * 100
-                        year_data.append(value)
-                    except KeyError:
-                        year_data.append(None)
-                z_data.append(year_data)
-            
-            # Create a custom colorscale for the heatmap
-            colorscale = [
-                [0, '#ff4a68'],      # Deep red for large negative
-                [0.4, '#ffa6b8'],    # Light red for small negative
-                [0.5, '#ffffff'],    # White for zero
-                [0.6, '#a6ffc9'],    # Light green for small positive
-                [1, '#00cc96']       # Deep green for large positive
-            ]
-            
-            # Create figure with improved styling
-            fig = {
-                "data": [{
-                    "z": z_data,
-                    "x": months,
-                    "y": years,
-                    "type": "heatmap",
-                    "colorscale": colorscale,
-                    "showscale": True,
-                    "colorbar": {
-                        "title": "Return (%)",
-                        "titleside": "right",
-                        "tickformat": ".1f"
-                    },
-                    "zmin": -10,
-                    "zmid": 0,
-                    "zmax": 10,
-                    "text": [[f"{value:.2f}%" if value is not None else "" for value in row] for row in z_data],
-                    "hoverinfo": "text+y+x"
-                }],
-                "layout": {
-                    "title": {
-                        "text": "Monthly Returns (%)",
-                        "font": {"size": 20, "color": "#e0e0e0"}
-                    },
-                    "paper_bgcolor": "#2a2e39",
-                    "plot_bgcolor": "#2a2e39",
-                    "font": {"color": "#e0e0e0"},
-                    "xaxis": {"title": "Month"},
-                    "yaxis": {"title": "Year", "autorange": "reversed"},
-                    "margin": {"t": 30, "b": 50, "l": 60, "r": 60},
-                    "annotations": []
-                }
-            }
-            
-            # Add annotations for the returns values
-            for i, year in enumerate(years):
-                for j, month in enumerate(months):
-                    value = z_data[i][j]
-                    if value is not None:
-                        text_color = "#222222" if abs(value) < 5 else "#ffffff"
-                        fig["layout"]["annotations"].append({
-                            "x": j,
-                            "y": i,
-                            "text": f"{value:.1f}%",
-                            "font": {"color": text_color, "size": 9},
-                            "showarrow": False
-                        })
-            
-            return fig
+            # Get monthly returns heatmap from the backtest service
+            # This now uses the visualization service internally
+            return backtest_service.get_monthly_returns_heatmap() or {}
         except Exception as e:
             logger.error(f"Error updating monthly returns heatmap: {e}", exc_info=True)
             return {}
@@ -492,7 +357,7 @@ def register_backtest_callbacks(app):
         try:
             # If ticker is a list, use only the first element
             ticker_value = ticker[0] if isinstance(ticker, list) and len(ticker) > 0 else ticker
-            return backtest_service.get_signals_chart(ticker_value)
+            return backtest_service.get_signals_chart(ticker_value) or {}
         except Exception as e:
             logger.error(f"Error updating signals chart: {e}", exc_info=True)
             return {}
