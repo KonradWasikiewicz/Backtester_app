@@ -51,6 +51,9 @@
     transition: transform 0.2s;
     height: 100%;
     background-color: #1e222d;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
 }
 
 .metric-card:hover {
@@ -62,6 +65,7 @@
     font-weight: 500;
     margin-top: 0.25rem;
     font-family: 'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    color: #f8f9fa;
 }
 
 /* Add this specifically for numeric values */
@@ -72,10 +76,12 @@
 
 /* Fix for tooltip components */
 .tooltip-inner {
-    background-color: #2a2e39;
+    background-color: #343a40;
     color: #ffffff;
     max-width: 300px;
     border-radius: 6px;
+    font-size: 14px;
+    padding: 8px 12px;
 }
 
 /* Reset fonts for the trade table */
@@ -101,13 +107,13 @@
 }
 
 .rc-slider-handle {
-    background-color: #0d6efd !important;
+    background-color: #007bff !important;
     border: 2px solid #ffffff !important;
     opacity: 1 !important;
-    width: 6px !important;
-    height: 30px !important;
+    width: 10px !important;
+    height: 10px !important;
     margin-top: -12px !important;
-    border-radius: 1px !important;
+    border-radius: 50% !important;
     transform: translateX(-3px) !important;
     box-shadow: 0 0 5px rgba(13, 110, 253, 0.5) !important;
 }
@@ -259,16 +265,16 @@
 
 /* Updated date badge styling */
 .date-badge {
-    background-color: #0d6efd;
-    color: white;
-    border-radius: 4px;
-    padding: 4px 10px;
-    font-size: 14px;
+    background-color: #007bff;
+    color: #ffffff;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 16px;
     min-width: 110px;
     text-align: center;
     display: inline-block;
     font-weight: normal;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     pointer-events: none; /* Important: this allows clicks to pass through */
 }
 
@@ -297,22 +303,26 @@
 }
 
 .DateInput {
-    display: none !important;
+    display: block !important;
+    background-color: #1e222d !important;
+    color: #ffffff !important;
+    border: 1px solid #2a2e39 !important;
+    border-radius: 4px !important;
 }
 
 /* Date badge styling */
 .date-badge {
-    background-color: #0d6efd;
+    background-color: #007bff;
     color: white;
-    border-radius: 4px;
-    padding: 4px 10px;
-    font-size: 14px;
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-size: 16px;
     min-width: 110px;
     text-align: center;
     cursor: pointer;
     display: inline-block;
     font-weight: normal;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .position-relative {

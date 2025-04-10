@@ -201,120 +201,101 @@ def register_strategy_callbacks(app):
             return False, 1.0  # Default to 1x ATR risk
         return False, 2.0
     
-    # Combined callback for all date-related updates to avoid conflicts
+    # Consolidated date-related callback to handle all updates in one place
     @app.callback(
         [Output("backtest-date-slider", "value"),
          Output("slider-start-date-picker", "date"),
          Output("slider-end-date-picker", "date"),
-         Output("backtest-daterange", "start_date"),
-         Output("backtest-daterange", "end_date")],
+         Output("selected-start-date", "children"),
+         Output("selected-end-date", "children")],
         [Input("backtest-date-slider", "value"),
          Input("backtest-date-slider", "drag_value"),
          Input("slider-start-date-picker", "date"),
-         Input("slider-end-date-picker", "date")],
+         Input("slider-end-date-picker", "date"),
+         Input("date-range-1m", "n_clicks"),
+         Input("date-range-3m", "n_clicks"),
+         Input("date-range-6m", "n_clicks"),
+         Input("date-range-1y", "n_clicks"),
+         Input("date-range-2y", "n_clicks"),
+         Input("date-range-all", "n_clicks")],
         [State("backtest-date-slider", "min"),
          State("backtest-date-slider", "max")],
         prevent_initial_call=True
     )
-    def update_all_date_components(date_range_timestamps, drag_value, start_date_picker, end_date_picker, min_allowed, max_allowed):
+    def update_date_components(date_range_timestamps, drag_value, start_date_picker, end_date_picker,
+                                n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_2y, n_clicks_all,
+                                min_date_ts, max_date_ts):
         """
-        Update all date-related components based on which one changed.
-        Handles slider movements, slider dragging, and date picker changes.
-        
-        Returns:
-            Updated values for all date-related components
+        Unified callback to handle all date-related updates, including slider movements,
+        date picker changes, and quick range buttons.
         """
         ctx = callback_context
-        triggered_id = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else None
-        
+        if not ctx.triggered:
+            raise PreventUpdate
+
+        triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        now = pd.Timestamp.now()
+
         try:
-            # If triggered by date picker (direct selection)
-            if triggered_id in ["slider-start-date-picker", "slider-end-date-picker"]:
-                # Get the dates from the date pickers
+            if triggered_id.startswith("date-range"):
+                if triggered_id == "date-range-1m":
+                    start_date = now - pd.DateOffset(months=1)
+                elif triggered_id == "date-range-3m":
+                    start_date = now - pd.DateOffset(months=3)
+                elif triggered_id == "date-range-6m":
+                    start_date = now - pd.DateOffset(months=6)
+                elif triggered_id == "date-range-1y":
+                    start_date = now - pd.DateOffset(years=1)
+                elif triggered_id == "date-range-2y":
+                    start_date = now - pd.DateOffset(years=2)
+                elif triggered_id == "date-range-all":
+                    return [min_date_ts, max_date_ts, None, None, "All", "All"]
+                else:
+                    raise PreventUpdate
+
+                start_ts = int(start_date.timestamp() * 1000)
+                end_ts = int(now.timestamp() * 1000)
+            elif triggered_id in ["slider-start-date-picker", "slider-end-date-picker"]:
                 if not start_date_picker or not end_date_picker:
                     raise PreventUpdate
-                
+
                 start_date = pd.to_datetime(start_date_picker)
                 end_date = pd.to_datetime(end_date_picker)
-                
-                # Make sure end date is not before start date
+
                 if end_date < start_date:
                     if triggered_id == "slider-start-date-picker":
                         end_date = start_date
                     else:
                         start_date = end_date
-                
-                # Convert to timestamps for slider
+
                 start_ts = int(start_date.timestamp() * 1000)
                 end_ts = int(end_date.timestamp() * 1000)
-                
-                # Ensure dates are within allowed range
-                start_ts = max(min_allowed, min(max_allowed, start_ts))
-                end_ts = max(min_allowed, min(max_allowed, end_ts))
-                
-                # Format the dates for other components
-                start_date_str = start_date.strftime('%Y-%m-%d')
-                end_date_str = end_date.strftime('%Y-%m-%d')
-                
-                return [start_ts, end_ts], start_date_str, end_date_str, start_date_str, end_date_str
-            
-            # If triggered by slider
             else:
-                # Use drag value during dragging, otherwise use the final value
-                values_to_use = drag_value if drag_value is not None and triggered_id == "backtest-date-slider" else date_range_timestamps
-                
+                values_to_use = drag_value if drag_value is not None else date_range_timestamps
                 if not values_to_use or len(values_to_use) != 2:
                     raise PreventUpdate
-                
-                # Convert timestamps (ms) back to datetime
+
                 start_ts, end_ts = values_to_use
                 start_date = pd.to_datetime(start_ts, unit='ms')
                 end_date = pd.to_datetime(end_ts, unit='ms')
-                
-                # Format for display
-                start_date_str = start_date.strftime('%Y-%m-%d')
-                end_date_str = end_date.strftime('%Y-%m-%d')
-                
-                return [start_ts, end_ts], start_date_str, end_date_str, start_date_str, end_date_str
-                
+
+            start_ts = max(min_date_ts, min(max_date_ts, start_ts))
+            end_ts = max(min_date_ts, min(max_date_ts, end_ts))
+
+            start_date_str = pd.to_datetime(start_ts, unit='ms').strftime('%Y-%m-%d')
+            end_date_str = pd.to_datetime(end_ts, unit='ms').strftime('%Y-%m-%d')
+
+            return [
+                [start_ts, end_ts],
+                start_date_str,
+                end_date_str,
+                start_date_str,
+                end_date_str
+            ]
         except Exception as e:
             logger.error(f"Error updating date components: {e}")
             raise PreventUpdate
     
-    # Add a callback specifically for updating the display dates during slider movement
-    @app.callback(
-        [Output("selected-start-date", "children"),
-         Output("selected-end-date", "children")],
-        [Input("backtest-date-slider", "value"),
-         Input("backtest-date-slider", "drag_value")],
-        prevent_initial_call=True
-    )
-    def update_date_display(date_range_timestamps, drag_value):
-        """
-        Update the display of selected dates when the slider is moved.
-        This provides immediate visual feedback during dragging.
-        """
-        # Use drag_value during dragging if available
-        values_to_use = drag_value if drag_value is not None else date_range_timestamps
-        
-        if not values_to_use or len(values_to_use) != 2:
-            return "N/A", "N/A"
-        
-        try:
-            # Convert timestamps (ms) back to datetime
-            start_ts, end_ts = values_to_use
-            start_date = pd.to_datetime(start_ts, unit='ms')
-            end_date = pd.to_datetime(end_ts, unit='ms')
-            
-            # Format for display
-            start_date_str = start_date.strftime('%Y-%m-%d')
-            end_date_str = end_date.strftime('%Y-%m-%d')
-            
-            return start_date_str, end_date_str
-        except Exception as e:
-            logger.error(f"Error updating date display: {e}")
-            return "Error", "Error"
-
     # Zastępuję problematyczne callbacki wykorzystujące nieistniejącą właściwość is_open
     # Usunięcie callbacków otwierających kalendarz po kliknięciu na przycisk daty
     @app.callback(
@@ -521,58 +502,6 @@ def register_strategy_callbacks(app):
         if open_clicks or close_clicks or submit_clicks:
             return not is_open
         return is_open
-
-    @app.callback(
-        Output("backtest-date-slider", "value"),
-        [Input("date-range-1m", "n_clicks"),
-         Input("date-range-3m", "n_clicks"),
-         Input("date-range-6m", "n_clicks"),
-         Input("date-range-1y", "n_clicks"),
-         Input("date-range-2y", "n_clicks"),
-         Input("date-range-all", "n_clicks")],
-        [State("backtest-date-slider", "min"),
-         State("backtest-date-slider", "max")],
-        prevent_initial_call=True
-    )
-    def handle_quick_date_ranges(n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_2y, n_clicks_all, min_date_ts, max_date_ts):
-        """
-        Obsługuje przyciski szybkiego wyboru zakresów dat.
-        Ustawia zakres dat na podstawie klikniętego przycisku.
-        """
-        ctx = callback_context
-        if not ctx.triggered:
-            raise PreventUpdate
-            
-        # Identyfikujemy, który przycisk został kliknięty
-        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        now = pd.Timestamp.now()
-        
-        if button_id == "date-range-1m":
-            start_date = now - pd.DateOffset(months=1)
-        elif button_id == "date-range-3m":
-            start_date = now - pd.DateOffset(months=3)
-        elif button_id == "date-range-6m":
-            start_date = now - pd.DateOffset(months=6)
-        elif button_id == "date-range-1y":
-            start_date = now - pd.DateOffset(years=1)
-        elif button_id == "date-range-2y":
-            start_date = now - pd.DateOffset(years=2)
-        elif button_id == "date-range-all":
-            # Używamy pełnego dostępnego zakresu
-            return [min_date_ts, max_date_ts]
-        else:
-            raise PreventUpdate
-            
-        # Konwersja dat do timestampów dla slidera
-        start_ts = int(start_date.timestamp() * 1000)
-        end_ts = int(now.timestamp() * 1000)
-        
-        # Upewniamy się, że daty są w dopuszczalnym zakresie
-        start_ts = max(min_date_ts, min(max_date_ts, start_ts))
-        end_ts = max(min_date_ts, min(max_date_ts, end_ts))
-        
-        # Aktualizujemy slider i pola dat
-        return [start_ts, end_ts]
 
     @app.callback(
         Output("run-backtest-button", "disabled"),

@@ -1,6 +1,7 @@
 from enum import Enum
 import pandas as pd
 import plotly.graph_objects as go
+import os
 
 # Import strategy classes
 from src.strategies.moving_average import MovingAverageCrossoverStrategy
@@ -33,6 +34,9 @@ AVAILABLE_STRATEGIES = {
     'BB': BollingerBandsStrategy,
     'RSI': RSIStrategy
 }
+
+# Define the path to the data directory
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'data')
 
 # Chart theming
 CHART_THEME = 'plotly_dark'

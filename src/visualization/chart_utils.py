@@ -56,6 +56,99 @@ def _create_base_layout(title: str = "", height: int = DEFAULT_HEIGHT, **kwargs)
     layout.update(**kwargs) # Zastosuj dodatkowe argumenty layoutu
     return layout
 
+def add_shapes_to_chart(fig: go.Figure, 
+                       shapes: List[Dict[str, Any]]) -> go.Figure:
+    """
+    Adds shape annotations (like vertical lines, rectangles, etc.) to a Plotly chart.
+    
+    Args:
+        fig (go.Figure): The Plotly figure object to add shapes to
+        shapes (List[Dict]): List of shape definitions. Each shape should be a dict with:
+            - type: 'line', 'rect', etc.
+            - x0, y0, x1, y1: Coordinates 
+            - line_color (optional): Color for lines
+            - fillcolor (optional): Fill color for shapes
+            - opacity (optional): Opacity value
+            - layer (optional): 'below' or 'above'
+            - name (optional): Shape name for hover
+            - text (optional): Text to display with the shape
+            
+    Returns:
+        go.Figure: The modified figure with shapes added
+    """
+    if not shapes:
+        return fig
+        
+    for shape in shapes:
+        shape_type = shape.get('type', 'line')
+        
+        # Set default colors based on shape type
+        if shape_type == 'line' and 'line_color' not in shape:
+            shape['line_color'] = VIZ_CFG['colors']['primary']
+        elif 'fillcolor' not in shape and shape_type in ['rect', 'circle']:
+            shape['fillcolor'] = f"rgba({int(VIZ_CFG['colors']['primary'][1:3], 16)}, {int(VIZ_CFG['colors']['primary'][3:5], 16)}, {int(VIZ_CFG['colors']['primary'][5:7], 16)}, 0.3)"
+            
+        # Set default opacity
+        if 'opacity' not in shape and shape_type in ['rect', 'circle']:
+            shape['opacity'] = 0.3
+            
+        # Set default line properties
+        if 'line' not in shape:
+            shape['line'] = dict(
+                color=shape.get('line_color', VIZ_CFG['colors']['primary']),
+                width=shape.get('line_width', 1),
+                dash=shape.get('line_dash', None)
+            )
+            
+        # Add the shape to the figure
+        fig.add_shape(
+            type=shape_type,
+            x0=shape.get('x0'),
+            y0=shape.get('y0'),
+            x1=shape.get('x1'),
+            y1=shape.get('y1'),
+            line=shape.get('line'),
+            fillcolor=shape.get('fillcolor'),
+            opacity=shape.get('opacity'),
+            layer=shape.get('layer', 'above'),
+            name=shape.get('name', '')
+        )
+        
+        # Add annotation if text is provided
+        if 'text' in shape and shape.get('text'):
+            fig.add_annotation(
+                x=shape.get('x1', shape.get('x0')),  # Use x1 if available, otherwise x0
+                y=shape.get('y1', shape.get('y0')),  # Use y1 if available, otherwise y0
+                text=shape['text'],
+                showarrow=shape.get('showarrow', False),
+                arrowhead=shape.get('arrowhead', 1),
+                arrowcolor=shape.get('arrowcolor', shape.get('line', {}).get('color', VIZ_CFG['colors']['primary'])),
+                ax=shape.get('ax', 0),
+                ay=shape.get('ay', -40),
+                font=dict(
+                    color=shape.get('text_color', TEXT_COLOR),
+                    size=shape.get('text_size', 12)
+                ),
+                bgcolor=shape.get('text_bgcolor', 'rgba(0,0,0,0.5)'),
+                bordercolor=shape.get('text_bordercolor', 'rgba(0,0,0,0)'),
+                borderwidth=shape.get('text_borderwidth', 0),
+                borderpad=shape.get('text_borderpad', 4)
+            )
+    
+    return fig
+
+def format_currency(value: Union[float, int]) -> str:
+    """
+    Formats a numeric value as currency with $ prefix and commas for thousands.
+    
+    Args:
+        value (float or int): The numeric value to format
+        
+    Returns:
+        str: Formatted currency string
+    """
+    return f"${value:,.2f}" if value is not None else "$0.00"
+
 # --- Funkcje tworzące komponenty Dash ---
 
 def create_empty_chart(title: str = "No Data Available", height: int = DEFAULT_HEIGHT) -> dcc.Graph:

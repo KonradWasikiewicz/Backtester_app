@@ -46,6 +46,7 @@ def register_backtest_callbacks(app):
         logger.error(f"Failed to initialize services: {e}", exc_info=True)
         # We'll handle this in the callbacks
     
+    # Simplified and refactored run_backtest callback
     @app.callback(
         [Output("backtest-status", "children"),
          Output("results-section", "style"),
@@ -55,13 +56,10 @@ def register_backtest_callbacks(app):
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-selector", "value"),
          State("ticker-selector", "value"),
-         # Date inputs
          State("slider-start-date-picker", "date"),
          State("slider-end-date-picker", "date"),
-         # Strategy parameters pattern matching state
          State({"type": "strategy-param", "index": ALL}, "value"),
          State({"type": "strategy-param", "index": ALL}, "id"),
-         # Risk parameters
          State("risk-features-checklist", "value"),
          State("max-risk-per-trade", "value"),
          State("stop-loss-type", "value"),
@@ -69,114 +67,45 @@ def register_backtest_callbacks(app):
          State("max-position-size", "value")],
         prevent_initial_call=True
     )
-    def run_backtest(n_clicks, strategy_type, selected_tickers, 
-                    start_date, end_date,
-                    strategy_param_values, strategy_param_ids, risk_features,
-                    risk_per_trade, stop_loss_type, stop_loss_value, max_positions):
+    def run_backtest(n_clicks, strategy_type, selected_tickers, start_date, end_date,
+                     strategy_param_values, strategy_param_ids, risk_features,
+                     risk_per_trade, stop_loss_type, stop_loss_value, max_positions):
         """
         Execute backtest when the Run Backtest button is clicked.
-        
-        Returns:
-            Status message, visibility settings for results, ticker options, and selected ticker
         """
         if not n_clicks:
-            return (
-                "", 
-                {"display": "none"}, 
-                {"display": "block"}, 
-                [], 
-                None
-            )
-        
-        if not all([backtest_service, data_service, visualization_service]):
-            error_msg = "Service initialization failed. Please check the logs."
-            return (
-                html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
-                {"display": "none"},
-                {"display": "block"},
-                [], 
-                None
-            )
-        
-        # Check required inputs
-        if not strategy_type or not selected_tickers or not start_date or not end_date:
-            missing = []
-            if not strategy_type: missing.append("strategy")
-            if not selected_tickers: missing.append("tickers")
-            if not start_date or not end_date: missing.append("date range")
-            
-            error_msg = f"Please provide required inputs: {', '.join(missing)}"
-            return (
-                html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
-                {"display": "none"},
-                {"display": "block"},
-                [], 
-                None
-            )
-        
-        # Process tickers - now tickers are already a list from the dropdown
-        tickers = selected_tickers if isinstance(selected_tickers, list) else [selected_tickers]
-        if not tickers:
-            error_msg = "Please select at least one ticker."
-            return (
-                html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
-                {"display": "none"},
-                {"display": "block"},
-                [], 
-                None
-            )
-        
-        # Process strategy parameters
+            return "", {"display": "none"}, {"display": "block"}, [], None
+
+        # Validate required inputs
+        missing_inputs = []
+        if not strategy_type:
+            missing_inputs.append("strategy")
+        if not selected_tickers:
+            missing_inputs.append("tickers")
+        if not start_date or not end_date:
+            missing_inputs.append("date range")
+
+        if missing_inputs:
+            error_msg = f"Please provide required inputs: {', '.join(missing_inputs)}"
+            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
+
+        # Prepare parameters
         try:
-            strategy_params = {}
-            for i, param_id in enumerate(strategy_param_ids):
-                param_name = param_id["index"]
-                param_value = strategy_param_values[i]
-                strategy_params[param_name] = param_value
-            
-            # Process risk parameters
-            risk_params = {}
-            
-            # Process risk features checklist
-            risk_features = risk_features or []  # Default empty list if None
-            
-            # Process continue_iterate option
-            risk_params["continue_iterate"] = "continue_iterate" in risk_features
-            
-            # Process other risk feature options
-            risk_params["use_position_sizing"] = "position_sizing" in risk_features
-            risk_params["use_stop_loss"] = "stop_loss" in risk_features
-            risk_params["use_take_profit"] = "take_profit" in risk_features
-            risk_params["use_market_filter"] = "market_filter" in risk_features
-            risk_params["use_drawdown_protection"] = "drawdown_protection" in risk_features
-            
-            # Set stop loss parameters
-            if stop_loss_type == "fixed" or stop_loss_type == "percent":
-                risk_params["stop_loss_pct"] = float(stop_loss_value) / 100.0 if stop_loss_value is not None else 0.02
-            elif stop_loss_type == "trailing":
-                risk_params["use_trailing_stop"] = True
-                risk_params["trailing_stop_activation"] = 0.02  # 2% default
-                risk_params["trailing_stop_distance"] = float(stop_loss_value) / 100.0 if stop_loss_value is not None else 0.015
-            elif stop_loss_type == "none" or stop_loss_type is None:
-                risk_params["stop_loss_pct"] = 0.99  # Use large value if none
-            
-            # Risk per trade
-            if risk_per_trade is not None:
-                risk_params["risk_per_trade_pct"] = float(risk_per_trade) / 100.0
-            
-            # Max positions
-            if max_positions is not None:
-                risk_params["max_open_positions"] = int(max_positions)
-            else:
-                risk_params["max_open_positions"] = 5  # Default
-            
-            # Show a loading message with spinner implementation
-            status_div = html.Div([
-                html.I(className="fas fa-spinner fa-spin me-2"),
-                "Running backtest..."
-            ], className="text-primary")
-            
-            # Run the backtest using the service
+            tickers = selected_tickers if isinstance(selected_tickers, list) else [selected_tickers]
+            strategy_params = {param_id["index"]: strategy_param_values[i] for i, param_id in enumerate(strategy_param_ids)}
+            risk_params = {
+                "continue_iterate": "continue_iterate" in (risk_features or []),
+                "use_position_sizing": "position_sizing" in (risk_features or []),
+                "use_stop_loss": "stop_loss" in (risk_features or []),
+                "use_take_profit": "take_profit" in (risk_features or []),
+                "use_market_filter": "market_filter" in (risk_features or []),
+                "use_drawdown_protection": "drawdown_protection" in (risk_features or []),
+                "stop_loss_pct": float(stop_loss_value) / 100.0 if stop_loss_value and stop_loss_type in ["fixed", "percent"] else 0.99,
+                "risk_per_trade_pct": float(risk_per_trade) / 100.0 if risk_per_trade else None,
+                "max_open_positions": int(max_positions) if max_positions else 5
+            }
+
+            # Run backtest
             result = backtest_service.run_backtest(
                 strategy_type=strategy_type,
                 tickers=tickers,
@@ -185,39 +114,18 @@ def register_backtest_callbacks(app):
                 strategy_params=strategy_params,
                 risk_params=risk_params
             )
-            
-            if result["success"]:
-                # Create ticker options for the signals chart dropdown
+
+            if result.get("success"):
                 ticker_options = [{"label": ticker, "value": ticker} for ticker in tickers if ticker in result.get("signals", {})]
-                
-                return (
-                    html.Div([html.I(className="fas fa-check-circle me-2"), "Backtest completed successfully"], className="text-success"),
-                    {"display": "block"},
-                    {"display": "none"},
-                    ticker_options,
-                    ticker_options[0]["value"] if ticker_options else None
-                )
+                return html.Div([html.I(className="fas fa-check-circle me-2"), "Backtest completed successfully"], className="text-success"), {"display": "block"}, {"display": "none"}, ticker_options, ticker_options[0]["value"] if ticker_options else None
             else:
                 error_msg = f"Backtest failed: {result.get('error', 'Unknown error')}"
-                logger.error(f"Backtest failed: {result}")
-                return (
-                    html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
-                    {"display": "none"},
-                    {"display": "block"},
-                    [], 
-                    None
-                )
-                
+                return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
+
         except Exception as e:
             logger.error(f"Error running backtest: {e}", exc_info=True)
             error_msg = f"Error running backtest: {str(e)}"
-            return (
-                html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"),
-                {"display": "none"},
-                {"display": "block"},
-                [], 
-                None
-            )
+            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
     
     @app.callback(
         [Output("metric-total-return", "children"),
