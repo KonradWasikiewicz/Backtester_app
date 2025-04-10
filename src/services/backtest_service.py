@@ -104,56 +104,30 @@ class BacktestService:
         metrics = {}
         
         try:
-            # Map metric IDs to their respective values and tooltips
-            metric_definitions = {
-                "total-return": {
-                    "value": f"{self.current_stats.get('Total Return', 0):.2f}%", 
-                    "tooltip": "Total percentage return over the entire backtest period",
-                    "color": self._get_color_for_value(self.current_stats.get('Total Return', 0))
-                },
-                "cagr": {
-                    "value": f"{self.current_stats.get('CAGR', 0):.2f}%",
-                    "tooltip": "Compound Annual Growth Rate - annualized return",
-                    "color": self._get_color_for_value(self.current_stats.get('CAGR', 0))
-                },
-                "sharpe": {
-                    "value": f"{self.current_stats.get('Sharpe Ratio', 0):.2f}",
-                    "tooltip": "Sharpe Ratio - return divided by risk (higher is better)",
-                    "color": self._get_color_for_sharpe(self.current_stats.get('Sharpe Ratio', 0))
-                },
-                "max-drawdown": {
-                    "value": f"{self.current_stats.get('Max Drawdown', 0):.2f}%",
-                    "tooltip": "Maximum drawdown - largest peak-to-trough decline",
-                    "color": "#ff4a68"  # Always red as drawdowns are negative
-                },
-                "win-rate": {
-                    "value": f"{self.current_stats.get('Win Rate', 0) * 100:.1f}%",
-                    "tooltip": "Percentage of trades that were profitable",
-                    "color": self._get_color_for_win_rate(self.current_stats.get('Win Rate', 0))
-                },
-                "profit-factor": {
-                    "value": f"{self.current_stats.get('Profit Factor', 0):.2f}",
-                    "tooltip": "Gross profits divided by gross losses (higher is better)",
-                    "color": self._get_color_for_profit_factor(self.current_stats.get('Profit Factor', 0))
-                },
-                "avg-trade": {
-                    "value": f"${self.current_stats.get('Average Trade', 0):.2f}",
-                    "tooltip": "Average profit/loss per trade",
-                    "color": self._get_color_for_value(self.current_stats.get('Average Trade', 0))
-                }
+            # Format total return with sign
+            total_return = self.current_stats.get('Total Return', 0)
+            total_return_str = f"+{total_return:.2f}%" if total_return >= 0 else f"{total_return:.2f}%"
+            
+            # Format CAGR with sign
+            cagr = self.current_stats.get('CAGR', 0)
+            cagr_str = f"+{cagr:.2f}%" if cagr >= 0 else f"{cagr:.2f}%"
+            
+            # Format metrics for display
+            metrics = {
+                "total-return": total_return_str,
+                "cagr": cagr_str,
+                "sharpe": f"{self.current_stats.get('Sharpe Ratio', 0):.2f}",
+                "max-drawdown": f"{self.current_stats.get('Max Drawdown', 0):.2f}%",
+                "win-rate": f"{self.current_stats.get('Win Rate', 0) * 100:.1f}%",
+                "profit-factor": f"{self.current_stats.get('Profit Factor', 0):.2f}",
+                "avg-trade": f"${self.current_stats.get('Avg Trade', 0):.2f}",
+                
+                # Additional metrics
+                "recovery-factor": f"{self.current_stats.get('Recovery Factor', 0):.2f}x",
+                "calmar-ratio": f"{self.current_stats.get('Calmar Ratio', 0):.2f}"
             }
             
-            # Create metric components
-            for metric_id, metric_data in metric_definitions.items():
-                metrics[metric_id] = create_metric_card_with_tooltip(
-                    title=metric_id.replace("-", " ").title(),
-                    value=metric_data["value"],
-                    tooltip_text=metric_data["tooltip"],
-                    text_color=metric_data["color"]
-                )
-            
             return metrics
-        
         except Exception as e:
             logger.error(f"Error generating performance metrics: {e}", exc_info=True)
             return {}
@@ -301,3 +275,69 @@ class BacktestService:
         elif value >= 1.0:
             return "#ffa15a"  # Orange for okay
         return "#ff4a68"      # Red for poor
+    
+    def get_equity_curve(self) -> pd.DataFrame:
+        """
+        Get equity curve data for plotting.
+        
+        Returns:
+            DataFrame with equity curve data
+        """
+        if not self.current_results or "portfolio" not in self.current_results:
+            return pd.DataFrame()
+        
+        try:
+            portfolio = self.current_results["portfolio"]
+            return portfolio[["equity"]].copy()
+        except Exception as e:
+            logger.error(f"Error getting equity curve: {e}", exc_info=True)
+            return pd.DataFrame()
+    
+    def get_benchmark_data(self) -> pd.DataFrame:
+        """
+        Get benchmark data for comparison with the strategy.
+        
+        Returns:
+            DataFrame with benchmark data
+        """
+        if not self.current_results or "benchmark" not in self.current_results:
+            return pd.DataFrame()
+        
+        try:
+            benchmark = self.current_results["benchmark"].copy()
+            benchmark.columns = ["value"]
+            return benchmark
+        except Exception as e:
+            logger.error(f"Error getting benchmark data: {e}", exc_info=True)
+            return pd.DataFrame()
+    
+    def get_monthly_returns(self) -> pd.DataFrame:
+        """
+        Get monthly returns data for heatmap.
+        
+        Returns:
+            DataFrame with monthly returns data (index: year, month)
+        """
+        if not self.current_results or "portfolio" not in self.current_results:
+            return pd.DataFrame()
+        
+        try:
+            portfolio = self.current_results["portfolio"]
+            
+            # Convert to monthly returns
+            monthly_returns = portfolio["equity"].resample("M").last().pct_change()
+            monthly_returns = monthly_returns.dropna()
+            
+            # Create MultiIndex with year and month
+            years = monthly_returns.index.year
+            months = monthly_returns.index.month
+            
+            # Create DataFrame with MultiIndex
+            df = pd.DataFrame({
+                "return": monthly_returns.values
+            }, index=pd.MultiIndex.from_arrays([years, months], names=["year", "month"]))
+            
+            return df
+        except Exception as e:
+            logger.error(f"Error calculating monthly returns: {e}", exc_info=True)
+            return pd.DataFrame()

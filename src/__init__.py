@@ -10,6 +10,13 @@ import logging
 import sys
 from pathlib import Path
 
+# Importuj wersję z modułu version.py
+try:
+    from .version import get_version, get_version_info, VERSION as __version__
+except ImportError as e:
+    logging.warning(f"Failed to import version information: {e}")
+    __version__ = "0.0.0"  # Wersja awaryjna
+
 # Ustawienie podstawowej konfiguracji logowania, jeśli nie zostało to zrobione gdzie indziej
 # Można to zrobić tutaj, aby mieć pewność, że logger jest skonfigurowany
 # przed importem jakichkolwiek podpakietów, które mogą go używać.
@@ -26,7 +33,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__) # Pobierz logger dla tego pakietu
 
-logger.info("Initializing 'src' package...")
+logger.info(f"Initializing 'src' package version {__version__}...")
 
 # Możesz tutaj zaimportować najważniejsze elementy z podpakietów,
 # aby były dostępne bezpośrednio jako `from src import ...`,
@@ -41,9 +48,6 @@ logger.info("Initializing 'src' package...")
 #     logger.debug("Successfully re-exported key components from 'src'.")
 # except ImportError as e:
 #     logger.error(f"Failed to re-export components from 'src' subpackages: {e}")
-
-# Wersja aplikacji (opcjonalne)
-__version__ = "0.1.0" # Przykładowa wersja
 
 logger.info(f"Source package 'src' version {__version__} initialized.")
 

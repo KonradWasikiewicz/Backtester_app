@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 import pandas as pd
 import os
 import sys
+from datetime import datetime
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -149,88 +150,94 @@ def generate_strategy_parameters(strategy_class) -> html.Div:
         logger.error(f"Error inspecting strategy parameters: {e}", exc_info=True)
         return html.P(f"Error loading parameters: {str(e)}", className="text-danger")
 
-def create_ticker_checklist(available_tickers: List[str] = None) -> html.Div:
+def create_ticker_checklist(tickers):
     """
-    Creates a checklist component for ticker selection with optimized layout.
+    Create a checklist component for selecting tickers, with search functionality.
     
     Args:
-        available_tickers: List of available ticker symbols
+        tickers: List of available tickers
         
     Returns:
-        html.Div: A container with the ticker selection interface
+        A Dash HTML Div containing the ticker checklist component
     """
-    if not available_tickers:
-        available_tickers = []
+    if not tickers:
+        return html.Div("No tickers available", className="text-light")
     
-    # Calculate number of columns and rows for the grid
+    # Calculate the number of columns and rows
     num_columns = 4
-    num_rows = (len(available_tickers) + num_columns - 1) // num_columns
+    max_tickers_per_column = len(tickers) // num_columns + (1 if len(tickers) % num_columns > 0 else 0)
     
-    # Find the longest ticker for column width
-    max_ticker_length = max(len(ticker) for ticker in available_tickers) if available_tickers else 0
-    ticker_col_width = f"{max_ticker_length * 0.8}em"  # Adjust multiplier based on font size
+    # Find the longest ticker for optimal width
+    max_ticker_length = max(len(ticker) for ticker in tickers)
+    ticker_width = max(70, max_ticker_length * 10)  # Minimum 70px, or 10px per character
     
-    # Create grid layout
-    grid_items = []
-    for i in range(num_rows):
-        row_items = []
-        for j in range(num_columns):
-            idx = i * num_columns + j
-            if idx < len(available_tickers):
-                ticker = available_tickers[idx]
-                row_items.append(
-                    dbc.Col([
-                        html.Div([
-                            html.Span(ticker, style={
-                                "width": ticker_col_width,
-                                "display": "inline-block",
-                                "vertical-align": "middle",
-                                "line-height": "1.5"
-                            }),
-                            dbc.Checkbox(
-                                id={"type": "ticker-checkbox", "index": ticker},
-                                value=False,
-                                className="ms-2",
-                                style={"transform": "scale(1.2)"}  # Make checkbox larger
-                            )
-                        ], className="d-flex align-items-center", style={"min-height": "2em"})
-                    ], width="auto", className="px-2")
+    # Create checkboxes in a grid layout
+    ticker_checkboxes = []
+    
+    for i, ticker in enumerate(tickers):
+        row_idx = i % max_tickers_per_column
+        col_idx = i // max_tickers_per_column
+        
+        if col_idx < num_columns:  # Ensure we don't exceed our column count
+            ticker_checkbox = dbc.Checkbox(
+                id={"type": "ticker-checkbox", "index": ticker},
+                label=ticker,
+                value=False,
+                className="me-2 ticker-item",
+                inputClassName="ticker-input",
+                labelClassName="ticker-label",
+            )
+            
+            ticker_checkboxes.append(ticker_checkbox)
+    
+    # Arrange checkboxes in columns
+    checkbox_columns = []
+    for col_idx in range(num_columns):
+        start_idx = col_idx * max_tickers_per_column
+        end_idx = min((col_idx + 1) * max_tickers_per_column, len(ticker_checkboxes))
+        
+        if start_idx < len(ticker_checkboxes):
+            column = dbc.Col(
+                ticker_checkboxes[start_idx:end_idx],
+                width=3,
+                style={"width": f"{ticker_width}px", "minWidth": f"{ticker_width}px"}
+            )
+            checkbox_columns.append(column)
+    
+    # Search input and Quick action buttons
+    search_and_actions = dbc.Row([
+        dbc.Col([
+            dbc.InputGroup([
+                dbc.InputGroupText(html.I(className="fas fa-search")),
+                dbc.Input(
+                    id="ticker-search",
+                    placeholder="Search tickers...",
+                    type="text",
+                    className="mb-3"
                 )
-            else:
-                row_items.append(dbc.Col(width="auto", className="px-2"))
-        grid_items.append(dbc.Row(row_items, className="mb-2"))
-    
-    return html.Div(children=[
-        html.Label("Select Tickers", className="form-label"),
-        
-        # Search input
-        dbc.Input(
-            id="ticker-search",
-            type="text",
-            placeholder="Search tickers...",
-            className="mb-2",
-            debounce=True
-        ),
-        
-        # Ticker grid
-        html.Div(grid_items, className="ticker-grid mb-3", style={
-            "max-height": "300px",
-            "overflow-y": "auto",  # Only allow vertical scroll
-            "overflow-x": "hidden", # Hide horizontal scroll
-            "padding": "0.5rem"
-        }),
-        
-        # Quick actions
-        html.Div([
-            dbc.Button("Select All", id="select-all-tickers", color="primary", size="sm", className="me-2"),
-            dbc.Button("Clear All", id="clear-all-tickers", color="secondary", size="sm"),
-        ], className="mt-2"),
-        
-        html.Small(
-            "Select one or more tickers to include in the backtest. Use search to filter tickers.",
-            className="text-muted d-block mt-1"
-        )
+            ])
+        ], width=6),
+        dbc.Col([
+            dbc.ButtonGroup([
+                dbc.Button("Select All", id="select-all-tickers", color="secondary", size="sm", className="me-2"),
+                dbc.Button("Clear All", id="clear-all-tickers", color="secondary", size="sm")
+            ], className="float-end")
+        ], width=6)
     ], className="mb-3")
+    
+    # Create the component
+    return html.Div([
+        search_and_actions,
+        dbc.Row(checkbox_columns),
+    ], 
+    style={
+        "maxHeight": "300px",
+        "overflowY": "auto",
+        "border": "1px solid #ccc",
+        "borderRadius": "5px",
+        "padding": "10px"
+    },
+    id="ticker-checklist-container")
 
 def create_backtest_parameters() -> html.Div:
     """
@@ -404,137 +411,241 @@ def create_backtest_parameters() -> html.Div:
         ])
     ])
 
-def create_strategy_config_section(available_tickers: List[str] = None) -> dbc.Card:
+def create_strategy_config_section(tickers=None):
     """
-    Creates the strategy configuration section of the UI.
+    Create the strategy configuration section of the interface.
     
     Args:
-        available_tickers: List of available ticker symbols
+        tickers: List of available tickers to display (optional)
         
     Returns:
-        dbc.Card: A card component containing the strategy configuration UI
+        A Dash HTML Div containing the strategy configuration UI
     """
-    if not available_tickers:
-        available_tickers = []
+    # If tickers not provided, load available tickers
+    if tickers is None:
+        tickers = loader.get_available_tickers()
     
-    # Strategy descriptions for tooltips
-    strategy_descriptions = {
-        'MA': {
-            'name': 'Moving Average Crossover',
-            'description': [
-                'Uses crossing of two moving averages to generate signals',
-                'Buy when fast MA crosses above slow MA',
-                'Sell when fast MA crosses below slow MA',
-                'Effective in trending markets'
+    # Create a wizard interface with multiple steps
+    return html.Div([
+        # Hidden store for wizard state
+        dcc.Store(id="wizard-state", data={}),
+        
+        # Wizard progress bar
+        dbc.Progress(
+            id="wizard-progress",
+            value=0,
+            className="mb-4",
+            style={"height": "10px"}
+        ),
+        
+        # Step 1: Strategy and Asset Selection
+        create_wizard_step(
+            step_id="step1",
+            title="Step 1: Strategy and Asset Selection",
+            content=[
+                # Strategy Selection
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Select Strategy", className="text-light"),
+                        dcc.Dropdown(
+                            id='strategy-selector',
+                            options=[
+                                {'label': 'Moving Average (MA)', 'value': 'MA'},
+                                {'label': 'Relative Strength Index (RSI)', 'value': 'RSI'},
+                                {'label': 'Bollinger Bands (BB)', 'value': 'BB'},
+                            ],
+                            placeholder="Select a strategy",
+                            className="mb-3"
+                        ),
+                        html.Div(id="strategy-description", className="mb-3"),
+                        html.Div(id="strategy-parameters", className="mb-3")
+                    ], md=6),
+                    
+                    # Date Range Selection
+                    dbc.Col([
+                        html.Label("Select Date Range", className="text-light"),
+                        dcc.DatePickerRange(
+                            id='slider-start-date-picker',
+                            min_date_allowed=datetime(2015, 1, 1),
+                            max_date_allowed=datetime.now(),
+                            initial_visible_month=datetime(2020, 1, 1),
+                            start_date=datetime(2020, 1, 1),
+                            end_date=datetime(2022, 12, 31),
+                            className="mb-3 w-100"
+                        ),
+                    ], md=6)
+                ]),
+                
+                # Ticker Selection Section
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Select Tickers", className="text-light"),
+                        create_ticker_checklist(tickers),
+                    ])
+                ]),
+                
+                # Step 1 Confirmation Button
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Button(
+                            "Confirm Selection", 
+                            id="confirm-step1-btn", 
+                            color="success", 
+                            className="mt-3"
+                        )
+                    ], className="d-flex justify-content-end")
+                ])
             ]
-        },
-        'RSI': {
-            'name': 'Relative Strength Index',
-            'description': [
-                'Uses overbought/oversold conditions to generate signals',
-                'Buy when RSI crosses above oversold threshold',
-                'Sell when RSI crosses below overbought threshold',
-                'Effective in ranging markets'
+        ),
+        
+        # Step 2: Risk Management
+        create_wizard_step(
+            step_id="step2",
+            title="Step 2: Risk Management",
+            content=[
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Risk Management Features", className="text-light"),
+                        dbc.Checklist(
+                            id="risk-features-checklist",
+                            options=[
+                                {"label": "Position Sizing", "value": "position_sizing"},
+                                {"label": "Stop Loss", "value": "stop_loss"},
+                                {"label": "Take Profit", "value": "take_profit"},
+                                {"label": "Market Filter", "value": "market_filter"},
+                                {"label": "Drawdown Protection", "value": "drawdown_protection"}
+                            ],
+                            value=[],
+                            className="mb-3"
+                        )
+                    ], md=6),
+                    
+                    dbc.Col([
+                        html.Label("Stop Loss Configuration", className="text-light"),
+                        dbc.RadioItems(
+                            id="stop-loss-type",
+                            options=[
+                                {"label": "Percentage", "value": "percent"},
+                                {"label": "ATR Multiple", "value": "atr"},
+                                {"label": "Trailing Stop", "value": "trailing"}
+                            ],
+                            value="percent",
+                            className="mb-2"
+                        ),
+                        dcc.Slider(
+                            id="stop-loss-value",
+                            min=1,
+                            max=10,
+                            step=0.5,
+                            value=2,
+                            marks={i: str(i) for i in range(1, 11)},
+                            className="mb-3"
+                        ),
+                    ], md=6)
+                ]),
+                
+                # Step 2 Confirmation Button
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Button(
+                            "Confirm Risk Settings", 
+                            id="confirm-step2-btn", 
+                            color="success", 
+                            className="mt-3"
+                        )
+                    ], className="d-flex justify-content-end")
+                ])
             ]
-        },
-        'BB': {
-            'name': 'Bollinger Bands',
-            'description': [
-                'Uses price movement relative to volatility bands',
-                'Buy when price touches lower band and starts rising',
-                'Sell when price touches upper band and starts falling',
-                'Adapts to changing market volatility'
+        ),
+        
+        # Step 3: Run and Summary
+        create_wizard_step(
+            step_id="step3",
+            title="Step 3: Confirm and Run",
+            content=[
+                dbc.Card([
+                    dbc.CardHeader("Summary of Configuration", className="text-white bg-primary"),
+                    dbc.CardBody([
+                        dbc.Row([
+                            dbc.Col([
+                                html.H6("Strategy:", className="text-muted mb-1"),
+                                html.P(id="summary-strategy", className="lead mb-3"),
+                                
+                                html.H6("Date Range:", className="text-muted mb-1"),
+                                html.P(id="summary-date-range", className="lead mb-3"),
+                            ], md=6),
+                            dbc.Col([
+                                html.H6("Tickers:", className="text-muted mb-1"),
+                                html.P(id="summary-tickers", className="lead mb-3"),
+                                
+                                html.H6("Risk Management:", className="text-muted mb-1"),
+                                html.P(id="summary-risk", className="lead mb-3"),
+                            ], md=6)
+                        ]),
+                        
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button(
+                                    "Run Backtest", 
+                                    id="run-backtest-button", 
+                                    color="primary", 
+                                    size="lg",
+                                    className="mt-3",
+                                    disabled=True
+                                )
+                            ], className="d-flex justify-content-center")
+                        ])
+                    ])
+                ])
             ]
-        }
-    }
+        )
+    ], className="strategy-config-section py-3")
+
+def create_wizard_step(step_id, title, content):
+    """
+    Create a collapsible wizard step component
     
-    # Create strategy dropdown with full names
-    strategy_dropdown = dcc.Dropdown(
-        id="strategy-selector",
-        options=[
-            {"label": strategy_descriptions[key]['name'], "value": key} 
-            for key in AVAILABLE_STRATEGIES.keys()
-        ],
-        value=list(AVAILABLE_STRATEGIES.keys())[0] if AVAILABLE_STRATEGIES else None,
-        style={
-            'backgroundColor': '#1e222d',
-            'color': '#ffffff',
-            'border': '1px solid #444'
-        },
-        className="w-100"
-    )
-    
-    # Create strategy description div
-    strategy_description = html.Div(
-        id="strategy-description",
-        className="mt-2 px-2 py-2",
-        style={'backgroundColor': '#2a2e39', 'borderRadius': '5px'}
-    )
-    
-    return dbc.Card([
-        dbc.CardHeader("Strategy Configuration", className="bg-dark text-light"),
+    Args:
+        step_id: The ID prefix for the step
+        title: The title of the step
+        content: The content to display in the step
+        
+    Returns:
+        A Dash component representing the step
+    """
+    header_card = dbc.Card([
         dbc.CardBody([
-            # Strategy Selection
             dbc.Row([
                 dbc.Col([
-                    dbc.Label("Select Strategy", html_for="strategy-selector", className="text-light"),
-                    strategy_dropdown,
-                    strategy_description
-                ], width=12)
-            ], className="mb-3"),
-            
-            # Date Range Selection
-            dbc.Row([
+                    html.H5([
+                        html.Span(id=f"{step_id}-status", className="me-2"),
+                        title
+                    ], className="mb-0")
+                ]),
                 dbc.Col([
-                    dbc.Label("Start Date", html_for="slider-start-date-picker", className="text-light"),
-                    dcc.DatePickerSingle(
-                        id="slider-start-date-picker",
-                        date=pd.Timestamp('2020-01-01'),
-                        display_format='YYYY-MM-DD',
-                        first_day_of_week=1,
-                        min_date_allowed=pd.Timestamp('2010-01-01'),
-                        max_date_allowed=pd.Timestamp.today(),
-                        initial_visible_month=pd.Timestamp('2020-01-01'),
-                        className="w-100",
-                        style={'backgroundColor': '#1e222d', 'color': '#ffffff', 'borderRadius': '5px'},
-                        calendar_orientation='vertical'
-                    )
-                ], width=6),
-                dbc.Col([
-                    dbc.Label("End Date", html_for="slider-end-date-picker", className="text-light"),
-                    dcc.DatePickerSingle(
-                        id="slider-end-date-picker",
-                        date=pd.Timestamp.today(),
-                        display_format='YYYY-MM-DD',
-                        first_day_of_week=1,
-                        min_date_allowed=pd.Timestamp('2010-01-01'),
-                        max_date_allowed=pd.Timestamp.today(),
-                        initial_visible_month=pd.Timestamp.today(),
-                        className="w-100",
-                        style={'backgroundColor': '#1e222d', 'color': '#ffffff', 'borderRadius': '5px'},
-                        calendar_orientation='vertical'
-                    )
-                ], width=6)
-            ], className="mb-3"),
-            
-            # Ticker Selection
-            create_ticker_checklist(available_tickers),
-            
-            # Strategy Parameters
-            html.Div(id="strategy-parameters", className="mt-3"),
-            
-            # Run Backtest Button
-            dbc.Button(
-                "Run Backtest",
-                id="run-backtest-button",
-                color="primary",
-                className="w-100 mt-3"
-            ),
-            
-            # Status indicator
-            html.Div(id="backtest-status", className="mt-2")
-        ], className="bg-dark")
-    ], className="border-secondary")
+                    html.Div(id=f"{step_id}-summary", className="text-end small text-muted")
+                ], width="auto")
+            ])
+        ], className="py-2")
+    ], id=f"{step_id}-header-card", className="mb-2", style={"cursor": "pointer"})
+    
+    return html.Div([
+        header_card,
+        # Summary collapse - this shows when step is completed
+        dbc.Collapse(
+            dbc.Card(dbc.CardBody(id=f"{step_id}-summary")),
+            id=f"{step_id}-summary-collapse",
+            is_open=False,
+            className="mb-3"
+        ),
+        # Content collapse - this shows the step content
+        dbc.Collapse(
+            dbc.Card(dbc.CardBody(content)),
+            id=f"{step_id}-collapse",
+            is_open=step_id == "step1",  # First step is open by default
+            className="mb-3"
+        )
+    ])
 
 def create_import_tickers_modal() -> dbc.Modal:
     """

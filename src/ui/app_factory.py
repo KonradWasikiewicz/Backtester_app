@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 from typing import Dict, Any, List
 import traceback
+import pandas as pd
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ from src.ui.callbacks.risk_management_callbacks import register_risk_management_
 from src.ui.layouts.strategy_config import create_strategy_config_section
 from src.ui.layouts.results_display import create_results_section
 from src.ui.layouts.risk_management import create_risk_management_section
+from src.version import get_version, get_version_info  # Import wersji
 
 def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -> dash.Dash:
     """
@@ -36,7 +38,7 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
     app = dash.Dash(
         __name__,
         external_stylesheets=[
-            dbc.themes.DARKLY,  # Using Darkly for dark theme
+            dbc.themes.BOOTSTRAP,  # Using Bootstrap theme
             "https://use.fontawesome.com/releases/v6.0.0/css/all.css"  # Font Awesome icons
         ],
         suppress_callback_exceptions=suppress_callback_exceptions,
@@ -193,80 +195,51 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
     # Configure logging
     configure_logging()
     
-    # Get available tickers
-    available_tickers = get_available_tickers()
+    # Create the app layout using the function
+    app.layout = create_app_layout()
     
-    # Create the app layout
-    app.layout = dbc.Container([
-        # App title
-        html.H1("Backtester", className="text-center mb-4 text-light"),
-        
-        # Main content row
-        dbc.Row([
-            # Left column - Configuration sections
-            dbc.Col([
-                # Strategy Configuration
-                create_strategy_config_section(available_tickers),
-                html.Div(className="mb-3"),  # Spacer
-                # Risk Management
-                create_risk_management_section(available_tickers)
-            ], width=3, className="pe-3"),
-            
-            # Right column - Results
-            dbc.Col([
-                create_results_section()
-            ], width=9)
-        ], className="g-0"),
-        
-        # Store components
-        dcc.Store(id='strategy-store'),
-        dcc.Store(id='risk-management-store'),
-        dcc.Store(id='results-store')
-    ], fluid=True, className="py-4")
-    
-    # Register callbacks
+    # Register all application callbacks
     register_callbacks(app)
     
     return app
 
 def create_app_layout() -> html.Div:
     """
-    Create the main application layout structure.
+    Create the main app layout.
     
     Returns:
-        html.Div: The main application layout
+        html.Div: The main app layout
     """
     try:
-        logger.info("Creating application layout")
+        logger.info("Creating app layout")
         
-        # Load available tickers from the data loader
-        try:
-            data_loader = DataLoader()
-            available_tickers = data_loader.get_available_tickers()
-            logger.info(f"Loaded {len(available_tickers)} available tickers")
-        except Exception as e:
-            logger.error(f"Error loading available tickers: {e}")
-            available_tickers = []
+        # Get available tickers for the strategy configuration
+        available_tickers = get_available_tickers()
         
-        # UWAGA: Ta funkcja nie jest faktycznie używana w aplikacji
-        # Główny layout jest definiowany bezpośrednio w create_app
+        # Create the application layout
         layout = html.Div([
-            # Navbar
+            # Store for app state
+            dcc.Store(id="app-state", data={}),
+            
+            # App header
             dbc.Navbar(
                 dbc.Container([
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                html.H3("Trading Strategy Backtester", className="text-center mb-0 text-light"),
+                                className="text-center"
+                            ),
+                        ],
+                        className="w-100",
+                    ),
                     dbc.Row([
                         dbc.Col([
-                            html.I(className="fas fa-chart-line me-2"),
-                            html.Span("Trading Strategy Backtester", className="ms-2 fw-bold")
+                            html.Small(get_version(), className="text-muted")  # Dynamic version display
                         ], width="auto"),
-                    ], align="center", className="flex-grow-1"),
-                    dbc.Row([
                         dbc.Col([
                             html.A(
-                                dbc.Button([
-                                    html.I(className="fab fa-github me-1"),
-                                    "GitHub"
-                                ], color="light", outline=True, size="sm"),
+                                html.I(className="fab fa-github fa-lg"),
                                 href="https://github.com/",
                                 target="_blank"
                             )
@@ -286,7 +259,6 @@ def create_app_layout() -> html.Div:
                         create_strategy_config_section(available_tickers),
                         # Spacer
                         html.Div(className="my-4")
-                        # Risk management section jest już zdefiniowany w create_app
                     ], md=4, lg=3),
                     
                     # Right panel: Results display
@@ -325,7 +297,7 @@ def register_callbacks(app: dash.Dash) -> None:
     Register all application callbacks.
     
     Args:
-        app: The Dash application
+        app: The Dash application instance
     """
     try:
         logger.info("Registering application callbacks")

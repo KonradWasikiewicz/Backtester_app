@@ -1,68 +1,115 @@
 import dash
-from dash import Input, Output, State, clientside_callback
-from dash.dependencies import ClientsideFunction
+from dash import Input, Output, State, ALL, MATCH, callback_context
+import dash_bootstrap_components as dbc
+from typing import Dict, Any
 import json
 import logging
 
-# Configure logger
+# Configure logging
 logger = logging.getLogger(__name__)
 
 def register_risk_management_callbacks(app: dash.Dash) -> None:
     """
-    Register all risk management related callbacks.
+    Register all risk management callbacks with the application
     
     Args:
-        app: The Dash application instance
+        app: The Dash application
     """
-    logger.info("Registering risk management callbacks")
-    
-    # Create callbacks for toggling the visibility of each container
-    features = [
-        "position_sizing",
-        "stop_loss",
-        "take_profit",
-        "risk_per_trade",
-        "market_filter",
-        "drawdown_protection"
-    ]
-    
-    for i, feature in enumerate(features):
-        # Tylko rejestrujemy callback dla widoczności kontenera
-        clientside_callback(
-            f"""
-            function(isChecked) {{
-                return isChecked.length > 0 ? {{"display": "block", "marginLeft": "20px", "marginBottom": "15px"}} : {{"display": "none"}};
-            }}
-            """,
-            Output(f"{feature}-container", "style"),
-            Input(f"{feature}-checkbox", "value"),
-            prevent_initial_call=False
-        )
-    
-    # Sync the hidden checklist for initial state only
-    for feature in features:
-        clientside_callback(
-            f"""
-            function(combinedValues) {{
-                return combinedValues.includes("{feature}") ? ["{feature}"] : [];
-            }}
-            """,
-            Output(f"{feature}-checkbox", "value"),
-            Input("risk-features-checklist", "value"),
-            prevent_initial_call=False
-        )
-    
-    # Sync the continue_iterate checkbox
-    clientside_callback(
-        """
-        function(combinedValues) {
-            return combinedValues.includes("continue_iterate") ? ["continue_iterate"] : [];
-        }
-        """,
-        Output("continue-iterate-checkbox", "value"),
-        Input("risk-features-checklist", "value"),
-        prevent_initial_call=False
+    # JEDEN główny callback do obsługi widoczności wszystkich paneli
+    @app.callback(
+        [
+            Output("position_sizing-panel", "style"),
+            Output("stop_loss-panel", "style"),
+            Output("take_profit-panel", "style"),
+            Output("risk_per_trade-panel", "style"),
+            Output("market_filter-panel", "style"),
+            Output("drawdown_protection-panel", "style")
+        ],
+        Input("risk-features-checklist", "value")
     )
+    def update_panel_visibility(enabled_features):
+        """Aktualizuje widoczność wszystkich paneli na podstawie listy włączonych funkcji"""
+        features = [
+            "position_sizing", "stop_loss", "take_profit", 
+            "risk_per_trade", "market_filter", "drawdown_protection"
+        ]
+        
+        # Domyślny styl - ukryty
+        hidden_style = {"display": "none"}
+        # Styl dla widocznych paneli
+        visible_style = {"display": "block", "marginLeft": "20px", "marginBottom": "15px"}
+        
+        # Dla każdej funkcji sprawdzamy, czy jest włączona
+        styles = []
+        for feature in features:
+            if enabled_features and feature in enabled_features:
+                styles.append(visible_style)
+            else:
+                styles.append(hidden_style)
+                
+        return styles
+
+    # JEDEN callback do synchronizacji checkoboxów z listą funkcji
+    @app.callback(
+        [
+            Output("position_sizing-checkbox", "value"),
+            Output("stop_loss-checkbox", "value"),
+            Output("take_profit-checkbox", "value"),
+            Output("risk_per_trade-checkbox", "value"),
+            Output("market_filter-checkbox", "value"),
+            Output("drawdown_protection-checkbox", "value"),
+            Output("continue-iterate-checkbox", "value")
+        ],
+        Input("risk-features-checklist", "value")
+    )
+    def update_checkboxes(enabled_features):
+        """Aktualizuje stany checkboxów na podstawie listy włączonych funkcji"""
+        features = [
+            "position_sizing", "stop_loss", "take_profit", 
+            "risk_per_trade", "market_filter", "drawdown_protection",
+            "continue_iterate"
+        ]
+        
+        # Dla każdej funkcji zwracamy odpowiedni stan
+        checkbox_values = []
+        for feature in features:
+            if enabled_features and feature in enabled_features:
+                checkbox_values.append([feature])
+            else:
+                checkbox_values.append([])
+                
+        return checkbox_values
+
+    # JEDEN callback w przeciwnym kierunku - od checkboxów do listy funkcji
+    @app.callback(
+        Output("risk-features-checklist", "value"),
+        [
+            Input("position_sizing-checkbox", "value"),
+            Input("stop_loss-checkbox", "value"),
+            Input("take_profit-checkbox", "value"),
+            Input("risk_per_trade-checkbox", "value"),
+            Input("market_filter-checkbox", "value"),
+            Input("drawdown_protection-checkbox", "value"),
+            Input("continue-iterate-checkbox", "value")
+        ]
+    )
+    def update_features_list(*checkbox_values):
+        """Aktualizuje listę włączonych funkcji na podstawie stanów checkboxów"""
+        features = [
+            "position_sizing", "stop_loss", "take_profit", 
+            "risk_per_trade", "market_filter", "drawdown_protection",
+            "continue_iterate"
+        ]
+        
+        # Czysty zbiór wybranych funkcji
+        selected_features = []
+        
+        # Dodajemy feature, jeśli odpowiadający checkbox jest zaznaczony
+        for i, feature in enumerate(features):
+            if i < len(checkbox_values) and checkbox_values[i]:
+                selected_features.append(feature)
+        
+        return selected_features
 
     # Store the risk management configuration data
     @app.callback(

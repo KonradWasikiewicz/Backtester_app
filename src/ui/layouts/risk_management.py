@@ -31,7 +31,7 @@ def create_risk_management_section(available_tickers: List[str] = None) -> dbc.C
             ),
             html.Div(
                 panel_content,
-                id=f"{value}-container",
+                id=f"{value}-panel",
                 style={"display": "none", "marginLeft": "20px", "marginBottom": "15px"}
             )
         ])
@@ -275,76 +275,3 @@ def create_risk_management_section(available_tickers: List[str] = None) -> dbc.C
     ], className="border-secondary")
     
     return card
-
-def add_risk_management_callbacks(app):
-    """
-    Register clientside callbacks for risk management section.
-    This is separate from the layout to avoid circular imports.
-    
-    Args:
-        app: The Dash application instance
-    """
-    # Create callbacks for toggling the visibility of each container
-    features = [
-        "position_sizing",
-        "stop_loss",
-        "take_profit",
-        "risk_per_trade",
-        "market_filter",
-        "drawdown_protection"
-    ]
-    
-    for feature in features:
-        # Register clientside callback for each feature checkbox
-        app.clientside_callback(
-            f"""
-            function(isChecked) {{
-                const containerId = "{feature}-container";
-                return isChecked.length > 0 ? {{"display": "block"}} : {{"display": "none"}};
-            }}
-            """,
-            Output(f"{feature}-container", "style"),
-            Input(f"{feature}-checkbox", "value")
-        )
-        
-        # Also update the hidden combined checklist to maintain compatibility
-        app.clientside_callback(
-            f"""
-            function(isChecked, currentValues) {{
-                let newValues = [...currentValues];
-                if(isChecked.length > 0) {{
-                    if(!newValues.includes("{feature}")) {{
-                        newValues.push("{feature}");
-                    }}
-                }} else {{
-                    newValues = newValues.filter(value => value !== "{feature}");
-                }}
-                return newValues;
-            }}
-            """,
-            Output("risk-features-checklist", "value"),
-            Input(f"{feature}-checkbox", "value"),
-            State("risk-features-checklist", "value"),
-            prevent_initial_call=True
-        )
-    
-    # Special handling for continue_iterate checkbox
-    app.clientside_callback(
-        """
-        function(isChecked, currentValues) {
-            let newValues = [...currentValues];
-            if(isChecked.length > 0) {
-                if(!newValues.includes("continue_iterate")) {
-                    newValues.push("continue_iterate");
-                }
-            } else {
-                newValues = newValues.filter(value => value !== "continue_iterate");
-            }
-            return newValues;
-        }
-        """,
-        Output("risk-features-checklist", "value", allow_duplicate=True),
-        Input("continue-iterate-checkbox", "value"),
-        State("risk-features-checklist", "value"),
-        prevent_initial_call=True
-    )

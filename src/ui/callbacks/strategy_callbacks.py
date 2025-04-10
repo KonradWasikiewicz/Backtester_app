@@ -203,7 +203,7 @@ def register_strategy_callbacks(app):
     
     # Combined callback for all date-related updates to avoid conflicts
     @app.callback(
-        [Output("backtest-date-slider", "value", allow_duplicate=True),
+        [Output("backtest-date-slider", "value"),
          Output("slider-start-date-picker", "date"),
          Output("slider-end-date-picker", "date"),
          Output("backtest-daterange", "start_date"),
@@ -283,8 +283,8 @@ def register_strategy_callbacks(app):
     
     # Add a callback specifically for updating the display dates during slider movement
     @app.callback(
-        [Output("selected-start-date", "children", allow_duplicate=True),
-         Output("selected-end-date", "children", allow_duplicate=True)],
+        [Output("selected-start-date", "children"),
+         Output("selected-end-date", "children")],
         [Input("backtest-date-slider", "value"),
          Input("backtest-date-slider", "drag_value")],
         prevent_initial_call=True
@@ -315,10 +315,10 @@ def register_strategy_callbacks(app):
             logger.error(f"Error updating date display: {e}")
             return "Error", "Error"
 
-    # Zastępuję problematyczne callbacky wykorzystujące nieistniejącą właściwość is_open
+    # Zastępuję problematyczne callbacki wykorzystujące nieistniejącą właściwość is_open
     # Usunięcie callbacków otwierających kalendarz po kliknięciu na przycisk daty
     @app.callback(
-        [Output("slider-start-date-picker", "date", allow_duplicate=True),
+        [Output("slider-start-date-picker", "date"),
          Output("selected-start-date", "children")],
         Input("selected-start-date", "n_clicks"),
         State("slider-start-date-picker", "date"),
@@ -335,8 +335,8 @@ def register_strategy_callbacks(app):
         raise PreventUpdate
 
     @app.callback(
-        [Output("slider-end-date-picker", "date", allow_duplicate=True),
-         Output("selected-end-date", "children", allow_duplicate=True)],
+        [Output("slider-end-date-picker", "date"),
+         Output("selected-end-date", "children")],
         Input("selected-end-date", "n_clicks"),
         State("slider-end-date-picker", "date"),
         prevent_initial_call=True
@@ -351,7 +351,7 @@ def register_strategy_callbacks(app):
 
     # Callback do synchronizacji dat po zmianie w kalendarzu
     @app.callback(
-        Output("backtest-date-slider", "value", allow_duplicate=True),
+        Output("backtest-date-slider", "value"),
         [Input("slider-start-date-picker", "date"),
          Input("slider-end-date-picker", "date")],
         [State("backtest-date-slider", "min"),
@@ -523,7 +523,7 @@ def register_strategy_callbacks(app):
         return is_open
 
     @app.callback(
-        Output("backtest-date-slider", "value", allow_duplicate=True),
+        Output("backtest-date-slider", "value"),
         [Input("date-range-1m", "n_clicks"),
          Input("date-range-3m", "n_clicks"),
          Input("date-range-6m", "n_clicks"),
@@ -573,6 +573,20 @@ def register_strategy_callbacks(app):
         
         # Aktualizujemy slider i pola dat
         return [start_ts, end_ts]
+
+    @app.callback(
+        Output("run-backtest-button", "disabled"),
+        [Input("wizard-progress", "value"),
+         Input("summary-strategy", "children"),
+         Input("summary-tickers", "children")]
+    )
+    def update_run_button_state(progress, strategy, tickers):
+        """
+        Enable the Run Backtest button when configuration is complete
+        """
+        if progress == 100 and strategy and tickers:
+            return False
+        return True
 
 def create_boolean_parameter(param_name, default_value, index):
     """Creates a boolean parameter input."""

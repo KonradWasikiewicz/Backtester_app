@@ -39,7 +39,7 @@ def register_backtest_callbacks(app):
          Output("results-section", "style"),
          Output("no-results-placeholder", "style"),
          Output("ticker-selector", "options"),
-         Output("ticker-selector", "value", allow_duplicate=True)],
+         Output("ticker-selector", "value")],
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-selector", "value"),
          State("ticker-selector", "value"),
@@ -214,7 +214,9 @@ def register_backtest_callbacks(app):
          Output("metric-max-drawdown", "children"),
          Output("metric-win-rate", "children"),
          Output("metric-profit-factor", "children"),
-         Output("metric-avg-trade", "children")],
+         Output("metric-avg-trade", "children"),
+         Output("metric-recovery-factor", "children"),
+         Output("metric-calmar-ratio", "children")],
         Input("results-section", "style")
     )
     def update_performance_metrics(results_style):
@@ -228,94 +230,141 @@ def register_backtest_callbacks(app):
             Performance metric components
         """
         if not backtest_service or results_style.get("display") == "none":
-            return [None] * 7
+            return [None] * 9
         
         try:
             metrics = backtest_service.get_performance_metrics()
+            
+            # Format metrics with appropriate styling
+            total_return = metrics.get("total-return")
+            total_return_class = "text-success" if total_return and total_return.startswith("+") else "text-danger"
+            
+            cagr = metrics.get("cagr")
+            cagr_class = "text-success" if cagr and cagr.startswith("+") else "text-danger"
+            
+            sharpe = metrics.get("sharpe")
+            sharpe_class = "text-success" if sharpe and float(sharpe.replace(',', '.')) >= 1.0 else "text-warning"
+            
+            # Add additional metrics with appropriate formatting
+            recovery_factor = metrics.get("recovery-factor", "N/A")
+            recovery_class = "text-muted"
+            if recovery_factor != "N/A":
+                value = float(recovery_factor.replace(',', '.').replace('x', ''))
+                recovery_class = "text-success" if value > 1.0 else "text-warning"
+            
+            calmar_ratio = metrics.get("calmar-ratio", "N/A")
+            calmar_class = "text-muted"
+            if calmar_ratio != "N/A":
+                value = float(calmar_ratio.replace(',', '.'))
+                calmar_class = "text-success" if value > 0.5 else "text-warning"
+            
             return [
-                metrics.get("total-return"),
-                metrics.get("cagr"),
-                metrics.get("sharpe"),
-                metrics.get("max-drawdown"),
-                metrics.get("win-rate"),
-                metrics.get("profit-factor"),
-                metrics.get("avg-trade")
+                html.Span(metrics.get("total-return"), className=total_return_class),
+                html.Span(metrics.get("cagr"), className=cagr_class),
+                html.Span(metrics.get("sharpe"), className=sharpe_class),
+                html.Span(metrics.get("max-drawdown"), className="text-danger"),
+                html.Span(metrics.get("win-rate"), className="text-info"),
+                html.Span(metrics.get("profit-factor"), className="text-info"),
+                html.Span(metrics.get("avg-trade"), className="text-info"),
+                html.Span(recovery_factor, className=recovery_class),
+                html.Span(calmar_ratio, className=calmar_class)
             ]
         except Exception as e:
             logger.error(f"Error updating performance metrics: {e}", exc_info=True)
-            return [None] * 7
+            return [None] * 9
     
     @app.callback(
-        Output("portfolio-chart", "figure"),
-        [Input("results-section", "style"),
-         Input("btn-chart-value", "n_clicks"),
-         Input("btn-chart-returns", "n_clicks"),
-         Input("btn-chart-drawdown", "n_clicks")]
+        Output("portfolio-performance-chart", "figure"),
+        Input("results-section", "style")
     )
-    def update_portfolio_chart(results_style, btn_value, btn_returns, btn_drawdown):
+    def update_portfolio_chart(results_style):
         """
-        Update portfolio chart based on which chart type button was clicked.
+        Update portfolio performance chart when results section becomes visible.
         
+        Args:
+            results_style: Style of the results section
+            
         Returns:
-            Portfolio chart figure
+            Plotly figure for portfolio performance chart
         """
         if not backtest_service or results_style.get("display") == "none":
             return {}
         
-        ctx = callback_context
-        if not ctx.triggered:
-            chart_type = "value"  # Default chart type
-        else:
-            button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-            if button_id == "btn-chart-value":
-                chart_type = "value"
-            elif button_id == "btn-chart-returns":
-                chart_type = "returns"
-            elif button_id == "btn-chart-drawdown":
-                chart_type = "drawdown"
-            else:
-                chart_type = "value"  # Default
-        
         try:
-            return backtest_service.get_portfolio_chart(chart_type)
+            # Get equity curve and benchmark data
+            equity_data = backtest_service.get_equity_curve()
+            benchmark_data = backtest_service.get_benchmark_data()
+            
+            if equity_data is None or equity_data.empty:
+                return {
+                    "data": [],
+                    "layout": {
+                        "title": "No portfolio data available",
+                        "paper_bgcolor": "#2a2e39",
+                        "plot_bgcolor": "#2a2e39",
+                        "font": {"color": "#e0e0e0"}
+                    }
+                }
+            
+            # Create figure with improved styling
+            fig = {
+                "data": [
+                    {
+                        "x": equity_data.index,
+                        "y": equity_data["equity"],
+                        "type": "scatter",
+                        "mode": "lines",
+                        "name": "Strategy",
+                        "line": {"color": "#00cc96", "width": 2}
+                    }
+                ],
+                "layout": {
+                    "title": {
+                        "text": "Portfolio Performance",
+                        "font": {"size": 20, "color": "#e0e0e0"}
+                    },
+                    "paper_bgcolor": "#2a2e39",
+                    "plot_bgcolor": "#2a2e39",
+                    "font": {"color": "#e0e0e0"},
+                    "xaxis": {
+                        "title": "Date",
+                        "gridcolor": "#444",
+                        "zeroline": False
+                    },
+                    "yaxis": {
+                        "title": "Value ($)",
+                        "gridcolor": "#444",
+                        "zeroline": False
+                    },
+                    "legend": {"bgcolor": "#1e222d", "font": {"color": "#e0e0e0"}},
+                    "margin": {"t": 30, "b": 50, "l": 60, "r": 20},
+                    "hovermode": "closest",
+                    "showlegend": True
+                }
+            }
+            
+            # Add benchmark if available
+            if benchmark_data is not None and not benchmark_data.empty:
+                benchmark_trace = {
+                    "x": benchmark_data.index,
+                    "y": benchmark_data["value"],
+                    "type": "scatter",
+                    "mode": "lines",
+                    "name": "Benchmark",
+                    "line": {"color": "#ff4a68", "width": 2}
+                }
+                fig["data"].append(benchmark_trace)
+            
+            return fig
         except Exception as e:
             logger.error(f"Error updating portfolio chart: {e}", exc_info=True)
             return {}
     
     @app.callback(
-        [Output("btn-chart-value", "outline"),
-         Output("btn-chart-returns", "outline"),
-         Output("btn-chart-drawdown", "outline")],
-        [Input("btn-chart-value", "n_clicks"),
-         Input("btn-chart-returns", "n_clicks"),
-         Input("btn-chart-drawdown", "n_clicks")]
-    )
-    def update_chart_button_styles(btn_value, btn_returns, btn_drawdown):
-        """
-        Update chart button styles to show which one is active.
-        
-        Returns:
-            Button outline states
-        """
-        ctx = callback_context
-        if not ctx.triggered:
-            return False, True, True  # Default: Value chart active
-        
-        button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        if button_id == "btn-chart-value":
-            return False, True, True
-        elif button_id == "btn-chart-returns":
-            return True, False, True
-        elif button_id == "btn-chart-drawdown":
-            return True, True, False
-        
-        return False, True, True  # Default
-    
-    @app.callback(
         Output("monthly-returns-heatmap", "figure"),
         Input("results-section", "style")
     )
-    def update_monthly_heatmap(results_style):
+    def update_monthly_returns_heatmap(results_style):
         """
         Update monthly returns heatmap when results section becomes visible.
         
@@ -323,13 +372,100 @@ def register_backtest_callbacks(app):
             results_style: Style of the results section
             
         Returns:
-            Monthly returns heatmap figure
+            Plotly figure for monthly returns heatmap
         """
         if not backtest_service or results_style.get("display") == "none":
             return {}
         
         try:
-            return backtest_service.get_monthly_returns_heatmap()
+            # Get monthly returns data
+            monthly_returns = backtest_service.get_monthly_returns()
+            
+            if monthly_returns is None or monthly_returns.empty:
+                return {
+                    "data": [],
+                    "layout": {
+                        "title": "No monthly returns data available",
+                        "paper_bgcolor": "#2a2e39",
+                        "plot_bgcolor": "#2a2e39",
+                        "font": {"color": "#e0e0e0"}
+                    }
+                }
+            
+            # Prepare data for heatmap
+            years = monthly_returns.index.get_level_values(0).unique()
+            months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+            z_data = []
+            
+            for year in years:
+                year_data = []
+                for month in range(1, 13):
+                    try:
+                        value = monthly_returns.loc[(year, month), 'return'] * 100
+                        year_data.append(value)
+                    except KeyError:
+                        year_data.append(None)
+                z_data.append(year_data)
+            
+            # Create a custom colorscale for the heatmap
+            colorscale = [
+                [0, '#ff4a68'],      # Deep red for large negative
+                [0.4, '#ffa6b8'],    # Light red for small negative
+                [0.5, '#ffffff'],    # White for zero
+                [0.6, '#a6ffc9'],    # Light green for small positive
+                [1, '#00cc96']       # Deep green for large positive
+            ]
+            
+            # Create figure with improved styling
+            fig = {
+                "data": [{
+                    "z": z_data,
+                    "x": months,
+                    "y": years,
+                    "type": "heatmap",
+                    "colorscale": colorscale,
+                    "showscale": True,
+                    "colorbar": {
+                        "title": "Return (%)",
+                        "titleside": "right",
+                        "tickformat": ".1f"
+                    },
+                    "zmin": -10,
+                    "zmid": 0,
+                    "zmax": 10,
+                    "text": [[f"{value:.2f}%" if value is not None else "" for value in row] for row in z_data],
+                    "hoverinfo": "text+y+x"
+                }],
+                "layout": {
+                    "title": {
+                        "text": "Monthly Returns (%)",
+                        "font": {"size": 20, "color": "#e0e0e0"}
+                    },
+                    "paper_bgcolor": "#2a2e39",
+                    "plot_bgcolor": "#2a2e39",
+                    "font": {"color": "#e0e0e0"},
+                    "xaxis": {"title": "Month"},
+                    "yaxis": {"title": "Year", "autorange": "reversed"},
+                    "margin": {"t": 30, "b": 50, "l": 60, "r": 60},
+                    "annotations": []
+                }
+            }
+            
+            # Add annotations for the returns values
+            for i, year in enumerate(years):
+                for j, month in enumerate(months):
+                    value = z_data[i][j]
+                    if value is not None:
+                        text_color = "#222222" if abs(value) < 5 else "#ffffff"
+                        fig["layout"]["annotations"].append({
+                            "x": j,
+                            "y": i,
+                            "text": f"{value:.1f}%",
+                            "font": {"color": text_color, "size": 9},
+                            "showarrow": False
+                        })
+            
+            return fig
         except Exception as e:
             logger.error(f"Error updating monthly returns heatmap: {e}", exc_info=True)
             return {}
