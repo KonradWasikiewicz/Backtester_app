@@ -1,168 +1,168 @@
 # Backtester App - Product Design Specification
 
-## 1. Wprowadzenie
+## 1. Introduction
 
-### 1.1 Cel dokumentu
-Niniejszy dokument stanowi kompletną specyfikację produktu Backtester App. Zawiera opis funkcjonalności, architektury systemu, interfejsu użytkownika oraz technicznych aspektów implementacji.
+### 1.1 Document Purpose
+This document provides a complete specification for the Backtester App product. It includes descriptions of functionality, system architecture, user interface, and technical implementation aspects.
 
-### 1.2 Zakres produktu
-Backtester App to aplikacja do testowania strategii inwestycyjnych na historycznych danych finansowych. Pozwala na definiowanie, parametryzację i ewaluację strategii tradingowych w celu oceny ich skuteczności przed zastosowaniem na rynkach rzeczywistych.
+### 1.2 Product Scope
+Backtester App is an application for testing investment strategies on historical financial data. It allows for definition, parameterization, and evaluation of trading strategies to assess their effectiveness before applying them in real markets.
 
-### 1.3 Definicje, akronimy i skróty
-- **Backtest** - proces testowania strategii handlowej na danych historycznych
-- **Strategia** - zbiór reguł określających warunki wejścia i wyjścia z rynku
-- **Drawdown** - maksymalny spadek wartości portfela z punktu szczytowego
-- **CAGR** - Compound Annual Growth Rate (skumulowana roczna stopa zwrotu)
-- **SemVer** - Semantic Versioning, system wersjonowania produktu (MAJOR.MINOR.PATCH)
+### 1.3 Definitions, Acronyms, and Abbreviations
+- **Backtest** - process of testing a trading strategy on historical data
+- **Strategy** - a set of rules defining market entry and exit conditions
+- **Drawdown** - maximum decline in portfolio value from a peak
+- **CAGR** - Compound Annual Growth Rate
+- **SemVer** - Semantic Versioning, a product versioning system (MAJOR.MINOR.PATCH)
 
-## 2. Opis ogólny produktu
+## 2. General Product Description
 
-### 2.1 Perspektywa produktu
-Backtester App jest samodzielną aplikacją webową opartą na Dash/Python, oferującą kompleksowe możliwości testowania strategii tradingowych. Aplikacja może być rozwijana w kierunku pełnej platformy tradingowej z integracją z brokerami.
+### 2.1 Product Perspective
+Backtester App is a standalone web application based on Dash/Python, offering comprehensive capabilities for testing trading strategies. The application can be developed into a full trading platform with broker integration.
 
-### 2.2 Funkcje produktu
-- Definiowanie parametrów strategii inwestycyjnych
-- Wybór zestawu instrumentów finansowych do testowania
-- Przeprowadzanie backtestów na danych historycznych
-- Wizualizacja wyników w postaci wykresów i tabel
-- Analiza wskaźników efektywności (CAGR, Sharpe Ratio, itp.)
-- Zarządzanie ryzykiem i symulacja różnych scenariuszy
+### 2.2 Product Features
+- Definition of investment strategy parameters
+- Selection of financial instruments for testing
+- Conducting backtests on historical data
+- Visualization of results in charts and tables
+- Analysis of performance indicators (CAGR, Sharpe Ratio, etc.)
+- Risk management and scenario simulation
 
-### 2.3 Charakterystyka użytkowników
-Aplikacja skierowana jest do inwestorów indywidualnych, traderów i analityków finansowych. Użytkownicy powinni posiadać podstawową wiedzę z zakresu rynków finansowych i inwestowania.
+### 2.3 User Characteristics
+The application is targeted at individual investors, traders, and financial analysts. Users should have basic knowledge of financial markets and investing.
 
-### 2.4 Ograniczenia
-- Aplikacja działa w środowisku lokalnym, bez dodatkowej konfiguracji serwerowej
-- Jakość backtestów zależy od dostępności i jakości danych historycznych
-- Optymalizacja strategii może wymagać znaczących zasobów obliczeniowych
+### 2.4 Constraints
+- The application operates in a local environment, without additional server configuration
+- The quality of backtests depends on the availability and quality of historical data
+- Strategy optimization may require significant computational resources
 
-### 2.5 Założenia i zależności
-- Python 3.8 lub nowszy
-- Dash i Plotly do wizualizacji
-- Pandas dla analizy danych
-- NumPy do obliczeń matematycznych
+### 2.5 Assumptions and Dependencies
+- Python 3.8 or newer
+- Dash and Plotly for visualization
+- Pandas for data analysis
+- NumPy for mathematical calculations
 
-## 3. Architektura systemu
+## 3. System Architecture
 
-### 3.1 Struktura modułowa
+### 3.1 Modular Structure
 ```
 src/
-  ├── analysis/        - Analiza wyników i obliczanie metryk
-  ├── core/            - Podstawowa logika biznesowa
-  ├── portfolio/       - Zarządzanie portfelem i pozycjami
-  ├── services/        - Usługi aplikacyjne
-  ├── strategies/      - Implementacje strategii tradingowych
-  ├── ui/              - Interfejs użytkownika
-  ├── visualization/   - Komponenty wizualizacyjne
-  └── version.py       - Informacje o wersji produktu
+  ├── analysis/        - Results analysis and metric calculation
+  ├── core/            - Core business logic
+  ├── portfolio/       - Portfolio and position management
+  ├── services/        - Application services
+  ├── strategies/      - Trading strategy implementations
+  ├── ui/              - User interface
+  ├── visualization/   - Visualization components
+  └── version.py       - Product version information
 ```
 
-### 3.2 Przepływ danych
-1. Wczytanie danych historycznych
-2. Konfiguracja parametrów strategii przez użytkownika
-3. Uruchomienie backtestów
-4. Symulacja transakcji na podstawie sygnałów strategii
-5. Analiza wyników i obliczenie metryk wydajności
-6. Wizualizacja rezultatów
+### 3.2 Data Flow
+1. Loading historical data
+2. User configuration of strategy parameters
+3. Running backtests
+4. Transaction simulation based on strategy signals
+5. Results analysis and performance metric calculation
+6. Visualization of results
 
-### 3.3 Interfejsy zewnętrzne
-- System plików: do zapisu/odczytu danych historycznych
-- Przyszłe wersje mogą zawierać API do komunikacji z brokerami
+### 3.3 External Interfaces
+- File system: for reading/writing historical data
+- Future versions may include API for broker communication
 
-## 4. Wymagania szczegółowe
+## 4. Detailed Requirements
 
-### 4.1 Wymagania funkcjonalne
+### 4.1 Functional Requirements
 
-#### 4.1.1 Konfiguracja strategii
-- System umożliwia wybór predefiniowanych strategii: Moving Average Crossover, RSI, Bollinger Bands
-- Użytkownik może dostosować parametry każdej strategii
-- System umożliwia wybór instrumentów finansowych do testów
+#### 4.1.1 Strategy Configuration
+- System allows selection of predefined strategies: Moving Average Crossover, RSI, Bollinger Bands
+- User can adjust parameters of each strategy
+- System allows selection of financial instruments for testing
 
-#### 4.1.2 Zarządzanie ryzykiem
-- Definiowanie maksymalnej wielkości pozycji
-- Ustawianie stop-loss i take-profit
-- Konfiguracja filtrów rynkowych
-- Ochrona przed maksymalnym drawdownem
+#### 4.1.2 Risk Management
+- Defining maximum position size
+- Setting stop-loss and take-profit
+- Configuring market filters
+- Protection against maximum drawdown
 
 #### 4.1.3 Backtesting
-- Uruchamianie testów na wybranym zakresie dat
-- Symulowanie transakcji z uwzględnieniem slippage i kosztów
-- Obliczanie metryk wydajności i statystyk
+- Running tests on selected date ranges
+- Simulating transactions with consideration for slippage and costs
+- Calculating performance metrics and statistics
 
-#### 4.1.4 Wizualizacja wyników
-- Wykres rozwoju portfela
-- Heatmapa miesięcznych zwrotów
-- Tabela transakcji
-- Wykresy sygnałów wejścia i wyjścia
+#### 4.1.4 Results Visualization
+- Portfolio growth chart
+- Monthly returns heatmap
+- Transaction table
+- Entry and exit signal charts
 
-### 4.2 Wymagania niefunkcjonalne
+### 4.2 Non-Functional Requirements
 
-#### 4.2.1 Wydajność
-- Backtesty powinny być wykonywane w czasie poniżej 30s dla standardowego zestawu danych
-- Interfejs użytkownika powinien pozostać responsywny podczas obliczeń
+#### 4.2.1 Performance
+- Backtests should execute in less than 30s for standard datasets
+- User interface should remain responsive during calculations
 
-#### 4.2.2 Niezawodność
-- Aplikacja powinna obsługiwać błędy bez crashowania
-- System zapisuje logi działania
+#### 4.2.2 Reliability
+- Application should handle errors without crashing
+- System logs operation activities
 
-#### 4.2.3 Skalowalność
-- Architektura pozwala na łatwe dodawanie nowych strategii
-- Możliwość rozszerzenia o nowe źródła danych
+#### 4.2.3 Scalability
+- Architecture allows for easy addition of new strategies
+- Possibility to extend with new data sources
 
-#### 4.2.4 Użyteczność
-- Nowoczesny, przejrzysty interfejs
-- Intuicyjna nawigacja
-- Wykresy interaktywne z możliwością powiększania
+#### 4.2.4 Usability
+- Modern, clean interface
+- Intuitive navigation
+- Interactive charts with zoom capability
 
-## 5. Wersjonowanie i kontrola zmian
+## 5. Versioning and Change Control
 
-### 5.1 System wersjonowania
-Projekt wykorzystuje Semantic Versioning (SemVer) w formacie MAJOR.MINOR.PATCH:
-- **MAJOR**: zmiany niekompatybilne z poprzednimi wersjami
-- **MINOR**: nowe funkcjonalności, kompatybilne wstecz
-- **PATCH**: poprawki błędów, kompatybilne wstecz
+### 5.1 Versioning System
+The project uses Semantic Versioning (SemVer) in MAJOR.MINOR.PATCH format:
+- **MAJOR**: backward-incompatible changes
+- **MINOR**: new functionality, backward-compatible
+- **PATCH**: bug fixes, backward-compatible
 
-### 5.2 Proces aktualizacji wersji
-1. Aktualizacja numeru wersji w `src/version.py`
-2. Aktualizacja changeloga z opisem zmian
-3. Tworzenie tagu w repozytorium git
+### 5.2 Version Update Process
+1. Update version number in `src/version.py`
+2. Update changelog with description of changes
+3. Create a tag in the git repository
 
-### 5.3 Powrót do poprzednich wersji
-Proces powrotu do poprzedniej stabilnej wersji:
-1. Checkout odpowiedniego tagu/brancha z repozytorium git
-2. Instalacja wymaganych zależności dla tej wersji
-3. Uruchomienie aplikacji ze starszą wersją kodu
+### 5.3 Reverting to Previous Versions
+Process for reverting to a previous stable version:
+1. Checkout the appropriate tag/branch from the git repository
+2. Install required dependencies for that version
+3. Run the application with the older code version
 
-## 6. Rozwój produktu
+## 6. Product Development
 
-### 6.1 Krótkoterminowe cele (6 miesięcy)
-- Optymalizacja wydajności backtestów
-- Dodanie nowych strategii
-- Rozszerzona analiza statystyczna wyników
+### 6.1 Short-term Goals (6 months)
+- Optimization of backtest performance
+- Addition of new strategies
+- Extended statistical analysis of results
 
-### 6.2 Długoterminowe cele (12+ miesięcy)
-- Migracja frontendu do frameworka React
-- Integracja z API brokerów
-- Mechanizmy uczenia maszynowego do optymalizacji strategii
+### 6.2 Long-term Goals (12+ months)
+- Frontend migration to React framework
+- Integration with broker APIs
+- Machine learning mechanisms for strategy optimization
 
-### 6.3 Planowane zmiany techniczne
-- Refaktoryzacja systemu callbacków
-- Poprawa architektury zarządzania stanem aplikacji
-- Modernizacja interfejsu użytkownika
+### 6.3 Planned Technical Changes
+- Callback system refactoring
+- Improved application state management architecture
+- User interface modernization
 
-## 7. Załączniki
+## 7. Appendices
 
-### 7.1 Schemat bazy danych
-Nie dotyczy w obecnej wersji (dane przechowywane w plikach CSV)
+### 7.1 Database Schema
+Not applicable in current version (data stored in CSV files)
 
-### 7.2 Specyfikacje API
-Brak zewnętrznych API w obecnej wersji
+### 7.2 API Specifications
+No external APIs in current version
 
-### 7.3 Mockupy UI
-Do dodania w przyszłych wersjach dokumentacji
+### 7.3 UI Mockups
+To be added in future documentation versions
 
 ---
 
-*Dokument utworzony: 2025-04-10*
-*Ostatnia aktualizacja: 2025-04-10*
-*Wersja dokumentacji: 1.0*
+*Document created: 2025-04-10*
+*Last update: 2025-04-10*
+*Documentation version: 1.0*

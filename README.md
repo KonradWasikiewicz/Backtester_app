@@ -1,103 +1,103 @@
 # Backtester App
 
-Aplikacja do testowania strategii inwestycyjnych na danych historycznych.
+An application for testing investment strategies on historical data.
 
-## O projekcie
+## About the Project
 
-Backtester App to narzędzie pozwalające na testowanie i analizę strategii tradingowych na historycznych danych giełdowych. Umożliwia konfigurację różnych strategii, zarządzanie ryzykiem oraz wizualizację wyników w formie interaktywnych wykresów i tabel.
+Backtester App is a tool for testing and analyzing trading strategies using historical market data. It enables configuration of various strategies, risk management, and visualization of results through interactive charts and tables.
 
-## Funkcjonalności
+## Features
 
-- Testowanie predefiniowanych strategii (Moving Average Crossover, RSI, Bollinger Bands)
-- Konfiguracja parametrów strategii
-- Zarządzanie ryzykiem z wieloma opcjami (sizing pozycji, stop-loss, take-profit)
-- Analiza wyników z kluczowymi metrykami (CAGR, Sharpe Ratio, max drawdown)
-- Interaktywne wizualizacje (wykresy equity, heatmapa zwrotów, wykresy sygnałów)
+- Testing predefined strategies (Moving Average Crossover, RSI, Bollinger Bands)
+- Strategy parameter configuration
+- Risk management with multiple options (position sizing, stop-loss, take-profit)
+- Result analysis with key metrics (CAGR, Sharpe Ratio, max drawdown)
+- Interactive visualizations (equity charts, returns heatmap, signal charts)
 
-## Instalacja
+## Installation
 
-1. Upewnij się, że masz zainstalowany Python 3.8 lub nowszy
-2. Sklonuj repozytorium
+1. Make sure you have Python 3.8 or newer installed
+2. Clone the repository
    ```
-   git clone [URL_REPOZYTORIUM]
+   git clone https://github.com/KonradWasikiewicz/Backtester_app.git
    cd Backtester_app
    ```
-3. Zainstaluj wymagane zależności
+3. Install required dependencies
    ```
    pip install -r requirements.txt
    ```
 
-## Uruchomienie aplikacji
+## Running the Application
 
 ```
 python app.py
 ```
 
-Aplikacja będzie dostępna pod adresem http://127.0.0.1:8050/ w przeglądarce.
+The application will be available at http://127.0.0.1:8050/ in your browser.
 
-## System wersjonowania
+## Versioning System
 
-Projekt wykorzystuje **Semantic Versioning (SemVer)** w formacie MAJOR.MINOR.PATCH:
-- **MAJOR**: Zmiany łamiące kompatybilność wsteczną
-- **MINOR**: Nowe funkcje zachowujące kompatybilność wsteczną
-- **PATCH**: Poprawki błędów zachowujące kompatybilność wsteczną
+The project uses **Semantic Versioning (SemVer)** in MAJOR.MINOR.PATCH format:
+- **MAJOR**: Breaking changes to backward compatibility
+- **MINOR**: New features maintaining backward compatibility
+- **PATCH**: Bug fixes maintaining backward compatibility
 
-## Zarządzanie wersjami
+## Version Management
 
-Projekt zawiera zestaw skryptów do zarządzania wersjami, które ułatwiają pracę z SemVer i Git:
+The project includes a set of scripts for version management that facilitate working with SemVer and Git:
 
-### Aktualizacja wersji
+### Updating Versions
 
 ```
-python scripts/update_version.py --minor --changes "Dodano nową strategię" "Poprawiono błędy interfejsu"
+python scripts/update_version.py --minor --changes "Added new strategy" "Fixed interface bugs"
 ```
 
-Dostępne opcje:
-- `--major`: Zwiększa wersję główną (MAJOR)
-- `--minor`: Zwiększa wersję pomniejszą (MINOR)
-- `--patch`: Zwiększa wersję z poprawką (PATCH)
-- `--pre`: Dodaje etykietę pre-release (np. alpha, beta, rc)
-- `--pre-num`: Numer wersji pre-release (np. dla beta.1)
-- `--build`: Metadane budowania
-- `--changes`: Lista zmian do dodania do changeloga
+Available options:
+- `--major`: Increases major version (MAJOR)
+- `--minor`: Increases minor version (MINOR)
+- `--patch`: Increases patch version (PATCH)
+- `--pre`: Adds pre-release label (e.g., alpha, beta, rc)
+- `--pre-num`: Pre-release version number (e.g., for beta.1)
+- `--build`: Build metadata
+- `--changes`: List of changes to add to the changelog
 
-### Tagowanie wersji w repozytorium Git
+### Tagging Versions in Git Repository
 
 ```
 python scripts/tag_version.py
 ```
 
-Skrypt automatycznie:
-1. Pobiera aktualną wersję z `src/version.py`
-2. Tworzy tag Git z prefiksem "v" (np. v1.2.3)
-3. Dodaje informacje z changeloga do opisu tagu
-4. Opcjonalnie publikuje tag w repozytorium zdalnym
+The script automatically:
+1. Gets the current version from `src/version.py`
+2. Creates a Git tag with "v" prefix (e.g., v1.2.3)
+3. Adds changelog information to the tag description
+4. Optionally publishes the tag to the remote repository
 
-### Przywracanie poprzedniej wersji
+### Restoring Previous Versions
 
 ```
 python scripts/restore_version.py --list
 python scripts/restore_version.py --version v1.0.0 --deps
 ```
 
-Dostępne opcje:
-- `--list`: Wyświetla listę dostępnych wersji
-- `--version`: Określa wersję do przywrócenia
-- `--deps`: Instaluje zależności dla przywróconej wersji
-- `--force`: Wymusza checkout (porzuca lokalne zmiany)
+Available options:
+- `--list`: Displays list of available versions
+- `--version`: Specifies version to restore
+- `--deps`: Installs dependencies for the restored version
+- `--force`: Forces checkout (discards local changes)
 
-Bez podania wersji skrypt wyświetli interaktywne menu wyboru.
+Without specifying a version, the script will display an interactive selection menu.
 
-## Dokumentacja
+## Documentation
 
-Bardziej szczegółowa dokumentacja znajduje się w katalogu `docs/`:
+More detailed documentation is available in the `docs/` directory:
 - [Product Design Specification](docs/product_design_specification.md)
-- [Specyfikacja Techniczna](docs/technical_specification.md)
+- [Technical Specification](docs/technical_specification.md)
 
-## Licencja
+## License
 
-[Informacja o licencji]
+[License information]
 
-## Kontakt
+## Contact
 
-[Dane kontaktowe]
+[Contact information]

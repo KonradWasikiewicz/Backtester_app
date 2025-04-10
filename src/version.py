@@ -31,12 +31,12 @@ VERSION_INFO = {
 }
 
 # Release date information
-RELEASE_DATE = "2024-04-10"
+RELEASE_DATE = "2025-04-10"
 
 # Changelog for the current version
 CHANGELOG = {
     "1.0.0": {
-        "date": "2024-04-10",
+        "date": "2025-04-10",
         "changes": [
             "Initial stable release",
             "Implemented basic backtesting functionality",

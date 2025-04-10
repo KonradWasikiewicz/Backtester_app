@@ -1,99 +1,99 @@
-# Backtester App - Specyfikacja Techniczna
+# Backtester App - Technical Specification
 
-## 1. Architektura Systemu
+## 1. System Architecture
 
-### 1.1 Przegląd architektury
-Backtester App wykorzystuje architekturę warstwową z podziałem na moduły funkcjonalne. Głównym interfejsem użytkownika jest aplikacja webowa zbudowana z użyciem Dash (nakładka na React), natomiast logika biznesowa jest zaimplementowana w Pythonie.
+### 1.1 Architecture Overview
+Backtester App uses a layered architecture with division into functional modules. The main user interface is a web application built using Dash (a wrapper for React), while the business logic is implemented in Python.
 
-### 1.2 Komponenty systemu
+### 1.2 System Components
 
 #### 1.2.1 Core
-Zawiera podstawową logikę biznesową aplikacji:
-- `backtest_manager.py` - Zarządzanie procesem backtestingu
-- `data.py` - Wczytywanie i przetwarzanie danych historycznych
-- `config.py` - Konfiguracja aplikacji
-- `constants.py` - Stałe systemowe
-- `engine.py` - Silnik symulacji
-- `exceptions.py` - Niestandardowe wyjątki aplikacji
+Contains the basic business logic of the application:
+- `backtest_manager.py` - Management of the backtesting process
+- `data.py` - Loading and processing historical data
+- `config.py` - Application configuration
+- `constants.py` - System constants
+- `engine.py` - Simulation engine
+- `exceptions.py` - Custom application exceptions
 
 #### 1.2.2 Strategies
-Implementacje strategii handlowych:
-- `base.py` - Klasa bazowa dla wszystkich strategii
-- `moving_average.py` - Strategia przecięcia średnich kroczących
-- `rsi.py` - Strategia oparta na Relative Strength Index
-- `bollinger.py` - Strategia wykorzystująca Bollinger Bands
+Implementations of trading strategies:
+- `base.py` - Base class for all strategies
+- `moving_average.py` - Moving average crossover strategy
+- `rsi.py` - Strategy based on Relative Strength Index
+- `bollinger.py` - Strategy using Bollinger Bands
 
 #### 1.2.3 Portfolio
-Zarządzanie portfelem i pozycjami:
-- `portfolio_manager.py` - Zarządzanie stanem portfela
-- `risk_manager.py` - Zarządzanie ryzykiem
+Management of portfolio and positions:
+- `portfolio_manager.py` - Portfolio state management
+- `risk_manager.py` - Risk management
 
 #### 1.2.4 Analysis
-Analiza wyników backtestów:
-- `metrics.py` - Obliczanie wskaźników efektywności (CAGR, Sharpe, itp.)
+Analysis of backtest results:
+- `metrics.py` - Calculation of performance indicators (CAGR, Sharpe, etc.)
 
 #### 1.2.5 UI
-Interfejs użytkownika:
-- `app_factory.py` - Tworzenie instancji aplikacji Dash
-- `components.py` - Reużywalne komponenty UI
-- `callbacks/` - Implementacja callbacków Dash
-- `layouts/` - Szablony layoutów
+User interface:
+- `app_factory.py` - Creating Dash application instances
+- `components.py` - Reusable UI components
+- `callbacks/` - Dash callback implementations
+- `layouts/` - Layout templates
 
 #### 1.2.6 Visualization
-Generowanie wizualizacji:
-- `visualizer.py` - Główna klasa do tworzenia wizualizacji
-- `chart_utils.py` - Funkcje pomocnicze do tworzenia wykresów
+Generating visualizations:
+- `visualizer.py` - Main class for creating visualizations
+- `chart_utils.py` - Helper functions for creating charts
 
-### 1.3 Diagram przepływu danych
+### 1.3 Data Flow Diagram
 
 ```
-[Dane historyczne] --> [DataLoader] --> [BacktestManager] --> [Strategia] --> [PortfolioManager]
+[Historical Data] --> [DataLoader] --> [BacktestManager] --> [Strategy] --> [PortfolioManager]
                                            |                                       |
                                            v                                       v
-                                    [BacktestService] <-- [RiskManager] <-- [Pozycje/Transakcje]
+                                    [BacktestService] <-- [RiskManager] <-- [Positions/Trades]
                                            |
                                            v
-                                    [Wizualizacja] --> [UI]
+                                    [Visualization] --> [UI]
 ```
 
-## 2. Technologie i biblioteki
+## 2. Technologies and Libraries
 
 ### 2.1 Backend
-- **Python 3.8+** - Język programowania
-- **pandas** - Manipulacja danymi, analiza
-- **numpy** - Obliczenia numeryczne
-- **plotly** - Tworzenie interaktywnych wykresów
+- **Python 3.8+** - Programming language
+- **pandas** - Data manipulation, analysis
+- **numpy** - Numerical calculations
+- **plotly** - Creating interactive charts
 
 ### 2.2 Frontend
-- **Dash** - Framework dla aplikacji webowych w Pythonie
-- **Bootstrap** - Framework CSS dla responsywnego designu
-- **Plotly.js** - Biblioteka wykresów (używana przez Dash)
+- **Dash** - Framework for web applications in Python
+- **Bootstrap** - CSS framework for responsive design
+- **Plotly.js** - Chart library (used by Dash)
 
-### 2.3 Narzędzia developerskie
-- **Git** - Kontrola wersji
-- **SemVer** - Standard wersjonowania semantycznego
+### 2.3 Developer Tools
+- **Git** - Version control
+- **SemVer** - Semantic versioning standard
 
-## 3. Przepływ danych i algorytmy
+## 3. Data Flow and Algorithms
 
-### 3.1 Wczytywanie danych
+### 3.1 Loading Data
 ```python
-# Pseudokod
+# Pseudocode
 class DataLoader:
     def load_data(ticker):
         data = read_csv_file(f"data/{ticker}.csv")
         return process_data(data)
         
     def process_data(data):
-        # Konwersja dat, sortowanie, czyszczenie
+        # Date conversion, sorting, cleaning
         return processed_data
 ```
 
-### 3.2 Generowanie sygnałów
+### 3.2 Generating Signals
 ```python
-# Pseudokod
+# Pseudocode
 class BaseStrategy:
     def generate_signals(self, data):
-        # Implementacja w klasach pochodnych
+        # Implementation in derived classes
         pass
         
 class MovingAverageStrategy(BaseStrategy):
@@ -107,134 +107,134 @@ class MovingAverageStrategy(BaseStrategy):
         return create_signal_series(buy_signals, sell_signals)
 ```
 
-### 3.3 Zarządzanie portfelem
+### 3.3 Portfolio Management
 ```python
-# Pseudokod
+# Pseudocode
 class PortfolioManager:
     def process_signals(self, signals, prices):
         for date, signal in signals.items():
             if signal > 0 and self.cash > 0:
-                # Logika zakupu
+                # Buy logic
                 self.open_position(date, price, shares)
-            elif signal < 0 and has_open_positions():
-                # Logika sprzedaży
+            elif signal < 0 and has open positions():
+                # Sell logic
                 self.close_position(date, price)
 ```
 
-### 3.4 Wizualizacja wyników
+### 3.4 Visualizing Results
 ```python
-# Pseudokod
+# Pseudocode
 class BacktestVisualizer:
     def create_equity_curve(self, portfolio_values):
         fig = create_line_chart(portfolio_values)
         return fig
         
-    def create_monthly_returns_heatmap(self, returns):
+    def create_monthly returns heatmap(self, returns):
         monthly_returns = convert_to_monthly(returns)
         fig = create_heatmap(monthly_returns)
         return fig
 ```
 
-## 4. Struktura interfejsu użytkownika
+## 4. User Interface Structure
 
-### 4.1 Układ główny
-- Panel boczny (konfiguracja strategii)
-- Panel główny (wyniki i wykresy)
-- Nagłówek (nazwa aplikacji, wersja)
-- Stopka (informacje, linki)
+### 4.1 Main Layout
+- Side panel (strategy configuration)
+- Main panel (results and charts)
+- Header (app name, version)
+- Footer (information, links)
 
-### 4.2 Panel konfiguracji strategii
-- Selector strategii (dropdown)
-- Parametry strategii (dynamiczne pola)
-- Selektor instrumentów (multi-checkbox)
-- Zakres dat (slider + date picker)
-- Zarządzanie ryzykiem (expandable panel)
-- Przycisk "Run Backtest"
+### 4.2 Strategy Configuration Panel
+- Strategy selector (dropdown)
+- Strategy parameters (dynamic fields)
+- Instrument selector (multi-checkbox)
+- Date range (slider + date picker)
+- Risk management (expandable panel)
+- "Run Backtest" button
 
-### 4.3 Panel wyników
-- Metryki podsumowujące (karty)
-- Wykres portfela
-- Heatmapa miesięcznych zwrotów
-- Tabela transakcji
-- Wykres sygnałów
+### 4.3 Results Panel
+- Summary metrics (cards)
+- Portfolio chart
+- Monthly returns heatmap
+- Trades table
+- Signals chart
 
-## 5. Zarządzanie stanem aplikacji
+## 5. Application State Management
 
-### 5.1 Przepływ callbacków
-W Dash, przepływ danych między komponentami odbywa się za pomocą callbacków, które reagują na zdarzenia użytkownika. Główne callbacky:
+### 5.1 Callback Flow
+In Dash, data flow between components occurs via callbacks that react to user events. Main callbacks:
 
-1. Aktualizacja parametrów strategii na podstawie wybranej strategii
-2. Filtrowanie dostępnych instrumentów na podstawie wyszukiwania
-3. Aktualizacja zakresu dat na podstawie slidera/pickerów
-4. Uruchomienie backtestu i aktualizacja wyników
-5. Aktualizacja wykresów na podstawie wyników
+1. Updating strategy parameters based on selected strategy
+2. Filtering available instruments based on search
+3. Updating date range based on slider/pickers
+4. Running backtest and updating results
+5. Updating charts based on results
 
-### 5.2 Podział callbacków w projekcie
-Callbacki są grupowane według funkcjonalności:
-- `strategy_callbacks.py` - Callbacki związane z konfiguracją strategii
-- `backtest_callbacks.py` - Callbacki związane z uruchamianiem i wyświetlaniem wyników
-- `risk_management_callbacks.py` - Callbacki do zarządzania ustawieniami ryzyka
+### 5.2 Callback Division in the Project
+Callbacks are grouped by functionality:
+- `strategy_callbacks.py` - Callbacks related to strategy configuration
+- `backtest_callbacks.py` - Callbacks related to running and displaying results
+- `risk_management_callbacks.py` - Callbacks for managing risk settings
 
-## 6. Zarządzanie wersjami i migracjami
+## 6. Version Management and Migrations
 
-### 6.1 Wersjonowanie
-Projekt wykorzystuje SemVer (Semantic Versioning) dla przejrzystego oznaczania wersji:
-- **MAJOR** - zmiany łamiące kompatybilność wsteczną
-- **MINOR** - nowe funkcjonalności (kompatybilne wstecz)
-- **PATCH** - poprawki błędów (kompatybilne wstecz)
+### 6.1 Versioning
+The project uses SemVer (Semantic Versioning) for clear version marking:
+- **MAJOR** - changes breaking backward compatibility
+- **MINOR** - new features (backward compatible)
+- **PATCH** - bug fixes (backward compatible)
 
-### 6.2 Proces wdrażania nowych wersji
-1. Rozwój w branchu `develop`
-2. Testy i stabilizacja
-3. Aktualizacja wersji i changeloga
-4. Merge do brancha `main`
-5. Utworzenie tagu wersji
+### 6.2 New Version Deployment Process
+1. Development in the `develop` branch
+2. Testing and stabilization
+3. Updating version and changelog
+4. Merge to `main` branch
+5. Creating version tag
 
-### 6.3 Przywracanie poprzednich wersji
-Proces przywracania poprzedniej wersji aplikacji:
+### 6.3 Reverting to Previous Versions
+Process for restoring a previous application version:
 ```bash
-# Przykładowe komendy Git
+# Example Git commands
 git checkout tags/v1.0.0
 ```
 
-### 6.4 Zarządzanie zależnościami
-Zależności są zamrożone dla każdej wersji:
+### 6.4 Dependency Management
+Dependencies are frozen for each version:
 ```bash
 pip freeze > requirements.txt
 ```
 
-Przywracanie zależności dla konkretnej wersji:
+Restoring dependencies for a specific version:
 ```bash
 pip install -r requirements.txt
 ```
 
-## 7. Znane problemy i ograniczenia techniczne
+## 7. Known Issues and Technical Limitations
 
-### 7.1 Problemy z callbackami Dash
-Aplikacja obecnie wykorzystuje zaawansowane techniki monkey-patchingu do rozwiązania problemów z duplikującymi się callbackami. Jest to rozwiązanie tymczasowe, które powinno zostać zastąpione bardziej eleganckim podejściem w przyszłych wersjach.
+### 7.1 Dash Callback Issues
+The application currently uses advanced monkey-patching techniques to solve problems with duplicate callbacks. This is a temporary solution that should be replaced with a more elegant approach in future versions.
 
-### 7.2 Wydajność backtestów
-Dla dużych zbiorów danych lub złożonych strategii, czas wykonania backtestów może być długi. Konieczna jest optymalizacja pod kątem wydajności, potencjalnie z wykorzystaniem przetwarzania równoległego.
+### 7.2 Backtest Performance
+For large datasets or complex strategies, backtest execution time can be long. Optimization for performance is necessary, potentially using parallel processing.
 
-### 7.3 Format tabel
-Występują problemy z formatowaniem danych w tabelach Dash, szczególnie w przypadku procentów. Zastosowano obejście przez patch runtime.
+### 7.3 Table Format
+There are issues with data formatting in Dash tables, especially for percentages. A workaround via runtime patch has been applied.
 
-## 8. Plan rozwoju technicznego
+## 8. Technical Development Plan
 
-### 8.1 Refaktoryzacja UI
-Planowana jest migracja z Dash do czystego React, aby zwiększyć elastyczność i wydajność interfejsu użytkownika.
+### 8.1 UI Refactoring
+Migration from Dash to pure React is planned to increase UI flexibility and performance.
 
-### 8.2 Optymalizacja wydajności
-- Implementacja przetwarzania równoległego dla backtestów
-- Optymalizacja algorytmów strategii
+### 8.2 Performance Optimization
+- Implementation of parallel processing for backtests
+- Optimization of strategy algorithms
 
-### 8.3 Rozbudowa funkcjonalności
-- Dodanie optymalizacji parametrów strategii
-- Implementacja machine learning dla predykcji rynku
-- Integracja z API brokerów dla tradingu algorytmicznego
+### 8.3 Feature Expansion
+- Adding strategy parameter optimization
+- Implementing machine learning for market prediction
+- Integration with broker APIs for algorithmic trading
 
 ---
 
-*Dokument utworzony: 2025-04-10*
-*Ostatnia aktualizacja: 2025-04-10*
-*Wersja dokumentacji: 1.0*
+*Document created: 2025-04-10*
+*Last update: 2025-04-10*
+*Documentation version: 1.0*
