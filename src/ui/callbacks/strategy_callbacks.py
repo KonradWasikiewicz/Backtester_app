@@ -201,7 +201,6 @@ def register_strategy_callbacks(app):
             return False, 1.0  # Default to 1x ATR risk
         return False, 2.0
     
-    # Consolidated date-related callback to handle all updates in one place
     @app.callback(
         [Output("backtest-date-slider", "value"),
          Output("slider-start-date-picker", "date"),
@@ -222,12 +221,11 @@ def register_strategy_callbacks(app):
          State("backtest-date-slider", "max")],
         prevent_initial_call=True
     )
-    def update_date_components(date_range_timestamps, drag_value, start_date_picker, end_date_picker,
-                                n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_2y, n_clicks_all,
-                                min_date_ts, max_date_ts):
+    def unified_date_callback(slider_value, drag_value, start_date_picker, end_date_picker,
+                              n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_2y, n_clicks_all,
+                              min_date_ts, max_date_ts):
         """
-        Unified callback to handle all date-related updates, including slider movements,
-        date picker changes, and quick range buttons.
+        Unified callback to handle all updates to backtest-date-slider and related components.
         """
         ctx = callback_context
         if not ctx.triggered:
@@ -271,7 +269,7 @@ def register_strategy_callbacks(app):
                 start_ts = int(start_date.timestamp() * 1000)
                 end_ts = int(end_date.timestamp() * 1000)
             else:
-                values_to_use = drag_value if drag_value is not None else date_range_timestamps
+                values_to_use = drag_value if drag_value is not None else slider_value
                 if not values_to_use or len(values_to_use) != 2:
                     raise PreventUpdate
 
@@ -293,7 +291,7 @@ def register_strategy_callbacks(app):
                 end_date_str
             ]
         except Exception as e:
-            logger.error(f"Error updating date components: {e}")
+            logger.error(f"Error in unified_date_callback: {e}")
             raise PreventUpdate
     
     # Zastępuję problematyczne callbacki wykorzystujące nieistniejącą właściwość is_open
@@ -504,18 +502,31 @@ def register_strategy_callbacks(app):
         return is_open
 
     @app.callback(
-        Output("run-backtest-button", "disabled"),
-        [Input("wizard-progress", "value"),
+        [Output("run-backtest-button", "disabled"),
+         Output("ticker-selector", "value")],
+        [Input({"type": "ticker-checkbox", "index": ALL}, "value"),
+         Input("wizard-progress", "value"),
          Input("summary-strategy", "children"),
-         Input("summary-tickers", "children")]
+         Input("summary-tickers", "children")],
+        State({"type": "ticker-checkbox", "index": ALL}, "id")
     )
-    def update_run_button_state(progress, strategy, tickers):
+    def update_run_backtest_button(checkbox_values, progress, strategy, tickers, checkbox_ids):
         """
-        Enable the Run Backtest button when configuration is complete
+        Consolidated callback to update the Run Backtest button's state and ticker selector value.
         """
-        if progress == 100 and strategy and tickers:
-            return False
-        return True
+        # Check if tickers are selected
+        if not checkbox_values or not checkbox_ids:
+            return True, []
+
+        any_selected = any(checkbox_values)
+        selected_tickers = [
+            checkbox_ids[i]["index"] for i, is_checked in enumerate(checkbox_values) if is_checked
+        ]
+
+        # Check wizard progress and other conditions
+        button_disabled = not (progress == 100 and strategy and tickers and any_selected)
+
+        return button_disabled, selected_tickers
 
 def create_boolean_parameter(param_name, default_value, index):
     """Creates a boolean parameter input."""
