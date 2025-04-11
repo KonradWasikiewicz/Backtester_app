@@ -21,7 +21,7 @@ from src.ui.callbacks.risk_management_callbacks import register_risk_management_
 from src.ui.layouts.strategy_config import create_strategy_config_section
 from src.ui.layouts.results_display import create_results_section
 from src.ui.layouts.risk_management import create_risk_management_section
-from src.version import get_version, get_version_info  # Import wersji
+from src.version import get_version, get_version_info, RELEASE_DATE, get_changelog  # Import version info
 
 def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -> dash.Dash:
     """
@@ -176,6 +176,20 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
                 .error-container {
                     display: none !important;
                 }
+                
+                /* Version badge styling */
+                .version-badge {
+                    background-color: #375a7f;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    color: white;
+                }
+                
+                .version-popover {
+                    max-width: 350px;
+                }
             </style>
         </head>
         <body>
@@ -203,6 +217,71 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
     
     return app
 
+def create_version_display():
+    """
+    Create an enhanced version display component with popover for additional details.
+    
+    Returns:
+        html component: The version display component
+    """
+    version = get_version()
+    version_info = get_version_info()
+    
+    # Create version changes list for popover
+    changelog = get_changelog()
+    current_version_log = changelog.get(version, changelog.get(version_info['full'], {}))
+    
+    changes_list = []
+    if current_version_log:
+        changes = current_version_log.get('changes', [])
+        for change in changes:
+            changes_list.append(html.Li(change))
+    
+    # Create version badge with popover
+    version_badge = dbc.Button(
+        [
+            html.Span("v" + version, className="version-badge"),
+            html.I(className="fas fa-info-circle ms-1")
+        ],
+        id="version-badge",
+        color="link",
+        size="sm",
+        className="p-0 text-light text-decoration-none"
+    )
+    
+    version_popover = dbc.Popover(
+        [
+            dbc.PopoverHeader(f"Backtester v{version}"),
+            dbc.PopoverBody([
+                html.P([
+                    html.Strong("Release: "),
+                    RELEASE_DATE
+                ]),
+                html.Hr(className="my-2"),
+                html.P(
+                    html.Strong("What's in this version:"),
+                    className="mb-2"
+                ),
+                html.Ul(
+                    changes_list if changes_list else [html.Li("Initial release")],
+                    className="ps-3 mb-0"
+                ),
+                html.Hr(className="my-2"),
+                html.Small([
+                    html.A("View changelog", href="#", id="view-changelog", className="text-primary"),
+                    " | ",
+                    html.A("Report issue", href="https://github.com/", target="_blank", className="text-primary")
+                ])
+            ])
+        ],
+        target="version-badge",
+        trigger="hover",
+        placement="bottom",
+        className="version-popover"
+    )
+    
+    return html.Div([version_badge, version_popover])
+
 def create_app_layout() -> html.Div:
     """
     Create the main app layout.
@@ -221,6 +300,22 @@ def create_app_layout() -> html.Div:
             # Store for app state
             dcc.Store(id="app-state", data={}),
             
+            # Changelog modal
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Backtester Changelog")),
+                    dbc.ModalBody(
+                        html.Div(id="changelog-content")
+                    ),
+                    dbc.ModalFooter(
+                        dbc.Button("Close", id="close-changelog", className="ms-auto")
+                    ),
+                ],
+                id="changelog-modal",
+                size="lg",
+                is_open=False,
+            ),
+            
             # App header
             dbc.Navbar(
                 dbc.Container([
@@ -235,7 +330,7 @@ def create_app_layout() -> html.Div:
                     ),
                     dbc.Row([
                         dbc.Col([
-                            html.Small(get_version(), className="text-muted")  # Dynamic version display
+                            create_version_display()
                         ], width="auto"),
                         dbc.Col([
                             html.A(
@@ -272,10 +367,21 @@ def create_app_layout() -> html.Div:
             html.Footer(
                 dbc.Container([
                     html.P([
-                        "© 2024 Trading Strategy Backtester | ",
+                        "© 2025 Trading Strategy Backtester | ",
                         html.A("Terms", href="#", className="text-light"),
                         " | ",
-                        html.A("Privacy", href="#", className="text-light")
+                        html.A("Privacy", href="#", className="text-light"),
+                        " | ",
+                        # Add version again in the footer
+                        html.Span([
+                            "Version: ",
+                            html.A(
+                                f"v{get_version()}",
+                                href="#",
+                                id="footer-version",
+                                className="text-light fw-bold"
+                            )
+                        ])
                     ], className="text-center text-muted")
                 ], fluid=True),
                 className="py-3 mt-5",
@@ -311,10 +417,84 @@ def register_callbacks(app: dash.Dash) -> None:
         # Register risk management callbacks
         register_risk_management_callbacks(app)
         
+        # Register version and changelog callbacks
+        register_version_callbacks(app)
+        
     except Exception as e:
         logger.error(f"Error registering callbacks: {e}", exc_info=True)
         print(f"Error registering callbacks: {e}")
         traceback.print_exc()
+
+def register_version_callbacks(app: dash.Dash) -> None:
+    """
+    Register callbacks for version-related functionality.
+    
+    Args:
+        app: The Dash application instance
+    """
+    from dash.dependencies import Input, Output, State
+    
+    # Callback to show changelog modal
+    @app.callback(
+        Output("changelog-modal", "is_open"),
+        [Input("view-changelog", "n_clicks"), 
+         Input("footer-version", "n_clicks"),
+         Input("close-changelog", "n_clicks")],
+        [State("changelog-modal", "is_open")],
+    )
+    def toggle_changelog_modal(view_clicks, footer_clicks, close_clicks, is_open):
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            return is_open
+        
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        if trigger_id in ["view-changelog", "footer-version"]:
+            return True
+        elif trigger_id == "close-changelog":
+            return False
+        return is_open
+    
+    # Callback to populate changelog content
+    @app.callback(
+        Output("changelog-content", "children"),
+        [Input("changelog-modal", "is_open")]
+    )
+    def update_changelog(is_open):
+        if not is_open:
+            return []
+        
+        try:
+            # Get the full changelog
+            changelog = get_changelog()
+            
+            # Format the changelog for display
+            changelog_content = []
+            
+            for version, details in sorted(
+                changelog.items(), 
+                key=lambda x: [int(n) for n in x[0].split('.')], 
+                reverse=True
+            ):
+                date = details.get('date', '')
+                changes = details.get('changes', [])
+                
+                version_section = [
+                    html.H4(f"v{version}", className="mt-3"),
+                    html.P(f"Released: {date}", className="text-muted"),
+                    html.Ul([
+                        html.Li(change) for change in changes
+                    ]) if changes else html.P("No changes documented.")
+                ]
+                
+                changelog_content.extend(version_section)
+            
+            if not changelog_content:
+                return html.P("No changelog information available.")
+                
+            return changelog_content
+        except Exception as e:
+            logger.error(f"Error generating changelog: {e}", exc_info=True)
+            return html.P(f"Error loading changelog: {str(e)}")
 
 def configure_logging(log_level=logging.INFO) -> None:
     """

@@ -1,6 +1,6 @@
 # Backtester App - Workflow Guide
 
-This guide explains how to maintain consistency in development by following the documentation rules and utilizing the automatic versioning system.
+This guide explains how to maintain consistency in development by following the documentation rules and utilizing the version management system.
 
 ## Starting New Development Conversations
 
@@ -23,44 +23,49 @@ To ensure that all development conversations maintain the proper context and fol
    python scripts/context_manager.py update_preferences "Your new preference here"
    ```
 
-## Automatic Versioning
+## Version Management
 
-The project includes an automatic versioning system that follows Semantic Versioning (MAJOR.MINOR.PATCH). The system can automatically update versions based on commit messages.
+The project uses a unified version management system that follows Semantic Versioning (MAJOR.MINOR.PATCH). All version management tasks can be performed using the single `version_manager.py` script.
 
-### Setting Up Automatic Versioning
-
-To enable automatic versioning with git hooks:
+### Version Management Commands
 
 ```bash
-python scripts/auto_version.py setup
+# Display current version information
+python scripts/version_manager.py info
+
+# Update version numbers
+python scripts/version_manager.py update [major|minor|patch] --changes "Change description"
+
+# Create a git tag for the current version
+python scripts/version_manager.py tag [--push]
+
+# Set up automated versioning with git hooks
+python scripts/version_manager.py setup-hooks
+
+# List available versions
+python scripts/version_manager.py restore --list
+
+# Restore to a specific version
+python scripts/version_manager.py restore [--version v1.0.0] [--force]
 ```
 
-This will create a pre-commit hook that automatically updates the version based on commit messages.
+### Automatic Versioning
 
-### How Version Detection Works
-
-The version update type is determined by keywords in your commit messages:
+After setting up git hooks with `python scripts/version_manager.py setup-hooks`, version numbers will be automatically updated based on your commit messages:
 
 - **Major version** (breaking changes): Include "breaking", "major change", or "major update" in commit message
 - **Minor version** (new features): Include "new feature", "minor change", or "minor update" in commit message
 - **Patch version** (bug fixes): Default for all other commits
 
-### Manual Version Updates
+### Version Workflow Example
 
-You can also manually update versions:
+A typical workflow for a new feature would be:
 
-```bash
-python scripts/auto_version.py patch  # Increment patch version (0.0.X)
-python scripts/auto_version.py minor  # Increment minor version (0.X.0)
-python scripts/auto_version.py major  # Increment major version (X.0.0)
-```
-
-### Version Tracking
-
-Each version update will:
-1. Update the version number in `src/version.py`
-2. Update the `CHANGELOG.md` file with commit messages
-3. Add both files to git staging
+1. Make your code changes
+2. Test thoroughly
+3. Commit your changes with a descriptive message (e.g., "new feature: added strategy optimization")
+4. The version will be automatically updated if git hooks are set up
+5. Tag the version: `python scripts/version_manager.py tag --push`
 
 ## Language and Formatting Requirements
 
