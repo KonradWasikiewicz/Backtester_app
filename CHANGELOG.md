@@ -2,6 +2,13 @@
 
 All notable changes to the Backtester App will be documented in this file.
 
+## [v1.0.5] - 2025-04-11
+
+### Bug fixes and minor updates
+
+- patch mainly versioning and callbacs
+
+
 ## [v1.0.4] - 2025-04-11
 
 ### Bug fixes and minor updates

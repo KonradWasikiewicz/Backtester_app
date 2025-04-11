@@ -274,7 +274,14 @@ def update_external_changelog(version: str, date: str, version_type: str, change
 def run_git_command(command: List[str]) -> str:
     """Run a Git command and return its output"""
     try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        # Using explicit UTF-8 encoding to handle international characters
+        result = subprocess.run(
+            command, 
+            capture_output=True, 
+            encoding='utf-8',  # Use UTF-8 instead of the system default
+            errors='replace',  # Replace characters that can't be decoded
+            check=True
+        )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         if 'capture_output' in e.__dict__ and e.stderr:

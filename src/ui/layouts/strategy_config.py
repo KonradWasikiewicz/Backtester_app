@@ -423,7 +423,9 @@ def create_strategy_config_section(tickers=None):
     """
     # If tickers not provided, load available tickers
     if tickers is None:
-        tickers = loader.get_available_tickers()
+        # Create a DataLoader instance instead of using undefined 'loader'
+        data_loader = DataLoader()
+        tickers = data_loader.get_available_tickers()
     
     # Create a wizard interface with multiple steps
     return html.Div([
