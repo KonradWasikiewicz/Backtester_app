@@ -459,32 +459,33 @@ def register_strategy_callbacks(app):
     @app.callback(
         [Output("run-backtest-button", "disabled"),
          Output("ticker-selector", "value")],
-        Input({"type": "ticker-checkbox", "index": ALL}, "value"),
+        [Input({"type": "ticker-checkbox", "index": ALL}, "value"),
+         Input("wizard-progress", "value"),
+         Input("summary-strategy", "children"),
+         Input("summary-tickers", "children")],
         State({"type": "ticker-checkbox", "index": ALL}, "id")
     )
-    def update_backtest_button_state(checkbox_values, checkbox_ids):
+    def update_run_backtest_button(checkbox_values, progress, strategy, tickers, checkbox_ids):
         """
-        Aktualizuje stan przycisku "Run Backtest" i listę wybranych tickerów.
+        Update the state of the "Run Backtest" button and the selected tickers list.
         """
         if not checkbox_values or not checkbox_ids:
             return True, []
-        
-        # Sprawdź czy którykolwiek ticker jest zaznaczony
+
+        # Check if any ticker is selected
         any_selected = any(checkbox_values)
-        
-        # Zbierz zaznaczone tickery dla komponentu ticker-selector
+
+        # Gather selected tickers for the ticker-selector component
         selected_tickers = []
         for i, is_checked in enumerate(checkbox_values):
             if is_checked and i < len(checkbox_ids):
                 selected_tickers.append(checkbox_ids[i]["index"])
-        
-        # Ustaw disabled=True jeśli nie ma zaznaczonych tickerów
+
+        # Set disabled=True if no tickers are selected
         button_disabled = not any_selected
-        
-        logger.info(f"Stan przycisku Run Backtest zaktualizowany: disabled={button_disabled}, wybrano {len(selected_tickers)} tickerów")
+
+        logger.info(f"Run Backtest button state updated: disabled={button_disabled}, {len(selected_tickers)} tickers selected")
         return button_disabled, selected_tickers
-    
-    # Usuń możliwe konflikty - wyraźnie usuń duplikujące się callbacki
 
     @app.callback(
         Output("import-tickers-modal", "is_open"),
@@ -500,33 +501,6 @@ def register_strategy_callbacks(app):
         if open_clicks or close_clicks or submit_clicks:
             return not is_open
         return is_open
-
-    @app.callback(
-        [Output("run-backtest-button", "disabled"),
-         Output("ticker-selector", "value")],
-        [Input({"type": "ticker-checkbox", "index": ALL}, "value"),
-         Input("wizard-progress", "value"),
-         Input("summary-strategy", "children"),
-         Input("summary-tickers", "children")],
-        State({"type": "ticker-checkbox", "index": ALL}, "id")
-    )
-    def update_run_backtest_button(checkbox_values, progress, strategy, tickers, checkbox_ids):
-        """
-        Consolidated callback to update the Run Backtest button's state and ticker selector value.
-        """
-        # Check if tickers are selected
-        if not checkbox_values or not checkbox_ids:
-            return True, []
-
-        any_selected = any(checkbox_values)
-        selected_tickers = [
-            checkbox_ids[i]["index"] for i, is_checked in enumerate(checkbox_values) if is_checked
-        ]
-
-        # Check wizard progress and other conditions
-        button_disabled = not (progress == 100 and strategy and tickers and any_selected)
-
-        return button_disabled, selected_tickers
 
 def create_boolean_parameter(param_name, default_value, index):
     """Creates a boolean parameter input."""
