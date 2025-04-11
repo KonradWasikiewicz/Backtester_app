@@ -51,8 +51,7 @@ def register_backtest_callbacks(app):
         [Output("backtest-status", "children"),
          Output("results-section", "style"),
          Output("no-results-placeholder", "style"),
-         Output("ticker-selector", "options"),
-         Output("ticker-selector", "value")],
+         Output("ticker-selector", "options")],  # Removed duplicate ticker-selector value output
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-selector", "value"),
          State("ticker-selector", "value"),
@@ -74,7 +73,7 @@ def register_backtest_callbacks(app):
         Execute backtest when the Run Backtest button is clicked.
         """
         if not n_clicks:
-            return "", {"display": "none"}, {"display": "block"}, [], None
+            return "", {"display": "none"}, {"display": "block"}, []  # Return value adjusted for removed output
 
         # Validate required inputs
         missing_inputs = []
@@ -87,7 +86,7 @@ def register_backtest_callbacks(app):
 
         if missing_inputs:
             error_msg = f"Please provide required inputs: {', '.join(missing_inputs)}"
-            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
+            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, []  # Return value adjusted
 
         # Prepare parameters
         try:
@@ -117,15 +116,15 @@ def register_backtest_callbacks(app):
 
             if result.get("success"):
                 ticker_options = [{"label": ticker, "value": ticker} for ticker in tickers if ticker in result.get("signals", {})]
-                return html.Div([html.I(className="fas fa-check-circle me-2"), "Backtest completed successfully"], className="text-success"), {"display": "block"}, {"display": "none"}, ticker_options, ticker_options[0]["value"] if ticker_options else None
+                return html.Div([html.I(className="fas fa-check-circle me-2"), "Backtest completed successfully"], className="text-success"), {"display": "block"}, {"display": "none"}, ticker_options
             else:
                 error_msg = f"Backtest failed: {result.get('error', 'Unknown error')}"
-                return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
+                return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, []
 
         except Exception as e:
             logger.error(f"Error running backtest: {e}", exc_info=True)
             error_msg = f"Error running backtest: {str(e)}"
-            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
+            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, []
     
     @app.callback(
         [Output("metric-total-return", "children"),

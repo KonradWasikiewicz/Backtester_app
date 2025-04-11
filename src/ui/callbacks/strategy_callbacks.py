@@ -216,25 +216,31 @@ def register_strategy_callbacks(app):
          Input("date-range-6m", "n_clicks"),
          Input("date-range-1y", "n_clicks"),
          Input("date-range-2y", "n_clicks"),
-         Input("date-range-all", "n_clicks")],
+         Input("date-range-all", "n_clicks"),
+         Input("selected-start-date", "n_clicks"),
+         Input("selected-end-date", "n_clicks")],
         [State("backtest-date-slider", "min"),
          State("backtest-date-slider", "max")],
         prevent_initial_call=True
     )
-    def unified_date_callback(slider_value, drag_value, start_date_picker, end_date_picker,
-                              n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_2y, n_clicks_all,
-                              min_date_ts, max_date_ts):
+    def unified_date_controls(slider_value, drag_value, start_date_picker, end_date_picker,
+                      n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_2y, n_clicks_all,
+                      n_clicks_start, n_clicks_end,
+                      min_date_ts, max_date_ts):
         """
-        Unified callback to handle all updates to backtest-date-slider and related components.
+        Unified callback to handle all date-related controls in one place
+        This prevents duplicate callbacks on the same outputs
         """
         ctx = callback_context
         if not ctx.triggered:
             raise PreventUpdate
 
         triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        triggered_prop = ctx.triggered[0]['prop_id'].split('.')[-1]
         now = pd.Timestamp.now()
 
         try:
+            # Quick date range buttons
             if triggered_id.startswith("date-range"):
                 if triggered_id == "date-range-1m":
                     start_date = now - pd.DateOffset(months=1)
@@ -247,12 +253,25 @@ def register_strategy_callbacks(app):
                 elif triggered_id == "date-range-2y":
                     start_date = now - pd.DateOffset(years=2)
                 elif triggered_id == "date-range-all":
-                    return [min_date_ts, max_date_ts, None, None, "All", "All"]
-                else:
-                    raise PreventUpdate
+                    start_ts = min_date_ts
+                    end_ts = max_date_ts
+                    start_date = pd.to_datetime(start_ts, unit='ms')
+                    end_date = pd.to_datetime(end_ts, unit='ms')
+                    start_date_str = start_date.strftime('%Y-%m-%d')
+                    end_date_str = end_date.strftime('%Y-%m-%d')
+                    return [
+                        [start_ts, end_ts],
+                        start_date_str,
+                        end_date_str,
+                        start_date_str,
+                        end_date_str
+                    ]
 
                 start_ts = int(start_date.timestamp() * 1000)
                 end_ts = int(now.timestamp() * 1000)
+                end_date = now
+                
+            # Date picker changes
             elif triggered_id in ["slider-start-date-picker", "slider-end-date-picker"]:
                 if not start_date_picker or not end_date_picker:
                     raise PreventUpdate
@@ -260,6 +279,7 @@ def register_strategy_callbacks(app):
                 start_date = pd.to_datetime(start_date_picker)
                 end_date = pd.to_datetime(end_date_picker)
 
+                # Keep dates in valid range (end date >= start date)
                 if end_date < start_date:
                     if triggered_id == "slider-start-date-picker":
                         end_date = start_date
@@ -268,7 +288,9 @@ def register_strategy_callbacks(app):
 
                 start_ts = int(start_date.timestamp() * 1000)
                 end_ts = int(end_date.timestamp() * 1000)
-            else:
+                
+            # Slider changes    
+            elif triggered_id == "backtest-date-slider":
                 values_to_use = drag_value if drag_value is not None else slider_value
                 if not values_to_use or len(values_to_use) != 2:
                     raise PreventUpdate
@@ -276,10 +298,21 @@ def register_strategy_callbacks(app):
                 start_ts, end_ts = values_to_use
                 start_date = pd.to_datetime(start_ts, unit='ms')
                 end_date = pd.to_datetime(end_ts, unit='ms')
+            
+            # Date display card click events
+            elif triggered_id in ["selected-start-date", "selected-end-date"]:
+                # Just return current values - the click itself doesn't change anything
+                # Date pickers will handle their own popup UI
+                return slider_value, start_date_picker, end_date_picker, start_date_picker, end_date_picker
+            
+            else:
+                raise PreventUpdate
 
+            # Ensure timestamps are within valid range
             start_ts = max(min_date_ts, min(max_date_ts, start_ts))
             end_ts = max(min_date_ts, min(max_date_ts, end_ts))
 
+            # Format dates for display
             start_date_str = pd.to_datetime(start_ts, unit='ms').strftime('%Y-%m-%d')
             end_date_str = pd.to_datetime(end_ts, unit='ms').strftime('%Y-%m-%d')
 
@@ -291,93 +324,22 @@ def register_strategy_callbacks(app):
                 end_date_str
             ]
         except Exception as e:
-            logger.error(f"Error in unified_date_callback: {e}")
-            raise PreventUpdate
+            logger.error(f"Error in unified_date_controls: {e}")
+            # Return current values if there's an error
+            return slider_value, start_date_picker, end_date_picker, start_date_picker, end_date_picker
     
     # Zastępuję problematyczne callbacki wykorzystujące nieistniejącą właściwość is_open
     # Usunięcie callbacków otwierających kalendarz po kliknięciu na przycisk daty
-    @app.callback(
-        [Output("slider-start-date-picker", "date"),
-         Output("selected-start-date", "children")],
-        Input("selected-start-date", "n_clicks"),
-        State("slider-start-date-picker", "date"),
-        prevent_initial_call=True
-    )
-    def handle_start_date_click(n_clicks, current_date):
-        """Aktualizuje tekst wyświetlania daty po zmianie w datepicker"""
-        # Ten callback nie otwiera kalendarza (bo nie ma takiej właściwości), 
-        # ale wyświetla aktualną datę po kliknięciu
-        if n_clicks:
-            if current_date:
-                formatted_date = pd.to_datetime(current_date).strftime('%Y-%m-%d')
-                return current_date, formatted_date
-        raise PreventUpdate
+    # Removing duplicate date picker callbacks
+    # The following two callback functions are removed as they're now handled 
+    # by our unified_date_controls callback
 
-    @app.callback(
-        [Output("slider-end-date-picker", "date"),
-         Output("selected-end-date", "children")],
-        Input("selected-end-date", "n_clicks"),
-        State("slider-end-date-picker", "date"),
-        prevent_initial_call=True
-    )
-    def handle_end_date_click(n_clicks, current_date):
-        """Aktualizuje tekst wyświetlania daty po zmianie w datepicker"""
-        if n_clicks:
-            if current_date:
-                formatted_date = pd.to_datetime(current_date).strftime('%Y-%m-%d')
-                return current_date, formatted_date
-        raise PreventUpdate
-
-    # Callback do synchronizacji dat po zmianie w kalendarzu
-    @app.callback(
-        Output("backtest-date-slider", "value"),
-        [Input("slider-start-date-picker", "date"),
-         Input("slider-end-date-picker", "date")],
-        [State("backtest-date-slider", "min"),
-         State("backtest-date-slider", "max"),
-         State("backtest-date-slider", "value")],
-        prevent_initial_call=True
-    )
-    def update_slider_from_pickers(start_date_str, end_date_str, min_allowed, max_allowed, current_value):
-        """
-        Aktualizuje suwak po zmianie daty w kalendarzu.
-        """
-        ctx = callback_context
-        if not ctx.triggered:
-            return current_value
-        
-        # Określamy, który picker został użyty
-        input_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        try:
-            if input_id == "slider-start-date-picker" and start_date_str:
-                start_date = pd.to_datetime(start_date_str)
-                start_ts = int(start_date.timestamp() * 1000)
-                # Zachowaj obecną datę końcową
-                end_ts = current_value[1] if current_value and len(current_value) > 1 else max_allowed
-                
-                # Upewniamy się, że data początkowa nie jest później niż końcowa
-                if start_ts > end_ts:
-                    start_ts = end_ts
-                
-                return [max(min_allowed, min(max_allowed, start_ts)), end_ts]
-            
-            elif input_id == "slider-end-date-picker" and end_date_str:
-                end_date = pd.to_datetime(end_date_str)
-                end_ts = int(end_date.timestamp() * 1000)
-                # Zachowaj obecną datę początkową
-                start_ts = current_value[0] if current_value and len(current_value) > 0 else min_allowed
-                
-                # Upewniamy się, że data końcowa nie jest wcześniej niż początkowa
-                if end_ts < start_ts:
-                    end_ts = start_ts
-                
-                return [start_ts, min(max_allowed, max(min_allowed, end_ts))]
-            
-            return current_value
-        
-        except Exception as e:
-            logger.error(f"Error updating slider from date pickers: {e}")
-            return current_value
+    # Removing all commented out callbacks related to dates
+    # These need to be completely removed, not just commented out
+    # as they might still be registered with Dash
+    
+    # Our unified_date_controls callback now handles all date-related interactions
+    # and prevents duplicate callbacks on the same outputs
 
     # --- CAŁKOWITA REORGANIZACJA CALLBACKÓW TICKERÓW ---
     # Usunięcie wszystkich poprzednich callbacków dotyczących tickerów
@@ -501,6 +463,238 @@ def register_strategy_callbacks(app):
         if open_clicks or close_clicks or submit_clicks:
             return not is_open
         return is_open
+
+    # New unified callback to handle wizard steps properly
+    @app.callback(
+        [Output("wizard-progress", "value"),
+         Output("step1-collapse", "is_open"),
+         Output("step2-collapse", "is_open"),
+         Output("step3-collapse", "is_open"),
+         Output("step1-summary-collapse", "is_open"),
+         Output("step2-summary-collapse", "is_open"),
+         Output("step3-summary-collapse", "is_open"),
+         Output("step1-status", "className"),
+         Output("step2-status", "className"),
+         Output("step3-status", "className"),
+         Output("step1-header-card", "className"),
+         Output("step2-header-card", "className"),
+         Output("step3-header-card", "className")],
+        [Input("confirm-step1-btn", "n_clicks"),
+         Input("confirm-step2-btn", "n_clicks"),
+         Input("step1-header-card", "n_clicks"),
+         Input("step2-header-card", "n_clicks"),
+         Input("step3-header-card", "n_clicks")],
+        State("wizard-progress", "value"),
+        prevent_initial_call=True
+    )
+    def handle_wizard_steps(confirm_step1, confirm_step2, 
+                           click_step1, click_step2, click_step3, 
+                           current_progress):
+        """
+        Handle wizard step transitions and UI state
+        """
+        ctx = callback_context
+        if not ctx.triggered:
+            # Initial state
+            return (
+                0,  # progress value
+                True, False, False,  # step collapses
+                False, False, False,  # summary collapses
+                "", "", "",  # step status icons
+                "mb-2", "mb-2", "mb-2"  # header card classes
+            )
+        
+        # Get the ID of the element that triggered the callback
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        
+        # Default values that will be updated based on trigger
+        step1_open = False
+        step2_open = False
+        step3_open = False
+        step1_summary = False
+        step2_summary = False 
+        step3_summary = False
+        step1_status = ""
+        step2_status = ""
+        step3_status = ""
+        step1_header = "mb-2"
+        step2_header = "mb-2"
+        step3_header = "mb-2"
+        progress = current_progress or 0
+        
+        # Process wizard step transitions based on trigger
+        if trigger_id == "confirm-step1-btn":
+            # User completed Step 1, move to Step 2
+            step1_open = False
+            step2_open = True 
+            step3_open = False
+            step1_summary = True
+            step1_status = "fas fa-check text-success"
+            progress = 33
+            step1_header = "mb-2 border-success"
+        elif trigger_id == "confirm-step2-btn":
+            # User completed Step 2, move to Step 3
+            step1_open = False
+            step2_open = False
+            step3_open = True
+            step1_summary = True
+            step2_summary = True
+            step1_status = "fas fa-check text-success"
+            step2_status = "fas fa-check text-success"
+            progress = 66
+            step1_header = "mb-2 border-success"
+            step2_header = "mb-2 border-success"
+        elif trigger_id == "step1-header-card":
+            # User clicked Step 1 header
+            step1_open = True
+            step2_open = False
+            step3_open = False
+            step1_summary = False if progress < 33 else True
+            step2_summary = True if progress >= 66 else False
+            step1_header = "mb-2 border-primary"
+        elif trigger_id == "step2-header-card":
+            # User clicked Step 2 header
+            if progress >= 33:  # Only allow if Step 1 was completed
+                step1_open = False
+                step2_open = True
+                step3_open = False
+                step1_summary = True
+                step2_summary = False if progress < 66 else True
+                step2_header = "mb-2 border-primary"
+        elif trigger_id == "step3-header-card":
+            # User clicked Step 3 header
+            if progress >= 66:  # Only allow if Step 2 was completed
+                step1_open = False
+                step2_open = False
+                step3_open = True
+                step1_summary = True
+                step2_summary = True
+                step3_header = "mb-2 border-primary"
+        
+        # Update status icons based on progress
+        if progress >= 33:
+            step1_status = "fas fa-check text-success"
+        if progress >= 66:
+            step2_status = "fas fa-check text-success"
+        if progress >= 100:
+            step3_status = "fas fa-check text-success"
+            
+        logger.info(f"Wizard step transition: trigger={trigger_id}, progress={progress}")
+        
+        return (
+            progress,
+            step1_open, step2_open, step3_open,
+            step1_summary, step2_summary, step3_summary,
+            step1_status, step2_status, step3_status,
+            step1_header, step2_header, step3_header
+        )
+
+    # Create summaries of each step's content
+    @app.callback(
+        [Output("step1-content-summary", "children"),
+         Output("step2-content-summary", "children"),
+         Output("step3-content-summary", "children"),
+         Output("step1-header-summary", "children"),
+         Output("step2-header-summary", "children"),
+         Output("step3-header-summary", "children")],
+        [Input("strategy-selector", "value"),
+         Input("slider-start-date-picker", "date"),
+         Input("slider-end-date-picker", "date"),
+         Input({"type": "ticker-checkbox", "index": ALL}, "value"),
+         Input("risk-features-checklist", "value"),
+         Input("stop-loss-type", "value"),
+         Input("stop-loss-value", "value"),
+         Input("wizard-progress", "value")],
+        [State({"type": "ticker-checkbox", "index": ALL}, "id"),
+         State("wizard-state", "data")]
+    )
+    def update_step_summaries(strategy, start_date, end_date, 
+                             ticker_values, risk_features,
+                             stop_loss_type, stop_loss_value, wizard_progress,
+                             ticker_ids, wizard_state):
+        """
+        Update the summaries for each wizard step
+        """
+        if not wizard_progress:
+            # No progress yet, don't update summaries
+            return ["", "", "", "", "", ""]
+            
+        # Calculate selected tickers
+        selected_tickers = []
+        if ticker_ids and ticker_values:
+            for i, is_selected in enumerate(ticker_values):
+                if is_selected and i < len(ticker_ids):
+                    selected_tickers.append(ticker_ids[i]["index"])
+                    
+        # Format dates for display
+        date_range = f"{start_date} to {end_date}" if start_date and end_date else "Not set"
+        
+        # Create Step 1 Summary
+        step1_summary = html.Div([
+            html.H6("Strategy & Assets", className="mb-2"),
+            dbc.Row([
+                dbc.Col([
+                    html.Strong("Strategy: "),
+                    html.Span(strategy or "None selected")
+                ], width=6),
+                dbc.Col([
+                    html.Strong("Date Range: "),
+                    html.Span(date_range)
+                ], width=6)
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    html.Strong("Selected Tickers: "),
+                    html.Span(
+                        f"{len(selected_tickers)} tickers" if selected_tickers else "None"
+                    )
+                ], width=12)
+            ])
+        ])
+        
+        step1_header = f"{strategy or 'No strategy'}, {len(selected_tickers)} assets"
+        
+        # Create Step 2 Summary
+        if wizard_progress >= 33:
+            enabled_features = risk_features or []
+            risk_summary = ", ".join([f.replace("_", " ").title() for f in enabled_features]) if enabled_features else "None"
+            
+            step2_summary = html.Div([
+                html.H6("Risk Management", className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        html.Strong("Enabled Features: "),
+                        html.Span(risk_summary)
+                    ], width=12)
+                ]),
+                dbc.Row([
+                    dbc.Col([
+                        html.Strong("Stop Loss: "),
+                        html.Span(
+                            f"{stop_loss_type} ({stop_loss_value})" if stop_loss_type != "none" else "None"
+                        )
+                    ], width=12)
+                ])
+            ])
+            
+            step2_header = f"{len(enabled_features)} risk features"
+        else:
+            step2_summary = ""
+            step2_header = ""
+            
+        # Create Step 3 Summary
+        if wizard_progress >= 66:
+            step3_summary = html.Div([
+                html.H6("Ready to Run", className="mb-2"),
+                html.P("Configuration complete. Click Run Backtest to execute.")
+            ])
+            
+            step3_header = "Ready to run"
+        else:
+            step3_summary = ""
+            step3_header = ""
+            
+        return [step1_summary, step2_summary, step3_summary, step1_header, step2_header, step3_header]
 
 def create_boolean_parameter(param_name, default_value, index):
     """Creates a boolean parameter input."""

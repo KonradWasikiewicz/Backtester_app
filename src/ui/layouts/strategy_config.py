@@ -623,7 +623,8 @@ def create_wizard_step(step_id, title, content):
                     ], className="mb-0")
                 ]),
                 dbc.Col([
-                    html.Div(id=f"{step_id}-summary", className="text-end small text-muted")
+                    # Changed ID to avoid duplication
+                    html.Div(id=f"{step_id}-header-summary", className="text-end small text-muted")
                 ], width="auto")
             ])
         ], className="py-2")
@@ -633,7 +634,8 @@ def create_wizard_step(step_id, title, content):
         header_card,
         # Summary collapse - this shows when step is completed
         dbc.Collapse(
-            dbc.Card(dbc.CardBody(id=f"{step_id}-summary")),
+            # Changed ID to avoid duplication
+            dbc.Card(dbc.CardBody(id=f"{step_id}-content-summary")),
             id=f"{step_id}-summary-collapse",
             is_open=False,
             className="mb-3"

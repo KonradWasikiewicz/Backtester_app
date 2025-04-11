@@ -1,5 +1,5 @@
 import dash
-from dash import Input, Output, State, ALL, MATCH, callback_context
+from dash import Input, Output, State, ALL, MATCH, callback_context, ClientsideFunction
 import dash_bootstrap_components as dbc
 from typing import Dict, Any
 import json
@@ -15,7 +15,7 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
     Args:
         app: The Dash application
     """
-    # JEDEN główny callback do obsługi widoczności wszystkich paneli
+    # Panel visibility callback
     @app.callback(
         [
             Output("position_sizing-panel", "style"),
@@ -49,8 +49,16 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
                 
         return styles
 
-    # JEDEN callback do synchronizacji checkoboxów z listą funkcji
-    @app.callback(
+    # BREAKING THE CIRCULAR DEPENDENCY:
+    # Instead of having two callbacks updating each other, we'll use only one direction
+    # and register a clientside callback for immediate UI feedback
+
+    # Register clientside callback to sync checkboxes to the checklist for immediate UI feedback
+    app.clientside_callback(
+        ClientsideFunction(
+            namespace='clientside',
+            function_name='syncCheckboxesToList'
+        ),
         [
             Output("position_sizing-checkbox", "value"),
             Output("stop_loss-checkbox", "value"),
@@ -60,27 +68,10 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
             Output("drawdown_protection-checkbox", "value"),
             Output("continue-iterate-checkbox", "value")
         ],
-        Input("risk-features-checklist", "value")
+        [Input("risk-features-checklist", "value")]
     )
-    def update_checkboxes(enabled_features):
-        """Aktualizuje stany checkboxów na podstawie listy włączonych funkcji"""
-        features = [
-            "position_sizing", "stop_loss", "take_profit", 
-            "risk_per_trade", "market_filter", "drawdown_protection",
-            "continue_iterate"
-        ]
-        
-        # Dla każdej funkcji zwracamy odpowiedni stan
-        checkbox_values = []
-        for feature in features:
-            if enabled_features and feature in enabled_features:
-                checkbox_values.append([feature])
-            else:
-                checkbox_values.append([])
-                
-        return checkbox_values
-
-    # JEDEN callback w przeciwnym kierunku - od checkboxów do listy funkcji
+    
+    # Only keep one server-side callback that converts checkbox states to the list
     @app.callback(
         Output("risk-features-checklist", "value"),
         [
@@ -91,7 +82,9 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
             Input("market_filter-checkbox", "value"),
             Input("drawdown_protection-checkbox", "value"),
             Input("continue-iterate-checkbox", "value")
-        ]
+        ],
+        # Prevent callback firing during initial load
+        prevent_initial_call=True
     )
     def update_features_list(*checkbox_values):
         """Aktualizuje listę włączonych funkcji na podstawie stanów checkboxów"""
@@ -101,6 +94,11 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
             "continue_iterate"
         ]
         
+        # Get callback context to determine which checkbox triggered the callback
+        ctx = callback_context
+        if not ctx.triggered:
+            return dash.no_update
+            
         # Czysty zbiór wybranych funkcji
         selected_features = []
         
