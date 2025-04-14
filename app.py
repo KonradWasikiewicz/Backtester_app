@@ -14,7 +14,7 @@ sys.path.append(str(APP_ROOT))
 # Import factory functions
 try:
     from src.ui.app_factory import create_app, configure_logging
-    from dash import dcc
+    from dash import html, dcc
 except ImportError as e:
     print(f"Error importing modules: {e}")
     traceback.print_exc()
@@ -23,6 +23,89 @@ except ImportError as e:
 # Configure application logging
 configure_logging()
 logger = logging.getLogger(__name__)
+
+def configure_client_side_logging():
+    """Configure client-side logging to capture browser console errors."""
+    return html.Div([
+        dcc.Location(id='url', refresh=False),
+        html.Div(id='client-error-container'),
+        # Skrypt do przechwytywania błędów JavaScript
+        html.Script('''
+        window.dash_clientside = Object.assign({}, window.dash_clientside, {
+            clientside: {
+                capture_errors: function() {
+                    // Zapisywanie oryginalnych funkcji konsolowych
+                    var originalConsoleLog = console.log;
+                    var originalConsoleError = console.error;
+                    var originalConsoleWarn = console.warn;
+                    
+                    // Bufory dla komunikatów
+                    var logMessages = [];
+                    var errorMessages = [];
+                    var warnMessages = [];
+                    
+                    // Zastąpienie funkcji konsolowych
+                    console.log = function() {
+                        var args = Array.prototype.slice.call(arguments);
+                        logMessages.push("[LOG] " + args.join(' '));
+                        originalConsoleLog.apply(console, arguments);
+                    };
+                    
+                    console.error = function() {
+                        var args = Array.prototype.slice.call(arguments);
+                        errorMessages.push("[ERROR] " + args.join(' '));
+                        originalConsoleError.apply(console, arguments);
+                    };
+                    
+                    console.warn = function() {
+                        var args = Array.prototype.slice.call(arguments);
+                        warnMessages.push("[WARN] " + args.join(' '));
+                        originalConsoleWarn.apply(console, arguments);
+                    };
+                    
+                    // Okresowe wysyłanie logów do serwera
+                    setInterval(function() {
+                        if (errorMessages.length > 0 || warnMessages.length > 0 || logMessages.length > 0) {
+                            var allMessages = {
+                                errors: errorMessages,
+                                warnings: warnMessages,
+                                logs: logMessages
+                            };
+                            
+                            fetch('/log-client-errors', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(allMessages)
+                            }).then(function() {
+                                // Wyczyszczenie buforów po wysłaniu
+                                errorMessages = [];
+                                warnMessages = [];
+                                logMessages = [];
+                            });
+                        }
+                    }, 5000);
+                    
+                    // Nasłuchiwanie niezłapanych błędów
+                    window.addEventListener('error', function(event) {
+                        errorMessages.push("[UNCAUGHT] " + event.message + " at " + event.filename + ":" + event.lineno);
+                        return false;
+                    });
+                    
+                    return window.dash_clientside;
+                }
+            }
+        });
+        '''),
+        # Wywołanie funkcji śledzenia błędów
+        dcc.Store(id='error-tracker-store'),
+        dcc.ClientsideFunction(
+            namespace='clientside',
+            function_name='capture_errors',
+            output='error-tracker-store.data',
+        )
+    ])
 
 def apply_format_patches():
     """Apply runtime patches to fix invalid DataTable format strings."""
@@ -174,7 +257,26 @@ try:
 
     # Application entry point
     if __name__ == "__main__":
+        # Import the client-side logging
+        from dash import html
+        
+        # Check for command line arguments
+        import argparse
+        parser = argparse.ArgumentParser(description='Run the Backtester application')
+        parser.add_argument('--debug-client', action='store_true', help='Enable client-side debug logging')
+        args = parser.parse_args()
+        
         logger.info("Starting Backtester application")
+        
+        if args.debug_client:
+            # Modify the app layout to include client-side debug component
+            original_layout = app.layout
+            app.layout = html.Div([
+                configure_client_side_logging(),
+                original_layout
+            ])
+            logger.info("Client-side debug logging enabled - browser console errors will be captured")
+        
         app.run(debug=debug_mode, port=8050)
 
 except ValueError as ve:

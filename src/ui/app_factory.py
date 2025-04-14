@@ -215,6 +215,33 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
     # Register all application callbacks
     register_callbacks(app)
     
+    # Add endpoint for receiving browser console logs
+    @app.server.route('/log-client-errors', methods=['POST'])
+    def log_client_errors():
+        from flask import request, jsonify
+        try:
+            data = request.get_json()
+            
+            # Log errors from the browser
+            if 'errors' in data and data['errors']:
+                for error in data['errors']:
+                    logger.error(f"BROWSER: {error}")
+            
+            # Log warnings from the browser
+            if 'warnings' in data and data['warnings']:
+                for warning in data['warnings']:
+                    logger.warning(f"BROWSER: {warning}")
+            
+            # Log other messages from the browser
+            if 'logs' in data and data['logs']:
+                for log in data['logs']:
+                    logger.info(f"BROWSER: {log}")
+            
+            return jsonify({"status": "success"})
+        except Exception as e:
+            logger.error(f"Error processing client logs: {e}")
+            return jsonify({"status": "error", "message": str(e)}), 500
+    
     return app
 
 def create_version_display():
@@ -333,6 +360,14 @@ def create_app_layout() -> html.Div:
                             create_version_display()
                         ], width="auto"),
                         dbc.Col([
+                            # Dodanie przycisku debugowania
+                            dbc.Button(
+                                html.I(className="fas fa-bug"),
+                                id="toggle-debug-btn",
+                                color="link",
+                                className="p-0 text-light me-3",
+                                title="Toggle debug mode"
+                            ),
                             html.A(
                                 html.I(className="fab fa-github fa-lg"),
                                 href="https://github.com/",
@@ -420,6 +455,9 @@ def register_callbacks(app: dash.Dash) -> None:
         # Register version and changelog callbacks
         register_version_callbacks(app)
         
+        # Register debug mode toggle callback
+        register_debug_callbacks(app)
+        
     except Exception as e:
         logger.error(f"Error registering callbacks: {e}", exc_info=True)
         print(f"Error registering callbacks: {e}")
@@ -495,6 +533,145 @@ def register_version_callbacks(app: dash.Dash) -> None:
         except Exception as e:
             logger.error(f"Error generating changelog: {e}", exc_info=True)
             return html.P(f"Error loading changelog: {str(e)}")
+
+def register_debug_callbacks(app: dash.Dash) -> None:
+    """
+    Register callbacks for debug functionality.
+    
+    Args:
+        app: The Dash application instance
+    """
+    from dash.dependencies import Input, Output, State
+    import json
+    
+    # Store for debug mode state
+    app.layout.children.append(dcc.Store(id='debug-state', data={'active': False}))
+    
+    # Hidden div to hold the debug panel
+    app.layout.children.append(html.Div(id='debug-container', style={'display': 'none'}))
+    
+    # Callback to toggle debug mode
+    @app.callback(
+        [Output('debug-container', 'children'),
+         Output('debug-state', 'data')],
+        [Input('toggle-debug-btn', 'n_clicks')],
+        [State('debug-state', 'data')]
+    )
+    def toggle_debug_mode(n_clicks, debug_state):
+        if n_clicks is None:
+            return [], debug_state
+        
+        # Toggle debug state
+        is_active = not debug_state.get('active', False)
+        new_state = {'active': is_active}
+        
+        if is_active:
+            # Debug mode enabled - add JavaScript code to capture console output
+            logger.info("Client-side debug logging enabled by user")
+            
+            debug_component = html.Div([
+                html.Script('''
+                window.dash_clientside = Object.assign({}, window.dash_clientside, {
+                    clientside: {
+                        capture_errors: function() {
+                            // Zapisywanie oryginalnych funkcji konsolowych
+                            var originalConsoleLog = console.log;
+                            var originalConsoleError = console.error;
+                            var originalConsoleWarn = console.warn;
+                            
+                            // Bufory dla komunikatów
+                            var logMessages = [];
+                            var errorMessages = [];
+                            var warnMessages = [];
+                            
+                            // Zastąpienie funkcji konsolowych
+                            console.log = function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                logMessages.push("[LOG] " + args.join(' '));
+                                originalConsoleLog.apply(console, arguments);
+                            };
+                            
+                            console.error = function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                errorMessages.push("[ERROR] " + args.join(' '));
+                                originalConsoleError.apply(console, arguments);
+                            };
+                            
+                            console.warn = function() {
+                                var args = Array.prototype.slice.call(arguments);
+                                warnMessages.push("[WARN] " + args.join(' '));
+                                originalConsoleWarn.apply(console, arguments);
+                            };
+                            
+                            // Okresowe wysyłanie logów do serwera
+                            setInterval(function() {
+                                if (errorMessages.length > 0 || warnMessages.length > 0 || logMessages.length > 0) {
+                                    var allMessages = {
+                                        errors: errorMessages,
+                                        warnings: warnMessages,
+                                        logs: logMessages
+                                    };
+                                    
+                                    fetch('/log-client-errors', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify(allMessages)
+                                    }).then(function() {
+                                        // Wyczyszczenie buforów po wysłaniu
+                                        errorMessages = [];
+                                        warnMessages = [];
+                                        logMessages = [];
+                                    });
+                                }
+                            }, 5000);
+                            
+                            // Nasłuchiwanie niezłapanych błędów
+                            window.addEventListener('error', function(event) {
+                                errorMessages.push("[UNCAUGHT] " + event.message + " at " + event.filename + ":" + event.lineno);
+                                return false;
+                            });
+                            
+                            return window.dash_clientside;
+                        }
+                    }
+                });
+                '''),
+                # Wywołanie funkcji śledzenia błędów
+                dcc.Store(id='error-tracker-store'),
+                dcc.ClientsideFunction(
+                    namespace='clientside',
+                    function_name='capture_errors',
+                    output='error-tracker-store.data',
+                )
+            ])
+            
+            # Dodajemy powiadomienie o włączonym debugowaniu
+            notification = dbc.Toast(
+                "Client-side debugging is now enabled. Browser console errors will be sent to server logs.",
+                id="debug-notification",
+                header="Debug Mode Enabled",
+                icon="primary",
+                duration=4000,
+                is_open=True,
+            )
+            
+            return [debug_component, notification], new_state
+        else:
+            # Debug mode disabled
+            logger.info("Client-side debug logging disabled by user")
+            
+            notification = dbc.Toast(
+                "Client-side debugging has been disabled.",
+                id="debug-notification",
+                header="Debug Mode Disabled",
+                icon="secondary",
+                duration=4000,
+                is_open=True,
+            )
+            
+            return [notification], new_state
 
 def configure_logging(log_level=logging.INFO) -> None:
     """
