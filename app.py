@@ -29,7 +29,7 @@ def configure_client_side_logging():
     return html.Div([
         dcc.Location(id='url', refresh=False),
         html.Div(id='client-error-container'),
-        # Skrypt do przechwytywania błędów JavaScript
+        # Script to capture JavaScript errors
         html.Script('''
         window.dash_clientside = Object.assign({}, window.dash_clientside, {
             clientside: {
@@ -98,13 +98,23 @@ def configure_client_side_logging():
             }
         });
         '''),
-        # Wywołanie funkcji śledzenia błędów
-        dcc.Store(id='error-tracker-store'),
+        # Store to trigger clientside callback
+        dcc.Store(id='error-tracker-store')
+    ])
+
+# Register the clientside callback separately
+def register_client_side_logging(app):
+    """Register the client-side logging callback with the app"""
+    from dash import Output, Input
+    app.clientside_callback(
         ClientsideFunction(
             namespace='clientside',
             function_name='capture_errors'
-        )
-    ])
+        ),
+        Output('error-tracker-store', 'data'),  # Use a real Output with the store we created
+        Input('url', 'pathname'),  # Use a real Input that will trigger the callback
+        prevent_initial_call=True
+    )
 
 def apply_format_patches():
     """Apply runtime patches to fix invalid DataTable format strings."""
@@ -312,6 +322,9 @@ try:
             original_layout
         ])
         logger.info("Client-side debug logging enabled - browser console errors will be captured")
+        
+        # Register the client-side logging callback
+        register_client_side_logging(app)
         
         app.run(debug=debug_mode, port=8050)
 
