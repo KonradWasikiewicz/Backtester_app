@@ -174,7 +174,7 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
                 
                 /* Fix for overlapping callbacks error */
                 .error-container {
-                    display: none !important;
+                    /* display: none !important; */ /* Usuwam tę linię, która ukrywa komunikaty błędów */
                 }
                 
                 /* Version badge styling */
@@ -360,7 +360,7 @@ def create_app_layout() -> html.Div:
                             create_version_display()
                         ], width="auto"),
                         dbc.Col([
-                            # Dodanie przycisku debugowania
+                            # Add debug button
                             dbc.Button(
                                 html.I(className="fas fa-bug"),
                                 id="toggle-debug-btn",
@@ -542,136 +542,42 @@ def register_debug_callbacks(app: dash.Dash) -> None:
         app: The Dash application instance
     """
     from dash.dependencies import Input, Output, State
-    import json
     
-    # Store for debug mode state
-    app.layout.children.append(dcc.Store(id='debug-state', data={'active': False}))
+    # Create necessary layout elements
+    if not hasattr(app, 'debug_container_added'):
+        # Add invisible div to store callback output
+        app.layout.children.append(html.Div(id='debug-dummy-output', style={'display': 'none'}))
+        # Add toast notification for debug activation
+        app.layout.children.append(html.Div(
+            dbc.Toast(
+                "JavaScript error logging active. Check backtest.log file for details.",
+                id="debug-toast",
+                header="Debug Mode",
+                icon="info",
+                is_open=False,
+                dismissable=True,
+                duration=4000,
+                style={"position": "fixed", "top": 10, "right": 10, "zIndex": 9999}
+            ),
+            id='toast-container'
+        ))
+        app.debug_container_added = True  # Mark that elements were added
     
-    # Hidden div to hold the debug panel
-    app.layout.children.append(html.Div(id='debug-container', style={'display': 'none'}))
-    
-    # Callback to toggle debug mode
+    # Simple callback to show notification
     @app.callback(
-        [Output('debug-container', 'children'),
-         Output('debug-state', 'data')],
+        Output('debug-toast', 'is_open'),
         [Input('toggle-debug-btn', 'n_clicks')],
-        [State('debug-state', 'data')]
+        [State('debug-toast', 'is_open')]
     )
-    def toggle_debug_mode(n_clicks, debug_state):
+    def toggle_debug_toast(n_clicks, is_open):
         if n_clicks is None:
-            return [], debug_state
+            return False
+            
+        # Log the event
+        logger.info(f"Debug button clicked ({n_clicks} times). Toggling debug info.")
         
-        # Toggle debug state
-        is_active = not debug_state.get('active', False)
-        new_state = {'active': is_active}
-        
-        if is_active:
-            # Debug mode enabled - add JavaScript code to capture console output
-            logger.info("Client-side debug logging enabled by user")
-            
-            debug_component = html.Div([
-                html.Script('''
-                window.dash_clientside = Object.assign({}, window.dash_clientside, {
-                    clientside: {
-                        capture_errors: function() {
-                            // Zapisywanie oryginalnych funkcji konsolowych
-                            var originalConsoleLog = console.log;
-                            var originalConsoleError = console.error;
-                            var originalConsoleWarn = console.warn;
-                            
-                            // Bufory dla komunikatów
-                            var logMessages = [];
-                            var errorMessages = [];
-                            var warnMessages = [];
-                            
-                            // Zastąpienie funkcji konsolowych
-                            console.log = function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                logMessages.push("[LOG] " + args.join(' '));
-                                originalConsoleLog.apply(console, arguments);
-                            };
-                            
-                            console.error = function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                errorMessages.push("[ERROR] " + args.join(' '));
-                                originalConsoleError.apply(console, arguments);
-                            };
-                            
-                            console.warn = function() {
-                                var args = Array.prototype.slice.call(arguments);
-                                warnMessages.push("[WARN] " + args.join(' '));
-                                originalConsoleWarn.apply(console, arguments);
-                            };
-                            
-                            // Okresowe wysyłanie logów do serwera
-                            setInterval(function() {
-                                if (errorMessages.length > 0 || warnMessages.length > 0 || logMessages.length > 0) {
-                                    var allMessages = {
-                                        errors: errorMessages,
-                                        warnings: warnMessages,
-                                        logs: logMessages
-                                    };
-                                    
-                                    fetch('/log-client-errors', {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                        },
-                                        body: JSON.stringify(allMessages)
-                                    }).then(function() {
-                                        // Wyczyszczenie buforów po wysłaniu
-                                        errorMessages = [];
-                                        warnMessages = [];
-                                        logMessages = [];
-                                    });
-                                }
-                            }, 5000);
-                            
-                            // Nasłuchiwanie niezłapanych błędów
-                            window.addEventListener('error', function(event) {
-                                errorMessages.push("[UNCAUGHT] " + event.message + " at " + event.filename + ":" + event.lineno);
-                                return false;
-                            });
-                            
-                            return window.dash_clientside;
-                        }
-                    }
-                });
-                '''),
-                # Wywołanie funkcji śledzenia błędów
-                dcc.Store(id='error-tracker-store'),
-                dcc.ClientsideFunction(
-                    namespace='clientside',
-                    function_name='capture_errors',
-                    output='error-tracker-store.data',
-                )
-            ])
-            
-            # Dodajemy powiadomienie o włączonym debugowaniu
-            notification = dbc.Toast(
-                "Client-side debugging is now enabled. Browser console errors will be sent to server logs.",
-                id="debug-notification",
-                header="Debug Mode Enabled",
-                icon="primary",
-                duration=4000,
-                is_open=True,
-            )
-            
-            return [debug_component, notification], new_state
-        else:
-            # Debug mode disabled
-            logger.info("Client-side debug logging disabled by user")
-            
-            notification = dbc.Toast(
-                "Client-side debugging has been disabled.",
-                id="debug-notification",
-                header="Debug Mode Disabled",
-                icon="secondary",
-                duration=4000,
-                is_open=True,
-            )
-            
-            return [notification], new_state
+        # Toggle toast state
+        return not is_open
 
 def configure_logging(log_level=logging.INFO) -> None:
     """

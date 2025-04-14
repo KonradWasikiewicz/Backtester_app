@@ -291,82 +291,64 @@ def create_backtest_parameters() -> html.Div:
             dbc.Label("Date Range", width=4, className="col-form-label text-light"),
             dbc.Col(children=[
                 html.Div(children=[
-                    # Slider do wyboru zakresu dat
-                    dcc.RangeSlider(
-                        id="backtest-date-slider",
-                        min=min_date_ts,
-                        max=max_date_ts,
-                        value=[default_start_ts, default_end_ts],
-                        marks=date_marks,
-                        allowCross=False,
-                        className="mt-1 mb-3"
-                    ),
-                    
-                    # Eleganckie wyświetlanie wybranych dat
+                    # Improved date range controls
                     dbc.Row([
-                        # Data początkowa
+                        # Start date
                         dbc.Col([
                             html.Div([
                                 html.Span("Start Date:", className="text-light small d-block mb-1"),
                                 dbc.Card(
-                                    children=[
-                                        html.Div(
-                                            id="selected-start-date",
-                                            children=default_start.strftime('%Y-%m-%d'),
-                                            className="text-center py-2 fw-bold"
-                                        ),
-                                    ],
+                                    dbc.CardBody([
+                                        dcc.DatePickerSingle(
+                                            id='backtest-start-date',
+                                            date=default_start.strftime('%Y-%m-%d'),
+                                            display_format='YYYY-MM-DD',
+                                            first_day_of_week=1,
+                                            min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else default_start.strftime('%Y-%m-%d'),
+                                            max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else default_end.strftime('%Y-%m-%d'),
+                                            className="date-picker-dark"
+                                        )
+                                    ], className="p-2"),
                                     className="bg-dark border-primary",
-                                    style={"cursor": "pointer"}
-                                ),
+                                )
                             ], className="mb-2"),
                         ], width=6),
                         
-                        # Data końcowa
+                        # End date
                         dbc.Col([
                             html.Div([
                                 html.Span("End Date:", className="text-light small d-block mb-1"),
                                 dbc.Card(
-                                    children=[
-                                        html.Div(
-                                            id="selected-end-date",
-                                            children=default_end.strftime('%Y-%m-%d'),
-                                            className="text-center py-2 fw-bold"
-                                        ),
-                                    ],
+                                    dbc.CardBody([
+                                        dcc.DatePickerSingle(
+                                            id='backtest-end-date',
+                                            date=default_end.strftime('%Y-%m-%d'),
+                                            display_format='YYYY-MM-DD',
+                                            first_day_of_week=1,
+                                            min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else default_start.strftime('%Y-%m-%d'),
+                                            max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else default_end.strftime('%Y-%m-%d'),
+                                            className="date-picker-dark"
+                                        )
+                                    ], className="p-2"),
                                     className="bg-dark border-primary",
-                                    style={"cursor": "pointer"}
-                                ),
+                                )
                             ], className="mb-2"),
                         ], width=6),
                     ], className="mb-2"),
                     
-                    # Ukryte pola do wyboru daty
-                    html.Div([
-                        # Picker daty początkowej z poprawionym stylem
-                        dcc.DatePickerSingle(
-                            id='slider-start-date-picker',
-                            date=default_start.strftime('%Y-%m-%d'),
-                            display_format='YYYY-MM-DD',
-                            first_day_of_week=1,  # Monday as first day
-                            min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else default_start.strftime('%Y-%m-%d'),
-                            max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else default_end.strftime('%Y-%m-%d'),
-                            style={"display": "none"},  # Ukryty - będzie używany tylko jako backend
-                        ),
-                        
-                        # Picker daty końcowej z poprawionym stylem
-                        dcc.DatePickerSingle(
-                            id='slider-end-date-picker',
-                            date=default_end.strftime('%Y-%m-%d'),
-                            display_format='YYYY-MM-DD',
-                            first_day_of_week=1,  # Monday as first day
-                            min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else default_start.strftime('%Y-%m-%d'),
-                            max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else default_end.strftime('%Y-%m-%d'),
-                            style={"display": "none"},  # Ukryty - będzie używany tylko jako backend
-                        ),
-                    ]),
+                    # Date range preview
+                    dbc.Card(
+                        dbc.CardBody([
+                            html.Div(
+                                id="date-range-preview",
+                                children=f"Selected period: {default_start.strftime('%Y-%m-%d')} to {default_end.strftime('%Y-%m-%d')}",
+                                className="text-center small"
+                            )
+                        ], className="py-2 px-3"),
+                        className="bg-dark text-light border-secondary mb-3",
+                    ),
                     
-                    # Przyciski szybkiego wyboru zakresów dat
+                    # Preset buttons for quick date selection
                     dbc.ButtonGroup(
                         [
                             dbc.Button("1M", id="date-range-1m", size="sm", outline=True, color="primary", className="px-2"),
@@ -378,7 +360,7 @@ def create_backtest_parameters() -> html.Div:
                         ],
                         className="w-100 mb-2",
                     ),
-                ], id="date-slider-container"),
+                ], id="date-picker-container"),
             ], width=8)
         ], className="mb-4 align-items-start"),
         
@@ -463,18 +445,12 @@ def create_strategy_config_section(tickers=None):
                         html.Div(id="strategy-parameters", className="mb-3")
                     ], md=6),
                     
-                    # Date Range Selection
+                    # Date Range Selection - Modern component is used in create_backtest_parameters()
+                    # so we remove the conflicting slider component here
                     dbc.Col([
-                        html.Label("Select Date Range", className="text-light"),
-                        dcc.DatePickerRange(
-                            id='slider-start-date-picker',
-                            min_date_allowed=datetime(2015, 1, 1),
-                            max_date_allowed=datetime.now(),
-                            initial_visible_month=datetime(2020, 1, 1),
-                            start_date=datetime(2020, 1, 1),
-                            end_date=datetime(2022, 12, 31),
-                            className="mb-3 w-100"
-                        ),
+                        html.Label("Date Range Selection", className="text-light"),
+                        html.P("Please use the date range selection in the Backtest Parameters section below.", 
+                               className="text-muted mb-3")
                     ], md=6)
                 ]),
                 

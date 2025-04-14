@@ -201,146 +201,93 @@ def register_strategy_callbacks(app):
             return False, 1.0  # Default to 1x ATR risk
         return False, 2.0
     
+    # Updated date range callback
     @app.callback(
-        [Output("backtest-date-slider", "value"),
-         Output("slider-start-date-picker", "date"),
-         Output("slider-end-date-picker", "date"),
-         Output("selected-start-date", "children"),
-         Output("selected-end-date", "children")],
-        [Input("backtest-date-slider", "value"),
-         Input("backtest-date-slider", "drag_value"),
-         Input("slider-start-date-picker", "date"),
-         Input("slider-end-date-picker", "date"),
+        [Output("date-range-preview", "children"),
+         Output("backtest-start-date", "date"),
+         Output("backtest-end-date", "date")],
+        [Input("backtest-start-date", "date"),
+         Input("backtest-end-date", "date"),
          Input("date-range-1m", "n_clicks"),
          Input("date-range-3m", "n_clicks"),
          Input("date-range-6m", "n_clicks"),
          Input("date-range-1y", "n_clicks"),
          Input("date-range-2y", "n_clicks"),
-         Input("date-range-all", "n_clicks"),
-         Input("selected-start-date", "n_clicks"),
-         Input("selected-end-date", "n_clicks")],
-        [State("backtest-date-slider", "min"),
-         State("backtest-date-slider", "max")],
+         Input("date-range-all", "n_clicks")],
+        [State("backtest-start-date", "min_date_allowed"),
+         State("backtest-end-date", "max_date_allowed")],
         prevent_initial_call=True
     )
-    def unified_date_controls(slider_value, drag_value, start_date_picker, end_date_picker,
-                      n_clicks_1m, n_clicks_3m, n_clicks_6m, n_clicks_1y, n_clicks_2y, n_clicks_all,
-                      n_clicks_start, n_clicks_end,
-                      min_date_ts, max_date_ts):
+    def update_date_range(start_date, end_date, n_clicks_1m, n_clicks_3m, n_clicks_6m, 
+                         n_clicks_1y, n_clicks_2y, n_clicks_all, min_date_allowed, max_date_allowed):
         """
-        Unified callback to handle all date-related controls in one place
-        This prevents duplicate callbacks on the same outputs
+        Handle date selection through the date pickers or preset buttons
         """
         ctx = callback_context
         if not ctx.triggered:
             raise PreventUpdate
 
         triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        triggered_prop = ctx.triggered[0]['prop_id'].split('.')[-1]
-        now = pd.Timestamp.now()
-
+        
         try:
-            # Quick date range buttons
-            if triggered_id.startswith("date-range"):
+            data_loader = DataLoader()
+            min_date, max_date = data_loader.get_date_range()
+            now = pd.Timestamp.now()
+            
+            # For preset buttons
+            if triggered_id.startswith("date-range-"):
                 if triggered_id == "date-range-1m":
-                    start_date = now - pd.DateOffset(months=1)
+                    start_date_obj = now - pd.DateOffset(months=1)
+                    end_date_obj = now
                 elif triggered_id == "date-range-3m":
-                    start_date = now - pd.DateOffset(months=3)
+                    start_date_obj = now - pd.DateOffset(months=3)
+                    end_date_obj = now
                 elif triggered_id == "date-range-6m":
-                    start_date = now - pd.DateOffset(months=6)
+                    start_date_obj = now - pd.DateOffset(months=6)
+                    end_date_obj = now
                 elif triggered_id == "date-range-1y":
-                    start_date = now - pd.DateOffset(years=1)
+                    start_date_obj = now - pd.DateOffset(years=1)
+                    end_date_obj = now
                 elif triggered_id == "date-range-2y":
-                    start_date = now - pd.DateOffset(years=2)
+                    start_date_obj = now - pd.DateOffset(years=2)
+                    end_date_obj = now
                 elif triggered_id == "date-range-all":
-                    start_ts = min_date_ts
-                    end_ts = max_date_ts
-                    start_date = pd.to_datetime(start_ts, unit='ms')
-                    end_date = pd.to_datetime(end_ts, unit='ms')
-                    start_date_str = start_date.strftime('%Y-%m-%d')
-                    end_date_str = end_date.strftime('%Y-%m-%d')
-                    return [
-                        [start_ts, end_ts],
-                        start_date_str,
-                        end_date_str,
-                        start_date_str,
-                        end_date_str
-                    ]
-
-                start_ts = int(start_date.timestamp() * 1000)
-                end_ts = int(now.timestamp() * 1000)
-                end_date = now
+                    start_date_obj = min_date if min_date else pd.Timestamp('2020-01-01')
+                    end_date_obj = max_date if max_date else now
                 
+                # Format for date picker
+                start_date = start_date_obj.strftime('%Y-%m-%d')
+                end_date = end_date_obj.strftime('%Y-%m-%d')
             # Date picker changes
-            elif triggered_id in ["slider-start-date-picker", "slider-end-date-picker"]:
-                if not start_date_picker or not end_date_picker:
+            else:
+                if not start_date or not end_date:
                     raise PreventUpdate
-
-                start_date = pd.to_datetime(start_date_picker)
-                end_date = pd.to_datetime(end_date_picker)
-
-                # Keep dates in valid range (end date >= start date)
-                if end_date < start_date:
-                    if triggered_id == "slider-start-date-picker":
+                    
+                # Parse dates
+                start_date_obj = pd.to_datetime(start_date)
+                end_date_obj = pd.to_datetime(end_date)
+                
+                # Ensure end date is not before start date
+                if end_date_obj < start_date_obj:
+                    if triggered_id == "backtest-start-date":
+                        end_date_obj = start_date_obj
                         end_date = start_date
                     else:
+                        start_date_obj = end_date_obj
                         start_date = end_date
-
-                start_ts = int(start_date.timestamp() * 1000)
-                end_ts = int(end_date.timestamp() * 1000)
-                
-            # Slider changes    
-            elif triggered_id == "backtest-date-slider":
-                values_to_use = drag_value if drag_value is not None else slider_value
-                if not values_to_use or len(values_to_use) != 2:
-                    raise PreventUpdate
-
-                start_ts, end_ts = values_to_use
-                start_date = pd.to_datetime(start_ts, unit='ms')
-                end_date = pd.to_datetime(end_ts, unit='ms')
             
-            # Date display card click events
-            elif triggered_id in ["selected-start-date", "selected-end-date"]:
-                # Just return current values - the click itself doesn't change anything
-                # Date pickers will handle their own popup UI
-                return slider_value, start_date_picker, end_date_picker, start_date_picker, end_date_picker
+            # Create preview text
+            preview_text = f"Selected period: {start_date} to {end_date}"
             
-            else:
-                raise PreventUpdate
-
-            # Ensure timestamps are within valid range
-            start_ts = max(min_date_ts, min(max_date_ts, start_ts))
-            end_ts = max(min_date_ts, min(max_date_ts, end_ts))
-
-            # Format dates for display
-            start_date_str = pd.to_datetime(start_ts, unit='ms').strftime('%Y-%m-%d')
-            end_date_str = pd.to_datetime(end_ts, unit='ms').strftime('%Y-%m-%d')
-
-            return [
-                [start_ts, end_ts],
-                start_date_str,
-                end_date_str,
-                start_date_str,
-                end_date_str
-            ]
+            return preview_text, start_date, end_date
+            
         except Exception as e:
-            logger.error(f"Error in unified_date_controls: {e}")
-            # Return current values if there's an error
-            return slider_value, start_date_picker, end_date_picker, start_date_picker, end_date_picker
-    
-    # Zastępuję problematyczne callbacki wykorzystujące nieistniejącą właściwość is_open
-    # Usunięcie callbacków otwierających kalendarz po kliknięciu na przycisk daty
-    # Removing duplicate date picker callbacks
-    # The following two callback functions are removed as they're now handled 
-    # by our unified_date_controls callback
+            logger.error(f"Error in update_date_range: {e}")
+            # Return existing values if there's an error
+            return f"Selected period: {start_date} to {end_date}", start_date, end_date
 
-    # Removing all commented out callbacks related to dates
-    # These need to be completely removed, not just commented out
-    # as they might still be registered with Dash
+    # Remove the problematic duplicate date range callbacks
     
-    # Our unified_date_controls callback now handles all date-related interactions
-    # and prevents duplicate callbacks on the same outputs
-
     # --- CAŁKOWITA REORGANIZACJA CALLBACKÓW TICKERÓW ---
     # Usunięcie wszystkich poprzednich callbacków dotyczących tickerów
     # i zastąpienie ich nowymi, lepiej zorganizowanymi callbackami

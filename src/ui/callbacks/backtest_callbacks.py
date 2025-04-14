@@ -93,7 +93,8 @@ def register_backtest_callbacks(app):
             tickers = selected_tickers if isinstance(selected_tickers, list) else [selected_tickers]
             strategy_params = {param_id["index"]: strategy_param_values[i] for i, param_id in enumerate(strategy_param_ids)}
             risk_params = {
-                "continue_iterate": "continue_iterate" in (risk_features or []),
+                # Set continue_iterate to False by default, regardless of the risk_features input
+                "continue_iterate": False,  # Removed conditional to prevent continuous iteration prompts
                 "use_position_sizing": "position_sizing" in (risk_features or []),
                 "use_stop_loss": "stop_loss" in (risk_features or []),
                 "use_take_profit": "take_profit" in (risk_features or []),
