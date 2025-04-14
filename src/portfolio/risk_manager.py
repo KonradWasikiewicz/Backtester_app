@@ -14,75 +14,48 @@ class RiskManager:
     provided as percentages (e.g., 2.0 for 2%) or ratios in the UI/config,
     but are stored internally as decimal fractions (e.g., 0.02) for calculations.
     """
-    def __init__(self,
-                 # Position limits (as fractions, e.g., 0.2 = 20%)
-                 max_position_size: float = 0.20,
-                 min_position_size: float = 0.01,
-                 max_open_positions: int = 5,
-
-                 # Stop management (as fractions or ratios)
-                 stop_loss_pct: float = 0.02,        # Stop loss as fraction of entry price
-                 risk_per_trade_pct: float = 0.01,   # Maximum risk per trade as fraction of portfolio
-                 profit_target_ratio: float = 2.0,   # Risk:Reward ratio (e.g., 2.0 means target is 2x stop loss distance)
-                 use_trailing_stop: bool = False,    # Flag to enable/disable trailing stop logic
-                 trailing_stop_activation: float = 0.02,  # Activate trailing stop after % gain (as fraction)
-                 trailing_stop_distance: float = 0.015,   # Trail distance % below peak (as fraction)
-
-                 # Portfolio-level limits (as fractions)
-                 max_drawdown: float = 0.20,         # Max allowed portfolio drawdown fraction
-                 max_daily_loss: float = 0.05,       # Max allowed daily loss fraction
-                 continue_iterate: bool = False,     # Flag to continue iterating when risk limits are breached
-
-                 # Market condition filters
-                 use_market_filter: bool = False,    # Flag to enable/disable market filter logic
-                 market_trend_lookback: int = 100,   # Lookback period for market trend calculation
-
-                 # Feature flags (used to determine if risk features are enabled)
-                 _use_position_sizing: bool = False, # Flag to enable/disable position sizing
-                 _use_stop_loss: bool = False,       # Flag to enable/disable stop loss
-                 _use_take_profit: bool = False,     # Flag to enable/disable take profit
-                 _use_risk_per_trade: bool = False,  # Flag to enable/disable risk per trade limits
-                 _use_drawdown_protection: bool = False, # Flag to enable/disable drawdown protection
-                 
-                 # Volatility management (can be added later if needed)
-                 # volatility_lookback: int = 20,
-                 # volatility_cap: float = 0.03,
-                 **kwargs # Catch any unexpected parameters
-                ):
+    def __init__(self, 
+                 logger=None,
+                 max_drawdown=0.2,
+                 max_daily_loss=0.05,
+                 continue_iterate=True,  # Changed default to True
+                 use_position_sizing=True,
+                 use_stop_loss=True,
+                 use_take_profit=True,
+                 risk_per_trade=0.02,
+                 default_stop_loss_pct=0.05,
+                 default_take_profit_pct=0.1):
         """
-        Initializes the RiskManager with specified parameters.
-
+        Initialize the RiskManager class.
+        
         Args:
-            max_position_size (float): Max allocation per position (e.g., 0.2 for 20%).
-            min_position_size (float): Min allocation per position (e.g., 0.01 for 1%).
-            max_open_positions (int): Max number of concurrent open positions.
-            stop_loss_pct (float): Default stop loss as fraction (e.g., 0.02 for 2%).
-            risk_per_trade_pct (float): Maximum risk per trade as fraction of portfolio (e.g., 0.01 for 1%).
-            profit_target_ratio (float): Desired risk:reward ratio (e.g., 2.0).
-            use_trailing_stop (bool): Whether to use the trailing stop logic.
-            trailing_stop_activation (float): Profit % (as fraction) to activate trailing stop.
-            trailing_stop_distance (float): Trail distance % (as fraction) below the peak.
-            max_drawdown (float): Max allowed portfolio drawdown (as fraction, e.g., 0.2 for 20%).
-            max_daily_loss (float): Max allowed daily portfolio loss (as fraction, e.g., 0.05 for 5%).
-            continue_iterate (bool): Whether to continue iteration when risk limits are breached.
-            use_market_filter (bool): Whether the backtest loop should consider market conditions.
-                                      (Actual filtering logic happens outside RiskManager, this is a flag).
-            market_trend_lookback (int): Lookback period for external market trend calculation.
-            _use_position_sizing (bool): Flag to enable/disable position sizing logic completely.
-            _use_stop_loss (bool): Flag to enable/disable stop loss logic completely.
-            _use_take_profit (bool): Flag to enable/disable take profit logic completely.
-            _use_risk_per_trade (bool): Flag to enable/disable risk per trade limits.
-            _use_drawdown_protection (bool): Flag to enable/disable drawdown protection.
-            kwargs: Allows for extra parameters that might be passed but not used by this version.
+            logger: Logger instance
+            max_drawdown (float): Maximum allowed drawdown (decimal, e.g., 0.2 for 20%)
+            max_daily_loss (float): Maximum allowed daily loss (decimal, e.g., 0.05 for 5%)
+            continue_iterate (bool): Whether to continue iterations when risk limits are breached
+            use_position_sizing (bool): Whether to use position sizing
+            use_stop_loss (bool): Whether to use stop losses
+            use_take_profit (bool): Whether to use take profits
+            risk_per_trade (float): Risk per trade as a fraction of portfolio (decimal)
+            default_stop_loss_pct (float): Default stop loss percentage if not provided by strategy
+            default_take_profit_pct (float): Default take profit percentage if not provided by strategy
         """
-
-        # --- Risk Feature Flags ---
-        # These flags control whether specific risk management features are enabled
-        self._use_position_sizing = bool(_use_position_sizing)
-        self._use_stop_loss = bool(_use_stop_loss)
-        self._use_take_profit = bool(_use_take_profit)
-        self._use_risk_per_trade = bool(_use_risk_per_trade)
-        self._use_drawdown_protection = bool(_use_drawdown_protection)
+        self.logger = logger or logging.getLogger(__name__)
+        self.max_drawdown = max_drawdown
+        self.max_daily_loss = max_daily_loss
+        self.continue_iterate = continue_iterate
+        
+        # Feature flags
+        self._use_position_sizing = use_position_sizing
+        self._use_stop_loss = use_stop_loss
+        self._use_take_profit = use_take_profit
+        self._use_risk_per_trade = risk_per_trade > 0
+        self._use_drawdown_protection = False  # Changed default to False
+        
+        # Parameters
+        self.risk_per_trade = risk_per_trade
+        self.default_stop_loss_pct = default_stop_loss_pct
+        self.default_take_profit_pct = default_take_profit_pct
 
         # --- Parameter Validation and Storage ---
         self.max_position_size = max(0.0, min(1.0, float(max_position_size)))
@@ -312,52 +285,39 @@ class RiskManager:
 
     # --- Portfolio Level Checks (Placeholder - need integration with portfolio history) ---
 
-    def check_portfolio_risk(self, portfolio_value_history: pd.Series) -> bool:
+    def check_portfolio_risk(self, current_date, portfolio):
         """
-        Checks if the portfolio violates max drawdown or daily loss limits.
-        NOTE: This requires the caller (BacktestManager/Engine) to maintain and pass
-              the portfolio value history.
-
-        Args:
-            portfolio_value_history (pd.Series): Time series of portfolio values.
-
-        Returns:
-            bool: True if within limits, False if a limit is breached.
-                 If continue_iterate is True, always returns True even if limits are breached.
-                 The limits breach is still logged as a warning.
+        Check if portfolio risk limits have been exceeded.
+        Returns True if portfolio risk limits are acceptable.
+        Returns False if risk limits are breached (and continue_iterate=False).
+        
+        Note: As of April 2025, this method has been modified to always return True
+        to ensure backtests only stop when the period ends or capital is depleted,
+        while still logging warnings when risk limits are breached.
         """
-        if portfolio_value_history is None or portfolio_value_history.empty or len(portfolio_value_history) < 2:
-            return True # Not enough data to check
-
-        # Update peak value
-        current_peak = portfolio_value_history.cummax().iloc[-1]
-        self.highest_portfolio_value = max(self.highest_portfolio_value, current_peak) # Track overall peak
-
-        # Flag to track if any risk limits are breached
-        risk_limit_breached = False
-
-        # Check Max Drawdown
-        current_value = portfolio_value_history.iloc[-1]
-        if self.highest_portfolio_value > 0:
-             current_drawdown = (self.highest_portfolio_value - current_value) / self.highest_portfolio_value
-             if current_drawdown > self.max_drawdown:
-                 logger.warning(f"Portfolio Risk Breach: Max Drawdown limit ({self.max_drawdown:.2%}) exceeded. Current DD: {current_drawdown:.2%}")
-                 risk_limit_breached = True
-
-        # Check Max Daily Loss
-        # Requires comparing today's value with yesterday's
-        if len(portfolio_value_history) >= 2:
-            yesterday_value = portfolio_value_history.iloc[-2]
-            if yesterday_value > 0:
-                 daily_loss_pct = (yesterday_value - current_value) / yesterday_value
-                 if daily_loss_pct > self.max_daily_loss:
-                      logger.warning(f"Portfolio Risk Breach: Max Daily Loss limit ({self.max_daily_loss:.2%}) exceeded. Today's Loss: {daily_loss_pct:.2%}")
-                      risk_limit_breached = True
-
-        # If continue_iterate is True, we'll log the breach but continue anyway
-        if risk_limit_breached and self.continue_iterate:
-            logger.info("Continuing backtest despite risk limit breach due to 'Continue to iterate' setting")
+        # If no drawdown protection is enabled, just return True
+        if not self._use_drawdown_protection:
             return True
+            
+        # Calculate current drawdown
+        max_drawdown_pct = portfolio.current_drawdown * 100
+        
+        # Calculate daily P&L as percentage
+        daily_change_pct = portfolio.get_daily_change_percent(current_date)
 
-        # Return False if limits are breached and continue_iterate is False
-        return not risk_limit_breached
+        # Check max drawdown
+        if max_drawdown_pct > self.max_drawdown * 100:
+            warning_msg = (f"RISK WARNING: Maximum drawdown exceeded: {max_drawdown_pct:.2f}% > "
+                         f"{self.max_drawdown * 100:.2f}% (limit)")
+            self.logger.warning(warning_msg)
+            # Log but continue anyway (modified to not stop backtest)
+        
+        # Check daily loss limit
+        if daily_change_pct < -1 * self.max_daily_loss * 100:
+            warning_msg = (f"RISK WARNING: Daily loss limit exceeded: {daily_change_pct:.2f}% < "
+                         f"-{self.max_daily_loss * 100:.2f}% (limit)")
+            self.logger.warning(warning_msg)
+            # Log but continue anyway (modified to not stop backtest)
+        
+        # Always return True to ensure backtests continue regardless of risk limits
+        return True

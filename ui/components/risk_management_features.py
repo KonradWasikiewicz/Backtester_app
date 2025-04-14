@@ -55,13 +55,6 @@ def risk_management_features(state_manager: Any = None) -> Dict:
             max_positions = gr.Number(label="Maximum Positions", value=3, precision=0)
             position_scale = gr.Number(label="Position Scale", value=0.5, precision=2)
         
-        # Add Continue to iterate checkbox with improved label and tooltip
-        continue_iterate = gr.Checkbox(
-            label="Continue iteration after stop conditions", 
-            value=False,
-            info="When enabled, the strategy will continue testing iterations even after encountering stop loss or take profit conditions. This allows for analysis of what would have happened if positions were maintained."
-        )
-        
         # Event handlers for showing/hiding fields
         enable_stop_loss.change(
             fn=lambda x: gr.update(visible=x),
@@ -100,6 +93,5 @@ def risk_management_features(state_manager: Any = None) -> Dict:
         "position_sizing_value": position_sizing_value,
         "enable_pyramiding": enable_pyramiding,
         "max_positions": max_positions,
-        "position_scale": position_scale,
-        "continue_iterate": continue_iterate
+        "position_scale": position_scale
     }
