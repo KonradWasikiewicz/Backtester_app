@@ -65,6 +65,40 @@ function sendBrowserLogsToServer(logs, type) {
     const originalConsoleError = console.error;
     const originalConsoleWarn = console.warn;
     
+    // Function to check if error is Dash related
+    function isDashError(errorMsg) {
+        // Check for common Dash error patterns
+        return (
+            errorMsg.includes('dash') || 
+            errorMsg.includes('callback') || 
+            errorMsg.includes('component') ||
+            errorMsg.includes('layout') ||
+            errorMsg.includes('prop') ||
+            errorMsg.includes('property') ||
+            errorMsg.includes('nonexistent object was used') ||
+            errorMsg.includes('of a Dash') ||
+            errorMsg.includes('circular dependencies') ||
+            errorMsg.includes('invalid prop') ||
+            errorMsg.includes('_clickData') ||
+            errorMsg.includes('has no prop') ||
+            errorMsg.includes('TypeError') ||
+            errorMsg.includes('component ID') ||
+            // Additional patterns from your screenshot
+            errorMsg.includes('nonrepresistent object was used') ||
+            errorMsg.includes('Input') ||
+            errorMsg.includes('Output') ||
+            errorMsg.includes('property') ||
+            errorMsg.includes('callbacks') ||
+            errorMsg.includes('circular dependencies') ||
+            errorMsg.includes('Dash') ||
+            errorMsg.includes('Property') ||
+            errorMsg.includes('_clicks') ||
+            errorMsg.includes('object was used') ||
+            errorMsg.includes('style') ||
+            errorMsg.includes('className')
+        );
+    }
+    
     // Override console.error
     console.error = function(...args) {
         // Call original function
@@ -83,8 +117,15 @@ function sendBrowserLogsToServer(logs, type) {
             // Update error counter if element exists
             updateErrorCounter();
             
-            // Send errors to server every 5 seconds
-            if (errorBuffer.length === 1) {
+            // Check if this is a Dash-related error
+            const dashError = isDashError(errorMsg);
+            
+            // Send Dash errors immediately
+            if (dashError) {
+                sendBrowserLogsToServer(["[DASH ERROR] " + errorMsg], 'errors');
+            }
+            // Send other errors every 5 seconds
+            else if (errorBuffer.length === 1) {
                 setTimeout(() => {
                     sendBrowserLogsToServer(errorBuffer.slice(), 'errors');
                     errorBuffer.length = 0;
@@ -109,8 +150,15 @@ function sendBrowserLogsToServer(logs, type) {
             // Add to buffer
             warnBuffer.push("[WARN] " + warnMsg);
             
-            // Send warnings to server every 10 seconds
-            if (warnBuffer.length === 1) {
+            // Check if this is a Dash-related warning
+            const dashWarning = isDashError(warnMsg);
+            
+            // Send Dash warnings immediately
+            if (dashWarning) {
+                sendBrowserLogsToServer(["[DASH WARNING] " + warnMsg], 'warnings');
+            }
+            // Send other warnings every 10 seconds 
+            else if (warnBuffer.length === 1) {
                 setTimeout(() => {
                     sendBrowserLogsToServer(warnBuffer.slice(), 'warnings');
                     warnBuffer.length = 0;
@@ -130,8 +178,15 @@ function sendBrowserLogsToServer(logs, type) {
             
             updateErrorCounter();
             
-            // Send uncaught errors immediately
-            sendBrowserLogsToServer([errorMsg], 'errors');
+            // Check if this is a Dash-related error
+            const dashError = isDashError(errorMsg);
+            
+            // Send with appropriate tag
+            if (dashError) {
+                sendBrowserLogsToServer(["[DASH UNCAUGHT ERROR] " + errorMsg], 'errors');
+            } else {
+                sendBrowserLogsToServer([errorMsg], 'errors');
+            }
         } catch (e) {
             originalConsoleError.call(console, "Error handling window.onerror:", e);
         }
@@ -147,8 +202,15 @@ function sendBrowserLogsToServer(logs, type) {
             
             updateErrorCounter();
             
-            // Send Promise errors immediately
-            sendBrowserLogsToServer([errorMsg], 'errors');
+            // Check if this is a Dash-related promise rejection
+            const dashError = isDashError(String(event.reason));
+            
+            // Send with appropriate tag
+            if (dashError) {
+                sendBrowserLogsToServer(["[DASH PROMISE ERROR] " + errorMsg], 'errors');
+            } else {
+                sendBrowserLogsToServer([errorMsg], 'errors');
+            }
         } catch (e) {
             originalConsoleError.call(console, "Error handling unhandledrejection:", e);
         }
@@ -196,4 +258,138 @@ function sendBrowserLogsToServer(logs, type) {
     }
     
     console.log("Browser error capturing active");
+})();
+
+// Error handling for browser and Dash errors
+(function() {
+    // Function to check if error is Dash related
+    function isDashError(errorMsg) {
+        // Check for common Dash error patterns
+        return (
+            errorMsg.includes('dash') || 
+            errorMsg.includes('callback') || 
+            errorMsg.includes('component') ||
+            errorMsg.includes('layout') ||
+            errorMsg.includes('prop') ||
+            errorMsg.includes('property') ||
+            errorMsg.includes('nonexistent object was used') ||
+            errorMsg.includes('nonrepresistent object was used') ||
+            errorMsg.includes('of a Dash') ||
+            errorMsg.includes('circular dependencies') ||
+            errorMsg.includes('invalid prop') ||
+            errorMsg.includes('_clickData') ||
+            errorMsg.includes('has no prop') ||
+            errorMsg.includes('TypeError') ||
+            errorMsg.includes('component ID') ||
+            errorMsg.includes('Input') ||
+            errorMsg.includes('Output') ||
+            errorMsg.includes('callbacks') ||
+            errorMsg.includes('Property') ||
+            errorMsg.includes('_clicks') ||
+            errorMsg.includes('object was used') ||
+            errorMsg.includes('style') ||
+            errorMsg.includes('className')
+        );
+    }
+
+    // Function to send errors to the server for logging
+    function sendErrorToServer(errorInfo) {
+        try {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/log-client-error', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify(errorInfo));
+        } catch (e) {
+            console.error('Failed to send error to server:', e);
+        }
+    }
+
+    // Capture uncaught exceptions
+    window.onerror = function(message, source, lineno, colno, error) {
+        const errorInfo = {
+            type: 'uncaught',
+            message: message,
+            source: source,
+            lineno: lineno,
+            colno: colno,
+            stack: error && error.stack,
+            timestamp: new Date().toISOString()
+        };
+        
+        sendErrorToServer(errorInfo);
+        return false;
+    };
+
+    // Capture unhandled promise rejections
+    window.addEventListener('unhandledrejection', function(event) {
+        const errorInfo = {
+            type: 'unhandledrejection',
+            message: event.reason && event.reason.message ? event.reason.message : 'Unhandled Promise rejection',
+            stack: event.reason && event.reason.stack,
+            timestamp: new Date().toISOString()
+        };
+        
+        sendErrorToServer(errorInfo);
+    });
+
+    // Override console.error to capture Dash errors specifically
+    const originalConsoleError = console.error;
+    console.error = function(...args) {
+        originalConsoleError.apply(console, args);
+        
+        // Convert args to string for analysis
+        const errorMsg = args.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+        ).join(' ');
+        
+        // If this is a Dash error, send it to the server
+        if (isDashError(errorMsg)) {
+            const errorInfo = {
+                type: 'dash-error',
+                message: errorMsg,
+                timestamp: new Date().toISOString()
+            };
+            
+            sendErrorToServer(errorInfo);
+        }
+    };
+
+    // Special capture for Dash errors that appear in the error info box
+    // Using MutationObserver to detect when new errors are added to the DOM
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+                for (let i = 0; i < mutation.addedNodes.length; i++) {
+                    const node = mutation.addedNodes[i];
+                    if (node.nodeType === 1) {  // Element node
+                        // Look for Dash error messages in the DOM
+                        const errorElements = node.querySelectorAll('.dash-error');
+                        if (errorElements.length > 0) {
+                            errorElements.forEach(errorEl => {
+                                const errorMsg = errorEl.textContent || errorEl.innerText;
+                                const errorInfo = {
+                                    type: 'dash-dom-error',
+                                    message: errorMsg,
+                                    timestamp: new Date().toISOString()
+                                };
+                                sendErrorToServer(errorInfo);
+                            });
+                        }
+                    }
+                }
+            }
+        });
+    });
+
+    // Start observing the document for Dash error messages
+    document.addEventListener('DOMContentLoaded', function() {
+        observer.observe(document.body, { childList: true, subtree: true });
+        
+        // Send initial message to indicate clientside error logging is active
+        sendErrorToServer({
+            type: 'info',
+            message: 'Client-side error logging initialized',
+            timestamp: new Date().toISOString()
+        });
+    });
 })();

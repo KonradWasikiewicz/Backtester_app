@@ -14,7 +14,7 @@ sys.path.append(str(APP_ROOT))
 # Import factory functions
 try:
     from src.ui.app_factory import create_app, configure_logging
-    from dash import html, dcc
+    from dash import html, dcc, ClientsideFunction
 except ImportError as e:
     print(f"Error importing modules: {e}")
     traceback.print_exc()
@@ -100,10 +100,9 @@ def configure_client_side_logging():
         '''),
         # Wywołanie funkcji śledzenia błędów
         dcc.Store(id='error-tracker-store'),
-        dcc.ClientsideFunction(
+        ClientsideFunction(
             namespace='clientside',
-            function_name='capture_errors',
-            output='error-tracker-store.data',
+            function_name='capture_errors'
         )
     ])
 
@@ -255,6 +254,43 @@ try:
     # Create the Dash application with proper exception handling
     app = create_app(debug=debug_mode, suppress_callback_exceptions=True)
 
+    # Define a function to check for existing routes
+    def route_exists(route_path):
+        """Check if a route already exists in the Flask app."""
+        return any(rule.rule == route_path for rule in app.server.url_map.iter_rules())
+    
+    # Only register the route if it doesn't already exist
+    if not route_exists('/log-client-errors'):
+        @app.server.route('/log-client-errors', methods=['POST'])
+        def log_client_errors():
+            from flask import request, jsonify
+            import json
+            
+            try:
+                data = request.json
+                
+                # Log errors
+                if 'errors' in data and data['errors']:
+                    for error in data['errors']:
+                        logger.error(f"CLIENT: {error}")
+                        
+                # Log warnings
+                if 'warnings' in data and data['warnings']:
+                    for warning in data['warnings']:
+                        logger.warning(f"CLIENT: {warning}")
+                        
+                # Log info messages
+                if 'logs' in data and data['logs']:
+                    for log in data['logs']:
+                        logger.info(f"CLIENT: {log}")
+                        
+                return jsonify({"status": "success"}), 200
+            except Exception as e:
+                logger.error(f"Error processing client logs: {e}", exc_info=True)
+                return jsonify({"status": "error", "message": str(e)}), 500
+    else:
+        logger.info("Route '/log-client-errors' already exists, skipping registration")
+
     # Application entry point
     if __name__ == "__main__":
         # Import the client-side logging
@@ -263,19 +299,19 @@ try:
         # Check for command line arguments
         import argparse
         parser = argparse.ArgumentParser(description='Run the Backtester application')
-        parser.add_argument('--debug-client', action='store_true', help='Enable client-side debug logging')
+        parser.add_argument('--debug-client', action='store_true', default=True, help='Enable client-side debug logging')
         args = parser.parse_args()
         
         logger.info("Starting Backtester application")
         
-        if args.debug_client:
-            # Modify the app layout to include client-side debug component
-            original_layout = app.layout
-            app.layout = html.Div([
-                configure_client_side_logging(),
-                original_layout
-            ])
-            logger.info("Client-side debug logging enabled - browser console errors will be captured")
+        # Always enable client-side debug logging
+        # Modify the app layout to include client-side debug component
+        original_layout = app.layout
+        app.layout = html.Div([
+            configure_client_side_logging(),
+            original_layout
+        ])
+        logger.info("Client-side debug logging enabled - browser console errors will be captured")
         
         app.run(debug=debug_mode, port=8050)
 
