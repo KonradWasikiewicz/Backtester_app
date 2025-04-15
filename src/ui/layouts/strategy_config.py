@@ -395,237 +395,219 @@ def create_backtest_parameters() -> html.Div:
 
 def create_strategy_config_section(tickers=None):
     """
-    Create the strategy configuration section of the interface.
+    Creates the complete strategy configuration section with a step-by-step wizard.
     
     Args:
-        tickers: List of available tickers to display (optional)
+        tickers: List of available tickers
         
     Returns:
-        A Dash HTML Div containing the strategy configuration UI
+        html.Div: The complete strategy configuration section
     """
-    # If tickers not provided, load available tickers
-    if tickers is None:
-        # Create a DataLoader instance instead of using undefined 'loader'
-        data_loader = DataLoader()
-        tickers = data_loader.get_available_tickers()
-    
-    # Create a wizard interface with multiple steps
-    return html.Div([
-        # Hidden store for wizard state
-        dcc.Store(id="wizard-state", data={}),
-        
-        # Wizard progress bar
-        dbc.Progress(
-            id="wizard-progress",
-            value=0,
-            className="mb-4",
-            style={"height": "10px"}
-        ),
-        
-        # Step 1: Strategy and Asset Selection
-        create_wizard_step(
-            step_id="step1",
-            title="Step 1: Strategy and Asset Selection",
-            content=[
-                # Strategy Selection
-                dbc.Row([
-                    dbc.Col([
-                        html.Label("Select Strategy", className="text-light"),
-                        dcc.Dropdown(
-                            id='strategy-selector',
-                            options=[
-                                {'label': 'Moving Average (MA)', 'value': 'MA'},
-                                {'label': 'Relative Strength Index (RSI)', 'value': 'RSI'},
-                                {'label': 'Bollinger Bands (BB)', 'value': 'BB'},
-                            ],
-                            placeholder="Select a strategy",
-                            className="mb-3"
-                        ),
-                        html.Div(id="strategy-description", className="mb-3"),
-                        html.Div(id="strategy-parameters", className="mb-3")
-                    ], md=6),
-                    
-                    # Date Range Selection - Modern component is used in create_backtest_parameters()
-                    # so we remove the conflicting slider component here
-                    dbc.Col([
-                        html.Label("Date Range Selection", className="text-light"),
-                        html.P("Please use the date range selection in the Backtest Parameters section below.", 
-                               className="text-muted mb-3")
-                    ], md=6)
-                ]),
-                
-                # Ticker Selection Section
-                dbc.Row([
-                    dbc.Col([
-                        html.Label("Select Tickers", className="text-light"),
-                        create_ticker_checklist(tickers),
-                    ])
-                ]),
-                
-                # Step 1 Confirmation Button
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Button(
-                            "Confirm Selection", 
-                            id="confirm-step1-btn", 
-                            color="success", 
-                            className="mt-3"
-                        )
-                    ], className="d-flex justify-content-end")
-                ])
-            ]
-        ),
-        
-        # Step 2: Risk Management
-        create_wizard_step(
-            step_id="step2",
-            title="Step 2: Risk Management",
-            content=[
-                dbc.Row([
-                    dbc.Col([
-                        html.Label("Risk Management Features", className="text-light"),
-                        dbc.Checklist(
-                            id="risk-features-checklist",
-                            options=[
-                                {"label": "Position Sizing", "value": "position_sizing"},
-                                {"label": "Stop Loss", "value": "stop_loss"},
-                                {"label": "Take Profit", "value": "take_profit"},
-                                {"label": "Market Filter", "value": "market_filter"},
-                                {"label": "Drawdown Protection", "value": "drawdown_protection"}
-                            ],
-                            value=[],
-                            className="mb-3"
-                        )
-                    ], md=6),
-                    
-                    dbc.Col([
-                        html.Label("Stop Loss Configuration", className="text-light"),
-                        dbc.RadioItems(
-                            id="stop-loss-type",
-                            options=[
-                                {"label": "Percentage", "value": "percent"},
-                                {"label": "ATR Multiple", "value": "atr"},
-                                {"label": "Trailing Stop", "value": "trailing"}
-                            ],
-                            value="percent",
-                            className="mb-2"
-                        ),
-                        dcc.Slider(
-                            id="stop-loss-value",
-                            min=1,
-                            max=10,
-                            step=0.5,
-                            value=2,
-                            marks={i: str(i) for i in range(1, 11)},
-                            className="mb-3"
-                        ),
-                    ], md=6)
-                ]),
-                
-                # Step 2 Confirmation Button
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Button(
-                            "Confirm Risk Settings", 
-                            id="confirm-step2-btn", 
-                            color="success", 
-                            className="mt-3"
-                        )
-                    ], className="d-flex justify-content-end")
-                ])
-            ]
-        ),
-        
-        # Step 3: Run and Summary
-        create_wizard_step(
-            step_id="step3",
-            title="Step 3: Confirm and Run",
-            content=[
-                dbc.Card([
-                    dbc.CardHeader("Summary of Configuration", className="text-white bg-primary"),
-                    dbc.CardBody([
-                        dbc.Row([
-                            dbc.Col([
-                                html.H6("Strategy:", className="text-muted mb-1"),
-                                html.P(id="summary-strategy", className="lead mb-3"),
-                                
-                                html.H6("Date Range:", className="text-muted mb-1"),
-                                html.P(id="summary-date-range", className="lead mb-3"),
-                            ], md=6),
-                            dbc.Col([
-                                html.H6("Tickers:", className="text-muted mb-1"),
-                                html.P(id="summary-tickers", className="lead mb-3"),
-                                
-                                html.H6("Risk Management:", className="text-muted mb-1"),
-                                html.P(id="summary-risk", className="lead mb-3"),
-                            ], md=6)
-                        ]),
-                        
-                        dbc.Row([
-                            dbc.Col([
-                                dbc.Button(
-                                    "Run Backtest", 
-                                    id="run-backtest-button", 
-                                    color="primary", 
-                                    size="lg",
-                                    className="mt-3",
-                                    disabled=True
-                                )
-                            ], className="d-flex justify-content-center")
-                        ])
-                    ])
-                ])
-            ]
-        )
-    ], className="strategy-config-section py-3")
-
-def create_wizard_step(step_id, title, content):
-    """
-    Create a collapsible wizard step component
-    
-    Args:
-        step_id: The ID prefix for the step
-        title: The title of the step
-        content: The content to display in the step
-        
-    Returns:
-        A Dash component representing the step
-    """
-    header_card = dbc.Card([
-        dbc.CardBody([
-            dbc.Row([
-                dbc.Col([
-                    html.H5([
-                        html.Span(id=f"{step_id}-status", className="me-2"),
-                        title
-                    ], className="mb-0")
-                ]),
-                dbc.Col([
-                    # Changed ID to avoid duplication
-                    html.Div(id=f"{step_id}-header-summary", className="text-end small text-muted")
-                ], width="auto")
+    try:
+        # Step 1: Strategy Selection
+        strategy_step = create_wizard_step(
+            "strategy-selection",
+            "Step 1: Strategy and Asset Selection",
+            html.Div([
+                html.Label("Select a strategy:", className="mb-2"),
+                get_strategy_dropdown(AVAILABLE_STRATEGIES),
+                html.Div(id="strategy-description", className="mb-3"),
+                dbc.Button(
+                    "Confirm Selection",
+                    id="confirm-strategy",
+                    color="primary",
+                    className="mt-3"
+                )
             ])
-        ], className="py-2")
-    ], id=f"{step_id}-header-card", className="mb-2", style={"cursor": "pointer"})
-    
-    return html.Div([
-        header_card,
-        # Summary collapse - this shows when step is completed
-        dbc.Collapse(
-            # Changed ID to avoid duplication
-            dbc.Card(dbc.CardBody(id=f"{step_id}-content-summary")),
-            id=f"{step_id}-summary-collapse",
-            is_open=False,
-            className="mb-3"
-        ),
-        # Content collapse - this shows the step content
-        dbc.Collapse(
-            dbc.Card(dbc.CardBody(content)),
-            id=f"{step_id}-collapse",
-            is_open=step_id == "step1",  # First step is open by default
-            className="mb-3"
         )
-    ])
+
+        # Step 2: Date Range Selection
+        date_range_step = create_wizard_step(
+            "date-range-selection",
+            "Step 2: Date Range Selection",
+            html.Div([
+                html.Label("Select date range:", className="mb-2"),
+                create_backtest_parameters(),
+                dbc.Button(
+                    "Continue",
+                    id="confirm-dates",
+                    color="primary",
+                    className="mt-3"
+                )
+            ]),
+            is_hidden=True
+        )
+
+        # Step 3: Tickers Selection
+        tickers_step = create_wizard_step(
+            "tickers-selection",
+            "Step 3: Tickers Selection",
+            html.Div([
+                html.Label("Select tickers to trade:", className="mb-2"),
+                create_ticker_checklist(tickers if tickers else []),
+                dbc.Button(
+                    "Continue",
+                    id="confirm-tickers",
+                    color="primary",
+                    className="mt-3"
+                )
+            ]),
+            is_hidden=True
+        )
+
+        # Step 4: Risk Management
+        risk_step = create_wizard_step(
+            "risk-management",
+            "Step 4: Risk Management",
+            html.Div([
+                html.Label("Configure risk parameters:", className="mb-2"),
+                html.Div(id="risk-management-inputs", className="mb-3"),
+                dbc.Button(
+                    "Continue",
+                    id="confirm-risk",
+                    color="primary",
+                    className="mt-3"
+                )
+            ]),
+            is_hidden=True
+        )
+
+        # Step 5: Trading Costs and Slippage
+        costs_step = create_wizard_step(
+            "trading-costs",
+            "Step 5: Trading Costs and Slippage",
+            html.Div([
+                html.Label("Configure trading costs:", className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Commission (%):", className="mb-2"),
+                        dbc.Input(
+                            id="commission-input",
+                            type="number",
+                            min=0,
+                            max=100,
+                            step=0.01,
+                            value=0.1,
+                            className="mb-3"
+                        ),
+                        html.Label("Slippage (%):", className="mb-2"),
+                        dbc.Input(
+                            id="slippage-input",
+                            type="number",
+                            min=0,
+                            max=100,
+                            step=0.01,
+                            value=0.1,
+                            className="mb-3"
+                        )
+                    ])
+                ]),
+                dbc.Button(
+                    "Continue",
+                    id="confirm-costs",
+                    color="primary",
+                    className="mt-3"
+                )
+            ]),
+            is_hidden=True
+        )
+
+        # Step 6: Rebalancing Rules
+        rebalancing_step = create_wizard_step(
+            "rebalancing-rules",
+            "Step 6: Rebalancing Rules",
+            html.Div([
+                html.Label("Configure rebalancing rules:", className="mb-2"),
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("Rebalancing Frequency:", className="mb-2"),
+                        dcc.Dropdown(
+                            id="rebalancing-frequency",
+                            options=[
+                                {"label": "Daily", "value": "D"},
+                                {"label": "Weekly", "value": "W"},
+                                {"label": "Monthly", "value": "M"},
+                                {"label": "Quarterly", "value": "Q"},
+                                {"label": "Yearly", "value": "Y"}
+                            ],
+                            value="M",
+                            className="mb-3"
+                        ),
+                        html.Label("Threshold for Rebalancing (%):", className="mb-2"),
+                        dbc.Input(
+                            id="rebalancing-threshold",
+                            type="number",
+                            min=0,
+                            max=100,
+                            step=0.1,
+                            value=5,
+                            className="mb-3"
+                        )
+                    ])
+                ]),
+                dbc.Button(
+                    "Start Backtest",
+                    id="start-backtest",
+                    color="success",
+                    className="mt-3"
+                )
+            ]),
+            is_hidden=True
+        )
+
+        # Progress indicator
+        progress = dbc.Progress(
+            value=0,
+            id="wizard-progress",
+            className="mb-3",
+            style={"height": "2px"}
+        )
+
+        # Container for all steps
+        return html.Div([
+            progress,
+            strategy_step,
+            date_range_step,
+            tickers_step,
+            risk_step,
+            costs_step,
+            rebalancing_step
+        ], id="strategy-config-container")
+
+    except Exception as e:
+        logger.error(f"Error creating strategy config section: {e}", exc_info=True)
+        return html.Div([
+            html.H4("Error", className="text-danger"),
+            html.P(str(e))
+        ])
+
+def create_wizard_step(step_id, title, content, is_hidden=False):
+    """
+    Creates a wizard step with consistent styling.
+    
+    Args:
+        step_id: Unique identifier for the step
+        title: Step title
+        content: Step content
+        is_hidden: Whether the step should be hidden initially
+        
+    Returns:
+        html.Div: The styled wizard step
+    """
+    return html.Div([
+        # Clickable header with step indicator
+        html.Div([
+            html.Div([
+                html.Span(id=f"{step_id}-status", className="step-status me-2"),
+                html.H5(title, className="mb-0 d-inline")
+            ], id=f"{step_id}-header", className="step-header", style={"cursor": "pointer"})
+        ], className="mb-3"),
+        # Content section
+        content
+    ],
+    id=f"{step_id}-container",
+    style={"display": "none" if is_hidden else "block"},
+    className="wizard-step mb-4")
 
 def create_import_tickers_modal() -> dbc.Modal:
     """

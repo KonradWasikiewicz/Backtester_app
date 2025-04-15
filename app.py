@@ -4,188 +4,112 @@ import traceback
 from pathlib import Path
 import os
 import re
-import inspect
-import warnings
 
 # Ensure src is in the path
 APP_ROOT = Path(__file__).resolve().parent
 sys.path.append(str(APP_ROOT))
 
+# Funkcja upraszczająca logowanie błędów Dash
+def configure_client_side_logging():
+    """
+    Konfiguruje logowanie błędów po stronie klienta.
+    Skrypt JavaScript jest ładowany automatycznie z folderu assets.
+    """
+    return html.Div([
+        html.Div(id='client-error-container'),
+        # Dodajemy komponent store, który będzie używany do odbierania błędów z localStorage
+        dcc.Store(id='dash-errors-store'),
+    ])
+
+# Funkcja dodająca endpoint do odczytu localStorage
+def add_browser_storage_reader(app):
+    """
+    Dodaje endpoint do odczytywania błędów z localStorage przeglądarki.
+    """
+    # Sprawdź, czy trasa już istnieje
+    def route_exists(route_path):
+        return any(rule.rule == route_path for rule in app.server.url_map.iter_rules())
+    
+    # Dodaj specjalny plik JavaScript do każdego żądania HTML
+    @app.server.after_request
+    def add_js_to_html(response):
+        if response.content_type and 'text/html' in response.content_type:
+            script_tag = '''
+            <script type="text/javascript">
+            (function() {
+                function sendStoredErrorsToServer() {
+                    const STORAGE_KEY = 'dashErrorLogs';
+                    const logs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                    
+                    if (logs.length > 0) {
+                        fetch('/log-client-errors', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                errors: logs.filter(log => log.type === 'error'),
+                                warnings: logs.filter(log => log.type === 'warning'),
+                                logs: logs.filter(log => log.type === 'info')
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'ok') {
+                                console.log(`Zapisano ${logs.length} logów do pliku na serwerze`);
+                                localStorage.removeItem(STORAGE_KEY);
+                                localStorage.removeItem('hasNewDashErrors');
+                            }
+                        })
+                        .catch(error => console.error('Błąd wysyłania logów:', error));
+                    }
+                }
+                
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', sendStoredErrorsToServer);
+                } else {
+                    sendStoredErrorsToServer();
+                }
+            })();
+            </script>
+            '''
+            
+            response.data = response.data.replace(b'</body>', script_tag.encode('utf-8') + b'</body>')
+            
+        return response
+    
+    # Register the client error logging endpoint
+    log_client_errors_endpoint(app)
+    
+    logger.info("Zarejestrowano endpoint /log-client-errors")
+    return True
+
 # Import factory functions
 try:
-    from src.ui.app_factory import create_app, configure_logging
-    from dash import html, dcc, ClientsideFunction
+    from src.ui.app_factory import (
+        create_app,
+        configure_logging,
+        create_app_layout,
+        register_callbacks,
+        register_version_callbacks,
+        register_debug_callbacks
+    )
+    from dash import html, dcc
+    from server_logger import initialize_logger, log_client_errors_endpoint
 except ImportError as e:
     print(f"Error importing modules: {e}")
     traceback.print_exc()
     sys.exit(1)
 
+# Initialize the enhanced logging system
+logging_result = initialize_logger()
+if logging_result["status"] == "error":
+    print(f"Failed to initialize logging: {logging_result['message']}")
+    sys.exit(1)
+
 # Configure application logging
 configure_logging()
 logger = logging.getLogger(__name__)
-
-def configure_client_side_logging():
-    """Configure client-side logging to capture browser console errors."""
-    return html.Div([
-        dcc.Location(id='url', refresh=False),
-        html.Div(id='client-error-container'),
-        # Include the error tracking JavaScript directly to ensure it's loaded
-        html.Script('''
-        (function() {
-            console.log("Initializing inline error capture");
-            
-            // Store original console functions
-            var originalConsoleLog = console.log;
-            var originalConsoleError = console.error;
-            var originalConsoleWarn = console.warn;
-            
-            // Buffers for messages
-            var logMessages = [];
-            var errorMessages = [];
-            var warnMessages = [];
-            
-            // Override console.error to capture Dash errors
-            console.error = function() {
-                var args = Array.prototype.slice.call(arguments);
-                errorMessages.push("[ERROR] " + args.join(' '));
-                originalConsoleError.apply(console, arguments);
-                
-                // Send Dash errors immediately
-                var errorMsg = args.join(' ');
-                if (errorMsg.includes('Dash') || 
-                    errorMsg.includes('callback') || 
-                    errorMsg.includes('nonexistent object') ||
-                    errorMsg.includes('component') ||
-                    errorMsg.includes('Input') || 
-                    errorMsg.includes('Output')) {
-                    sendLogs();
-                }
-            };
-            
-            // Override console.warn
-            console.warn = function() {
-                var args = Array.prototype.slice.call(arguments);
-                warnMessages.push("[WARN] " + args.join(' '));
-                originalConsoleWarn.apply(console, arguments);
-            };
-            
-            // Override console.log
-            console.log = function() {
-                var args = Array.prototype.slice.call(arguments);
-                logMessages.push("[LOG] " + args.join(' '));
-                originalConsoleLog.apply(console, arguments);
-            };
-            
-            // Listen for uncaught errors
-            window.addEventListener('error', function(event) {
-                errorMessages.push("[UNCAUGHT] " + event.message + " at " + event.filename + ":" + event.lineno);
-                sendLogs();
-                return false;
-            });
-            
-            // Send logs every 3 seconds if there are any
-            setInterval(sendLogs, 3000);
-            
-            function sendLogs() {
-                if (errorMessages.length > 0 || warnMessages.length > 0 || logMessages.length > 0) {
-                    var allMessages = {
-                        errors: errorMessages,
-                        warnings: warnMessages,
-                        logs: logMessages
-                    };
-                    
-                    fetch('/log-client-errors', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(allMessages)
-                    }).then(function() {
-                        // Clear buffers after sending
-                        errorMessages = [];
-                        warnMessages = [];
-                        logMessages = [];
-                    }).catch(function(err) {
-                        originalConsoleError.call(console, "Error sending logs:", err);
-                    });
-                }
-            }
-            
-            // Create visual error counter
-            function createErrorCounter() {
-                var errorCount = errorMessages.length;
-                var counter = document.getElementById('browser-errors-count');
-                
-                if (!counter && errorCount > 0) {
-                    counter = document.createElement('div');
-                    counter.id = 'browser-errors-count';
-                    counter.style.position = 'fixed';
-                    counter.style.bottom = '10px';
-                    counter.style.right = '10px';
-                    counter.style.backgroundColor = 'red';
-                    counter.style.color = 'white';
-                    counter.style.padding = '5px 10px';
-                    counter.style.borderRadius = '10px';
-                    counter.style.fontWeight = 'bold';
-                    counter.style.zIndex = '9999';
-                    counter.style.cursor = 'pointer';
-                    counter.title = 'Click to view error details';
-                    
-                    counter.onclick = function() {
-                        sendLogs();
-                        alert('Logged ' + errorCount + ' errors to backtest.log file');
-                    };
-                    
-                    document.body.appendChild(counter);
-                }
-                
-                if (counter) {
-                    counter.textContent = errorCount;
-                    counter.style.display = errorCount > 0 ? 'block' : 'none';
-                }
-            }
-            
-            // Update counter periodically
-            setInterval(createErrorCounter, 1000);
-            
-            // Also capture DOM errors through mutation observer
-            var observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-                        for (var i = 0; i < mutation.addedNodes.length; i++) {
-                            var node = mutation.addedNodes[i];
-                            if (node.nodeType === 1) {  // Element node
-                                var errorElements = node.querySelectorAll('.dash-error');
-                                if (errorElements.length > 0) {
-                                    errorElements.forEach(function(errorEl) {
-                                        var errorMsg = errorEl.textContent || errorEl.innerText;
-                                        errorMessages.push("[DASH DOM] " + errorMsg);
-                                    });
-                                    sendLogs();
-                                }
-                            }
-                        }
-                    }
-                });
-            });
-            
-            // Start observing once DOM is ready
-            document.addEventListener('DOMContentLoaded', function() {
-                observer.observe(document.body, { childList: true, subtree: true });
-                console.log("Error observer started");
-                sendLogs(); // Send initial message
-            });
-        })();
-        '''),
-        # No need for the store component since we're using direct JS
-    ])
-
-def register_client_side_logging(app):
-    """Register the client-side logging callback with the app"""
-    # We're now using a direct inline script approach instead of callbacks
-    # This function is kept for backwards compatibility
-    logger.info("Client-side error logging enabled with direct script injection")
-    pass
 
 def apply_format_patches():
     """Apply runtime patches to fix invalid DataTable format strings."""
@@ -317,121 +241,45 @@ def scan_for_format_issues():
     
     return found_issues
 
-# Removed extreme callback validation bypass and improved error handling
 try:
-    logger.info("Initializing Backtester application")
+    # Create the Dash application
+    app = create_app(suppress_callback_exceptions=True)
 
-    # Set debug mode - pass as parameter to create_app
-    debug_mode = True
+    # Register client errors endpoint
+    log_client_errors_endpoint(app)
 
-    # First scan for format issues
-    format_issues_found = scan_for_format_issues()
-
-    # Apply format patches to fix the issue at runtime
-    patch_applied = apply_format_patches()
-    if patch_applied:
-        logger.info("Runtime format validation is active")
-
-    # Create the Dash application with proper exception handling
-    app = create_app(debug=debug_mode, suppress_callback_exceptions=True)
-
-    # Define a function to check for existing routes
-    def route_exists(route_path):
-        """Check if a route already exists in the Flask app."""
-        return any(rule.rule == route_path for rule in app.server.url_map.iter_rules())
+    # Register all callbacks
+    register_callbacks(app)
+    register_version_callbacks(app)
+    register_debug_callbacks(app)
     
-    # Only register the route if it doesn't already exist
-    if not route_exists('/log-client-errors'):
-        @app.server.route('/log-client-errors', methods=['POST'])
-        def log_client_errors():
-            from flask import request, jsonify
-            import json
-            import datetime
-            
-            try:
-                data = request.json
-                
-                # Bezpośrednie zapisanie do pliku dla pewności
-                with open('dash_errors.log', 'a', encoding='utf-8') as f:
-                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    
-                    # Log errors
-                    if 'errors' in data and data['errors']:
-                        for error in data['errors']:
-                            error_line = f"{timestamp} - DASH ERROR: {error}\n"
-                            f.write(error_line)
-                            logger.error(f"CLIENT: {error}")
-                            
-                    # Log warnings
-                    if 'warnings' in data and data['warnings']:
-                        for warning in data['warnings']:
-                            warning_line = f"{timestamp} - DASH WARNING: {warning}\n"
-                            f.write(warning_line)
-                            logger.warning(f"CLIENT: {warning}")
-                            
-                    # Log info messages
-                    if 'logs' in data and data['logs']:
-                        for log in data['logs']:
-                            log_line = f"{timestamp} - DASH INFO: {log}\n"
-                            f.write(log_line)
-                            logger.info(f"CLIENT: {log}")
-                            
-                return jsonify({"status": "success", "message": "Logs saved to dash_errors.log"}), 200
-            except Exception as e:
-                logger.error(f"Error processing client logs: {e}", exc_info=True)
-                # Również zapisz błąd do pliku
-                with open('dash_errors.log', 'a', encoding='utf-8') as f:
-                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    f.write(f"{timestamp} - LOGGING ERROR: {str(e)}\n")
-                    
-                return jsonify({"status": "error", "message": str(e)}), 500
-    else:
-        logger.info("Route '/log-client-errors' already exists, skipping registration")
+    # Register wizard callbacks
+    from src.ui.callbacks.wizard_callbacks import register_wizard_callbacks
+    register_wizard_callbacks(app)
 
-    # Application entry point
-    if __name__ == "__main__":
-        # Import the client-side logging
-        from dash import html
-        
-        # Check for command line arguments
-        import argparse
-        parser = argparse.ArgumentParser(description='Run the Backtester application')
-        parser.add_argument('--debug-client', action='store_true', default=True, help='Enable client-side debug logging')
-        args = parser.parse_args()
-        
-        logger.info("Starting Backtester application")
-        
-        # Always enable client-side debug logging
-        # Modify the app layout to include client-side debug component
-        original_layout = app.layout
-        app.layout = html.Div([
-            configure_client_side_logging(),
-            original_layout
-        ])
-        logger.info("Client-side debug logging enabled - browser console errors will be captured")
-        
-        # Register the client-side logging callback
-        register_client_side_logging(app)
-        
-        app.run(debug=debug_mode, port=8050)
+    # Get the original layout
+    original_layout = create_app_layout()
 
-except ValueError as ve:
-    if "invalid format" in str(ve).lower():
-        logger.error("Format specification error in DataTable. Check all format strings in your table definitions.")
-        logger.error("Common issues: Use dash_table.FormatTemplate.percentage(2) instead of '.2f%'")
-        raise
-    else:
-        raise
+    # Add error logging components to the original layout
+    app.layout = html.Div([
+        # Error logging components
+        html.Div([
+            dcc.Store(id='error-store', storage_type='local'),
+            html.Div(id='error-notifier', style={'display': 'none'}),
+        ]),
+        
+        # Original layout
+        original_layout
+    ])
+
+    # Configure client-side error logging
+    configure_client_side_logging()
+    add_browser_storage_reader(app)
+
+    if __name__ == '__main__':
+        app.run(debug=True, dev_tools_hot_reload=False)
 
 except Exception as e:
-    logger.error(f"Failed to initialize application: {e}", exc_info=True)
-    print(f"ERROR: Failed to initialize application: {e}")
+    logger.error(f"Error initializing application: {e}", exc_info=True)
+    print(f"Error initializing application: {e}")
     traceback.print_exc()
-    # Display specific guidance for format errors
-    if "invalid format" in str(e).lower():
-        print("\nSUGGESTION: Check table format specifications in your code.")
-        print("For percentages, use: dash_table.FormatTemplate.percentage(2) instead of string formats like '.2f%'")
-        print("Likely locations to check:")
-        print("- Files that define DataTable components")
-        print("- Strategy result display components")
-        print("- Performance metrics displays")

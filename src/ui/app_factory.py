@@ -38,7 +38,7 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
     app = dash.Dash(
         __name__,
         external_stylesheets=[
-            dbc.themes.BOOTSTRAP,  # Using Bootstrap theme
+            dbc.themes.DARKLY,  # Using dark Bootstrap theme
             "https://use.fontawesome.com/releases/v6.0.0/css/all.css"  # Font Awesome icons
         ],
         suppress_callback_exceptions=suppress_callback_exceptions,
@@ -47,7 +47,7 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
         ]
     )
     
-    # Add custom CSS for datepickers in dark mode
+    # Add custom CSS for dark mode
     app.index_string = '''
     <!DOCTYPE html>
     <html>
@@ -57,6 +57,12 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
             {%favicon%}
             {%css%}
             <style>
+                body {
+                    background-color: #121212 !important;
+                    color: #ffffff !important;
+                    min-height: 100vh;
+                }
+                
                 /* Custom styles for date pickers */
                 .DateInput_input {
                     background-color: #1e222d !important;
@@ -174,21 +180,56 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
                 
                 /* Fix for overlapping callbacks error */
                 .error-container {
-                    /* display: none !important; */ /* Usuwam tę linię, która ukrywa komunikaty błędów */
+                    background-color: #1e222d !important;
+                    color: #ffffff !important;
+                    border: 1px solid #2a2e39 !important;
+                    padding: 10px;
+                    margin: 10px 0;
+                    border-radius: 4px;
                 }
                 
                 /* Version badge styling */
                 .version-badge {
-                    background-color: #375a7f;
+                    background-color: #375a7f !important;
                     border-radius: 4px;
                     padding: 4px 8px;
                     font-size: 12px;
                     font-weight: 600;
-                    color: white;
+                    color: white !important;
                 }
                 
                 .version-popover {
+                    background-color: #1e222d !important;
+                    color: #ffffff !important;
+                    border-color: #2a2e39 !important;
                     max-width: 350px;
+                }
+                
+                /* Additional dark mode styles */
+                .nav-link {
+                    color: #ffffff !important;
+                }
+                
+                .nav-link:hover {
+                    color: #4d6f94 !important;
+                }
+                
+                .navbar {
+                    background-color: #1e222d !important;
+                    border-bottom: 1px solid #2a2e39 !important;
+                }
+                
+                .dropdown-menu {
+                    background-color: #1e222d !important;
+                    border-color: #2a2e39 !important;
+                }
+                
+                .dropdown-item {
+                    color: #ffffff !important;
+                }
+                
+                .dropdown-item:hover {
+                    background-color: #2a2e39 !important;
                 }
             </style>
         </head>
