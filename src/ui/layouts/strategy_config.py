@@ -379,14 +379,6 @@ def create_backtest_parameters() -> html.Div:
             ], width=8)
         ], className="mb-3 align-items-center"),
         
-        # Run backtest button
-        dbc.Button(
-            children=[html.I(className="fas fa-play me-2"), "Run Backtest"],
-            id="run-backtest-button",
-            color="primary",
-            className="w-100 mt-3"
-        ),
-        
         # Status indicator for the backtest
         html.Div(children=[
             html.Div(id="backtest-status", className="mt-3")
@@ -404,6 +396,14 @@ def create_strategy_config_section(tickers=None):
         html.Div: The complete strategy configuration section
     """
     try:
+        # Define the progress bar for the wizard
+        progress = dbc.Progress(
+            value=0,
+            id="wizard-progress",
+            className="mb-3",
+            style={"height": "2px"}
+        )
+
         # Step 1: Strategy Selection
         strategy_step = create_wizard_step(
             "strategy-selection",
@@ -411,9 +411,9 @@ def create_strategy_config_section(tickers=None):
             html.Div([
                 html.Label("Select a strategy:", className="mb-2"),
                 get_strategy_dropdown(AVAILABLE_STRATEGIES),
-                html.Div(id="strategy-description", className="mb-3"),
+                dcc.Markdown(id="strategy-description", className="mb-3 mt-3"),
                 dbc.Button(
-                    "Confirm Selection",
+                    "Confirm",
                     id="confirm-strategy",
                     color="primary",
                     className="mt-3"
@@ -429,7 +429,7 @@ def create_strategy_config_section(tickers=None):
                 html.Label("Select date range:", className="mb-2"),
                 create_backtest_parameters(),
                 dbc.Button(
-                    "Continue",
+                    "Confirm",
                     id="confirm-dates",
                     color="primary",
                     className="mt-3"
@@ -446,7 +446,7 @@ def create_strategy_config_section(tickers=None):
                 html.Label("Select tickers to trade:", className="mb-2"),
                 create_ticker_checklist(tickers if tickers else []),
                 dbc.Button(
-                    "Continue",
+                    "Confirm",
                     id="confirm-tickers",
                     color="primary",
                     className="mt-3"
@@ -463,7 +463,7 @@ def create_strategy_config_section(tickers=None):
                 html.Label("Configure risk parameters:", className="mb-2"),
                 html.Div(id="risk-management-inputs", className="mb-3"),
                 dbc.Button(
-                    "Continue",
+                    "Confirm",
                     id="confirm-risk",
                     color="primary",
                     className="mt-3"
@@ -503,7 +503,7 @@ def create_strategy_config_section(tickers=None):
                     ])
                 ]),
                 dbc.Button(
-                    "Continue",
+                    "Confirm",
                     id="confirm-costs",
                     color="primary",
                     className="mt-3"
@@ -512,7 +512,7 @@ def create_strategy_config_section(tickers=None):
             is_hidden=True
         )
 
-        # Step 6: Rebalancing Rules
+        # Step 6: Rebalancing Rules (with Confirm button)
         rebalancing_step = create_wizard_step(
             "rebalancing-rules",
             "Step 6: Rebalancing Rules",
@@ -546,24 +546,33 @@ def create_strategy_config_section(tickers=None):
                     ])
                 ]),
                 dbc.Button(
-                    "Start Backtest",
-                    id="start-backtest",
-                    color="success",
+                    "Confirm",
+                    id="confirm-rebalancing",
+                    color="primary",
                     className="mt-3"
                 )
             ]),
             is_hidden=True
         )
 
-        # Progress indicator
-        progress = dbc.Progress(
-            value=0,
-            id="wizard-progress",
-            className="mb-3",
-            style={"height": "2px"}
+        # Step 7: Summary and Run Backtest
+        summary_step = create_wizard_step(
+            "summary",
+            "Step 7: Summary and Run Backtest",
+            html.Div([
+                html.Label("Review your configuration:", className="mb-2"),
+                html.Div(id="summary-content", className="mb-3"),
+                dbc.Button(
+                    children=[html.I(className="fas fa-play me-2"), "Run Backtest"],
+                    id="run-backtest-button",
+                    color="primary",
+                    className="w-100 mt-3"
+                )
+            ]),
+            is_hidden=True
         )
 
-        # Container for all steps
+        # Add the new step to the container
         return html.Div([
             progress,
             strategy_step,
@@ -571,7 +580,8 @@ def create_strategy_config_section(tickers=None):
             tickers_step,
             risk_step,
             costs_step,
-            rebalancing_step
+            rebalancing_step,
+            summary_step
         ], id="strategy-config-container")
 
     except Exception as e:

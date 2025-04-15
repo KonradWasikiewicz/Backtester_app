@@ -56,6 +56,45 @@ Generating visualizations:
                                     [Visualization] --> [UI]
 ```
 
+### 1.4 Logging System
+
+The application uses Python's built-in `logging` module with a simplified configuration:
+
+- Centralized configuration in `app.py` and `app_factory.py`
+- Console-only logging (no file handlers) for easier maintenance
+- Structured log format with timestamps, level, module name, and line numbers
+- External library log suppression to reduce noise
+- Log levels:
+  - DEBUG: Detailed information for troubleshooting
+  - INFO: Confirmation that things are working
+  - WARNING: Indication of potential issues
+  - ERROR: Errors that allow the application to continue running
+  - CRITICAL: Errors that prevent the application from functioning
+
+Example log configuration from `app_factory.py`:
+```python
+def configure_logging(log_level=logging.INFO) -> None:
+    # Check if root logger already has handlers to prevent duplicate setup
+    if not logging.getLogger().hasHandlers():
+        log_format = '%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s'
+        date_format = '%Y-%m-%d %H:%M:%S'
+
+        # Configure root logger with console output only
+        logging.basicConfig(
+            level=log_level,
+            format=log_format,
+            datefmt=date_format,
+            handlers=[
+                logging.StreamHandler(sys.stdout)
+            ]
+        )
+    
+    # Limit external library logs
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("dash").setLevel(logging.WARNING)
+```
+
 ## 2. Technologies and Libraries
 
 ### 2.1 Backend
@@ -236,5 +275,5 @@ Migration from Dash to pure React is planned to increase UI flexibility and perf
 ---
 
 *Document created: 2025-04-10*
-*Last update: 2025-04-10*
-*Documentation version: 1.0*
+*Last update: 2025-04-15*
+*Documentation version: 1.1*

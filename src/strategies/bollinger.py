@@ -8,11 +8,14 @@ logger = logging.getLogger(__name__)
 
 class BollingerBandsStrategy(BaseStrategy):
     """
-    Implements a simple Bollinger Bands trading strategy.
-
-    Generates buy signals when the price touches or crosses below the lower band,
-    and sell signals when the price touches or crosses above the upper band.
-    This is a basic mean-reversion approach. Other variations exist (e.g., breakout).
+    | Characteristic | Description |
+    |---------------|-------------|
+    | **Idea** | Uses price movements relative to volatility bands to identify potential mean reversion opportunities. |
+    | **Buy Signal** | Price touches or crosses below the lower band (oversold condition). |
+    | **Sell Signal** | Price touches or crosses above the upper band (overbought condition). |
+    | **Key Parameters** | `window` (period for calculating the moving average), `num_std` (number of standard deviations for band width). |
+    | **Application** | Suitable for range-bound markets with mean-reverting price action. |
+    | **Limitations** | May generate false signals in strong trending markets, requires careful parameter tuning based on market volatility. |
     """
 
     def __init__(self, tickers: list[str], window: int = 20, num_std: float = 2.0):

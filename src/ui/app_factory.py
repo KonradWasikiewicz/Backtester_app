@@ -572,67 +572,46 @@ def register_version_callbacks(app: dash.Dash) -> None:
 def register_debug_callbacks(app: dash.Dash) -> None:
     """
     Register callbacks for debug functionality.
+    Simple implementation that just toggles a debug toast notification.
 
     Args:
         app: The Dash application instance
     """
-    logger.debug("Registering debug callbacks...") # Added log
+    logger.debug("Registering debug callbacks...")
     from dash.dependencies import Input, Output, State
 
-    # Create necessary layout elements only if they don't exist
-    # This check is important if layout modification happens elsewhere too
-    debug_container_id = 'debug-container-marker'
-    if debug_container_id not in app.layout:
-        logger.debug("Adding debug toast container to layout.") # Added log
-        # Use a wrapper Div with an ID to check for existence
-        debug_elements = html.Div([
-            html.Div(id='debug-dummy-output', style={'display': 'none'}), # Keep this? Check if used.
-             html.Div(
-                dbc.Toast(
-                    "JavaScript error logging active. Check server logs for details.", # Updated message
-                    id="debug-toast",
-                    header="Debug Info", # Simplified header
-                    icon="info",
-                    is_open=False,
-                    dismissable=True,
-                    duration=4000,
-                    style={"position": "fixed", "top": 10, "right": 10, "zIndex": 9999}
-                ),
-                id='toast-container'
-            )
-        ], id=debug_container_id) # Add ID to the wrapper
-        # Ensure app.layout is a list or Div children to append
-        if isinstance(app.layout, html.Div):
-             if hasattr(app.layout, 'children') and isinstance(app.layout.children, list):
-                 app.layout.children.append(debug_elements)
-             else:
-                 # If layout children isn't a list, wrap existing layout
-                 app.layout.children = [app.layout.children, debug_elements]
-        elif isinstance(app.layout, list):
-            app.layout.append(debug_elements)
+    # Create a simple toast for debug info
+    debug_elements = html.Div(
+        dbc.Toast(
+            "Debug mode active",
+            id="debug-toast",
+            header="Debug Info",
+            icon="info",
+            is_open=False,
+            dismissable=True,
+            duration=3000,
+            style={"position": "fixed", "top": 10, "right": 10, "zIndex": 9999}
+        ),
+        id='debug-container-marker'
+    )
+    
+    # Add debug elements to layout if not already present
+    if 'debug-container-marker' not in app.layout:
+        if isinstance(app.layout, html.Div) and isinstance(app.layout.children, list):
+            app.layout.children.append(debug_elements)
         else:
-             logger.error("Cannot add debug elements: app.layout is not a Div or list.")
-
+            logger.debug("Could not add debug elements to layout")
 
     # Simple callback to show notification
     @app.callback(
         Output('debug-toast', 'is_open'),
         [Input('toggle-debug-btn', 'n_clicks')],
         [State('debug-toast', 'is_open')],
-         prevent_initial_call=True # Added prevent_initial_call
+        prevent_initial_call=True
     )
     def toggle_debug_toast(n_clicks, is_open):
-        # n_clicks is None on first load, but prevent_initial_call handles this
-        # if n_clicks is None:
-        #     return dash.no_update
-
-        # Log the event
-        logger.info(f"Debug button clicked ({n_clicks} times). Toggling debug info toast.") # Updated log
-
-        # Toggle toast state
+        logger.info(f"Debug button clicked. Toggling debug info toast.")
         return not is_open
-    logger.debug("Finished registering debug callbacks.") # Added log
-
 
 def configure_logging(log_level=logging.INFO) -> None:
     """
@@ -643,33 +622,26 @@ def configure_logging(log_level=logging.INFO) -> None:
     """
     # Check if root logger already has handlers to prevent duplicate setup
     if not logging.getLogger().hasHandlers():
-        log_format = '%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s' # Added lineno
+        log_format = '%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s'
         date_format = '%Y-%m-%d %H:%M:%S'
 
-        # Configure root logger
+        # Configure root logger - simplified system with single handler
         logging.basicConfig(
             level=log_level,
             format=log_format,
             datefmt=date_format,
             handlers=[
-                # Use RotatingFileHandler for backtest.log
-                logging.handlers.RotatingFileHandler(
-                    "backtest.log", maxBytes=5*1024*1024, backupCount=3, encoding='utf-8'
-                ),
-                logging.StreamHandler(sys.stdout) # Keep console output
+                logging.StreamHandler(sys.stdout) # Console output only
             ]
         )
-        logger.info("Root logger configured.") # Added log
+        logger.info("Logger configured")
     else:
-        logger.debug("Root logger already configured. Skipping setup.") # Added log
+        logger.debug("Logger already configured")
 
-
-    # Set level for specific loggers
+    # Set logging level for external libraries
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    # Set level for dash components if needed
-    # logging.getLogger('dash.dash').setLevel(logging.INFO)
-    # logging.getLogger('dash.dependencies').setLevel(logging.INFO)
+    logging.getLogger("dash").setLevel(logging.WARNING) # Added: limit Dash logs
 
 def get_available_tickers() -> List[str]:
     """

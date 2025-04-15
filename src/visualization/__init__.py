@@ -9,7 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Importuj główną klasę wizualizatora
+# Import main visualizer class
 try:
     from .visualizer import BacktestVisualizer
     logger.debug("Successfully imported BacktestVisualizer.")
@@ -18,12 +18,12 @@ except ImportError as e:
     # Fallback definition
     class BacktestVisualizer: pass
 
-# Możesz też zaimportować kluczowe funkcje z chart_utils, jeśli są często używane bezpośrednio
+# Import key functions from chart_utils for direct use
 try:
     from .chart_utils import (
         create_empty_chart,
         create_styled_chart
-        # Importuj inne, jeśli potrzebujesz, np.:
+        # Add other functions as needed, e.g.:
         # create_trade_histogram_figure,
         # create_allocation_chart
     )
@@ -32,15 +32,6 @@ except ImportError as e:
     logger.error(f"Failed to import chart utility functions: {e}")
     def create_empty_chart(*args, **kwargs): return None
     def create_styled_chart(*args, **kwargs): return None
-    # ... fallbacki dla innych funkcji ...
-
-
-# Opcjonalnie zdefiniuj __all__
-# __all__ = [
-#     'BacktestVisualizer',
-#     'create_empty_chart',
-#     'create_styled_chart'
-#     # Dodaj inne eksportowane elementy
-# ]
+    # Additional fallbacks would go here
 
 logger.info("Visualization package initialized.")

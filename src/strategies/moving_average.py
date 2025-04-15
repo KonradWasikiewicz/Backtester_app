@@ -1,121 +1,131 @@
 import pandas as pd
-import numpy as np
+# pandas_ta - a technical analysis library built on Pandas
+# Install with: pip install pandas_ta
+try:
+    import pandas_ta as ta
+except ImportError:
+    # Provide a clear error message if pandas_ta is not installed
+    raise ImportError(
+        "The 'pandas_ta' library is required for this strategy but is not installed. "
+        "Please install it using: pip install pandas_ta"
+    )
+# Adjust the import path to match the actual location of BaseStrategy
+from src.strategies.base import BaseStrategy
 import logging
-from .base import BaseStrategy # Importuj klasę bazową
-from typing import Dict, Tuple, Optional, List
 
+# Configure logging for this module
 logger = logging.getLogger(__name__)
 
-class MovingAverageCrossoverStrategy(BaseStrategy):
+# --- NAZWA KLASY POZOSTAJE BEZ ZMIAN (lub dostosuj do swojej) ---
+class MovingAverageStrategy(BaseStrategy):
     """
-    Implements a simple Moving Average Crossover trading strategy.
-
-    Generates buy signals when a short-term moving average crosses above
-    a long-term moving average, and sell signals when it crosses below.
+    | Characteristic | Description |
+    |---------------|-------------|
+    | **Idea** | Uses crossovers between short-term and long-term moving averages to identify potential trend changes. |
+    | **Buy Signal** | Short moving average crosses above the long moving average. |
+    | **Sell Signal** | Short moving average crosses below the long moving average. |
+    | **Key Parameters** | `short_window` (period for short-term MA), `long_window` (period for long-term MA). |
+    | **Application** | Suitable for trending markets. May generate false signals during consolidation periods. |
+    | **Limitations** | Delayed reaction to price changes, sensitivity to period selection, poor performance in sideways markets. |
     """
-
-    def __init__(self, tickers: list[str], short_window: int = 20, long_window: int = 50):
+    def __init__(self, short_window: int = 20, long_window: int = 50):
         """
-        Initializes the Moving Average Crossover strategy.
+        Inicjalizuje strategię MA Cross.
 
         Args:
-            tickers (list[str]): A list of ticker symbols this strategy applies to.
-            short_window (int): The lookback period for the short-term moving average.
-                                 Defaults to 20. Must be a positive integer.
-            long_window (int): The lookback period for the long-term moving average.
-                                Defaults to 50. Must be a positive integer and greater than short_window.
+            short_window (int): Okres (liczba świec) dla krótkoterminowej średniej kroczącej. Domyślnie 20.
+            long_window (int): Okres (liczba świec) dla długoterminowej średniej kroczącej. Domyślnie 50.
 
         Raises:
-            ValueError: If window parameters are invalid (not positive integers or short >= long).
+            ValueError: Jeśli okresy nie są dodatnimi liczbami całkowitymi lub short_window >= long_window.
         """
-        super().__init__(tickers) # Wywołaj konstruktor klasy bazowej
-
-        # --- Parameter Validation ---
-        if not isinstance(short_window, int) or short_window <= 0:
-            msg = f"MA Strategy: short_window must be a positive integer, got {short_window}"
-            logger.error(msg)
-            raise ValueError(msg)
-        if not isinstance(long_window, int) or long_window <= 0:
-            msg = f"MA Strategy: long_window must be a positive integer, got {long_window}"
-            logger.error(msg)
-            raise ValueError(msg)
+        super().__init__() # Wywołanie konstruktora klasy bazowej
+        if not (isinstance(short_window, int) and isinstance(long_window, int) and short_window > 0 and long_window > 0):
+            logger.error(f"Invalid window parameters: short={short_window}, long={long_window}. Must be positive integers.")
+            raise ValueError("Okresy średnich kroczących muszą być dodatnimi liczbami całkowitymi.")
         if short_window >= long_window:
-            msg = f"MA Strategy: short_window ({short_window}) must be less than long_window ({long_window})"
-            logger.error(msg)
-            raise ValueError(msg)
+            logger.error(f"Invalid window parameters: short={short_window}, long={long_window}. Short must be less than long.")
+            raise ValueError("Krótki okres (short_window) musi być mniejszy niż długi okres (long_window).")
 
-        # --- Store Parameters ---
         self.short_window = short_window
         self.long_window = long_window
-        logger.debug(f"MovingAverageCrossoverStrategy initialized for tickers {tickers} with short={short_window}, long={long_window}")
+        # Przechowuj parametry również w słowniku dla łatwiejszego dostępu/logowania
+        self.parameters = {'short_window': short_window, 'long_window': long_window}
+        # --- Zaktualizowano log, aby pasował do nazwy klasy ---
+        logger.info(f"Moving Average Strategy initialized with parameters: {self.parameters}")
 
+    def get_parameters(self) -> dict:
+        """Zwraca słownik z aktualnymi parametrami strategii."""
+        return self.parameters
 
-    def generate_signals(self, ticker: str, data: pd.DataFrame) -> Optional[pd.DataFrame]:
+    def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
         """
-        Generates trading signals for a specific ticker based on MA crossover.
+        Generuje sygnały transakcyjne na podstawie przecięć średnich kroczących.
 
         Args:
-            ticker (str): The ticker symbol for which to generate signals.
-            data (pd.DataFrame): DataFrame containing historical OHLCV data for the ticker.
-                                 Must include a 'Close' column and have a DatetimeIndex.
+            data (pd.DataFrame): DataFrame zawierający co najmniej kolumnę 'Close'
+                                 i wystarczającą historię do obliczenia najdłuższej średniej.
 
         Returns:
-            Optional[pd.DataFrame]: A DataFrame with the same index as the input data,
-                                    containing 'SMA_Short', 'SMA_Long', 'Signal', and 'Position' columns.
-                                    Returns None if data is insufficient or signals cannot be generated.
+            pd.DataFrame: DataFrame z indeksem takim samym jak `data`, zawierający kolumny:
+                          'signal' (1 dla kupna, -1 dla sprzedaży, 0 dla braku sygnału w danym dniu)
+                          'positions' (1 dla pozycji długiej, -1 dla krótkiej (jeśli zaimplementowano), 0 dla braku pozycji)
+
+        Raises:
+            ValueError: Jeśli w danych brakuje kolumny 'Close'.
+            KeyError: Jeśli obliczone kolumny SMA nie pojawią się w DataFrame.
         """
-        required_data_length = self.long_window + 1 # Need one extra point to check crossover
+        required_column = 'Close'
+        if required_column not in data.columns:
+            logger.error(f"Required column '{required_column}' not found in input data.")
+            raise ValueError(f"DataFrame must contain '{required_column}' column.")
 
-        if data is None or data.empty or 'Close' not in data.columns:
-            logger.warning(f"MA Strategy ({ticker}): Input data is missing or invalid.")
-            return None
-        if len(data) < required_data_length:
-            logger.warning(f"MA Strategy ({ticker}): Insufficient data ({len(data)} rows) for long window {self.long_window}. Need at least {required_data_length}.")
-            return None
+        # Sprawdź, czy jest wystarczająco danych
+        if len(data) < self.long_window:
+            logger.warning(f"Not enough data ({len(data)} rows) to calculate the long SMA ({self.long_window}). Returning no signals.")
+            signals = pd.DataFrame(index=data.index)
+            signals['signal'] = 0
+            signals['positions'] = 0
+            return signals
 
-        # --- Calculate Moving Averages ---
-        # Use a copy to avoid modifying the original DataFrame passed to the function
-        df = pd.DataFrame(index=data.index) # Create new DF with the same index
+        # Utwórz kopię, aby uniknąć modyfikacji oryginalnego DataFrame (jeśli jest to wymagane)
+        df = data.copy()
+        signals = pd.DataFrame(index=df.index)
+        signals['signal'] = 0 # Domyślnie brak sygnału
+
+        short_sma_col = f'SMA_{self.short_window}'
+        long_sma_col = f'SMA_{self.long_window}'
+
         try:
-            df['Close'] = data['Close'] # Copy only the necessary column
-            df['SMA_Short'] = df['Close'].rolling(window=self.short_window, min_periods=self.short_window).mean()
-            df['SMA_Long'] = df['Close'].rolling(window=self.long_window, min_periods=self.long_window).mean()
+            # Oblicz średnie kroczące używając pandas_ta
+            df.ta.sma(length=self.short_window, append=True, col_names=(short_sma_col,))
+            df.ta.sma(length=self.long_window, append=True, col_names=(long_sma_col,))
+
+            # Sprawdź, czy kolumny zostały poprawnie dodane
+            if short_sma_col not in df.columns or long_sma_col not in df.columns:
+                 logger.error(f"SMA columns ({short_sma_col}, {long_sma_col}) not found after pandas_ta calculation.")
+                 raise KeyError(f"SMA columns not found after calculation.")
+
+            # --- Logika generowania sygnałów ---
+            buy_condition = (df[short_sma_col] > df[long_sma_col]) & (df[short_sma_col].shift(1) <= df[long_sma_col].shift(1))
+            sell_condition = (df[short_sma_col] < df[long_sma_col]) & (df[short_sma_col].shift(1) >= df[long_sma_col].shift(1))
+
+            signals.loc[buy_condition, 'signal'] = 1
+            signals.loc[sell_condition, 'signal'] = -1
+
+            # --- Logika utrzymywania pozycji ---
+            signals['positions'] = signals['signal'].replace(0, pd.NA).ffill().fillna(0)
+            signals['positions'] = signals['positions'].replace(-1, 0) # Zakładamy brak pozycji krótkich
+
+            # --- Zaktualizowano log, aby pasował do nazwy strategii ---
+            logger.debug(f"Generated {signals['signal'].ne(0).sum()} signals for Moving Average strategy.")
+            logger.debug(f"Buy signals: {signals['signal'].eq(1).sum()}, Sell signals: {signals['signal'].eq(-1).sum()}")
+
         except Exception as e:
-             logger.error(f"MA Strategy ({ticker}): Error calculating MAs: {e}")
-             return None
+            # --- Zaktualizowano log, aby pasował do nazwy strategii ---
+            logger.error(f"Error during Moving Average signal generation: {e}", exc_info=True)
+            signals['signal'] = 0
+            signals['positions'] = 0
+            # raise e # Opcjonalnie
 
-        # Drop initial rows where MAs couldn't be calculated
-        df.dropna(subset=['SMA_Short', 'SMA_Long'], inplace=True)
-        if df.empty:
-            logger.warning(f"MA Strategy ({ticker}): DataFrame empty after dropping NA values from MA calculation.")
-            return None
-
-        # --- Generate Crossover Signals ---
-        # Signal: 1 for Buy (short crosses above long), -1 for Sell (short crosses below long), 0 otherwise
-        # Compare current MAs with the previous day's MAs to detect the crossover event
-
-        # Shifted values represent the *previous* day's MAs
-        prev_short = df['SMA_Short'].shift(1)
-        prev_long = df['SMA_Long'].shift(1)
-
-        # Buy condition: short was below or equal long yesterday, and short is above long today
-        buy_signal = (prev_short <= prev_long) & (df['SMA_Short'] > df['SMA_Long'])
-
-        # Sell condition: short was above or equal long yesterday, and short is below long today
-        sell_signal = (prev_short >= prev_long) & (df['SMA_Short'] < df['SMA_Long'])
-
-        # Assign signals based on conditions
-        df['Signal'] = 0.0
-        df.loc[buy_signal, 'Signal'] = 1.0
-        df.loc[sell_signal, 'Signal'] = -1.0
-
-        # --- Determine Position ---
-        # Position: Represents the desired state (1 for long, -1 for short, 0 for flat).
-        # Here, we simply hold the position indicated by the last non-zero signal.
-        # Fill forward the last signal to represent holding the position.
-        df['Position'] = df['Signal'].replace(0.0, np.nan).ffill().fillna(0.0)
-
-        #logger.debug(f"MA Strategy ({ticker}): Generated {int(sum(abs(df['Signal'])))} signals.")
-
-        # Return only the relevant columns
-        return df[['Close', 'SMA_Short', 'SMA_Long', 'Signal', 'Position']]
+        return signals[['signal', 'positions']]

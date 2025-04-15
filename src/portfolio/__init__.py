@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Importuj główne klasy z tego pakietu dla łatwiejszego dostępu
+# Import main classes from this package for easier access
 try:
     from .portfolio_manager import PortfolioManager, Position
     logger.debug("Successfully imported PortfolioManager and Position.")
@@ -28,22 +28,6 @@ except ImportError as e:
     # Fallback definition
     class RiskManager: pass
 
-# W tej wersji usunęliśmy models.py, więc nie ma klasy Trade do importu stąd
-# Jeśli przywrócisz models.py z klasą Trade:
-# try:
-#     from .models import Trade
-#     logger.debug("Successfully imported Trade model.")
-# except ImportError as e:
-#     logger.error(f"Failed to import Trade model: {e}")
-#     class Trade: pass
-
-
-# Opcjonalnie zdefiniuj __all__
-# __all__ = [
-#     'PortfolioManager',
-#     'Position',
-#     'RiskManager',
-#     # 'Trade' # Jeśli używasz klasy Trade z models.py
-# ]
+# Note: models.py with Trade class was removed in this version
 
 logger.info("Portfolio package initialized.")

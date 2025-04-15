@@ -223,7 +223,7 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
             Input("confirm-tickers", "n_clicks"),
             Input("confirm-risk", "n_clicks"),
             Input("confirm-costs", "n_clicks"),
-            # Input("confirm-rebalancing", "n_clicks") # Last step triggers backtest, maybe no confirm needed
+            Input("confirm-rebalancing", "n_clicks"),  # Add Step 6 confirm button
         ],
         # Add States if validation is needed before proceeding
         [
@@ -232,7 +232,7 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
         ],
         prevent_initial_call=True
     )
-    def control_wizard_steps(confirm_strat, confirm_dates, confirm_tickers, confirm_risk, confirm_costs, strategy_value): # Add state args
+    def control_wizard_steps(confirm_strat, confirm_dates, confirm_tickers, confirm_risk, confirm_costs, confirm_rebalancing, strategy_value): # Add state args
         ctx = callback_context
         if not ctx.triggered:
             # Initial state: only first step visible

@@ -1,6 +1,6 @@
 from dash.dependencies import Input, Output, State, MATCH, ALL
 import dash
-from dash import html
+from dash import html, dcc, callback
 import logging
 
 # Import AVAILABLE_STRATEGIES
@@ -16,6 +16,14 @@ except ImportError:
         sys.path.append(project_root)
     from src.core.constants import AVAILABLE_STRATEGIES
 
+# Słownik z opisami strategii dla łatwiejszego zarządzania
+STRATEGY_DESCRIPTIONS = {
+    "Bollinger Bands": "Bollinger Bands measure market volatility and identify potential overbought or oversold conditions using standard deviation bands around a moving average.",
+    "Relative Strength Index": "The Relative Strength Index (RSI) is a momentum oscillator that measures the speed and change of price movements to identify overbought or oversold conditions.",
+    "Moving Average Crossover": "This strategy identifies trading signals based on the crossover points of two moving averages (e.g., a short-term MA crossing above or below a long-term MA)."
+    # Dodaj opisy dla innych strategii, jeśli istnieją
+}
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -25,28 +33,16 @@ def register_wizard_callbacks(app):
     """
     
     # Callback to show strategy description
-    @app.callback(
-        Output("strategy-description", "children"),
-        Input("strategy-selector", "value")
+    @callback(
+        Output('strategy-description-output', 'children'), # Zmień ID, jeśli jest inne
+        Input('strategy-dropdown', 'value')               # Zmień ID, jeśli jest inne
     )
-    def update_strategy_description(strategy):
-        if not strategy:
-            return "Please select a strategy."
-            
-        # Get strategy description from the strategy class
-        try:
-            strategy_class = AVAILABLE_STRATEGIES.get(strategy)
-            if strategy_class and strategy_class.__doc__:
-                description = strategy_class.__doc__.strip()
-                # Convert bullet points from docstring
-                bullets = [line.strip().replace('* ', '• ') 
-                         for line in description.split('\n') 
-                         if line.strip()]
-                return [html.P(bullet) for bullet in bullets]
-            return "No description available."
-        except Exception as e:
-            logger.error(f"Error getting strategy description: {e}")
-            return "Error loading strategy description."
+    def update_strategy_description(selected_strategy):
+        """Updates the strategy description text based on the dropdown selection."""
+        # Pobierz opis ze słownika, użyj domyślnego tekstu, jeśli strategia nie została znaleziona lub nie wybrano żadnej
+        description_text = STRATEGY_DESCRIPTIONS.get(selected_strategy, "Select a strategy to see its description.")
+        # Zwróć komponent HTML (np. akapit) z tekstem opisu
+        return html.P(description_text)
 
     # Callback to handle step transitions
     @app.callback(
@@ -152,4 +148,4 @@ def register_wizard_callbacks(app):
     def validate_rebalancing(frequency, threshold):
         if frequency is None or threshold is None:
             return True
-        return False 
+        return False

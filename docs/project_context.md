@@ -44,6 +44,12 @@ Backtester App is an application for testing investment strategies on historical
 - Version updates should be reflected in `src/version.py`
 - Changes require updating the changelog and tagging in git
 
+## Logging System
+1. **Simplified Approach**: Console-based logging with standardized formatting
+2. **Centralized Configuration**: Logging configuration is centralized in `app.py` and `app_factory.py`
+3. **External Libraries**: External library logs are suppressed to reduce noise
+4. **No File Handlers**: Removed file handlers to simplify maintenance
+
 ## Documentation References
 - [Architecture Guide](architecture.md)
 - [Product Design Specification](product_design_specification.md)
@@ -53,4 +59,4 @@ Backtester App is an application for testing investment strategies on historical
 ---
 
 *Created: April 11, 2025*
-*Last updated: April 11, 2025*
+*Last updated: April 15, 2025*

@@ -46,3 +46,411 @@ None
 x:\GitHub\Backtester_app\server_logger.py:91
 None
 
+2025-04-15 13:58:00,225 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 13:58:03,920 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 13:58:48,746 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 13:58:52,563 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 14:04:12,661 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 14:04:16,208 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 14:07:57,618 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 14:08:01,540 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 14:10:16,814 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 14:10:20,508 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:91
+None
+
+2025-04-15 14:12:31,435 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:12:31,435 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:12:35,584 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:12:35,585 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:15:44,749 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:15:44,749 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:15:48,448 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:15:48,448 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:18:43,128 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:18:43,128 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:18:53,933 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:18:53,934 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:18:57,798 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:18:57,799 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:20:02,395 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:20:02,396 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:20:16,503 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:20:16,504 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:20:22,664 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:20:22,665 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:20:26,389 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:20:26,389 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:27:37,449 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:27:37,450 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:27:41,337 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:27:41,339 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:30:15,915 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:30:15,915 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:30:20,060 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:30:20,060 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:31:56,000 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:31:56,002 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:32:52,248 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:32:52,250 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:33:53,181 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:33:53,181 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:33:56,647 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:33:56,647 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:38:22,340 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:38:22,340 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:38:52,640 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:38:52,641 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:39:26,368 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:39:26,368 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:39:34,986 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:39:34,987 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:39:59,285 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:39:59,286 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:40:04,164 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:40:04,164 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:40:17,179 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:40:17,179 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:40:20,719 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:40:20,719 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:42:11,577 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:42:11,577 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:42:25,800 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:42:25,801 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:42:45,342 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:42:45,343 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:43:15,753 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:43:15,754 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:44:14,677 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:44:14,678 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:44:18,373 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:44:18,374 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:45:51,331 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:45:51,332 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:46:18,695 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:46:18,695 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:46:42,807 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:46:42,809 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:51:01,084 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:51:01,085 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:51:09,209 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:51:09,209 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:51:12,812 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:51:12,813 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:52:45,796 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:52:45,797 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:53:08,900 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:53:08,900 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:53:36,665 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:53:36,666 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:53:52,581 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:53:52,598 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:53:56,386 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:53:56,387 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:57:39,852 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:57:39,853 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+
+2025-04-15 14:57:43,961 - INFO - Logging handlers successfully configured.
+x:\GitHub\Backtester_app\server_logger.py:48
+None
+
+2025-04-15 14:57:43,961 - INFO - Logging system initialized successfully
+x:\GitHub\Backtester_app\server_logger.py:97
+None
+

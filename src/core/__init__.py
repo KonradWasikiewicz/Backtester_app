@@ -10,13 +10,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Importuj najważniejsze klasy i obiekty z modułów w tym pakiecie
+# Import essential classes and objects from modules in this package
 try:
     from .config import config
     logger.debug("Successfully imported config object.")
 except ImportError as e:
     logger.error(f"Failed to import config object: {e}")
-    # Fallback - może być trudny, bo config jest fundamentalny
+    # Basic fallback for config
     class MockConfig: pass
     config = MockConfig()
 
@@ -25,51 +25,48 @@ try:
     logger.debug("Successfully imported DataLoader.")
 except ImportError as e:
     logger.error(f"Failed to import DataLoader: {e}")
+    # Simple placeholder class
     class DataLoader: pass
 
 try:
-    # Główny menedżer - kluczowy komponent
+    # Core manager component
     from .backtest_manager import BacktestManager
     logger.debug("Successfully imported BacktestManager.")
 except ImportError as e:
     logger.error(f"CRITICAL: Failed to import BacktestManager: {e}")
-    class BacktestManager: pass # Aplikacja prawdopodobnie nie zadziała bez tego
+    # Application will likely not work without this
+    class BacktestManager: pass
 
 try:
-    # Silnik - jeśli logika pętli jest oddzielona od managera
+    # Engine - if loop logic is separate from manager
     from .engine import BacktestEngine
     logger.debug("Successfully imported BacktestEngine.")
 except ImportError as e:
-    # To może być mniej krytyczne, jeśli logika jest w Managerze
+    # May be less critical if logic is in Manager
     logger.warning(f"Failed to import BacktestEngine: {e}")
     class BacktestEngine: pass
 
 try:
-    # Stałe i wyjątki, jeśli są potrzebne globalnie
-    from .constants import AVAILABLE_STRATEGIES, CHART_THEME, TRADING_DAYS_PER_YEAR, RISK_FREE_RATE # Importuj stałe
+    # Constants used across the application
+    from .constants import AVAILABLE_STRATEGIES, CHART_THEME, TRADING_DAYS_PER_YEAR, RISK_FREE_RATE
     logger.debug("Successfully imported constants.")
 except ImportError as e:
     logger.warning(f"Failed to import constants: {e}")
-    AVAILABLE_STRATEGIES = {}; CHART_THEME = {}; TRADING_DAYS_PER_YEAR = 252; RISK_FREE_RATE = 0.02
+    # Default values
+    AVAILABLE_STRATEGIES = {}
+    CHART_THEME = {}
+    TRADING_DAYS_PER_YEAR = 252
+    RISK_FREE_RATE = 0.02
 
 try:
-    from .exceptions import BacktestError, DataError, StrategyError # Importuj niestandardowe wyjątki
+    # Custom exception classes
+    from .exceptions import BacktestError, DataError, StrategyError
     logger.debug("Successfully imported custom exceptions.")
 except ImportError as e:
     logger.warning(f"Failed to import custom exceptions: {e}")
+    # Basic exception hierarchy
     class BacktestError(Exception): pass
     class DataError(BacktestError): pass
     class StrategyError(BacktestError): pass
-
-
-# Opcjonalnie zdefiniuj __all__
-# __all__ = [
-#     'config',
-#     'DataLoader',
-#     'BacktestManager',
-#     'BacktestEngine',
-#     'AVAILABLE_STRATEGIES', # Eksportuj także stałe, jeśli potrzebne
-#     'BacktestError', 'DataError', 'StrategyError' # Eksportuj wyjątki
-# ]
 
 logger.info("Core package initialized.")

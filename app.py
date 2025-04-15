@@ -3,75 +3,54 @@ import logging
 import traceback
 from pathlib import Path
 import os
-import re
 
 # Ensure src is in the path
 APP_ROOT = Path(__file__).resolve().parent
 sys.path.append(str(APP_ROOT))
 
-# Import factory functions
+# Import factory functions and Dash components
 try:
     from src.ui.app_factory import (
         create_app,
-        configure_logging,
-        create_app_layout,
-        register_callbacks, # This function should handle all core callback registrations
+        # Logging configuration is handled within create_app
     )
-    from dash import html, dcc
-    # Import the server-side logger endpoint function
-    from server_logger import initialize_logger, log_client_errors_endpoint
 except ImportError as e:
-    print(f"Error importing modules: {e}")
+    # Use basic print for critical import errors as logging might not be set up
+    print(f"CRITICAL: Error importing core modules: {e}")
     traceback.print_exc()
-    sys.exit(1)
+    sys.exit(1) # Exit if essential imports fail
 
-# Initialize the enhanced logging system
-logging_result = initialize_logger()
-if logging_result["status"] == "error":
-    print(f"Failed to initialize logging: {logging_result['message']}")
-    sys.exit(1)
-
-# Configure application logging (will be called again in create_app, but safe due to check)
-# Consider configuring logging only *once* before create_app if preferred.
-configure_logging()
+# Basic logging configuration for the main application entry point
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+logger.info("--- Application Start ---")
 
 
 try:
-    # Create the Dash application
-    app = create_app(suppress_callback_exceptions=True) # create_app calls configure_logging and register_callbacks internally
+    # Create the Dash application using the factory function
+    # create_app is responsible for:
+    # 1. Instantiating Dash
+    # 2. Configuring logging (via configure_logging)
+    # 3. Setting the layout (via create_app_layout)
+    # 4. Registering all necessary callbacks (via register_callbacks)
+    logger.info("Creating Dash application via create_app...")
+    app = create_app(suppress_callback_exceptions=True) 
+    logger.info("Dash application created successfully.")
 
-    # Register the single client error logging endpoint
-    # This needs to happen after app is created but before app.run
-    log_client_errors_endpoint(app)
-    logger.info("Registered client error endpoint /log-client-errors")
+    # Callback registration is handled within create_app
+    # Layout is set within create_app
 
-    # --- REMOVED registration of wizard_callbacks ---
-    # This seems to be the source of the duplicate "strategy-description" output
-    # and potentially contributing to confusion.
-    # try:
-    #     from src.ui.callbacks.wizard_callbacks import register_wizard_callbacks
-    #     register_wizard_callbacks(app)
-    #     logger.info("Registered wizard callbacks") # This line indicated it was being called
-    # except ImportError:
-    #     logger.warning("Wizard callbacks module not found or failed to import.")
-    # except Exception as e_wiz:
-    #     logger.error(f"Error registering wizard callbacks: {e_wiz}", exc_info=True)
-    logger.info("Skipped registration of wizard_callbacks.")
-
-
-    # Set the layout (create_app already sets app.layout internally)
-    # Re-setting it here is redundant if create_app does it. Let's rely on create_app.
-    # app.layout = create_app_layout()
-    logger.info("Application layout created by create_app.")
-
-
+    # --- Run Server ---
     if __name__ == '__main__':
-        # debug=True enables the Dash dev tools (like the error popup)
+        logger.info("Starting Dash development server...")
+        # debug=True enables Dash Dev Tools (error reporting, callback graph)
+        # dev_tools_hot_reload=False prevents automatic browser refresh on code changes
         app.run(debug=True, dev_tools_hot_reload=False)
 
 except Exception as e:
-    logger.critical(f"CRITICAL ERROR initializing application: {e}", exc_info=True)
-    print(f"CRITICAL ERROR initializing application: {e}")
+    # Catch any exceptions during the app setup process
+    logger.critical(f"CRITICAL ERROR during application initialization: {e}", exc_info=True)
+    # Print to stderr as a fallback if logging somehow failed
+    print(f"CRITICAL ERROR initializing application: {e}", file=sys.stderr)
     traceback.print_exc()
-    sys.exit(1) # Exit if app fails to initialize
+    sys.exit(1) # Exit with error code
