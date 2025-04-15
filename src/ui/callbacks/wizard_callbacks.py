@@ -34,65 +34,164 @@ def register_wizard_callbacks(app):
     
     # Callback to show strategy description
     @callback(
-        Output('strategy-description-output', 'children'), # Zmień ID, jeśli jest inne
-        Input('strategy-dropdown', 'value')               # Zmień ID, jeśli jest inne
+        Output('strategy-description-output', 'children'), 
+        Input('strategy-dropdown', 'value')
     )
     def update_strategy_description(selected_strategy):
         """Updates the strategy description text based on the dropdown selection."""
-        # Pobierz opis ze słownika, użyj domyślnego tekstu, jeśli strategia nie została znaleziona lub nie wybrano żadnej
+        # Get description from dictionary, use default text if strategy not found or none selected
         description_text = STRATEGY_DESCRIPTIONS.get(selected_strategy, "Select a strategy to see its description.")
-        # Zwróć komponent HTML (np. akapit) z tekstem opisu
+        # Return HTML component with description text
         return html.P(description_text)
 
-    # Callback to handle step transitions
+    # Callback to handle step transitions - new accordion-style wizard
     @app.callback(
-        [Output(f"{step}-container", "style") for step in [
-            "strategy-selection", "date-range-selection", "tickers-selection",
-            "risk-management", "trading-costs", "rebalancing-rules"
-        ]],
-        Output("wizard-progress", "value"),
-        [Input("confirm-strategy", "n_clicks"),
-         Input("confirm-dates", "n_clicks"),
-         Input("confirm-tickers", "n_clicks"),
-         Input("confirm-risk", "n_clicks"),
-         Input("confirm-costs", "n_clicks")],
-        [State("strategy-selector", "value")],
+        [
+            # Control visibility of content for each step
+            Output("strategy-selection-content", "style"),
+            Output("date-range-selection-content", "style"),
+            Output("tickers-selection-content", "style"),
+            Output("risk-management-content", "style"), 
+            Output("trading-costs-content", "style"),
+            Output("rebalancing-rules-content", "style"),
+            Output("summary-content", "style"),
+            # Control the status indicators for each step
+            Output("strategy-selection-status", "className"),
+            Output("date-range-selection-status", "className"),
+            Output("tickers-selection-status", "className"),
+            Output("risk-management-status", "className"),
+            Output("trading-costs-status", "className"), 
+            Output("rebalancing-rules-status", "className"),
+            Output("summary-status", "className"),
+            # Update progress bar
+            Output("wizard-progress", "value")
+        ],
+        [
+            # Trigger on any Confirm button click
+            Input("confirm-strategy", "n_clicks"),
+            Input("confirm-dates", "n_clicks"),
+            Input("confirm-tickers", "n_clicks"),
+            Input("confirm-risk", "n_clicks"),
+            Input("confirm-costs", "n_clicks"),
+            Input("confirm-rebalancing", "n_clicks"),
+            # Also trigger when clicking on step headers
+            Input("strategy-selection-header", "n_clicks"),
+            Input("date-range-selection-header", "n_clicks"),
+            Input("tickers-selection-header", "n_clicks"),
+            Input("risk-management-header", "n_clicks"),
+            Input("trading-costs-header", "n_clicks"),
+            Input("rebalancing-rules-header", "n_clicks"),
+            Input("summary-header", "n_clicks")
+        ],
+        [
+            # States needed for validation
+            State("strategy-selector", "value"),
+            State("strategy-selection-content", "style"),
+            State("date-range-selection-content", "style"),
+            State("tickers-selection-content", "style"),
+            State("risk-management-content", "style"),
+            State("trading-costs-content", "style"),
+            State("rebalancing-rules-content", "style"),
+            State("summary-content", "style")
+        ],
         prevent_initial_call=True
     )
-    def handle_step_transition(strategy_clicks, dates_clicks, tickers_clicks, 
-                             risk_clicks, costs_clicks, strategy_value):
+    def handle_step_transition(
+        # Clicks for confirm buttons
+        strategy_clicks, dates_clicks, tickers_clicks, risk_clicks, costs_clicks, rebalancing_clicks,
+        # Clicks for headers
+        strat_header_clicks, date_header_clicks, tick_header_clicks, risk_header_clicks, 
+        costs_header_clicks, rebal_header_clicks, summary_header_clicks,
+        # States for validation
+        strategy_value, strat_style, dates_style, tickers_style, risk_style, costs_style, rebalancing_style, summary_style):
+        
         ctx = dash.callback_context
         if not ctx.triggered:
-            return [{"display": "block" if i == 0 else "none"} for i in range(6)], 0
-            
-        trigger = ctx.triggered[0]["prop_id"].split(".")[0]
-        
-        # Map buttons to next steps
-        step_mapping = {
-            "confirm-strategy": 1,
-            "confirm-dates": 2,
-            "confirm-tickers": 3,
-            "confirm-risk": 4,
-            "confirm-costs": 5
-        }
-        
-        next_step = step_mapping.get(trigger, 0)
-        
-        # Validate transitions
-        if trigger == "confirm-strategy" and not strategy_value:
-            next_step = 0
-        
-        # Update step visibility
-        step_styles = []
-        for i in range(6):
-            if i == next_step:
-                step_styles.append({"display": "block"})
-            else:
-                step_styles.append({"display": "none"})
-        
-        progress = (next_step / 6) * 100
-        return step_styles, progress
+            return dash.no_update
 
+        # Get triggered input
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        logger.debug(f"Wizard trigger: {trigger_id}")
+        
+        # Default styles (all collapsed)
+        visible_style = {"display": "block", "marginLeft": "30px", "paddingTop": "10px"}
+        hidden_style = {"display": "none", "marginLeft": "30px", "paddingTop": "10px"}
+        
+        # Get current step number from the active panel
+        current_styles = [strat_style, dates_style, tickers_style, risk_style, costs_style, rebalancing_style, summary_style]
+        try:
+            current_step = next(i for i, style in enumerate(current_styles) if style.get("display") == "block")
+        except:
+            current_step = 0  # Default to first step if none is active
+        
+        # Calculate next step based on the trigger
+        next_step = current_step  # Default to keeping the same step
+        
+        # Handle Confirm button clicks (move to next step)
+        if "confirm-" in trigger_id:
+            # Map buttons to the next step
+            next_steps = {
+                "confirm-strategy": 1,
+                "confirm-dates": 2,
+                "confirm-tickers": 3,
+                "confirm-risk": 4,
+                "confirm-costs": 5,
+                "confirm-rebalancing": 6
+            }
+            
+            # Only advance if it's a valid step
+            if trigger_id in next_steps:
+                next_step = next_steps[trigger_id]
+                
+                # Do basic validation
+                if trigger_id == "confirm-strategy" and not strategy_value:
+                    next_step = current_step  # Stay on the same step
+        
+        # Handle header clicks (directly open that step)
+        elif "-header" in trigger_id:
+            # Map headers to their corresponding steps
+            header_steps = {
+                "strategy-selection-header": 0,
+                "date-range-selection-header": 1,
+                "tickers-selection-header": 2,
+                "risk-management-header": 3,
+                "trading-costs-header": 4,
+                "rebalancing-rules-header": 5,
+                "summary-header": 6
+            }
+            
+            if trigger_id in header_steps:
+                # If clicking on the current step's header, toggle it
+                if header_steps[trigger_id] == current_step:
+                    # Collapse if already expanded
+                    next_step = None  # Indicates collapsing all steps
+                else:
+                    # Otherwise switch to the clicked step
+                    next_step = header_steps[trigger_id]
+        
+        # Create styles list for each step's content
+        styles = [hidden_style] * 7  # Start with all hidden
+        
+        # If next_step is valid, make that step visible
+        if next_step is not None and 0 <= next_step < 7:
+            styles[next_step] = visible_style
+            
+        # Update status classes for each step
+        status_classes = []
+        for i in range(7):
+            if i < next_step:
+                status_classes.append("step-status completed")
+            elif i == next_step:
+                status_classes.append("step-status current")
+            else:
+                status_classes.append("step-status pending")
+        
+        # Calculate progress percentage
+        progress = ((next_step + 1) / 7) * 100 if next_step is not None else 0
+        
+        # Return all outputs
+        return styles + status_classes + [progress]
+        
     # Callback to validate strategy selection
     @app.callback(
         Output("confirm-strategy", "disabled"),
@@ -139,13 +238,14 @@ def register_wizard_callbacks(app):
             return True
         return False
 
-    # Callback to enable/disable start backtest button
+    # Callback to validate rebalancing settings and enable "Run Backtest" button
     @app.callback(
-        Output("start-backtest", "disabled"),
+        [Output("confirm-rebalancing", "disabled"),
+         Output("run-backtest-button", "disabled")],
         [Input("rebalancing-frequency", "value"),
          Input("rebalancing-threshold", "value")]
     )
     def validate_rebalancing(frequency, threshold):
-        if frequency is None or threshold is None:
-            return True
-        return False
+        is_valid = frequency is not None and threshold is not None
+        # Both confirm button and run button depend on the same validation
+        return not is_valid, not is_valid

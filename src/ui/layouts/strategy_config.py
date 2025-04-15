@@ -418,7 +418,8 @@ def create_strategy_config_section(tickers=None):
                     color="primary",
                     className="mt-3"
                 )
-            ])
+            ]),
+            step_number=1
         )
 
         # Step 2: Date Range Selection
@@ -435,7 +436,8 @@ def create_strategy_config_section(tickers=None):
                     className="mt-3"
                 )
             ]),
-            is_hidden=True
+            is_hidden=True,
+            step_number=2
         )
 
         # Step 3: Tickers Selection
@@ -452,7 +454,8 @@ def create_strategy_config_section(tickers=None):
                     className="mt-3"
                 )
             ]),
-            is_hidden=True
+            is_hidden=True,
+            step_number=3
         )
 
         # Step 4: Risk Management
@@ -469,7 +472,8 @@ def create_strategy_config_section(tickers=None):
                     className="mt-3"
                 )
             ]),
-            is_hidden=True
+            is_hidden=True,
+            step_number=4
         )
 
         # Step 5: Trading Costs and Slippage
@@ -509,7 +513,8 @@ def create_strategy_config_section(tickers=None):
                     className="mt-3"
                 )
             ]),
-            is_hidden=True
+            is_hidden=True,
+            step_number=5
         )
 
         # Step 6: Rebalancing Rules (with Confirm button)
@@ -552,7 +557,8 @@ def create_strategy_config_section(tickers=None):
                     className="mt-3"
                 )
             ]),
-            is_hidden=True
+            is_hidden=True,
+            step_number=6
         )
 
         # Step 7: Summary and Run Backtest
@@ -569,7 +575,8 @@ def create_strategy_config_section(tickers=None):
                     className="w-100 mt-3"
                 )
             ]),
-            is_hidden=True
+            is_hidden=True,
+            step_number=7
         )
 
         # Add the new step to the container
@@ -591,33 +598,38 @@ def create_strategy_config_section(tickers=None):
             html.P(str(e))
         ])
 
-def create_wizard_step(step_id, title, content, is_hidden=False):
+def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
     """
-    Creates a wizard step with consistent styling.
+    Creates a wizard step with accordion-style behavior.
     
     Args:
         step_id: Unique identifier for the step
         title: Step title
         content: Step content
         is_hidden: Whether the step should be hidden initially
+        step_number: The step number (for display and status)
         
     Returns:
         html.Div: The styled wizard step
     """
     return html.Div([
-        # Clickable header with step indicator
+        # Clickable header that's always visible
         html.Div([
             html.Div([
-                html.Span(id=f"{step_id}-status", className="step-status me-2"),
+                html.Span(f"{step_number}", id=f"{step_id}-status", className="step-status me-2"),
                 html.H5(title, className="mb-0 d-inline")
-            ], id=f"{step_id}-header", className="step-header", style={"cursor": "pointer"})
-        ], className="mb-3"),
-        # Content section
-        content
+            ], id=f"{step_id}-header", className="step-header")
+        ], className="mb-2", style={"cursor": "pointer"}),
+        
+        # Collapsible content section
+        html.Div(
+            content,
+            id=f"{step_id}-content",
+            style={"display": "none" if is_hidden else "block", "marginLeft": "30px", "paddingTop": "10px"},
+        )
     ],
     id=f"{step_id}-container",
-    style={"display": "none" if is_hidden else "block"},
-    className="wizard-step mb-4")
+    className="wizard-step mb-3 border-bottom pb-3")
 
 def create_import_tickers_modal() -> dbc.Modal:
     """

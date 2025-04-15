@@ -54,6 +54,55 @@
 })();
 // --- DASH ERROR LOGGER: END ---
 
+// Add wizard step header interaction
+if (document) {
+    // Wait for DOM content to be loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up event listeners for step headers after a short delay to ensure React has rendered
+        setTimeout(function() {
+            setupStepHeaders();
+        }, 1000);
+    });
+
+    // Re-setup listeners when the page changes
+    window.addEventListener('load', function() {
+        setupStepHeaders();
+    });
+}
+
+// Function to set up step header click handlers
+function setupStepHeaders() {
+    const stepHeaders = document.querySelectorAll('[id$="-header"]');
+    
+    stepHeaders.forEach(header => {
+        // Add visual indicator that headers are clickable
+        header.style.cursor = 'pointer';
+        
+        // Add hover effect
+        header.addEventListener('mouseover', function() {
+            this.style.backgroundColor = '#2a2e39';
+        });
+        
+        header.addEventListener('mouseout', function() {
+            this.style.backgroundColor = '#1e222d';
+        });
+        
+        // Add focus effect for accessibility
+        header.addEventListener('focus', function() {
+            this.style.outline = '2px solid #0d6efd';
+        });
+        
+        header.addEventListener('blur', function() {
+            this.style.outline = 'none';
+        });
+        
+        // Make the header focusable for keyboard navigation
+        if (!header.getAttribute('tabindex')) {
+            header.setAttribute('tabindex', '0');
+        }
+    });
+}
+
 window.dash_clientside = Object.assign({}, window.dash_clientside, {
     clientside: {
         // Function to sync risk management checkboxes based on the features list
