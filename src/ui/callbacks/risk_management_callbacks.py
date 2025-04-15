@@ -1,4 +1,3 @@
-# (Keep imports and other callbacks as they were in the previous correct version)
 import dash
 from dash import Input, Output, State, ALL, MATCH, callback_context, ClientsideFunction, no_update
 import dash_bootstrap_components as dbc
@@ -18,7 +17,7 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
     """
     logger.info("Registering risk management callbacks...") # Add log
 
-    # Panel visibility callback (Should be correct)
+    # Panel visibility callback (Depends only on the checklist - should be fine)
     @app.callback(
         [
             Output("position_sizing-panel", "style"),
@@ -44,29 +43,29 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
         styles = [visible_style if feature in enabled_features else hidden_style for feature in features]
         return styles
 
-    # Register clientside callback to sync checkboxes TO the checklist value
-    app.clientside_callback(
-        ClientsideFunction(
-            namespace='clientside',
-            function_name='syncCheckboxesToList'
-        ),
-        [
-            Output("position_sizing-checkbox", "value"),
-            Output("stop_loss-checkbox", "value"),
-            Output("take_profit-checkbox", "value"),
-            Output("risk_per_trade-checkbox", "value"),
-            Output("market_filter-checkbox", "value"),
-            Output("drawdown_protection-checkbox", "value"),
-            Output("continue-iterate-checkbox", "value") # Assuming this exists
-        ],
-        [Input("risk-features-checklist", "value")],
-        # --- ADDED prevent_initial_call=True ---
-        # Prevent client sync on initial load to avoid conflict with server
-        prevent_initial_call=True
-    )
-    logger.debug("Registered clientside callback syncCheckboxesToList with prevent_initial_call=True")
+    # --- REMOVED/COMMENTED OUT CLIENTSIDE CALLBACK ---
+    # app.clientside_callback(
+    #     ClientsideFunction(
+    #         namespace='clientside',
+    #         function_name='syncCheckboxesToList'
+    #     ),
+    #     [
+    #         Output("position_sizing-checkbox", "value"),
+    #         Output("stop_loss-checkbox", "value"),
+    #         Output("take_profit-checkbox", "value"),
+    #         Output("risk_per_trade-checkbox", "value"),
+    #         Output("market_filter-checkbox", "value"),
+    #         Output("drawdown_protection-checkbox", "value"),
+    #         Output("continue-iterate-checkbox", "value") # Assuming this exists
+    #     ],
+    #     [Input("risk-features-checklist", "value")],
+    #     prevent_initial_call=True # This was added before, but removing the callback is cleaner
+    # )
+    # logger.debug("REMOVED clientside callback syncCheckboxesToList")
+    # --- END OF REMOVED/COMMENTED OUT SECTION ---
 
-    # Server-side callback to update the checklist FROM the checkboxes (Should be correct)
+
+    # Server-side callback to update the checklist FROM the checkboxes (Keep this)
     @app.callback(
         Output("risk-features-checklist", "value"),
         [
@@ -94,7 +93,15 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
         if not ctx.triggered: return no_update
         trigger_prop_id = ctx.triggered[0]['prop_id']
         logger.debug(f"update_features_list_from_checkboxes triggered by: {trigger_prop_id}")
-        selected_features = [features_order[i] for i, val in enumerate(checkbox_values) if i < len(features_order) and val]
+
+        # Rebuild the list based ONLY on the checkbox states
+        selected_features = []
+        for i, feature in enumerate(features_order):
+             # Checkbox value is truthy (e.g., [feature_name] or True) if checked
+            if i < len(checkbox_values) and checkbox_values[i]:
+                selected_features.append(feature)
+
+        # Only update if the calculated list is different from the current state
         if set(selected_features) != set(current_checklist_value):
             logger.debug(f"Updating risk-features-checklist from checkboxes: {selected_features}")
             return selected_features
@@ -102,7 +109,8 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
             logger.debug("Checkbox change resulted in same feature list, no update needed.")
             return no_update
 
-    # Store the risk management configuration data (Should be correct)
+
+    # Store the risk management configuration data (Keep this)
     @app.callback(
         Output('risk-management-store', 'data'),
         [

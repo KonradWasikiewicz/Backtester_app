@@ -20,7 +20,6 @@ from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
 from src.ui.callbacks.risk_management_callbacks import register_risk_management_callbacks
 from src.ui.layouts.strategy_config import create_strategy_config_section
 from src.ui.layouts.results_display import create_results_section
-from src.ui.layouts.risk_management import create_risk_management_section
 from src.version import get_version, get_version_info, RELEASE_DATE, get_changelog  # Import version info
 
 def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -> dash.Dash:
