@@ -1,277 +1,191 @@
+import dash
+from dash import Input, Output, State, ALL, MATCH, callback_context, ClientsideFunction, no_update
 import dash_bootstrap_components as dbc
-from dash import dcc, html, Input, Output, ClientsideFunction, State
+from typing import Dict, Any, List
+import json
 import logging
-from typing import Dict, Any, Optional, List
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-def create_risk_management_section(available_tickers: List[str] = None) -> dbc.Card:
+def register_risk_management_callbacks(app: dash.Dash) -> None:
     """
-    Creates the risk management configuration UI section.
-    
+    Register all risk management callbacks with the application
+
     Args:
-        available_tickers: List of available ticker symbols (optional)
-        
-    Returns:
-        dbc.Card: A card component containing the risk management configuration UI
+        app: The Dash application
     """
-    if not available_tickers:
-        available_tickers = []
-    
-    # Create individual risk management feature options with their associated panels
-    def create_feature_with_panel(label, value, panel_content):
-        return html.Div([
-            dbc.Checklist(
-                options=[{"label": label, "value": value}],
-                value=[],  # Default is unchecked
-                id=f"{value}-checkbox",
-                inline=False,
-                className="text-light mb-2"
-            ),
-            html.Div(
-                panel_content,
-                id=f"{value}-panel",
-                style={"display": "none", "marginLeft": "20px", "marginBottom": "15px"}
-            )
-        ])
-    
-    # Position Sizing panel content
-    position_sizing_panel = [
-        html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("Max Position Size (%)", html_for="max-position-size", className="text-light"),
-                    dbc.Input(
-                        id="max-position-size",
-                        type="number",
-                        min=0,
-                        max=100,
-                        value=5,
-                        step=0.1,
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6),
-                dbc.Col([
-                    dbc.Label("Max Portfolio Risk (%)", html_for="max-portfolio-risk", className="text-light"),
-                    dbc.Input(
-                        id="max-portfolio-risk",
-                        type="number",
-                        min=0,
-                        max=100,
-                        value=2,
-                        step=0.1,
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6)
-            ], className="mb-3"),
-        ])
-    ]
-    
-    # Stop Loss panel content
-    stop_loss_panel = [
-        html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("Stop Loss Type", html_for="stop-loss-type", className="text-light"),
-                    dbc.Select(
-                        id="stop-loss-type",
-                        options=[
-                            {"label": "Fixed", "value": "fixed"},
-                            {"label": "Trailing", "value": "trailing"},
-                            {"label": "ATR", "value": "atr"}
-                        ],
-                        value="fixed",
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6),
-                dbc.Col([
-                    dbc.Label("Stop Loss Value (%)", html_for="stop-loss-value", className="text-light"),
-                    dbc.Input(
-                        id="stop-loss-value",
-                        type="number",
-                        min=0,
-                        max=100,
-                        value=2,
-                        step=0.1,
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6)
-            ], className="mb-3"),
-        ])
-    ]
-    
-    # Take Profit panel content
-    take_profit_panel = [
-        html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("Take Profit Type", html_for="take-profit-type", className="text-light"),
-                    dbc.Select(
-                        id="take-profit-type",
-                        options=[
-                            {"label": "Fixed", "value": "fixed"},
-                            {"label": "Trailing", "value": "trailing"}
-                        ],
-                        value="fixed",
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6),
-                dbc.Col([
-                    dbc.Label("Take Profit Value (%)", html_for="take-profit-value", className="text-light"),
-                    dbc.Input(
-                        id="take-profit-value",
-                        type="number",
-                        min=0,
-                        max=100,
-                        value=4,
-                        step=0.1,
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6)
-            ], className="mb-3"),
-        ])
-    ]
-    
-    # Risk per Trade panel content
-    risk_per_trade_panel = [
-        html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("Max Risk per Trade (%)", html_for="max-risk-per-trade", className="text-light"),
-                    dbc.Input(
-                        id="max-risk-per-trade",
-                        type="number",
-                        min=0,
-                        max=100,
-                        value=1,
-                        step=0.1,
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6),
-                dbc.Col([
-                    dbc.Label("Risk:Reward Ratio", html_for="risk-reward-ratio", className="text-light"),
-                    dbc.Input(
-                        id="risk-reward-ratio",
-                        type="number",
-                        min=0,
-                        max=10,
-                        value=2,
-                        step=0.1,
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6)
-            ], className="mb-3"),
-        ])
-    ]
-    
-    # Market Filter panel content
-    market_filter_panel = [
-        html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("Market Trend Lookback (days)", html_for="market-trend-lookback", className="text-light"),
-                    dbc.Input(
-                        id="market-trend-lookback",
-                        type="number",
-                        min=10,
-                        max=500,
-                        value=100,
-                        step=10,
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6),
-            ], className="mb-3"),
-        ])
-    ]
-    
-    # Drawdown Protection panel content
-    drawdown_protection_panel = [
-        html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Label("Max Drawdown (%)", html_for="max-drawdown", className="text-light"),
-                    dbc.Input(
-                        id="max-drawdown",
-                        type="number",
-                        min=0,
-                        max=100,
-                        value=20,
-                        step=1,
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6),
-                dbc.Col([
-                    dbc.Label("Max Daily Loss (%)", html_for="max-daily-loss", className="text-light"),
-                    dbc.Input(
-                        id="max-daily-loss",
-                        type="number",
-                        min=0,
-                        max=100,
-                        value=5,
-                        step=0.5,
-                        className="bg-dark text-light border-secondary"
-                    )
-                ], width=6)
-            ], className="mb-3"),
-        ])
-    ]
-    
-    # Assemble the card with the new structure
-    card = dbc.Card([
-        dbc.CardHeader("Risk Management", className="bg-dark text-light"),
-        dbc.CardBody([
-            # Title for the risk management section
-            html.H5("Risk Management Features", className="mb-3 text-light"),
-            
-            # Position Sizing feature
-            create_feature_with_panel("Enable Position Sizing Controls", "position_sizing", position_sizing_panel),
-            
-            # Stop Loss feature
-            create_feature_with_panel("Enable Stop Loss", "stop_loss", stop_loss_panel),
-            
-            # Take Profit feature
-            create_feature_with_panel("Enable Take Profit", "take_profit", take_profit_panel),
-            
-            # Risk per Trade feature
-            create_feature_with_panel("Enable Risk per Trade Limits", "risk_per_trade", risk_per_trade_panel),
-            
-            # Market Filter feature
-            create_feature_with_panel("Enable Market Filtering", "market_filter", market_filter_panel),
-            
-            # Drawdown Protection feature
-            create_feature_with_panel("Enable Drawdown Protection", "drawdown_protection", drawdown_protection_panel),
-            
-            # Continue to iterate option
-            dbc.Checklist(
-                options=[
-                    {"label": "Continue to iterate when risk limits are breached", "value": "continue_iterate"},
-                ],
-                value=[],
-                id="continue-iterate-checkbox",
-                inline=False,
-                className="text-light mt-3"
-            ),
-            
-            # Hidden div for storing client-side state
-            html.Div(id='risk-management-client-side-store', style={'display': 'none'}),
-            
-            # Hidden combined checklist to maintain compatibility with existing code
-            dbc.Checklist(
-                id="risk-features-checklist",
-                options=[
-                    {"label": "", "value": "position_sizing"},
-                    {"label": "", "value": "stop_loss"},
-                    {"label": "", "value": "take_profit"},
-                    {"label": "", "value": "risk_per_trade"},
-                    {"label": "", "value": "market_filter"},
-                    {"label": "", "value": "drawdown_protection"},
-                    {"label": "", "value": "continue_iterate"},
-                ],
-                value=[],
-                className="d-none"  # Hidden checklist
-            ),
-        ], className="bg-dark")
-    ], className="border-secondary")
-    
-    return card
+    # Panel visibility callback (This one is correct, depends only on the checklist)
+    @app.callback(
+        [
+            Output("position_sizing-panel", "style"),
+            Output("stop_loss-panel", "style"),
+            Output("take_profit-panel", "style"),
+            Output("risk_per_trade-panel", "style"),
+            Output("market_filter-panel", "style"),
+            Output("drawdown_protection-panel", "style")
+        ],
+        Input("risk-features-checklist", "value"),
+         prevent_initial_call=True # Good practice
+    )
+    def update_panel_visibility(enabled_features: List[str]):
+        """Aktualizuje widoczność paneli na podstawie listy włączonych funkcji"""
+        logger.debug(f"Updating panel visibility based on features: {enabled_features}")
+        features = [
+            "position_sizing", "stop_loss", "take_profit",
+            "risk_per_trade", "market_filter", "drawdown_protection"
+        ]
+
+        # Default style - hidden
+        hidden_style = {"display": "none"}
+        # Style for visible panels
+        visible_style = {"display": "block", "marginLeft": "20px", "marginBottom": "15px"}
+
+        # Ensure enabled_features is a list
+        if enabled_features is None:
+            enabled_features = []
+
+        # For each feature check if it's enabled
+        styles = []
+        for feature in features:
+            if feature in enabled_features:
+                styles.append(visible_style)
+            else:
+                styles.append(hidden_style)
+
+        return styles
+
+    # Register clientside callback to sync checkboxes TO the checklist value
+    # This makes the UI checkboxes reflect the master list state immediately.
+    app.clientside_callback(
+        ClientsideFunction(
+            namespace='clientside',
+            function_name='syncCheckboxesToList'
+        ),
+        [
+            # Outputs are the individual checkboxes
+            Output("position_sizing-checkbox", "value"),
+            Output("stop_loss-checkbox", "value"),
+            Output("take_profit-checkbox", "value"),
+            Output("risk_per_trade-checkbox", "value"),
+            Output("market_filter-checkbox", "value"),
+            Output("drawdown_protection-checkbox", "value"),
+            Output("continue-iterate-checkbox", "value") # Assuming this exists
+        ],
+        # Input is the master checklist
+        [Input("risk-features-checklist", "value")],
+         # prevent_initial_call=False # Allow initial sync
+    )
+    logger.debug("Registered clientside callback syncCheckboxesToList")
+
+    # Server-side callback to update the checklist FROM the checkboxes
+    # This is the one causing the loop. It should ONLY update the checklist.
+    @app.callback(
+        Output("risk-features-checklist", "value"), # Output is ONLY the checklist
+        [
+            # Inputs are the individual checkboxes
+            Input("position_sizing-checkbox", "value"),
+            Input("stop_loss-checkbox", "value"),
+            Input("take_profit-checkbox", "value"),
+            Input("risk_per_trade-checkbox", "value"),
+            Input("market_filter-checkbox", "value"),
+            Input("drawdown_protection-checkbox", "value"),
+            Input("continue-iterate-checkbox", "value") # Assuming this exists
+        ],
+        State("risk-features-checklist", "value"), # Get current checklist value as State
+        prevent_initial_call=True # Prevent firing on load
+    )
+    def update_features_list_from_checkboxes(*args):
+        """Aktualizuje listę włączonych funkcji na podstawie *zmienionego* checkboxa"""
+        # The last argument is the current state of risk-features-checklist
+        current_checklist_value = args[-1] if args[-1] is not None else []
+        # The preceding arguments are the values of the input checkboxes
+        checkbox_values = args[:-1]
+
+        features_order = [
+            "position_sizing", "stop_loss", "take_profit",
+            "risk_per_trade", "market_filter", "drawdown_protection",
+            "continue_iterate" # Assuming this exists
+        ]
+
+        ctx = callback_context
+        if not ctx.triggered:
+            logger.debug("update_features_list_from_checkboxes: No trigger, no update.")
+            return no_update
+
+        # Identify which checkbox triggered the callback
+        trigger_prop_id = ctx.triggered[0]['prop_id']
+        logger.debug(f"update_features_list_from_checkboxes triggered by: {trigger_prop_id}")
+
+        # Rebuild the list based ONLY on the checkbox states
+        selected_features = []
+        for i, feature in enumerate(features_order):
+             # Checkbox value is truthy (e.g., [feature_name] or True) if checked
+            if i < len(checkbox_values) and checkbox_values[i]:
+                selected_features.append(feature)
+
+        # Only update if the calculated list is different from the current state
+        # This helps prevent unnecessary updates and potential loops if state matches
+        if set(selected_features) != set(current_checklist_value):
+            logger.debug(f"Updating risk-features-checklist from checkboxes: {selected_features}")
+            return selected_features
+        else:
+            logger.debug("Checkbox change resulted in same feature list, no update needed.")
+            return no_update
+
+
+    # Store the risk management configuration data (This seems fine)
+    @app.callback(
+        Output('risk-management-store', 'data'),
+        [
+            Input('risk-features-checklist', 'value'),
+            Input('max-position-size', 'value'),
+            Input('max-portfolio-risk', 'value'),
+            Input('stop-loss-type', 'value'),
+            Input('stop-loss-value', 'value'),
+            Input('take-profit-type', 'value'),
+            Input('take-profit-value', 'value'),
+            Input('max-risk-per-trade', 'value'),
+            Input('risk-reward-ratio', 'value'),
+            Input('market-trend-lookback', 'value'),
+            Input('max-drawdown', 'value'),
+            Input('max-daily-loss', 'value')
+        ],
+         prevent_initial_call=True # Good practice
+    )
+    def update_risk_management_store(
+        enabled_features, max_position_size, max_portfolio_risk,
+        stop_loss_type, stop_loss_value, take_profit_type, take_profit_value,
+        max_risk_per_trade, risk_reward_ratio, market_trend_lookback,
+        max_drawdown, max_daily_loss
+    ):
+        """Store all risk management configuration in the risk-management-store"""
+        logger.debug("Updating risk-management-store")
+        risk_config = {
+            "enabled_features": enabled_features or [],
+            "position_sizing": {
+                "max_position_size": max_position_size,
+                "max_portfolio_risk": max_portfolio_risk
+            },
+            "stop_loss": {
+                "type": stop_loss_type,
+                "value": stop_loss_value
+            },
+            "take_profit": {
+                "type": take_profit_type,
+                "value": take_profit_value
+            },
+            "risk_per_trade": {
+                "max_risk_per_trade": max_risk_per_trade,
+                "risk_reward_ratio": risk_reward_ratio
+            },
+            "market_filter": {
+                "trend_lookback": market_trend_lookback
+            },
+            "drawdown_protection": {
+                "max_drawdown": max_drawdown,
+                "max_daily_loss": max_daily_loss
+            }
+        }
+        # Consider adding validation here before returning
+        return risk_config

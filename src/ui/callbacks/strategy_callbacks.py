@@ -1,693 +1,298 @@
-from dash import html, dcc, callback, Output, Input, State, ALL, MATCH, no_update, callback_context
-from dash.exceptions import PreventUpdate
+import dash
+# --- UPDATED IMPORT LINE ---
+from dash import Input, Output, State, callback_context, no_update, ClientsideFunction, ALL
 import dash_bootstrap_components as dbc
+from dash import html, dcc
+from typing import Dict, List, Any, Optional
 import logging
-from typing import List, Dict, Any
+import traceback
 import pandas as pd
-import base64
-import io
-import inspect
+import plotly.graph_objects as go
+import json
+
+# Import strategy logic and constants
+try:
+    from src.core.constants import AVAILABLE_STRATEGIES, STRATEGY_DESCRIPTIONS
+    from src.core.data import DataService
+    from src.ui.layouts.strategy_config import create_strategy_parameters_layout, create_trading_costs_layout, create_rebalancing_layout
+except ImportError:
+    # Handle potential import errors if running script directly or structure changes
+    import sys, os
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(current_dir, '..', '..', '..'))
+    if project_root not in sys.path:
+        sys.path.append(project_root)
+    from src.core.constants import AVAILABLE_STRATEGIES, STRATEGY_DESCRIPTIONS
+    from src.core.data import DataService
+    from src.ui.layouts.strategy_config import create_strategy_parameters_layout, create_trading_costs_layout, create_rebalancing_layout
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Import local modules
-from src.core.constants import AVAILABLE_STRATEGIES
-from src.core.data import DataLoader
-from src.ui.layouts.strategy_config import generate_strategy_parameters
-# Usuwam, gdy nie potrzebujemy tworzyć tej sekcji ponownie
-# from src.ui.layouts.risk_management import create_risk_management_section
-
-def register_strategy_callbacks(app):
+def register_strategy_callbacks(app: dash.Dash) -> None:
     """
-    Register all strategy-related callbacks with the Dash app.
-    
+    Register callbacks related to strategy selection and configuration.
+
     Args:
         app: The Dash application instance
     """
-    
-    # Define strategy descriptions for display
-    strategy_descriptions = {
-        'MA': {
-            'name': 'Moving Average Crossover',
-            'description': [
-                'Uses crossing of two moving averages to generate signals',
-                'Buy when fast MA crosses above slow MA',
-                'Sell when fast MA crosses below slow MA',
-                'Effective in trending markets'
-            ]
-        },
-        'RSI': {
-            'name': 'Relative Strength Index',
-            'description': [
-                'Uses overbought/oversold conditions to generate signals',
-                'Buy when RSI crosses above oversold threshold',
-                'Sell when RSI crosses below overbought threshold',
-                'Effective in ranging markets'
-            ]
-        },
-        'BB': {
-            'name': 'Bollinger Bands',
-            'description': [
-                'Uses price movement relative to volatility bands',
-                'Buy when price touches lower band and starts rising',
-                'Sell when price touches upper band and starts falling',
-                'Adapts to changing market volatility'
-            ]
-        }
-    }
-    
+    logger.info("Registering strategy callbacks...")
+
+    # Callback to update strategy description
     @app.callback(
         Output("strategy-description", "children"),
-        Input("strategy-selector", "value")
+        Input("strategy-selector", "value"),
+         prevent_initial_call=True # Don't update on initial load
     )
-    def update_strategy_description(strategy_type):
+    def update_strategy_description(strategy_name: Optional[str]) -> List[html.P]:
         """
-        Update the strategy description when a strategy is selected.
-        
-        Args:
-            strategy_type: The selected strategy type
-            
-        Returns:
-            List of HTML components with the strategy description
-        """
-        if not strategy_type or strategy_type not in strategy_descriptions:
-            return []
-        
-        description = strategy_descriptions[strategy_type]
-        
-        return [
-            html.H6(description['name'], className="text-light mb-2"),
-            html.Ul([
-                html.Li(point, className="text-light small") 
-                for point in description['description']
-            ], className="ps-3")
-        ]
-    
-    @app.callback(
-        Output("strategy-parameters", "children"),
-        Input("strategy-selector", "value")
-    )
-    def update_strategy_parameters(strategy_type):
-        """
-        Update the strategy parameters UI based on the selected strategy.
-        
-        Args:
-            strategy_type: The selected strategy type
-            
-        Returns:
-            HTML div with strategy-specific parameter controls
-        """
-        if not strategy_type or strategy_type not in AVAILABLE_STRATEGIES:
-            return []
-            
-        strategy_class = AVAILABLE_STRATEGIES[strategy_type]
-        
-        # Extract default params from the strategy class
-        strategy_init = inspect.signature(strategy_class.__init__)
-        params = {}
-        
-        # Skip self parameter
-        for param_name, param in list(strategy_init.parameters.items())[1:]:
-            if param.default is not inspect.Parameter.empty:
-                params[param_name] = param.default
-                
-        if not params:
-            return html.Div(
-                "This strategy has no configurable parameters.",
-                className="text-light font-italic"
-            )
-            
-        # Build parameter inputs
-        parameter_inputs = []
-        
-        for i, (param_name, default_value) in enumerate(params.items()):
-            # Create a more user-friendly name
-            display_name = " ".join(word.capitalize() for word in param_name.split("_"))
-            
-            # Create parameter control based on type
-            if isinstance(default_value, bool):
-                # Boolean parameter gets a switch
-                parameter_control = create_boolean_parameter(param_name, default_value, i)
-            elif isinstance(default_value, int) or isinstance(default_value, float):
-                # Numeric parameters get a slider or number input
-                parameter_control = create_numeric_parameter(param_name, default_value, i)
-            else:
-                # Text parameters get a text input
-                parameter_control = create_text_parameter(param_name, default_value, i)
-            
-            parameter_row = dbc.Row(
-                dbc.Col([
-                    dbc.Label(display_name, html_for=f"param-{param_name}", className="text-light mb-1"),
-                    parameter_control,
-                    html.Small(
-                        f"Default: {default_value}",
-                        className="text-muted d-block mt-1"
-                    )
-                ])
-            )
-            parameter_inputs.append(parameter_row)
-        
-        return html.Div([
-            html.H6("Strategy Parameters", className="text-light mb-3"),
-            *parameter_inputs
-        ], style={"backgroundColor": "#2a2e39", "padding": "15px", "borderRadius": "5px"})
-    
-    @app.callback(
-        [Output("stop-loss-value", "disabled"), 
-         Output("stop-loss-value", "value")],
-        Input("stop-loss-selector", "value")
-    )
-    def toggle_stop_loss(stop_loss_type):
-        """
-        Enable/disable stop loss value input based on selected type.
-        
-        Args:
-            stop_loss_type: Selected stop loss type
-            
-        Returns:
-            Tuple with disabled status and value
-        """
-        if stop_loss_type == "none":
-            return True, 0.0
-        elif stop_loss_type == "percent":
-            return False, 5.0
-        elif stop_loss_type == "atr":
-            return False, 2.0
-        return False, 5.0
-    
-    @app.callback(
-        [Output("risk-per-trade", "disabled"),
-         Output("risk-per-trade", "value")],
-        Input("position-sizing-selector", "value")
-    )
-    def toggle_position_sizing(position_sizing):
-        """
-        Adjust risk per trade input based on position sizing method.
-        
-        Args:
-            position_sizing: Selected position sizing method
-            
-        Returns:
-            Tuple with disabled status and value
-        """
-        if position_sizing == "equal":
-            return True, 0.0
-        elif position_sizing == "fixed_dollar":
-            return False, 1000.0  # Default to $1000 per position
-        elif position_sizing == "percent":
-            return False, 2.0  # Default to 2% risk per trade
-        elif position_sizing == "volatility":
-            return False, 1.0  # Default to 1x ATR risk
-        return False, 2.0
-    
-    # Updated date range callback
-    @app.callback(
-        [Output("date-range-preview", "children"),
-         Output("backtest-start-date", "date"),
-         Output("backtest-end-date", "date")],
-        [Input("backtest-start-date", "date"),
-         Input("backtest-end-date", "date"),
-         Input("date-range-1m", "n_clicks"),
-         Input("date-range-3m", "n_clicks"),
-         Input("date-range-6m", "n_clicks"),
-         Input("date-range-1y", "n_clicks"),
-         Input("date-range-2y", "n_clicks"),
-         Input("date-range-all", "n_clicks")],
-        [State("backtest-start-date", "min_date_allowed"),
-         State("backtest-end-date", "max_date_allowed")],
-        prevent_initial_call=True
-    )
-    def update_date_range(start_date, end_date, n_clicks_1m, n_clicks_3m, n_clicks_6m, 
-                         n_clicks_1y, n_clicks_2y, n_clicks_all, min_date_allowed, max_date_allowed):
-        """
-        Handle date selection through the date pickers or preset buttons
-        """
-        ctx = callback_context
-        if not ctx.triggered:
-            raise PreventUpdate
+        Updates the strategy description area based on the selected strategy.
 
-        triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        
+        Args:
+            strategy_name: The name of the selected strategy.
+
+        Returns:
+            A list of html.P components containing the description.
+        """
+        if not strategy_name:
+            logger.debug("No strategy selected, clearing description.")
+            return [html.P("Select a strategy to see its description.")]
+
+        description = STRATEGY_DESCRIPTIONS.get(strategy_name, "No description available.")
+        logger.debug(f"Displaying description for strategy: {strategy_name}")
+        # Simple formatting: split by newline and wrap each line in P
+        return [html.P(line) for line in description.split('\n')]
+
+    # Callback to update the parameter, costs, and rebalancing sections based on selected strategy
+    @app.callback(
+        [
+            Output("strategy-parameters-content", "children"),
+            Output("trading-costs-content", "children"),
+            Output("rebalancing-rules-content", "children"),
+            Output("strategy-config-store", "data") # Store the full config
+        ],
+        Input("strategy-selector", "value"),
+        # --- REMOVED Input('summary-strategy', 'children') ---
+        # This Input was causing the "nonexistent object" error.
+        # State("strategy-config-store", "data"), # Keep state if needed for merging later
+         prevent_initial_call=True # Important: Run only when strategy changes
+    )
+    def update_config_sections(strategy_name: Optional[str]): # removed current_config
+        """
+        Updates the configuration sections (parameters, costs, rebalancing)
+        when a new strategy is selected. Stores the default config for the strategy.
+
+        Args:
+            strategy_name: The name of the selected strategy.
+            # current_config: The existing configuration from the store (if needed).
+
+        Returns:
+            Tuple containing the new layouts for parameters, costs, rebalancing,
+            and the default configuration data for the selected strategy.
+        """
+        if not strategy_name:
+            logger.debug("No strategy selected, clearing config sections.")
+            # Return empty layouts and empty config
+            return [], [], [], {}
+
+        logger.info(f"Updating config sections for strategy: {strategy_name}")
         try:
-            data_loader = DataLoader()
-            min_date, max_date = data_loader.get_date_range()
-            now = pd.Timestamp.now()
-            
-            # For preset buttons
-            if triggered_id.startswith("date-range-"):
-                if triggered_id == "date-range-1m":
-                    start_date_obj = now - pd.DateOffset(months=1)
-                    end_date_obj = now
-                elif triggered_id == "date-range-3m":
-                    start_date_obj = now - pd.DateOffset(months=3)
-                    end_date_obj = now
-                elif triggered_id == "date-range-6m":
-                    start_date_obj = now - pd.DateOffset(months=6)
-                    end_date_obj = now
-                elif triggered_id == "date-range-1y":
-                    start_date_obj = now - pd.DateOffset(years=1)
-                    end_date_obj = now
-                elif triggered_id == "date-range-2y":
-                    start_date_obj = now - pd.DateOffset(years=2)
-                    end_date_obj = now
-                elif triggered_id == "date-range-all":
-                    start_date_obj = min_date if min_date else pd.Timestamp('2020-01-01')
-                    end_date_obj = max_date if max_date else now
-                
-                # Format for date picker
-                start_date = start_date_obj.strftime('%Y-%m-%d')
-                end_date = end_date_obj.strftime('%Y-%m-%d')
-            # Date picker changes
-            else:
-                if not start_date or not end_date:
-                    raise PreventUpdate
-                    
-                # Parse dates
-                start_date_obj = pd.to_datetime(start_date)
-                end_date_obj = pd.to_datetime(end_date)
-                
-                # Ensure end date is not before start date
-                if end_date_obj < start_date_obj:
-                    if triggered_id == "backtest-start-date":
-                        end_date_obj = start_date_obj
-                        end_date = start_date
-                    else:
-                        start_date_obj = end_date_obj
-                        start_date = end_date
-            
-            # Create preview text
-            preview_text = f"Selected period: {start_date} to {end_date}"
-            
-            return preview_text, start_date, end_date
-            
+            strategy_class = AVAILABLE_STRATEGIES.get(strategy_name)
+            if not strategy_class:
+                logger.warning(f"Strategy class not found for {strategy_name}")
+                return [], [], [], {}
+
+            # Instantiate the strategy to get default parameters
+            strategy_instance = strategy_class()
+            default_params = strategy_instance.get_parameters()
+
+            # Create layouts based on default parameters
+            params_layout = create_strategy_parameters_layout(strategy_name, default_params)
+            costs_layout = create_trading_costs_layout() # Assuming defaults are handled here
+            rebalancing_layout = create_rebalancing_layout() # Assuming defaults are handled here
+
+            # Prepare default config for the store
+            # Combine defaults from all sections
+            default_config = {
+                "strategy_name": strategy_name,
+                "parameters": default_params,
+                "trading_costs": { # Add default cost values
+                    "commission_type": "percentage",
+                    "commission_value": 0.001, # Example: 0.1%
+                    "slippage_type": "percentage",
+                    "slippage_value": 0.0005 # Example: 0.05%
+                },
+                "rebalancing": { # Add default rebalancing values
+                    "frequency": "monthly",
+                    "threshold": 0.05 # Example: 5%
+                }
+            }
+            logger.debug(f"Generated default config for {strategy_name}: {default_config}")
+
+            return params_layout, costs_layout, rebalancing_layout, default_config
+
         except Exception as e:
-            logger.error(f"Error in update_date_range: {e}")
-            # Return existing values if there's an error
-            return f"Selected period: {start_date} to {end_date}", start_date, end_date
+            logger.error(f"Error updating config sections for {strategy_name}: {e}", exc_info=True)
+            # Return error message in layouts and empty config
+            error_msg = f"Error loading config for {strategy_name}."
+            return html.P(error_msg, className="text-danger"), \
+                   html.P(error_msg, className="text-danger"), \
+                   html.P(error_msg, className="text-danger"), \
+                   {}
 
-    # Remove the problematic duplicate date range callbacks
-    
-    # --- CAŁKOWITA REORGANIZACJA CALLBACKÓW TICKERÓW ---
-    # Usunięcie wszystkich poprzednich callbacków dotyczących tickerów
-    # i zastąpienie ich nowymi, lepiej zorganizowanymi callbackami
-    
-    # 1. Callback do filtrowania widoczności tickerów (tylko UI, nie wpływa na stan)
+
+    # Callback to update strategy config store when individual parameters change
+    # This uses MATCH for dynamic parameter inputs
     @app.callback(
-        Output({"type": "ticker-checkbox-container", "index": ALL}, "style"),
-        Input("ticker-search", "value"),
-        State({"type": "ticker-checkbox", "index": ALL}, "id")
-    )
-    def filter_ticker_visibility(search_term, checkbox_ids):
-        """
-        Filtruje widoczność tickerów na podstawie wyszukiwania.
-        """
-        styles = []
-        if not search_term:
-            # Jeśli nie ma filtra, pokaż wszystkie
-            return [{"display": "block"} for _ in checkbox_ids]
-        
-        # Filtruj według wyszukiwanego tekstu
-        for ticker in checkbox_ids:
-            ticker_name = ticker["index"]
-            if search_term.lower() in ticker_name.lower():
-                styles.append({"display": "block"})
-            else:
-                styles.append({"display": "none"})
-        
-        return styles
-    
-    # 2. Główny callback do obsługi akcji przycisków Select All i Clear All
-    @app.callback(
-        Output({"type": "ticker-checkbox", "index": ALL}, "value"),
-        [Input("select-all-tickers", "n_clicks"),
-         Input("clear-all-tickers", "n_clicks")],
-        [State({"type": "ticker-checkbox", "index": ALL}, "id"),
-         State({"type": "ticker-checkbox", "index": ALL}, "value"),
-         State("ticker-search", "value")]
-    )
-    def handle_ticker_selection_buttons(select_clicks, clear_clicks, 
-                                       checkbox_ids, current_values, search_filter):
-        """
-        Obsługuje przyciski "Select All" i "Clear All" dla tickerów.
-        """
-        if not checkbox_ids:
-            raise PreventUpdate
-        
-        ctx = callback_context
-        if not ctx.triggered:
-            raise PreventUpdate
-        
-        # Sprawdź który przycisk został kliknięty
-        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        
-        # Użyj bieżących wartości lub utwórz nowe jeśli nie istnieją
-        values = list(current_values) if current_values else [False] * len(checkbox_ids)
-        
-        # Określ widoczne tickery (według filtra)
-        visible_tickers = []
-        for i, ticker in enumerate(checkbox_ids):
-            ticker_name = ticker["index"]
-            if not search_filter or search_filter.lower() in ticker_name.lower():
-                visible_tickers.append(i)
-        
-        # Wykonaj odpowiednią akcję
-        if button_id == "select-all-tickers":
-            # Zaznacz wszystkie widoczne
-            for i in visible_tickers:
-                values[i] = True
-        elif button_id == "clear-all-tickers":
-            # Odznacz wszystkie widoczne
-            for i in visible_tickers:
-                values[i] = False
-        
-        logger.info(f"Zaktualizowano wybór tickerów po akcji: {button_id}")
-        return values
-    
-    # 3. Oddzielny callback do synchronizacji stanu przycisku "Run Backtest" i komponentu ticker-selector
-    @app.callback(
-        [Output("run-backtest-button", "disabled"),
-         Output("ticker-selector", "value")],
-        [Input({"type": "ticker-checkbox", "index": ALL}, "value"),
-         Input("wizard-progress", "value"),
-         Input("summary-strategy", "children"),
-         Input("summary-tickers", "children")],
-        State({"type": "ticker-checkbox", "index": ALL}, "id")
-    )
-    def update_run_backtest_button(checkbox_values, progress, strategy, tickers, checkbox_ids):
-        """
-        Update the state of the "Run Backtest" button and the selected tickers list.
-        """
-        if not checkbox_values or not checkbox_ids:
-            return True, []
-
-        # Check if any ticker is selected
-        any_selected = any(checkbox_values)
-
-        # Gather selected tickers for the ticker-selector component
-        selected_tickers = []
-        for i, is_checked in enumerate(checkbox_values):
-            if is_checked and i < len(checkbox_ids):
-                selected_tickers.append(checkbox_ids[i]["index"])
-
-        # Set disabled=True if no tickers are selected
-        button_disabled = not any_selected
-
-        logger.info(f"Run Backtest button state updated: disabled={button_disabled}, {len(selected_tickers)} tickers selected")
-        return button_disabled, selected_tickers
-
-    @app.callback(
-        Output("import-tickers-modal", "is_open"),
-        [Input("import-tickers", "n_clicks"),
-         Input("import-tickers-close", "n_clicks"),
-         Input("import-tickers-submit", "n_clicks")],
-        [State("import-tickers-modal", "is_open")]
-    )
-    def toggle_import_modal(open_clicks, close_clicks, submit_clicks, is_open):
-        """
-        Toggle the import tickers modal.
-        """
-        if open_clicks or close_clicks or submit_clicks:
-            return not is_open
-        return is_open
-
-    # New unified callback to handle wizard steps properly
-    @app.callback(
-        [Output("wizard-progress", "value"),
-         Output("step1-collapse", "is_open"),
-         Output("step2-collapse", "is_open"),
-         Output("step3-collapse", "is_open"),
-         Output("step1-summary-collapse", "is_open"),
-         Output("step2-summary-collapse", "is_open"),
-         Output("step3-summary-collapse", "is_open"),
-         Output("step1-status", "className"),
-         Output("step2-status", "className"),
-         Output("step3-status", "className"),
-         Output("step1-header-card", "className"),
-         Output("step2-header-card", "className"),
-         Output("step3-header-card", "className")],
-        [Input("confirm-step1-btn", "n_clicks"),
-         Input("confirm-step2-btn", "n_clicks"),
-         Input("step1-header-card", "n_clicks"),
-         Input("step2-header-card", "n_clicks"),
-         Input("step3-header-card", "n_clicks")],
-        State("wizard-progress", "value"),
+        Output("strategy-config-store", "data", allow_duplicate=True), # allow_duplicate is crucial here
+        [
+            # Inputs for parameters (dynamic)
+            Input({"type": "strategy-param", "strategy": ALL, "param": ALL}, "value"),
+            # Inputs for trading costs
+            Input("commission-type-selector", "value"),
+            Input("commission-value-input", "value"),
+            Input("slippage-type-selector", "value"),
+            Input("slippage-value-input", "value"),
+            # Inputs for rebalancing
+            Input("rebalancing-frequency-selector", "value"),
+            Input("rebalancing-threshold-input", "value")
+        ],
+        State("strategy-config-store", "data"), # Get the current config
         prevent_initial_call=True
     )
-    def handle_wizard_steps(confirm_step1, confirm_step2, 
-                           click_step1, click_step2, click_step3, 
-                           current_progress):
+    def update_config_store_from_inputs(*args):
         """
-        Handle wizard step transitions and UI state
+        Updates the strategy-config-store whenever any individual
+        configuration input (parameter, cost, rebalancing) changes.
+
+        Args:
+            *args: All input values followed by the current store data state.
+
+        Returns:
+            The updated configuration dictionary for the store.
         """
         ctx = callback_context
-        if not ctx.triggered:
-            # Initial state
-            return (
-                0,  # progress value
-                True, False, False,  # step collapses
-                False, False, False,  # summary collapses
-                "", "", "",  # step status icons
-                "mb-2", "mb-2", "mb-2"  # header card classes
-            )
-        
-        # Get the ID of the element that triggered the callback
-        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        
-        # Default values that will be updated based on trigger
-        step1_open = False
-        step2_open = False
-        step3_open = False
-        step1_summary = False
-        step2_summary = False 
-        step3_summary = False
-        step1_status = ""
-        step2_status = ""
-        step3_status = ""
-        step1_header = "mb-2"
-        step2_header = "mb-2"
-        step3_header = "mb-2"
-        progress = current_progress or 0
-        
-        # Process wizard step transitions based on trigger
-        if trigger_id == "confirm-step1-btn":
-            # User completed Step 1, move to Step 2
-            step1_open = False
-            step2_open = True 
-            step3_open = False
-            step1_summary = True
-            step1_status = "fas fa-check text-success"
-            progress = 33
-            step1_header = "mb-2 border-success"
-        elif trigger_id == "confirm-step2-btn":
-            # User completed Step 2, move to Step 3
-            step1_open = False
-            step2_open = False
-            step3_open = True
-            step1_summary = True
-            step2_summary = True
-            step1_status = "fas fa-check text-success"
-            step2_status = "fas fa-check text-success"
-            progress = 66
-            step1_header = "mb-2 border-success"
-            step2_header = "mb-2 border-success"
-        elif trigger_id == "step1-header-card":
-            # User clicked Step 1 header
-            step1_open = True
-            step2_open = False
-            step3_open = False
-            step1_summary = False if progress < 33 else True
-            step2_summary = True if progress >= 66 else False
-            step1_header = "mb-2 border-primary"
-        elif trigger_id == "step2-header-card":
-            # User clicked Step 2 header
-            if progress >= 33:  # Only allow if Step 1 was completed
-                step1_open = False
-                step2_open = True
-                step3_open = False
-                step1_summary = True
-                step2_summary = False if progress < 66 else True
-                step2_header = "mb-2 border-primary"
-        elif trigger_id == "step3-header-card":
-            # User clicked Step 3 header
-            if progress >= 66:  # Only allow if Step 2 was completed
-                step1_open = False
-                step2_open = False
-                step3_open = True
-                step1_summary = True
-                step2_summary = True
-                step3_header = "mb-2 border-primary"
-        
-        # Update status icons based on progress
-        if progress >= 33:
-            step1_status = "fas fa-check text-success"
-        if progress >= 66:
-            step2_status = "fas fa-check text-success"
-        if progress >= 100:
-            step3_status = "fas fa-check text-success"
-            
-        logger.info(f"Wizard step transition: trigger={trigger_id}, progress={progress}")
-        
-        return (
-            progress,
-            step1_open, step2_open, step3_open,
-            step1_summary, step2_summary, step3_summary,
-            step1_status, step2_status, step3_status,
-            step1_header, step2_header, step3_header
-        )
+        if not ctx.triggered or not ctx.inputs_list:
+            logger.debug("Config store update: No trigger.")
+            return no_update
 
-    # Create summaries of each step's content
+        # The last argument is the State (current store data)
+        current_config = args[-1] or {}
+        # All preceding arguments are the Input values
+        input_values = args[:-1]
+
+        # Deep copy to avoid modifying the original state directly
+        updated_config = json.loads(json.dumps(current_config))
+
+        # Get triggered component info
+        triggered_prop_id_str = ctx.triggered[0]['prop_id']
+        triggered_value = ctx.triggered[0]['value']
+        logger.debug(f"Config store update triggered by: {triggered_prop_id_str} = {triggered_value}")
+
+        # Check if the trigger is a dynamic parameter
+        if ".value" in triggered_prop_id_str:
+            try:
+                prop_id_dict = json.loads(triggered_prop_id_str.split(".")[0])
+                if prop_id_dict.get("type") == "strategy-param":
+                    param_name = prop_id_dict.get("param")
+                    strategy_name = prop_id_dict.get("strategy") # Get strategy from ID
+
+                    # Ensure strategy name matches the one in store (or initialize if needed)
+                    if updated_config.get("strategy_name") == strategy_name and param_name:
+                        if "parameters" not in updated_config:
+                            updated_config["parameters"] = {}
+                        updated_config["parameters"][param_name] = triggered_value
+                        logger.debug(f"Updated param '{param_name}' to {triggered_value}")
+                    else:
+                         logger.warning(f"Strategy mismatch or param_name missing. Trigger: {prop_id_dict}, Store: {updated_config.get('strategy_name')}")
+
+
+                # --- Handle specific cost and rebalancing inputs ---
+                elif prop_id_dict == "commission-type-selector":
+                     if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
+                     updated_config["trading_costs"]["commission_type"] = triggered_value
+                elif prop_id_dict == "commission-value-input":
+                     if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
+                     updated_config["trading_costs"]["commission_value"] = triggered_value
+                elif prop_id_dict == "slippage-type-selector":
+                     if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
+                     updated_config["trading_costs"]["slippage_type"] = triggered_value
+                elif prop_id_dict == "slippage-value-input":
+                     if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
+                     updated_config["trading_costs"]["slippage_value"] = triggered_value
+                elif prop_id_dict == "rebalancing-frequency-selector":
+                     if "rebalancing" not in updated_config: updated_config["rebalancing"] = {}
+                     updated_config["rebalancing"]["frequency"] = triggered_value
+                elif prop_id_dict == "rebalancing-threshold-input":
+                     if "rebalancing" not in updated_config: updated_config["rebalancing"] = {}
+                     updated_config["rebalancing"]["threshold"] = triggered_value
+
+            except (json.JSONDecodeError, AttributeError, KeyError) as e:
+                logger.error(f"Error parsing triggered ID or updating config: {e} | ID: {triggered_prop_id_str}")
+                return no_update # Avoid corrupting the store
+
+        # Compare if config actually changed before returning
+        if updated_config != current_config:
+            logger.debug(f"Updated strategy-config-store: {updated_config}")
+            return updated_config
+        else:
+            logger.debug("Config store update: No actual change detected.")
+            return no_update
+
+
+    # Callback to control accordion visibility/expansion (Example)
+    # This needs to be adapted based on your actual accordion structure
+    # Assuming you have dbc.Accordion with items having item_id like "config-item-params", etc.
     @app.callback(
-        [Output("step1-content-summary", "children"),
-         Output("step2-content-summary", "children"),
-         Output("step3-content-summary", "children"),
-         Output("step1-header-summary", "children"),
-         Output("step2-header-summary", "children"),
-         Output("step3-header-summary", "children")],
-        [Input("strategy-selector", "value"),
-         Input("slider-start-date-picker", "date"),
-         Input("slider-end-date-picker", "date"),
-         Input({"type": "ticker-checkbox", "index": ALL}, "value"),
-         Input("risk-features-checklist", "value"),
-         Input("stop-loss-type", "value"),
-         Input("stop-loss-value", "value"),
-         Input("wizard-progress", "value")],
-        [State({"type": "ticker-checkbox", "index": ALL}, "id"),
-         State("wizard-state", "data")]
+        Output("config-accordion", "active_item"), # Assuming accordion ID is "config-accordion"
+        Input("confirm-strategy", "n_clicks"),
+        Input("confirm-parameters", "n_clicks"), # Need button for this
+        Input("confirm-tickers", "n_clicks"),    # Need button for this
+        Input("confirm-risk", "n_clicks"),
+        Input("confirm-costs", "n_clicks"),
+        Input("confirm-rebalancing", "n_clicks"), # Need button for this
+        prevent_initial_call=True
     )
-    def update_step_summaries(strategy, start_date, end_date, 
-                             ticker_values, risk_features,
-                             stop_loss_type, stop_loss_value, wizard_progress,
-                             ticker_ids, wizard_state):
-        """
-        Update the summaries for each wizard step
-        """
-        if not wizard_progress:
-            # No progress yet, don't update summaries
-            return ["", "", "", "", "", ""]
-            
-        # Calculate selected tickers
-        selected_tickers = []
-        if ticker_ids and ticker_values:
-            for i, is_selected in enumerate(ticker_values):
-                if is_selected and i < len(ticker_ids):
-                    selected_tickers.append(ticker_ids[i]["index"])
-                    
-        # Format dates for display
-        date_range = f"{start_date} to {end_date}" if start_date and end_date else "Not set"
-        
-        # Create Step 1 Summary
-        step1_summary = html.Div([
-            html.H6("Strategy & Assets", className="mb-2"),
-            dbc.Row([
-                dbc.Col([
-                    html.Strong("Strategy: "),
-                    html.Span(strategy or "None selected")
-                ], width=6),
-                dbc.Col([
-                    html.Strong("Date Range: "),
-                    html.Span(date_range)
-                ], width=6)
-            ]),
-            dbc.Row([
-                dbc.Col([
-                    html.Strong("Selected Tickers: "),
-                    html.Span(
-                        f"{len(selected_tickers)} tickers" if selected_tickers else "None"
-                    )
-                ], width=12)
-            ])
-        ])
-        
-        step1_header = f"{strategy or 'No strategy'}, {len(selected_tickers)} assets"
-        
-        # Create Step 2 Summary
-        if wizard_progress >= 33:
-            enabled_features = risk_features or []
-            risk_summary = ", ".join([f.replace("_", " ").title() for f in enabled_features]) if enabled_features else "None"
-            
-            step2_summary = html.Div([
-                html.H6("Risk Management", className="mb-2"),
-                dbc.Row([
-                    dbc.Col([
-                        html.Strong("Enabled Features: "),
-                        html.Span(risk_summary)
-                    ], width=12)
-                ]),
-                dbc.Row([
-                    dbc.Col([
-                        html.Strong("Stop Loss: "),
-                        html.Span(
-                            f"{stop_loss_type} ({stop_loss_value})" if stop_loss_type != "none" else "None"
-                        )
-                    ], width=12)
-                ])
-            ])
-            
-            step2_header = f"{len(enabled_features)} risk features"
-        else:
-            step2_summary = ""
-            step2_header = ""
-            
-        # Create Step 3 Summary
-        if wizard_progress >= 66:
-            step3_summary = html.Div([
-                html.H6("Ready to Run", className="mb-2"),
-                html.P("Configuration complete. Click Run Backtest to execute.")
-            ])
-            
-            step3_header = "Ready to run"
-        else:
-            step3_summary = ""
-            step3_header = ""
-            
-        return [step1_summary, step2_summary, step3_summary, step1_header, step2_header, step3_header]
+    def control_accordion_steps(strat_clicks, param_clicks, ticker_clicks, risk_clicks, cost_clicks, rebal_clicks):
+        ctx = callback_context
+        if not ctx.triggered:
+            return "config-item-strategy" # Start with strategy open
 
-def create_boolean_parameter(param_name, default_value, index):
-    """Creates a boolean parameter input."""
-    return dbc.Checkbox(
-        id={"type": "strategy-param", "index": param_name},
-        value=default_value,
-        className="form-check-input"
-    )
-    
-def create_numeric_parameter(param_name, default_value, index):
-    """Creates a numeric parameter input."""
-    # Determine if integer or float
-    step = 1 if isinstance(default_value, int) else 0.1
-    
-    # Set reasonable min/max based on parameter name and default value
-    if "period" in param_name.lower() or "window" in param_name.lower():
-        # For periods or windows, range from 2 to 200
-        min_val = 2
-        max_val = 200
-    elif "threshold" in param_name.lower() or "level" in param_name.lower():
-        # For thresholds, range from 0 to 100
-        min_val = 0
-        max_val = 100
-    else:
-        # Default ranges
-        min_val = 0 if default_value > 0 else default_value * 2
-        max_val = default_value * 5 if default_value > 0 else abs(default_value) * 5
-        max_val = max(max_val, min_val + 10*step)
-    
-    return dbc.InputGroup([
-        dbc.Input(
-            id={"type": "strategy-param", "index": param_name},
-            type="number",
-            value=default_value,
-            step=step,
-            min=min_val,
-            max=max_val,
-            className="bg-dark text-light border-secondary"
-        )
-    ])
-    
-def create_text_parameter(param_name, default_value, index):
-    """Creates a text parameter input."""
-    return dbc.Input(
-        id={"type": "strategy-param", "index": param_name},
-        type="text",
-        value=str(default_value),
-        className="bg-dark text-light border-secondary"
-    )
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+        # Define the order of accordion items
+        steps = {
+            "confirm-strategy": "config-item-tickers", # Next is tickers
+            "confirm-tickers": "config-item-parameters", # Next is params
+            "confirm-parameters": "config-item-risk", # Next is risk
+            "confirm-risk": "config-item-costs",
+            "confirm-costs": "config-item-rebalancing",
+            "confirm-rebalancing": None # Stay on last step or collapse all?
+            # Add logic for going back if needed
+        }
+
+        next_item = steps.get(trigger_id)
+        logger.debug(f"Accordion trigger: {trigger_id}, next item: {next_item}")
+        if next_item:
+            return next_item
+        elif trigger_id == "confirm-rebalancing":
+             # Decide what happens after the last step
+             return "config-item-rebalancing" # Stay open
+             # return None # Collapse all
+        else:
+            return no_update # Or return current active item using State
+
+    logger.info("Strategy callbacks registered.")
+
+# Note: The accordion callback above is a basic example.
+# You need corresponding dbc.Accordion and dbc.AccordionItem components in your layout
+# (likely in src/ui/layouts/strategy_config.py) with matching IDs like:
+# dbc.Accordion(id="config-accordion", active_item="config-item-strategy", children=[
+#     dbc.AccordionItem(..., title="Step 1: Strategy Selection", item_id="config-item-strategy"),
+#     dbc.AccordionItem(..., title="Step 2: Tickers", item_id="config-item-tickers"),
+#     dbc.AccordionItem(..., title="Step 3: Parameters", item_id="config-item-parameters"),
+#     dbc.AccordionItem(..., title="Step 4: Risk Management", item_id="config-item-risk"),
+#     dbc.AccordionItem(..., title="Step 5: Trading Costs", item_id="config-item-costs"),
+#     dbc.AccordionItem(..., title="Step 6: Rebalancing", item_id="config-item-rebalancing"),
+# ])
+# You also need the corresponding "Confirm" buttons within each accordion item.
