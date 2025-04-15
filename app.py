@@ -29,92 +29,163 @@ def configure_client_side_logging():
     return html.Div([
         dcc.Location(id='url', refresh=False),
         html.Div(id='client-error-container'),
-        # Script to capture JavaScript errors
+        # Include the error tracking JavaScript directly to ensure it's loaded
         html.Script('''
-        window.dash_clientside = Object.assign({}, window.dash_clientside, {
-            clientside: {
-                capture_errors: function() {
-                    // Zapisywanie oryginalnych funkcji konsolowych
-                    var originalConsoleLog = console.log;
-                    var originalConsoleError = console.error;
-                    var originalConsoleWarn = console.warn;
-                    
-                    // Bufory dla komunikatów
-                    var logMessages = [];
-                    var errorMessages = [];
-                    var warnMessages = [];
-                    
-                    // Zastąpienie funkcji konsolowych
-                    console.log = function() {
-                        var args = Array.prototype.slice.call(arguments);
-                        logMessages.push("[LOG] " + args.join(' '));
-                        originalConsoleLog.apply(console, arguments);
+        (function() {
+            console.log("Initializing inline error capture");
+            
+            // Store original console functions
+            var originalConsoleLog = console.log;
+            var originalConsoleError = console.error;
+            var originalConsoleWarn = console.warn;
+            
+            // Buffers for messages
+            var logMessages = [];
+            var errorMessages = [];
+            var warnMessages = [];
+            
+            // Override console.error to capture Dash errors
+            console.error = function() {
+                var args = Array.prototype.slice.call(arguments);
+                errorMessages.push("[ERROR] " + args.join(' '));
+                originalConsoleError.apply(console, arguments);
+                
+                // Send Dash errors immediately
+                var errorMsg = args.join(' ');
+                if (errorMsg.includes('Dash') || 
+                    errorMsg.includes('callback') || 
+                    errorMsg.includes('nonexistent object') ||
+                    errorMsg.includes('component') ||
+                    errorMsg.includes('Input') || 
+                    errorMsg.includes('Output')) {
+                    sendLogs();
+                }
+            };
+            
+            // Override console.warn
+            console.warn = function() {
+                var args = Array.prototype.slice.call(arguments);
+                warnMessages.push("[WARN] " + args.join(' '));
+                originalConsoleWarn.apply(console, arguments);
+            };
+            
+            // Override console.log
+            console.log = function() {
+                var args = Array.prototype.slice.call(arguments);
+                logMessages.push("[LOG] " + args.join(' '));
+                originalConsoleLog.apply(console, arguments);
+            };
+            
+            // Listen for uncaught errors
+            window.addEventListener('error', function(event) {
+                errorMessages.push("[UNCAUGHT] " + event.message + " at " + event.filename + ":" + event.lineno);
+                sendLogs();
+                return false;
+            });
+            
+            // Send logs every 3 seconds if there are any
+            setInterval(sendLogs, 3000);
+            
+            function sendLogs() {
+                if (errorMessages.length > 0 || warnMessages.length > 0 || logMessages.length > 0) {
+                    var allMessages = {
+                        errors: errorMessages,
+                        warnings: warnMessages,
+                        logs: logMessages
                     };
                     
-                    console.error = function() {
-                        var args = Array.prototype.slice.call(arguments);
-                        errorMessages.push("[ERROR] " + args.join(' '));
-                        originalConsoleError.apply(console, arguments);
-                    };
-                    
-                    console.warn = function() {
-                        var args = Array.prototype.slice.call(arguments);
-                        warnMessages.push("[WARN] " + args.join(' '));
-                        originalConsoleWarn.apply(console, arguments);
-                    };
-                    
-                    // Okresowe wysyłanie logów do serwera
-                    setInterval(function() {
-                        if (errorMessages.length > 0 || warnMessages.length > 0 || logMessages.length > 0) {
-                            var allMessages = {
-                                errors: errorMessages,
-                                warnings: warnMessages,
-                                logs: logMessages
-                            };
-                            
-                            fetch('/log-client-errors', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify(allMessages)
-                            }).then(function() {
-                                // Wyczyszczenie buforów po wysłaniu
-                                errorMessages = [];
-                                warnMessages = [];
-                                logMessages = [];
-                            });
-                        }
-                    }, 5000);
-                    
-                    // Nasłuchiwanie niezłapanych błędów
-                    window.addEventListener('error', function(event) {
-                        errorMessages.push("[UNCAUGHT] " + event.message + " at " + event.filename + ":" + event.lineno);
-                        return false;
+                    fetch('/log-client-errors', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(allMessages)
+                    }).then(function() {
+                        // Clear buffers after sending
+                        errorMessages = [];
+                        warnMessages = [];
+                        logMessages = [];
+                    }).catch(function(err) {
+                        originalConsoleError.call(console, "Error sending logs:", err);
                     });
-                    
-                    return window.dash_clientside;
                 }
             }
-        });
+            
+            // Create visual error counter
+            function createErrorCounter() {
+                var errorCount = errorMessages.length;
+                var counter = document.getElementById('browser-errors-count');
+                
+                if (!counter && errorCount > 0) {
+                    counter = document.createElement('div');
+                    counter.id = 'browser-errors-count';
+                    counter.style.position = 'fixed';
+                    counter.style.bottom = '10px';
+                    counter.style.right = '10px';
+                    counter.style.backgroundColor = 'red';
+                    counter.style.color = 'white';
+                    counter.style.padding = '5px 10px';
+                    counter.style.borderRadius = '10px';
+                    counter.style.fontWeight = 'bold';
+                    counter.style.zIndex = '9999';
+                    counter.style.cursor = 'pointer';
+                    counter.title = 'Click to view error details';
+                    
+                    counter.onclick = function() {
+                        sendLogs();
+                        alert('Logged ' + errorCount + ' errors to backtest.log file');
+                    };
+                    
+                    document.body.appendChild(counter);
+                }
+                
+                if (counter) {
+                    counter.textContent = errorCount;
+                    counter.style.display = errorCount > 0 ? 'block' : 'none';
+                }
+            }
+            
+            // Update counter periodically
+            setInterval(createErrorCounter, 1000);
+            
+            // Also capture DOM errors through mutation observer
+            var observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+                        for (var i = 0; i < mutation.addedNodes.length; i++) {
+                            var node = mutation.addedNodes[i];
+                            if (node.nodeType === 1) {  // Element node
+                                var errorElements = node.querySelectorAll('.dash-error');
+                                if (errorElements.length > 0) {
+                                    errorElements.forEach(function(errorEl) {
+                                        var errorMsg = errorEl.textContent || errorEl.innerText;
+                                        errorMessages.push("[DASH DOM] " + errorMsg);
+                                    });
+                                    sendLogs();
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+            
+            // Start observing once DOM is ready
+            document.addEventListener('DOMContentLoaded', function() {
+                observer.observe(document.body, { childList: true, subtree: true });
+                console.log("Error observer started");
+                sendLogs(); // Send initial message
+            });
+        })();
         '''),
-        # Store to trigger clientside callback
-        dcc.Store(id='error-tracker-store')
+        # No need for the store component since we're using direct JS
     ])
 
-# Register the clientside callback separately
 def register_client_side_logging(app):
     """Register the client-side logging callback with the app"""
-    from dash import Output, Input
-    app.clientside_callback(
-        ClientsideFunction(
-            namespace='clientside',
-            function_name='capture_errors'
-        ),
-        Output('error-tracker-store', 'data'),  # Use a real Output with the store we created
-        Input('url', 'pathname'),  # Use a real Input that will trigger the callback
-        prevent_initial_call=True
-    )
+    # We're now using a direct inline script approach instead of callbacks
+    # This function is kept for backwards compatibility
+    logger.info("Client-side error logging enabled with direct script injection")
+    pass
 
 def apply_format_patches():
     """Apply runtime patches to fix invalid DataTable format strings."""
@@ -275,28 +346,44 @@ try:
         def log_client_errors():
             from flask import request, jsonify
             import json
+            import datetime
             
             try:
                 data = request.json
                 
-                # Log errors
-                if 'errors' in data and data['errors']:
-                    for error in data['errors']:
-                        logger.error(f"CLIENT: {error}")
-                        
-                # Log warnings
-                if 'warnings' in data and data['warnings']:
-                    for warning in data['warnings']:
-                        logger.warning(f"CLIENT: {warning}")
-                        
-                # Log info messages
-                if 'logs' in data and data['logs']:
-                    for log in data['logs']:
-                        logger.info(f"CLIENT: {log}")
-                        
-                return jsonify({"status": "success"}), 200
+                # Bezpośrednie zapisanie do pliku dla pewności
+                with open('dash_errors.log', 'a', encoding='utf-8') as f:
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    # Log errors
+                    if 'errors' in data and data['errors']:
+                        for error in data['errors']:
+                            error_line = f"{timestamp} - DASH ERROR: {error}\n"
+                            f.write(error_line)
+                            logger.error(f"CLIENT: {error}")
+                            
+                    # Log warnings
+                    if 'warnings' in data and data['warnings']:
+                        for warning in data['warnings']:
+                            warning_line = f"{timestamp} - DASH WARNING: {warning}\n"
+                            f.write(warning_line)
+                            logger.warning(f"CLIENT: {warning}")
+                            
+                    # Log info messages
+                    if 'logs' in data and data['logs']:
+                        for log in data['logs']:
+                            log_line = f"{timestamp} - DASH INFO: {log}\n"
+                            f.write(log_line)
+                            logger.info(f"CLIENT: {log}")
+                            
+                return jsonify({"status": "success", "message": "Logs saved to dash_errors.log"}), 200
             except Exception as e:
                 logger.error(f"Error processing client logs: {e}", exc_info=True)
+                # Również zapisz błąd do pliku
+                with open('dash_errors.log', 'a', encoding='utf-8') as f:
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    f.write(f"{timestamp} - LOGGING ERROR: {str(e)}\n")
+                    
                 return jsonify({"status": "error", "message": str(e)}), 500
     else:
         logger.info("Route '/log-client-errors' already exists, skipping registration")

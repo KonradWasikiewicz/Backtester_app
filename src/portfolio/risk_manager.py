@@ -7,189 +7,178 @@ logger = logging.getLogger(__name__)
 
 class RiskManager:
     """
-    Centralized risk management system for portfolio management.
-
-    Handles position sizing, stop-loss/take-profit calculation, trailing stops,
-    and checks against portfolio-level risk limits. Parameters are typically
-    provided as percentages (e.g., 2.0 for 2%) or ratios in the UI/config,
-    but are stored internally as decimal fractions (e.g., 0.02) for calculations.
+    Risk Manager class that handles all risk-related calculations and checks.
+    
+    This class is responsible for:
+    1. Position sizing based on risk and portfolio parameters
+    2. Risk checks on individual positions and overall portfolio
+    3. Stop loss and take profit calculations
     """
-    def __init__(self, 
-                 logger=None,
-                 max_drawdown=0.2,
-                 max_daily_loss=0.05,
-                 continue_iterate=True,  # Changed default to True
-                 use_position_sizing=True,
-                 use_stop_loss=True,
-                 use_take_profit=True,
-                 risk_per_trade=0.02,
-                 default_stop_loss_pct=0.05,
-                 default_take_profit_pct=0.1):
+    
+    def __init__(self, config=None):
         """
-        Initialize the RiskManager class.
+        Initialize risk manager with configuration parameters.
         
         Args:
-            logger: Logger instance
-            max_drawdown (float): Maximum allowed drawdown (decimal, e.g., 0.2 for 20%)
-            max_daily_loss (float): Maximum allowed daily loss (decimal, e.g., 0.05 for 5%)
-            continue_iterate (bool): Whether to continue iterations when risk limits are breached
-            use_position_sizing (bool): Whether to use position sizing
-            use_stop_loss (bool): Whether to use stop losses
-            use_take_profit (bool): Whether to use take profits
-            risk_per_trade (float): Risk per trade as a fraction of portfolio (decimal)
-            default_stop_loss_pct (float): Default stop loss percentage if not provided by strategy
-            default_take_profit_pct (float): Default take profit percentage if not provided by strategy
+            config (dict, optional): Configuration parameters dictionary
         """
-        self.logger = logger or logging.getLogger(__name__)
-        self.max_drawdown = max_drawdown
-        self.max_daily_loss = max_daily_loss
-        self.continue_iterate = continue_iterate
+        # Set default values
+        self.max_position_size = 0.20  # 20% of portfolio max per position
+        self.min_position_size = 0.01  # 1% of portfolio min per position
+        self.risk_per_trade = 0.01  # 1% of portfolio at risk per trade
+        self.max_portfolio_risk = 0.05  # 5% maximum overall portfolio risk
+        self.max_drawdown = 0.25  # 25% maximum drawdown
+        self.max_correlated_positions = 0.30  # 30% maximum in correlated assets
         
-        # Feature flags
-        self._use_position_sizing = use_position_sizing
-        self._use_stop_loss = use_stop_loss
-        self._use_take_profit = use_take_profit
-        self._use_risk_per_trade = risk_per_trade > 0
-        self._use_drawdown_protection = False  # Changed default to False
+        # Feature flags for risk management
+        self._apply_risk_rules = False  # Only apply risk rules when checkbox is checked
+        self._use_position_sizing = True
+        self._use_risk_per_trade = True
+        self._use_max_drawdown = False
+        self._use_max_correlated = False
         
-        # Parameters
-        self.risk_per_trade = risk_per_trade
-        self.default_stop_loss_pct = default_stop_loss_pct
-        self.default_take_profit_pct = default_take_profit_pct
-
-        # --- Parameter Validation and Storage ---
-        self.max_position_size = max(0.0, min(1.0, float(max_position_size)))
-        self.min_position_size = max(0.0, min(self.max_position_size, float(min_position_size)))
-        self.max_open_positions = max(1, int(max_open_positions))
-
-        self.stop_loss_pct = max(0.001, float(stop_loss_pct)) # Ensure stop loss is at least 0.1%
-        self.risk_per_trade_pct = max(0.001, min(0.1, float(risk_per_trade_pct))) # Ensure risk per trade is at least 0.1% and at most 10%
-        self.profit_target_ratio = max(0.1, float(profit_target_ratio)) # Ensure ratio is positive
-        self.use_trailing_stop = bool(use_trailing_stop)
-        self.trailing_stop_activation = max(0.0, float(trailing_stop_activation))
-        self.trailing_stop_distance = max(0.001, float(trailing_stop_distance)) # Ensure trail distance is positive
-
-        self.max_drawdown = max(0.0, min(1.0, float(max_drawdown)))
-        self.max_daily_loss = max(0.0, min(1.0, float(max_daily_loss)))
-        self.continue_iterate = bool(continue_iterate)
-
-        self.use_market_filter = bool(use_market_filter) # Store the flag
-        self.market_trend_lookback = max(10, int(market_trend_lookback)) # Min lookback of 10
-
-        # --- Runtime Tracking Variables ---
-        self.highest_portfolio_value = 0.0 # Tracks peak equity for drawdown calculation
-
-        if kwargs:
-             logger.warning(f"RiskManager received unused parameters: {kwargs.keys()}")
-
-        # Log initialization with feature flags
-        logger.info(f"RiskManager initialized with settings: max_pos_size={self.max_position_size:.2%}, "
-                    f"min_pos_size={self.min_position_size:.2%}, max_open={self.max_open_positions}, "
-                    f"stop={self.stop_loss_pct:.2%}, risk_per_trade={self.risk_per_trade_pct:.2%}, R:R={self.profit_target_ratio:.1f}, "
-                    f"trailing={self.use_trailing_stop} (act: {self.trailing_stop_activation:.2%}, dist: {self.trailing_stop_distance:.2%}), "
-                    f"max_dd={self.max_drawdown:.2%}, max_daily_loss={self.max_daily_loss:.2%}, "
-                    f"continue_iterate={self.continue_iterate}, "
-                    f"market_filter={self.use_market_filter} (lookback: {self.market_trend_lookback})")
+        # Load config if provided
+        if config:
+            self._load_config(config)
+    
+    def _load_config(self, config):
+        """Load configuration parameters from dictionary"""
+        if not config:
+            return
+            
+        # Load risk parameters if they exist in config
+        self.max_position_size = config.get('max_position_size', self.max_position_size)
+        self.min_position_size = config.get('min_position_size', self.min_position_size)
+        self.risk_per_trade = config.get('risk_per_trade', self.risk_per_trade)
+        self.max_portfolio_risk = config.get('max_portfolio_risk', self.max_portfolio_risk)
+        self.max_drawdown = config.get('max_drawdown', self.max_drawdown)
+        self.max_correlated_positions = config.get('max_correlated_positions', 
+                                                self.max_correlated_positions)
         
-        logger.info(f"Risk features enabled: position_sizing={self._use_position_sizing}, "
-                    f"stop_loss={self._use_stop_loss}, take_profit={self._use_take_profit}, "
-                    f"risk_per_trade={self._use_risk_per_trade}, "
-                    f"drawdown_protection={self._use_drawdown_protection}")
+        # Load feature flags if they exist
+        self._apply_risk_rules = config.get('apply_risk_rules', self._apply_risk_rules)
+        self._use_position_sizing = config.get('use_position_sizing', self._use_position_sizing)
+        self._use_risk_per_trade = config.get('use_risk_per_trade', self._use_risk_per_trade)
+        self._use_max_drawdown = config.get('use_max_drawdown', self._use_max_drawdown)
+        self._use_max_correlated = config.get('use_max_correlated', self._use_max_correlated)
 
-
-    def calculate_position_size(self, current_portfolio_value: float, available_cash: float,
-                                price: float, volatility: Optional[float] = None) -> int:
+    def set_apply_risk_rules(self, apply_rules):
         """
-        Calculate the number of shares to trade based on risk parameters.
-
+        Set whether risk rules should be applied
+        
         Args:
-            current_portfolio_value (float): The current total value of the portfolio (cash + positions).
-            available_cash (float): The current amount of cash available for trading.
-            price (float): The entry price of the asset.
-            volatility (Optional[float]): Estimated volatility (e.g., ATR or std dev) of the asset.
-                                           If provided, can be used for volatility-adjusted sizing.
-
+            apply_rules (bool): Whether to apply risk rules
+        """
+        self._apply_risk_rules = bool(apply_rules)
+        
+    def is_applying_risk_rules(self):
+        """
+        Check if risk rules are being applied
+        
         Returns:
-            int: The number of shares to trade. Returns 0 if position cannot be opened.
+            bool: True if risk rules are being applied
         """
-        if isinstance(price, pd.Series):
-            if price.empty or (price <= 0).any():
-                logger.warning(f"Cannot calculate position size - invalid price (Series): {price}")
-                return 0
-        else:
-            if price <= 0:
-                logger.warning(f"Cannot calculate position size - invalid price: {price}")
-                return 0
+        return self._apply_risk_rules
 
-        # 1. Determine maximum capital allocation based on portfolio limits
-        max_capital_per_position = current_portfolio_value * self.max_position_size
-
-        # 2. Determine capital based on risk (stop-loss)
-        # Amount to risk per trade ($) = Portfolio Value * Risk Per Trade % (as fraction)
-        capital_at_risk = current_portfolio_value * self.risk_per_trade_pct
-        # Implied position size based on stop loss distance
-        stop_distance = price * self.stop_loss_pct
+    def calculate_position_size(self, portfolio, ticker, price, stop_price=None):
+        """
+        Calculate the maximum position size for a new position.
         
-        # FIX HERE - Check if stop_distance is a Series
-        if isinstance(stop_distance, pd.Series):
-            if stop_distance.empty or stop_distance.isna().all():
-                logger.warning("Stop distance is empty or all NaN. Using default.")
-                stop_distance = price * 0.02  # Default 2% stop
-            else:
-                # Use item() if it's a single value Series
-                stop_distance = stop_distance.iloc[0] if len(stop_distance) == 1 else stop_distance.mean()
-        
-        if stop_distance <= 0:
-            logger.warning("Stop distance is zero or negative. Using default.")
-            stop_distance = price * 0.02  # Default 2% stop
-        
-        if stop_distance <= 0:
-             logger.warning("Stop distance is zero or negative, cannot use risk-based sizing.")
-             size_based_on_risk = np.inf # Effectively no limit from risk sizing
-        else:
-             size_based_on_risk = capital_at_risk / stop_distance # Shares based on risk
-
-        # 3. Determine capital based on volatility (optional)
-        # if volatility is not None and volatility > 0:
-        #     # Example: Target volatility-adjusted position size
-        #     target_dollar_volatility = current_portfolio_value * 0.01 # Target 1% daily $ volatility per position
-        #     shares_based_on_vol = target_dollar_volatility / (price * volatility)
-        #     max_capital_per_position = min(max_capital_per_position, shares_based_on_vol * price)
-
-        # 4. Determine final position size in shares
-        # Calculate the maximum number of shares based on risk
-        max_shares_risk = min(size_based_on_risk, max_capital_per_position / price)
-        target_shares = max_shares_risk # Use risk-based position sizing as primary
-
-        # Ensure it meets minimum size requirements
-        min_shares = (current_portfolio_value * self.min_position_size) / price
-        target_shares = max(min_shares, target_shares)
-
-        # Ensure we have enough cash
-        required_cash = target_shares * price
-        if required_cash > available_cash:
-            target_shares = available_cash / price # Reduce size to available cash
-            logger.debug(f"Reduced position size due to insufficient cash. Required: ${required_cash:.2f}, Available: ${available_cash:.2f}")
-
-        # Convert to integer shares (floor to be conservative)
-        final_shares = int(np.floor(target_shares))
-
-        # Final check: ensure shares are positive and meet minimum $ value if needed
-        if final_shares <= 0:
-            logger.debug(f"Calculated position size is zero or negative for price ${price:.2f}.")
+        Args:
+            portfolio: Portfolio object containing current positions and cash
+            ticker: Ticker symbol for the position
+            price: Current price of the asset
+            stop_price: Optional stop price for risk calculation
+            
+        Returns:
+            float: The maximum position size in number of units
+        """
+        if not price or price <= 0:
             return 0
-        # Optional: Check if minimum position value is met
-        # min_value_required = current_portfolio_value * self.min_position_size
-        # if final_shares * price < min_value_required:
-        #     logger.debug(f"Calculated position value (${final_shares * price:.2f}) below minimum required (${min_value_required:.2f}).")
-        #     return 0
-
-
-        logger.debug(f"Calculated position size: {final_shares} shares for price ${price:.2f} "
-                     f"(Max Cap: ${max_capital_per_position:.2f}, Risk Shares: {size_based_on_risk:.2f}, "
-                     f"Min Shares: {min_shares:.2f}, Cash Limit Shares: {available_cash / price:.2f})")
-        return final_shares
-
+            
+        # Calculate position size as 1/n of portfolio where n is number of tickers
+        # This is applied by default, regardless of risk rules checkbox
+        num_tickers = len(portfolio.get_universe()) if hasattr(portfolio, 'get_universe') else 1
+        if num_tickers <= 0:
+            num_tickers = 1
+        
+        # Default max position size is 1/number_of_tickers
+        default_max_size_pct = 1.0 / num_tickers
+        
+        # If the specific max position size setting is smaller, use that instead
+        max_position_pct = min(default_max_size_pct, self.max_position_size) 
+        
+        # Calculate the max position value based on portfolio value
+        portfolio_value = portfolio.get_total_value()
+        max_position_value = portfolio_value * max_position_pct
+        
+        # Convert to number of units at current price
+        max_units = max_position_value / price if price > 0 else 0
+        
+        # If risk rules are enabled and risk per trade is set, apply that limit
+        if self._apply_risk_rules and self._use_risk_per_trade and stop_price and stop_price > 0:
+            risk_amount = portfolio_value * self.risk_per_trade
+            price_risk = price - stop_price
+            if price_risk > 0:
+                risk_based_units = risk_amount / price_risk
+                max_units = min(max_units, risk_based_units)
+        
+        return max_units
+    
+    def check_position_risk(self, portfolio, position):
+        """
+        Check if a position meets risk criteria.
+        
+        Args:
+            portfolio: Portfolio object
+            position: Position object to check
+            
+        Returns:
+            dict: Dictionary with risk metrics and status
+        """
+        # Skip risk checks if rules are not applied
+        if not self._apply_risk_rules:
+            return {
+                "passes": True,
+                "messages": [],
+                "metrics": {
+                    "position_size_pct": 0,
+                    "risk_amount": 0
+                }
+            }
+            
+        portfolio_value = portfolio.get_total_value()
+        if portfolio_value <= 0:
+            return {"passes": False, "messages": ["Invalid portfolio value"]}
+            
+        position_value = position.get_value()
+        position_size_pct = position_value / portfolio_value if portfolio_value > 0 else 0
+        
+        messages = []
+        passes = True
+        
+        # NOTE: We no longer force-exit positions that have grown beyond max size
+        # Instead, we just report the issue but return passes=True
+        if position_size_pct > self.max_position_size and self._use_position_sizing:
+            messages.append(
+                f"Position size ({position_size_pct:.1%}) exceeds maximum allowed ({self.max_position_size:.1%})"
+            )
+            # passes remains True - no longer stopping iteration
+        
+        if position_size_pct < self.min_position_size and self._use_position_sizing:
+            messages.append(
+                f"Position size ({position_size_pct:.1%}) below minimum threshold ({self.min_position_size:.1%})"
+            )
+            # passes remains True - no longer stopping iteration
+            
+        return {
+            "passes": passes,
+            "messages": messages,
+            "metrics": {
+                "position_size_pct": position_size_pct,
+                "risk_amount": position_value * self.risk_per_trade if self._use_risk_per_trade else 0
+            }
+        }
 
     def calculate_stops(self, entry_price: float, direction: int) -> Tuple[float, float]:
         """
