@@ -3,7 +3,7 @@ from dash import html, dcc, callback, Input, Output, State, ALL, MATCH, ctx, no_
 import logging
 # Make sure logging is configured appropriately elsewhere (e.g., in app_factory or main app.py)
 # from ...config.logging_config import setup_logging
-from ...config.strategy_config import STRATEGY_DESCRIPTIONS
+from src.core.constants import STRATEGY_DESCRIPTIONS # Poprawna ścieżka do stałych
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +20,23 @@ def register_wizard_callbacks(app):
     )
     def update_strategy_description(selected_strategy):
         """Updates the strategy description text based on the dropdown selection."""
+        logger.debug(f"Updating description for strategy: {selected_strategy}")
         if not selected_strategy:
+            # Return an empty P tag or specific text when nothing is selected
             return html.P("Select a strategy to see its description.")
-        description_text = STRATEGY_DESCRIPTIONS.get(selected_strategy, f"Description for {selected_strategy} not found.")
-        logger.debug(f"Updating strategy description for: {selected_strategy}")
-        return html.P(description_text)
+        
+        # Get description from dictionary
+        description_text = STRATEGY_DESCRIPTIONS.get(selected_strategy, f"No description available for {selected_strategy}.")
+        
+        # Ensure we return a valid Dash component (e.g., html.P)
+        if isinstance(description_text, str):
+             logger.debug(f"Returning description: {description_text[:50]}...") # Log snippet
+             return html.P(description_text)
+        else:
+             # Log an error if the description is not a string
+             logger.error(f"Description for {selected_strategy} is not a string: {type(description_text)}. Value: {description_text}")
+             # Return an error message in the UI
+             return html.P(f"Error loading description for {selected_strategy}.", style={'color': 'red'})
 
     # --- Consolidated Step Transition Callback ---
     @app.callback(

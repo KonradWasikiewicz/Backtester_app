@@ -16,15 +16,17 @@ logger = logging.getLogger(__name__)
 # Dictionary of available strategies
 # Keys (e.g., "Moving Average Crossover") will be displayed in the UI.
 # Values (e.g., MovingAverageStrategy) are the actual classes to use.
-AVAILABLE_STRATEGIES = {
-    # --- Key is display name, value is the class from moving_average.py ---
-    "Moving Average Crossover": MovingAverageStrategy,
-    # --- Key is display name, value is the class from rsi.py ---
-    "Relative Strength Index": RSIStrategy,
-    # Add other strategies with full names as keys
-    # "Example Strategy Full Name": ExampleStrategy,
-    # Add Bollinger Bands Strategy to AVAILABLE_STRATEGIES
-    "Bollinger Bands": BollingerBandsStrategy
+AVAILABLE_STRATEGIES = [
+    {"label": "Relative Strength Index", "value": "RSI"},
+    {"label": "Moving Average Crossover", "value": "MAC"},
+    # ... inne strategie
+]
+
+STRATEGY_DESCRIPTIONS = {
+    "RSI": "The Relative Strength Index (RSI) strategy buys when the RSI drops below a certain level (e.g., 30) and sells when it rises above another level (e.g., 70).",
+    "MAC": "The Moving Average Crossover strategy generates buy signals when a shorter-term moving average crosses above a longer-term moving average, and sell signals on the reverse cross.",
+    # ... opisy dla innych strategii (klucze muszą pasować do 'value' z AVAILABLE_STRATEGIES)
+    "Default": "No description available." # Opcjonalny opis domyślny
 }
 
 # Log available strategies when the module starts
