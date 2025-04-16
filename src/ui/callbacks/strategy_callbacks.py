@@ -204,65 +204,33 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
             return no_update
 
 
-    # Callback to control accordion/step visibility (Needs adaptation based on actual layout)
-    # This example assumes the wizard steps control visibility via 'style'
-    # You might need to adjust IDs and logic based on create_wizard_step in strategy_config.py
-    @app.callback(
-        [
-            Output("strategy-selection-container", "style"),
-            Output("date-range-selection-container", "style"),
-            Output("tickers-selection-container", "style"),
-            Output("risk-management-container", "style"),
-            Output("trading-costs-container", "style"),
-            Output("rebalancing-rules-container", "style"),
-            Output("wizard-progress", "value") # Update progress bar
-        ],
-        [
-            Input("confirm-strategy", "n_clicks"),
-            Input("confirm-dates", "n_clicks"),
-            Input("confirm-tickers", "n_clicks"),
-            Input("confirm-risk", "n_clicks"),
-            Input("confirm-costs", "n_clicks"),
-            Input("confirm-rebalancing", "n_clicks"),  # Add Step 6 confirm button
-        ],
-        # Add States if validation is needed before proceeding
-        [
-            State("strategy-selector", "value"),
-            # Add other states for validation if required (e.g., dates, tickers selected)
-        ],
-        prevent_initial_call=True
-    )
-    def control_wizard_steps(confirm_strat, confirm_dates, confirm_tickers, confirm_risk, confirm_costs, confirm_rebalancing, strategy_value): # Add state args
-        ctx = callback_context
-        if not ctx.triggered:
-            # Initial state: only first step visible
-            return {"display": "block"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, {"display": "none"}, 0
-
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        num_steps = 6
-        current_step = 0 # Default to first step
-
-        # Determine which step to show next based on the button clicked
-        if trigger_id == "confirm-strategy":
-            if not strategy_value: return no_update # Basic validation
-            current_step = 1
-        elif trigger_id == "confirm-dates":
-            # Add date validation if needed using State
-            current_step = 2
-        elif trigger_id == "confirm-tickers":
-            # Add ticker validation if needed using State
-            current_step = 3
-        elif trigger_id == "confirm-risk":
-            current_step = 4
-        elif trigger_id == "confirm-costs":
-            current_step = 5
-        # No confirm needed for last step, it triggers backtest
-
-        styles = [{"display": "block" if i == current_step else "none"} for i in range(num_steps)]
-        progress = (current_step / num_steps) * 100
-
-        logger.debug(f"Wizard trigger: {trigger_id}, advancing to step {current_step}")
-        return styles + [progress]
-
+    # DISABLED: This callback was competing with handle_step_transition in wizard_callbacks.py
+    # Removing this resolves the step transition issue
+    # @app.callback(
+    #     [
+    #         Output("strategy-selection-container", "style"),
+    #         Output("date-range-selection-container", "style"),
+    #         Output("tickers-selection-container", "style"),
+    #         Output("risk-management-container", "style"),
+    #         Output("trading-costs-container", "style"),
+    #         Output("rebalancing-rules-container", "style"),
+    #         Output("wizard-progress", "value") # Update progress bar
+    #     ],
+    #     [
+    #         Input("confirm-strategy", "n_clicks"),
+    #         Input("confirm-dates", "n_clicks"),
+    #         Input("confirm-tickers", "n_clicks"),
+    #         Input("confirm-risk", "n_clicks"),
+    #         Input("confirm-costs", "n_clicks"),
+    #         Input("confirm-rebalancing", "n_clicks"),  # Add Step 6 confirm button
+    #     ],
+    #     [
+    #         State("strategy-selector", "value"),
+    #     ],
+    #     prevent_initial_call=True
+    # )
+    # def control_wizard_steps(confirm_strat, confirm_dates, confirm_tickers, confirm_risk, confirm_costs, confirm_rebalancing, strategy_value):
+    #     # This functionality is now handled by handle_step_transition in wizard_callbacks.py
+    #     pass
 
     logger.info("Strategy callbacks registered.")

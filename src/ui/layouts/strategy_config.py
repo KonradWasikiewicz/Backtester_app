@@ -401,195 +401,192 @@ def create_strategy_config_section(tickers=None):
             value=0,
             id="wizard-progress",
             className="mb-3",
-            style={"height": "2px"}
+            style={"height": "4px"}
         )
 
-        # Step 1: Strategy Selection
-        strategy_step = create_wizard_step(
-            "strategy-selection",
-            "Step 1: Strategy and Asset Selection",
-            html.Div([
-                html.Label("Select a strategy:", className="mb-2"),
-                get_strategy_dropdown(AVAILABLE_STRATEGIES),
-                dcc.Markdown(id="strategy-description", className="mb-3 mt-3"),
-                dbc.Button(
-                    "Confirm",
-                    id="confirm-strategy",
-                    color="primary",
-                    className="mt-3"
-                )
-            ]),
-            step_number=1
-        )
-
-        # Step 2: Date Range Selection
-        date_range_step = create_wizard_step(
-            "date-range-selection",
-            "Step 2: Date Range Selection",
-            html.Div([
-                html.Label("Select date range:", className="mb-2"),
-                create_backtest_parameters(),
-                dbc.Button(
-                    "Confirm",
-                    id="confirm-dates",
-                    color="primary",
-                    className="mt-3"
-                )
-            ]),
-            is_hidden=True,
-            step_number=2
-        )
-
-        # Step 3: Tickers Selection
-        tickers_step = create_wizard_step(
-            "tickers-selection",
-            "Step 3: Tickers Selection",
-            html.Div([
-                html.Label("Select tickers to trade:", className="mb-2"),
-                create_ticker_checklist(tickers if tickers else []),
-                dbc.Button(
-                    "Confirm",
-                    id="confirm-tickers",
-                    color="primary",
-                    className="mt-3"
-                )
-            ]),
-            is_hidden=True,
-            step_number=3
-        )
-
-        # Step 4: Risk Management
-        risk_step = create_wizard_step(
-            "risk-management",
-            "Step 4: Risk Management",
-            html.Div([
-                html.Label("Configure risk parameters:", className="mb-2"),
-                html.Div(id="risk-management-inputs", className="mb-3"),
-                dbc.Button(
-                    "Confirm",
-                    id="confirm-risk",
-                    color="primary",
-                    className="mt-3"
-                )
-            ]),
-            is_hidden=True,
-            step_number=4
-        )
-
-        # Step 5: Trading Costs and Slippage
-        costs_step = create_wizard_step(
-            "trading-costs",
-            "Step 5: Trading Costs and Slippage",
-            html.Div([
-                html.Label("Configure trading costs:", className="mb-2"),
-                dbc.Row([
-                    dbc.Col([
-                        html.Label("Commission (%):", className="mb-2"),
-                        dbc.Input(
-                            id="commission-input",
-                            type="number",
-                            min=0,
-                            max=100,
-                            step=0.01,
-                            value=0.1,
-                            className="mb-3"
-                        ),
-                        html.Label("Slippage (%):", className="mb-2"),
-                        dbc.Input(
-                            id="slippage-input",
-                            type="number",
-                            min=0,
-                            max=100,
-                            step=0.01,
-                            value=0.1,
-                            className="mb-3"
-                        )
-                    ])
+        # Create all steps
+        steps = [
+            # Step 1: Strategy Selection
+            create_wizard_step(
+                "strategy-selection",
+                "Step 1: Strategy Selection",
+                html.Div([
+                    html.Label("Select a strategy:", className="mb-2"),
+                    get_strategy_dropdown(AVAILABLE_STRATEGIES),
+                    dcc.Markdown(id="strategy-description", className="mb-3 mt-3"),
+                    dbc.Button(
+                        "Confirm",
+                        id="confirm-strategy",
+                        color="primary",
+                        className="mt-3"
+                    )
                 ]),
-                dbc.Button(
-                    "Confirm",
-                    id="confirm-costs",
-                    color="primary",
-                    className="mt-3"
-                )
-            ]),
-            is_hidden=True,
-            step_number=5
-        )
-
-        # Step 6: Rebalancing Rules (with Confirm button)
-        rebalancing_step = create_wizard_step(
-            "rebalancing-rules",
-            "Step 6: Rebalancing Rules",
-            html.Div([
-                html.Label("Configure rebalancing rules:", className="mb-2"),
-                dbc.Row([
-                    dbc.Col([
-                        html.Label("Rebalancing Frequency:", className="mb-2"),
-                        dcc.Dropdown(
-                            id="rebalancing-frequency",
-                            options=[
-                                {"label": "Daily", "value": "D"},
-                                {"label": "Weekly", "value": "W"},
-                                {"label": "Monthly", "value": "M"},
-                                {"label": "Quarterly", "value": "Q"},
-                                {"label": "Yearly", "value": "Y"}
-                            ],
-                            value="M",
-                            className="mb-3"
-                        ),
-                        html.Label("Threshold for Rebalancing (%):", className="mb-2"),
-                        dbc.Input(
-                            id="rebalancing-threshold",
-                            type="number",
-                            min=0,
-                            max=100,
-                            step=0.1,
-                            value=5,
-                            className="mb-3"
-                        )
-                    ])
+                step_number=1
+            ),
+            
+            # Step 2: Date Range Selection
+            create_wizard_step(
+                "date-range-selection",
+                "Step 2: Date Range Selection",
+                html.Div([
+                    html.Label("Select date range:", className="mb-2"),
+                    create_backtest_parameters(),
+                    dbc.Button(
+                        "Confirm",
+                        id="confirm-dates",
+                        color="primary",
+                        className="mt-3"
+                    )
                 ]),
-                dbc.Button(
-                    "Confirm",
-                    id="confirm-rebalancing",
-                    color="primary",
-                    className="mt-3"
-                )
-            ]),
-            is_hidden=True,
-            step_number=6
-        )
+                is_hidden=True,
+                step_number=2
+            ),
 
-        # Step 7: Summary and Run Backtest
-        summary_step = create_wizard_step(
-            "summary",
-            "Step 7: Summary and Run Backtest",
-            html.Div([
-                html.Label("Review your configuration:", className="mb-2"),
-                html.Div(id="summary-content", className="mb-3"),
-                dbc.Button(
-                    children=[html.I(className="fas fa-play me-2"), "Run Backtest"],
-                    id="run-backtest-button",
-                    color="primary",
-                    className="w-100 mt-3"
-                )
-            ]),
-            is_hidden=True,
-            step_number=7
-        )
+            # Step 3: Tickers Selection
+            create_wizard_step(
+                "tickers-selection",
+                "Step 3: Tickers Selection",
+                html.Div([
+                    html.Label("Select tickers to trade:", className="mb-2"),
+                    create_ticker_checklist(tickers if tickers else []),
+                    dbc.Button(
+                        "Confirm",
+                        id="confirm-tickers",
+                        color="primary",
+                        className="mt-3"
+                    )
+                ]),
+                is_hidden=True,
+                step_number=3
+            ),
 
-        # Add the new step to the container
+            # Step 4: Risk Management
+            create_wizard_step(
+                "risk-management",
+                "Step 4: Risk Management",
+                html.Div([
+                    html.Label("Configure risk parameters:", className="mb-2"),
+                    html.Div(id="risk-management-inputs", className="mb-3"),
+                    dbc.Button(
+                        "Confirm",
+                        id="confirm-risk",
+                        color="primary",
+                        className="mt-3"
+                    )
+                ]),
+                is_hidden=True,
+                step_number=4
+            ),
+
+            # Step 5: Trading Costs and Slippage
+            create_wizard_step(
+                "trading-costs",
+                "Step 5: Trading Costs",
+                html.Div([
+                    html.Label("Configure trading costs:", className="mb-2"),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Commission (%):", className="mb-2"),
+                            dbc.Input(
+                                id="commission-input",
+                                type="number",
+                                min=0,
+                                max=100,
+                                step=0.01,
+                                value=0.1,
+                                className="mb-3"
+                            ),
+                            html.Label("Slippage (%):", className="mb-2"),
+                            dbc.Input(
+                                id="slippage-input",
+                                type="number",
+                                min=0,
+                                max=100,
+                                step=0.01,
+                                value=0.1,
+                                className="mb-3"
+                            )
+                        ])
+                    ]),
+                    dbc.Button(
+                        "Confirm",
+                        id="confirm-costs",
+                        color="primary",
+                        className="mt-3"
+                    )
+                ]),
+                is_hidden=True,
+                step_number=5
+            ),
+
+            # Step 6: Rebalancing Rules
+            create_wizard_step(
+                "rebalancing-rules",
+                "Step 6: Rebalancing Rules",
+                html.Div([
+                    html.Label("Configure rebalancing rules:", className="mb-2"),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Rebalancing Frequency:", className="mb-2"),
+                            dcc.Dropdown(
+                                id="rebalancing-frequency",
+                                options=[
+                                    {"label": "Daily", "value": "D"},
+                                    {"label": "Weekly", "value": "W"},
+                                    {"label": "Monthly", "value": "M"},
+                                    {"label": "Quarterly", "value": "Q"},
+                                    {"label": "Yearly", "value": "Y"}
+                                ],
+                                value="M",
+                                className="mb-3"
+                            ),
+                            html.Label("Threshold for Rebalancing (%):", className="mb-2"),
+                            dbc.Input(
+                                id="rebalancing-threshold",
+                                type="number",
+                                min=0,
+                                max=100,
+                                step=0.1,
+                                value=5,
+                                className="mb-3"
+                            )
+                        ])
+                    ]),
+                    dbc.Button(
+                        "Confirm",
+                        id="confirm-rebalancing",
+                        color="primary",
+                        className="mt-3"
+                    )
+                ]),
+                is_hidden=True,
+                step_number=6
+            ),
+
+            # Step 7: Summary and Run Backtest
+            create_wizard_step(
+                "summary",
+                "Step 7: Summary and Run Backtest",
+                html.Div([
+                    html.Label("Review your configuration:", className="mb-2"),
+                    html.Div(id="wizard-summary-content", className="mb-3"),
+                    dbc.Button(
+                        children=[html.I(className="fas fa-play me-2"), "Run Backtest"],
+                        id="run-backtest-button",
+                        color="primary",
+                        className="w-100 mt-3"
+                    )
+                ]),
+                is_hidden=True,
+                step_number=7
+            )
+        ]
+        
+        # Wrap all steps in a single container
         return html.Div([
             progress,
-            strategy_step,
-            date_range_step,
-            tickers_step,
-            risk_step,
-            costs_step,
-            rebalancing_step,
-            summary_step
-        ], id="strategy-config-container")
+            html.Div(steps, id="wizard-steps-container", className="wizard-steps")
+        ], id="strategy-config-container", className="strategy-wizard")
 
     except Exception as e:
         logger.error(f"Error creating strategy config section: {e}", exc_info=True)
