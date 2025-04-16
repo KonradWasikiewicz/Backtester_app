@@ -2,36 +2,77 @@ import dash
 from dash import Input, Output, State, callback_context, no_update, ClientsideFunction, ALL
 import dash_bootstrap_components as dbc
 from dash import html, dcc
-from typing import Dict, List, Any, Optional
-import logging
+from typing import Dict, List, Any, Optional, Tuple
+import logging # Import logging
 import traceback
 import pandas as pd
 import plotly.graph_objects as go
 import json
+import sys
+import os
+
+# --- PRZENIESIONA INICJALIZACJA LOGGERA ---
+# Configure logging EARLY, before any potential logging calls
+logger = logging.getLogger(__name__)
 
 # Import strategy logic and constants
 try:
-    from src.core.constants import AVAILABLE_STRATEGIES
-    from src.core.data import DataLoader # Corrected from DataService previously
-    # --- CORRECTED IMPORT: generate_strategy_parameters ---
-    # --- REMOVED create_trading_costs_layout, create_rebalancing_layout ---
-    from src.ui.layouts.strategy_config import generate_strategy_parameters
+    # --- POPRAWIONE IMPORTY ---
+    from src.core.constants import DEFAULT_STRATEGY_PARAMS, STRATEGY_DESCRIPTIONS # Importuj domyślne parametry i opisy
+    from src.core.data import DataLoader
+    # --- USUNIĘTO BŁĘDNY IMPORT 'generate_strategy_parameters' ---
 except ImportError:
     # Handle potential import errors if running script directly or structure changes
-    import sys, os
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(current_dir, '..', '..', '..'))
-    if project_root not in sys.path:
-        sys.path.append(project_root)
-    from src.core.constants import AVAILABLE_STRATEGIES
-    from src.core.data import DataLoader # Corrected from DataService previously
-    # --- CORRECTED IMPORT: generate_strategy_parameters ---
-    # --- REMOVED create_trading_costs_layout, create_rebalancing_layout ---
-    from src.ui.layouts.strategy_config import generate_strategy_parameters
+    # Teraz logger jest już zdefiniowany
+    logger.error("Critical import error in strategy_callbacks.py", exc_info=True)
+    # Definiuj puste stałe jako fallback
+    DEFAULT_STRATEGY_PARAMS = {}
+    STRATEGY_DESCRIPTIONS = {}
+    # Możesz też rzucić wyjątek lub zakończyć działanie
 
-# Configure logging
-logger = logging.getLogger(__name__)
+# --- Funkcja pomocnicza do generowania inputów parametrów ---
+# (Reszta kodu bez zmian - _generate_parameter_inputs, register_strategy_callbacks, update_strategy_description, update_strategy_parameters, update_config_store_from_inputs)
+# ... (cały kod funkcji _generate_parameter_inputs) ...
+def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
+    """Generates input components based on the selected strategy."""
+    if not strategy_value or strategy_value not in DEFAULT_STRATEGY_PARAMS:
+        logger.debug(f"Cannot generate params for invalid strategy: {strategy_value}")
+        return [html.P("Select a valid strategy to see its parameters.", className="text-muted")]
 
+    params = DEFAULT_STRATEGY_PARAMS.get(strategy_value, {})
+    if not params:
+        logger.warning(f"No default parameters found for strategy: {strategy_value}")
+        return [html.P(f"No parameters defined for strategy: {strategy_value}", className="text-warning")]
+
+    inputs = []
+    logger.debug(f"Generating inputs for strategy '{strategy_value}' with params: {params}")
+
+    sorted_param_keys = sorted(params.keys())
+
+    for param_name in sorted_param_keys:
+        default_value = params[param_name]
+        input_type = "number"
+        step = 1 if isinstance(default_value, int) else 0.01
+
+        input_id = {
+            "type": "strategy-param",
+            "strategy": strategy_value,
+            "param": param_name
+        }
+        label = html.Label(f"{param_name.replace('_', ' ').title()}:", htmlFor=json.dumps(input_id, sort_keys=True), className="mb-1")
+        input_component = dbc.Input(
+            id=input_id,
+            type=input_type,
+            value=default_value,
+            step=step,
+            min=0 if input_type == "number" else None,
+            className="mb-3"
+        )
+        inputs.extend([label, input_component])
+
+    return inputs
+
+# --- Rejestracja callbacków ---
 def register_strategy_callbacks(app: dash.Dash) -> None:
     """
     Register callbacks related to strategy selection and configuration.
@@ -41,196 +82,109 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
     """
     logger.info("Registering strategy callbacks...")
 
-    # Callback to update strategy description (Should be correct now)
     @app.callback(
-        Output("strategy-description", "children"),
-        Input("strategy-selector", "value"),
-         prevent_initial_call=True
+        Output('strategy-description-output', 'children'),
+        Input('strategy-dropdown', 'value')
     )
-    def update_strategy_description(strategy_name: Optional[str]) -> List[html.P]:
-        """ Updates strategy description based on docstring. """
-        if not strategy_name:
-            logger.debug("No strategy selected, clearing description.")
-            return [html.P("Select a strategy to see its description.")]
-        try:
-            strategy_class = AVAILABLE_STRATEGIES.get(strategy_name)
-            if strategy_class and strategy_class.__doc__:
-                description = strategy_class.__doc__.strip()
-                logger.debug(f"Displaying description for strategy: {strategy_name}")
-                bullets = [html.Li(line.strip().lstrip('*').strip()) for line in description.split('\n') if line.strip()]
-                return [html.H6("Description:"), html.Ul(bullets, className="list-unstyled ps-3")]
-            else:
-                logger.warning(f"No description (docstring) found for strategy: {strategy_name}")
-                return [html.P("No description available.")]
-        except Exception as e:
-            logger.error(f"Error getting strategy description for {strategy_name}: {e}", exc_info=True)
-            return [html.P("Error loading description.", className="text-danger")]
+    def update_strategy_description(selected_strategy: Optional[str]) -> html.P:
+        logger.debug(f"Updating description for strategy: {selected_strategy}")
+        if not selected_strategy:
+            return html.P("Select a strategy to see its description.")
+        description = STRATEGY_DESCRIPTIONS.get(selected_strategy, "No description available.")
+        return html.P(description)
 
-
-    # Callback to update the PARAMETER section and config store based on selected strategy
-    # --- UPDATED OUTPUTS ---
     @app.callback(
-        [
-            Output("strategy-parameters-content", "children"), # Only update params content
-            Output("strategy-config-store", "data") # Update the store with defaults
-        ],
-        Input("strategy-selector", "value"),
-         prevent_initial_call=True
+        Output('strategy-param-inputs', 'children'),
+        Input('strategy-dropdown', 'value')
     )
-    def update_parameter_section_and_store(strategy_name: Optional[str]):
-        """
-        Updates the strategy parameters section and stores the default config
-        when a new strategy is selected.
-        """
-        if not strategy_name:
-            logger.debug("No strategy selected, clearing params section and store.")
-            # Return empty layout and empty config
-            return [], {} # Updated return
-
-        logger.info(f"Updating params section and store for strategy: {strategy_name}")
+    def update_strategy_parameters(selected_strategy: Optional[str]) -> List[Any]:
+        logger.info(f"Strategy selected: {selected_strategy}. Updating parameter inputs.")
+        if not selected_strategy:
+            return []
         try:
-            strategy_class = AVAILABLE_STRATEGIES.get(strategy_name)
-            if not strategy_class:
-                logger.warning(f"Strategy class not found for {strategy_name}")
-                return [], {} # Updated return
-
-            # --- Use the correct function name ---
-            params_layout = generate_strategy_parameters(strategy_class)
-
-            # Prepare default config for the store (including params, costs, rebalancing)
-            strategy_instance = strategy_class() # Instantiate to get defaults if needed
-            default_params = strategy_instance.get_parameters() # Assuming this method exists
-
-            default_config = {
-                "strategy_name": strategy_name,
-                "parameters": default_params,
-                 # Keep defaults for costs and rebalancing in the store, even if layout isn't dynamic here
-                "trading_costs": {
-                    "commission_type": "percentage", "commission_value": 0.001,
-                    "slippage_type": "percentage", "slippage_value": 0.0005
-                },
-                "rebalancing": {"frequency": "monthly", "threshold": 0.05}
-            }
-            logger.debug(f"Generated default config for {strategy_name}: {default_config}")
-
-            # --- UPDATED RETURN ---
-            # Return only the params layout and the config data
-            return params_layout, default_config
-
+            return _generate_parameter_inputs(selected_strategy)
         except Exception as e:
-            logger.error(f"Error updating params section/store for {strategy_name}: {e}", exc_info=True)
-            # Return error message in layout and empty config
-            error_msg = f"Error loading config for {strategy_name}."
-            # --- UPDATED RETURN ---
-            return html.P(error_msg, className="text-danger"), {}
+            logger.error(f"Error generating parameters for strategy {selected_strategy}: {e}", exc_info=True)
+            return [dbc.Alert(f"Error loading parameters: {e}", color="danger")]
 
-
-    # Callback to update strategy config store when individual inputs change (Should be correct)
     @app.callback(
-        Output("strategy-config-store", "data", allow_duplicate=True),
+        Output("strategy-config-store", "data"),
         [
             Input({"type": "strategy-param", "strategy": ALL, "param": ALL}, "value"),
-            Input("commission-type-selector", "value"), # Assuming these IDs exist in strategy_config.py layout
-            Input("commission-value-input", "value"),   # Assuming these IDs exist in strategy_config.py layout
-            Input("slippage-type-selector", "value"),   # Assuming these IDs exist in strategy_config.py layout
-            Input("slippage-value-input", "value"),     # Assuming these IDs exist in strategy_config.py layout
-            Input("rebalancing-frequency-selector", "value"), # Assuming these IDs exist in strategy_config.py layout
-            Input("rebalancing-threshold-input", "value")     # Assuming these IDs exist in strategy_config.py layout
+            Input("commission-input", "value"),
+            Input("slippage-input", "value"),
+            Input("rebalancing-frequency", "value"),
+            Input("rebalancing-threshold", "value")
         ],
-        State("strategy-config-store", "data"),
+        [
+            State("strategy-config-store", "data"),
+            State('strategy-dropdown', 'value')
+        ],
         prevent_initial_call=True
     )
     def update_config_store_from_inputs(*args):
-        """ Updates the strategy-config-store based on individual input changes. """
         ctx = callback_context
-        if not ctx.triggered or not ctx.inputs_list: return no_update
-        current_config = args[-1] or {}
-        input_values = args[:-1]
-        updated_config = json.loads(json.dumps(current_config)) # Deep copy
+        if not ctx.triggered or not ctx.inputs_list:
+            logger.debug("Config store update: No trigger.")
+            return no_update
+
+        current_config = args[5] or {}
+        selected_strategy = args[6]
+        updated_config = json.loads(json.dumps(current_config))
         triggered_prop_id_str = ctx.triggered[0]['prop_id']
         triggered_value = ctx.triggered[0]['value']
         logger.debug(f"Config store update triggered by: {triggered_prop_id_str} = {triggered_value}")
 
-        if ".value" in triggered_prop_id_str:
-            try:
-                # Attempt to parse ID as JSON (for pattern-matching IDs)
-                try:
-                    prop_id_dict = json.loads(triggered_prop_id_str.split(".")[0])
-                except json.JSONDecodeError:
-                    # If not JSON, treat it as a simple string ID
-                    prop_id_dict = triggered_prop_id_str.split(".")[0]
+        if "parameters" not in updated_config: updated_config["parameters"] = {}
+        if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
+        if "rebalancing" not in updated_config: updated_config["rebalancing"] = {}
+        if "strategy_name" not in updated_config or updated_config.get("strategy_name") != selected_strategy:
+             updated_config["strategy_name"] = selected_strategy
 
-                # Handle dynamic parameters
-                if isinstance(prop_id_dict, dict) and prop_id_dict.get("type") == "strategy-param":
+        try:
+            prop_id_dict_str = triggered_prop_id_str.split(".")[0]
+            is_pattern_match = prop_id_dict_str.startswith('{') and prop_id_dict_str.endswith('}')
+
+            if is_pattern_match:
+                prop_id_dict = json.loads(prop_id_dict_str)
+                if prop_id_dict.get("type") == "strategy-param":
                     param_name = prop_id_dict.get("param")
-                    strategy_name = prop_id_dict.get("strategy")
-                    if updated_config.get("strategy_name") == strategy_name and param_name:
-                        if "parameters" not in updated_config: updated_config["parameters"] = {}
+                    trigger_strategy = prop_id_dict.get("strategy")
+                    if param_name and trigger_strategy == selected_strategy:
                         updated_config["parameters"][param_name] = triggered_value
-                        logger.debug(f"Updated param '{param_name}' to {triggered_value}")
+                        logger.debug(f"Updated param '{param_name}' for strategy '{selected_strategy}' to {triggered_value}")
                     else:
-                         logger.warning(f"Strategy mismatch or param_name missing. Trigger: {prop_id_dict}, Store: {updated_config.get('strategy_name')}")
-                # Handle simple string IDs for costs/rebalancing
-                elif prop_id_dict == "commission-type-selector":
-                     if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
-                     updated_config["trading_costs"]["commission_type"] = triggered_value
-                elif prop_id_dict == "commission-value-input":
-                     if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
-                     updated_config["trading_costs"]["commission_value"] = triggered_value
-                elif prop_id_dict == "slippage-type-selector":
-                     if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
-                     updated_config["trading_costs"]["slippage_type"] = triggered_value
-                elif prop_id_dict == "slippage-value-input":
-                     if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
-                     updated_config["trading_costs"]["slippage_value"] = triggered_value
-                elif prop_id_dict == "rebalancing-frequency-selector":
-                     if "rebalancing" not in updated_config: updated_config["rebalancing"] = {}
-                     updated_config["rebalancing"]["frequency"] = triggered_value
-                elif prop_id_dict == "rebalancing-threshold-input":
-                     if "rebalancing" not in updated_config: updated_config["rebalancing"] = {}
-                     updated_config["rebalancing"]["threshold"] = triggered_value
+                        logger.warning(f"Ignoring param update trigger for mismatched strategy. Trigger ID: {prop_id_dict}, Selected: {selected_strategy}")
                 else:
-                    logger.warning(f"Unhandled trigger ID in config store update: {prop_id_dict}")
+                     logger.warning(f"Unhandled pattern-matching trigger ID type: {prop_id_dict.get('type')}")
 
-            except (AttributeError, KeyError) as e:
-                logger.error(f"Error processing triggered ID or updating config: {e} | ID: {triggered_prop_id_str}")
-                return no_update
+            elif prop_id_dict_str == "commission-input":
+                 try: updated_config["trading_costs"]["commission_value"] = float(triggered_value) if triggered_value is not None else None
+                 except (ValueError, TypeError): logger.warning(f"Invalid commission value: {triggered_value}")
+                 logger.debug(f"Updated commission_value to {updated_config['trading_costs'].get('commission_value')}")
+            elif prop_id_dict_str == "slippage-input":
+                 try: updated_config["trading_costs"]["slippage_value"] = float(triggered_value) if triggered_value is not None else None
+                 except (ValueError, TypeError): logger.warning(f"Invalid slippage value: {triggered_value}")
+                 logger.debug(f"Updated slippage_value to {updated_config['trading_costs'].get('slippage_value')}")
+            elif prop_id_dict_str == "rebalancing-frequency":
+                 updated_config["rebalancing"]["frequency"] = triggered_value
+                 logger.debug(f"Updated rebalancing frequency to {triggered_value}")
+            elif prop_id_dict_str == "rebalancing-threshold":
+                 try: updated_config["rebalancing"]["threshold"] = float(triggered_value) if triggered_value is not None else None
+                 except (ValueError, TypeError): logger.warning(f"Invalid rebalancing threshold: {triggered_value}")
+                 logger.debug(f"Updated rebalancing threshold to {updated_config['rebalancing'].get('threshold')}")
+            else:
+                logger.warning(f"Unhandled simple trigger ID in config store update: {prop_id_dict_str}")
 
-        if updated_config != current_config:
-            logger.debug(f"Updated strategy-config-store: {updated_config}")
-            return updated_config
-        else:
-            logger.debug("Config store update: No actual change detected.")
+        except (json.JSONDecodeError, AttributeError, KeyError, IndexError) as e:
+            logger.error(f"Error processing triggered ID or updating config: {e} | ID: {triggered_prop_id_str}", exc_info=True)
             return no_update
 
-
-    # DISABLED: This callback was competing with handle_step_transition in wizard_callbacks.py
-    # Removing this resolves the step transition issue
-    # @app.callback(
-    #     [
-    #         Output("strategy-selection-container", "style"),
-    #         Output("date-range-selection-container", "style"),
-    #         Output("tickers-selection-container", "style"),
-    #         Output("risk-management-container", "style"),
-    #         Output("trading-costs-container", "style"),
-    #         Output("rebalancing-rules-container", "style"),
-    #         Output("wizard-progress", "value") # Update progress bar
-    #     ],
-    #     [
-    #         Input("confirm-strategy", "n_clicks"),
-    #         Input("confirm-dates", "n_clicks"),
-    #         Input("confirm-tickers", "n_clicks"),
-    #         Input("confirm-risk", "n_clicks"),
-    #         Input("confirm-costs", "n_clicks"),
-    #         Input("confirm-rebalancing", "n_clicks"),  # Add Step 6 confirm button
-    #     ],
-    #     [
-    #         State("strategy-selector", "value"),
-    #     ],
-    #     prevent_initial_call=True
-    # )
-    # def control_wizard_steps(confirm_strat, confirm_dates, confirm_tickers, confirm_risk, confirm_costs, confirm_rebalancing, strategy_value):
-    #     # This functionality is now handled by handle_step_transition in wizard_callbacks.py
-    #     pass
+        if updated_config != current_config:
+            logger.info(f"Updated strategy-config-store: {json.dumps(updated_config)}")
+            return updated_config
+        else:
+            logger.debug("Config store update: No change detected.")
+            return no_update
 
     logger.info("Strategy callbacks registered.")
