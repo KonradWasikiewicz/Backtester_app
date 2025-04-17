@@ -98,28 +98,31 @@ def create_backtest_parameters():
 
     return html.Div([
         dbc.Row([
-            dbc.Col(dcc.DatePickerSingle(
-                # --- Corrected ID ---
-                id='backtest-start-date', # Use ID consistent with callbacks
-                date=default_start.strftime('%Y-%m-%d'),
-                min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else None,
-                max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
-                placeholder='Start Date',
-                display_format='YYYY-MM-DD',
-                className="mb-2"
-            ), width=6),
-            dbc.Col(dcc.DatePickerSingle(
-                # --- Corrected ID ---
-                id='backtest-end-date', # Use ID consistent with callbacks
-                date=default_end.strftime('%Y-%m-%d'),
-                min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else None,
-                max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
-                placeholder='End Date',
-                display_format='YYYY-MM-DD',
-                className="mb-2"
-            ), width=6)
+            dbc.Col(html.Div([
+                html.Label('From:', className='mb-1'),
+                dcc.DatePickerSingle(
+                    id='backtest-start-date',
+                    date=default_start.strftime('%Y-%m-%d'),
+                    min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else None,
+                    max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
+                    placeholder='Start Date',
+                    display_format='YYYY-MM-DD',
+                    className='mb-2'
+                )
+            ]), width=6),
+            dbc.Col(html.Div([
+                html.Label('To:', className='mb-1'),
+                dcc.DatePickerSingle(
+                    id='backtest-end-date',
+                    date=default_end.strftime('%Y-%m-%d'),
+                    min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else None,
+                    max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
+                    placeholder='End Date',
+                    display_format='YYYY-MM-DD',
+                    className='mb-2'
+                )
+            ]), width=6)
         ])
-        # ... (rest of the elements for date range, e.g., preview, buttons - if any) ...
     ])
 
 

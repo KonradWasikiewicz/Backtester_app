@@ -32,8 +32,6 @@ except ImportError:
     # Możesz też rzucić wyjątek lub zakończyć działanie
 
 # --- Funkcja pomocnicza do generowania inputów parametrów ---
-# (Reszta kodu bez zmian - _generate_parameter_inputs, register_strategy_callbacks, update_strategy_description, update_strategy_parameters, update_config_store_from_inputs)
-# ... (cały kod funkcji _generate_parameter_inputs) ...
 def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
     """Generates input components based on the selected strategy."""
     if not strategy_value or strategy_value not in DEFAULT_STRATEGY_PARAMS:
@@ -54,12 +52,18 @@ def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
     for param_name in sorted_param_keys:
         default_value = params[param_name]
         input_id = {"type": "strategy-param", "strategy": strategy_value, "param": param_name}
-        # Create label with info icon
         tooltip_id = f"tooltip-{strategy_value}-{param_name}"
-        label = html.Div([
-            html.Span(param_name.replace('_', ' ').title(), className="me-1"),
-            html.Span(html.I(className="fas fa-info-circle"), id=tooltip_id, style={'cursor':'help', 'color':'#0d6efd'})
-        ], className="param-label mb-1")
+
+        # Tooltip Icon
+        tooltip_icon = html.Span(
+            html.I(className="fas fa-info-circle"),
+            id=tooltip_id,
+            style={'cursor': 'help', 'color': '#0d6efd'}
+        )
+
+        # Label
+        label_text = html.Label(param_name.replace('_', ' ').title(), htmlFor=json.dumps(input_id), className="ms-1 me-2") # Added htmlFor
+
         # Input component
         input_component = dbc.Input(
             id=input_id,
@@ -67,15 +71,30 @@ def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
             value=default_value,
             step=1 if isinstance(default_value, int) else 0.01,
             min=0,
-            className="mb-3"
+            # Removed mb-3, added size="sm" for smaller input
+            size="sm",
+            style={"width": "100px"} # Fixed width for the input field
         )
+
         # Tooltip for parameter description
         tooltip = dbc.Tooltip(
             descriptions.get(param_name, ""),
             target=tooltip_id,
-            placement="right"
+            placement="left" # Changed placement to left
         )
-        inputs.extend([label, input_component, tooltip])
+
+        # Arrange components in a row using Bootstrap grid
+        param_row = dbc.Row(
+            [
+                dbc.Col(tooltip_icon, width="auto", className="d-flex align-items-center"),
+                dbc.Col(label_text, width="auto", className="d-flex align-items-center"),
+                dbc.Col(input_component, width="auto"),
+                dbc.Col(tooltip) # Tooltip doesn't need a column definition, it attaches to target
+            ],
+            className="mb-3 align-items-center" # Added vertical alignment for items in the row
+        )
+
+        inputs.append(param_row) # Append the whole row
 
     return inputs
 
@@ -110,7 +129,6 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
             # Clear section and disable confirm
             return [], True
         # Build section: header + generated inputs
-        header = html.H6("Strategy Parameters:", className="mt-4 mb-2")
         inputs = []
         try:
             inputs = _generate_parameter_inputs(selected_strategy)
@@ -118,7 +136,7 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
             logger.error(f"Error generating parameters for strategy {selected_strategy}: {e}", exc_info=True)
             inputs = [dbc.Alert(f"Error loading parameters: {e}", color="danger")]
         # Enable confirm when strategy selected (defaults assumed valid)
-        return [header] + inputs, False
+        return inputs, False
 
     @app.callback(
         Output("strategy-config-store", "data"),
