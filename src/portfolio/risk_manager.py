@@ -29,6 +29,10 @@ class RiskManager:
         self.max_portfolio_risk = 0.05  # 5% maximum overall portfolio risk
         self.max_drawdown = 0.25  # 25% maximum drawdown
         self.max_correlated_positions = 0.30  # 30% maximum in correlated assets
+        # Additional configuration defaults
+        self.max_open_positions = float('inf')  # unlimited until configured
+        self.stop_loss_pct = 0.0  # fraction of price for stop loss
+        self.profit_target_ratio = 1.0  # risk:reward ratio for take profit
         
         # Feature flags for risk management
         self._apply_risk_rules = False  # Only apply risk rules when checkbox is checked
@@ -36,6 +40,10 @@ class RiskManager:
         self._use_risk_per_trade = True
         self._use_max_drawdown = False
         self._use_max_correlated = False
+        # Flags for stop loss, take profit, trailing stop
+        self._use_stop_loss: bool = False
+        self._use_take_profit: bool = False
+        self._use_trailing_stop: bool = False
         
         # Load config if provided
         if config:
@@ -61,6 +69,14 @@ class RiskManager:
         self._use_risk_per_trade = config.get('use_risk_per_trade', self._use_risk_per_trade)
         self._use_max_drawdown = config.get('use_max_drawdown', self._use_max_drawdown)
         self._use_max_correlated = config.get('use_max_correlated', self._use_max_correlated)
+        # Load additional settings
+        self.max_open_positions = config.get('max_open_positions', self.max_open_positions)
+        self.stop_loss_pct = config.get('stop_loss_pct', self.stop_loss_pct)
+        self.profit_target_ratio = config.get('profit_target_ratio', self.profit_target_ratio)
+        # Load feature flags for SL, TP, trailing
+        self._use_stop_loss = config.get('use_stop_loss', self._use_stop_loss)
+        self._use_take_profit = config.get('use_take_profit', self._use_take_profit)
+        self._use_trailing_stop = config.get('use_trailing_stop', self._use_trailing_stop)
 
     def set_apply_risk_rules(self, apply_rules):
         """
@@ -80,49 +96,29 @@ class RiskManager:
         """
         return self._apply_risk_rules
 
-    def calculate_position_size(self, portfolio, ticker, price, stop_price=None):
+    def calculate_position_size(self, current_portfolio_value: float, available_cash: float, price: float, volatility: Optional[float] = None) -> int:
         """
-        Calculate the maximum position size for a new position.
-        
-        Args:
-            portfolio: Portfolio object containing current positions and cash
-            ticker: Ticker symbol for the position
-            price: Current price of the asset
-            stop_price: Optional stop price for risk calculation
-            
-        Returns:
-            float: The maximum position size in number of units
+        Calculate the number of shares to trade based on portfolio value, cash,
+        price, and optional volatility. When position sizing is disabled, allocate
+        equally across max_open_positions. Otherwise use max_position_size rule.
         """
-        if not price or price <= 0:
+        if price <= 0:
             return 0
-            
-        # Calculate position size as 1/n of portfolio where n is number of tickers
-        # This is applied by default, regardless of risk rules checkbox
-        num_tickers = len(portfolio.get_universe()) if hasattr(portfolio, 'get_universe') else 1
-        if num_tickers <= 0:
-            num_tickers = 1
-        
-        # Default max position size is 1/number_of_tickers
-        default_max_size_pct = 1.0 / num_tickers
-        
-        # If the specific max position size setting is smaller, use that instead
-        max_position_pct = min(default_max_size_pct, self.max_position_size) 
-        
-        # Calculate the max position value based on portfolio value
-        portfolio_value = portfolio.get_total_value()
-        max_position_value = portfolio_value * max_position_pct
-        
-        # Convert to number of units at current price
-        max_units = max_position_value / price if price > 0 else 0
-        
-        # If risk rules are enabled and risk per trade is set, apply that limit
-        if self._apply_risk_rules and self._use_risk_per_trade and stop_price and stop_price > 0:
-            risk_amount = portfolio_value * self.risk_per_trade
-            price_risk = price - stop_price
+        # Disabled position sizing: allocate all available cash
+        if not self._use_position_sizing:
+            shares = int(available_cash // price)
+            return max(shares, 0)
+        # Use max_position_size fraction of portfolio
+        max_units = int((current_portfolio_value * self.max_position_size) // price)
+        if max_units <= 0:
+            return 0
+        # Optional risk-per-trade sizing if enabled and volatility provided
+        if self._apply_risk_rules and self._use_risk_per_trade and volatility and volatility > 0:
+            risk_amount = current_portfolio_value * self.risk_per_trade
+            price_risk = price * volatility
             if price_risk > 0:
-                risk_based_units = risk_amount / price_risk
-                max_units = min(max_units, risk_based_units)
-        
+                risk_units = int(risk_amount // price_risk)
+                max_units = min(max_units, risk_units)
         return max_units
     
     def check_position_risk(self, portfolio, position):
@@ -310,3 +306,18 @@ class RiskManager:
         
         # Always return True to ensure backtests continue regardless of risk limits
         return True
+
+    @property
+    def use_stop_loss(self) -> bool:
+        """Public getter for stop loss feature flag"""
+        return self._use_stop_loss
+
+    @property
+    def use_take_profit(self) -> bool:
+        """Public getter for take profit feature flag"""
+        return self._use_take_profit
+
+    @property
+    def use_trailing_stop(self) -> bool:
+        """Public getter for trailing stop feature flag"""
+        return self._use_trailing_stop

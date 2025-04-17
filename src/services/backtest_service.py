@@ -156,11 +156,9 @@ class BacktestService:
             portfolio_values = self.current_results["Portfolio_Value"]
             benchmark_series = self.current_results.get("Benchmark")
             
-            return self.visualization_service.create_portfolio_chart(
-                portfolio_values=portfolio_values,
-                benchmark_values=benchmark_series,
-                chart_type=chart_type,
-                initial_capital=self.backtest_manager.initial_capital
+            # Use performance chart for portfolio values
+            return self.visualization_service.create_performance_chart(
+                {'portfolio_values': portfolio_values}
             )
         except Exception as e:
             logger.error(f"Error generating portfolio chart: {e}", exc_info=True)
@@ -212,7 +210,14 @@ class BacktestService:
             if "trades" in self.current_results:
                 trades = [t for t in self.current_results["trades"] if t["ticker"] == ticker]
             
-            return self.visualization_service.create_signals_chart(ticker, signals_df, trades)
+            # Load price data and create signals chart
+            price_data = self.data_service.load_data(ticker)
+            return self.visualization_service.create_ohlc_chart(
+                data=price_data,
+                ticker=ticker,
+                show_volume=True,
+                signals_df=signals_df
+            )
         except Exception as e:
             logger.error(f"Error generating signals chart: {e}", exc_info=True)
             return None

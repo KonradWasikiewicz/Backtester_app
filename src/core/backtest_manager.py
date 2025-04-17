@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import logging
 import traceback
-from typing import Dict, Tuple, Any, Optional, List
+from typing import Dict, Any, Optional
 from pathlib import Path
 import sys
 
@@ -41,9 +41,7 @@ class BacktestManager:
             logger.error(f"CRITICAL: Failed to initialize DataLoader in BacktestManager: {e}", exc_info=True)
             raise RuntimeError("DataLoader initialization failed") from e
 
-    def run_backtest(self, strategy_type: str, tickers: List[str],
-                     strategy_params: Optional[Dict[str, Any]] = None,
-                     risk_params: Optional[Dict[str, Any]] = None) -> Tuple[Optional[Dict[str, pd.DataFrame]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    def run_backtest(self, strategy_type: str, tickers: list[str], strategy_params: dict[str, Any] = None, risk_params: dict[str, Any] = None):
         """Runs a backtest for the specified strategy, tickers, and parameters."""
         logger.info(f"--- Starting New Backtest ---")
         logger.info(f"Strategy: {strategy_type}, Tickers: {tickers}")
@@ -66,41 +64,14 @@ class BacktestManager:
                 logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
             except Exception as e: logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True); return None, None, None
 
-            # Process risk parameters and feature flags
-            risk_params = risk_params or {}
-            
-            # Extract risk management feature flags from the risk_params, if any
-            # These flags indicate which risk management features are actually enabled in the UI
-            _use_position_sizing = risk_params.pop('_use_position_sizing', False)
-            _use_stop_loss = risk_params.pop('_use_stop_loss', False)
-            _use_take_profit = risk_params.pop('_use_take_profit', False)
-            _use_risk_per_trade = risk_params.pop('_use_risk_per_trade', False)
-            _use_drawdown_protection = risk_params.pop('_use_drawdown_protection', False)
-            
-            # Add the feature flags back to the risk_params dict so they're passed to RiskManager
-            feature_flags = {
-                '_use_position_sizing': _use_position_sizing,
-                '_use_stop_loss': _use_stop_loss,
-                '_use_take_profit': _use_take_profit,
-                '_use_risk_per_trade': _use_risk_per_trade,
-                '_use_drawdown_protection': _use_drawdown_protection,
-            }
-            risk_params.update(feature_flags)
-            
-            # Explicitly log which risk features are enabled
-            enabled_features = [k.replace('_use_', '') for k, v in feature_flags.items() if v]
-            logger.info(f"Risk management enabled features: {', '.join(enabled_features) if enabled_features else 'None'}")
-            
-            try: 
-                risk_manager = RiskManager(**risk_params)
-                log_msg = f"Initialized RiskManager with {'custom' if risk_params else 'default'} parameters."
-                logger.info(log_msg)
-            except Exception as e: 
-                logger.error(f"Error initializing RiskManager: {e}. Using default.", exc_info=True)
-                risk_manager = RiskManager(**feature_flags)  # Still pass the feature flags even if using defaults for other params
-
+            # Initialize RiskManager with configuration dict (keys expected: apply_risk_rules, use_*, stop_loss_pct, risk_per_trade, max_open_positions, etc.)
+            try:
+                risk_manager = RiskManager(risk_params or {})
+                logger.info("Initialized RiskManager with provided risk_params configuration.")
+            except Exception as e:
+                logger.error(f"Error initializing RiskManager with provided config: {e}. Using default RiskManager.", exc_info=True)
+                risk_manager = RiskManager()
             portfolio_manager = PortfolioManager(initial_capital=self.initial_capital, risk_manager=risk_manager)
-            logger.info("Initialized PortfolioManager.")
 
             # --- 2. Data Loading and Preparation ---
             all_ticker_data = self.data_loader.load_all_data()
@@ -130,7 +101,7 @@ class BacktestManager:
                     signals_df = strategy.generate_signals(ticker_data_full)
                     if signals_df is not None and not signals_df.empty:
                          signals_df.index = pd.to_datetime(signals_df.index).tz_localize(None)
-                         all_signals[ticker] = signals_df.reindex(combined_df.index).ffill()
+                         all_signals[ticker] = signals_df.reindex(combined_df.index).fillna(0)
                 except Exception as e: logger.error(f"Error generating signals for {ticker}: {e}", exc_info=True)
             logger.info(f"Signal generation complete for {len(all_signals)} tickers.")
 
@@ -138,8 +109,9 @@ class BacktestManager:
             logger.info("Starting backtest simulation loop...")
             portfolio_history = []
 
-            # Market Filter Data Preparation (bez zmian)
-            market_filter_data = None; apply_market_filter = risk_manager.use_market_filter
+            # Market Filter Data Preparation
+            market_filter_data = None
+            apply_market_filter = bool(risk_params.get('use_market_filter', False))
             if apply_market_filter:
                  try:
                       spy_data_df = self.data_loader.load_benchmark_data_df() # Użyj nowej metody z DataLoader

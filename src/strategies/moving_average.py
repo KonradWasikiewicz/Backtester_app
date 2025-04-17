@@ -68,8 +68,8 @@ class MovingAverageStrategy(BaseStrategy):
 
         Returns:
             pd.DataFrame: DataFrame z indeksem takim samym jak `data`, zawierający kolumny:
-                          'signal' (1 dla kupna, -1 dla sprzedaży, 0 dla braku sygnału w danym dniu)
-                          'positions' (1 dla pozycji długiej, -1 dla krótkiej (jeśli zaimplementowano), 0 dla braku pozycji)
+                          'Signal' (1 dla kupna, -1 dla sprzedaży, 0 dla braku sygnału w danym dniu)
+                          'Positions' (1 dla pozycji długiej, -1 dla krótkiej (jeśli zaimplementowano), 0 dla braku pozycji)
 
         Raises:
             ValueError: Jeśli w danych brakuje kolumny 'Close'.
@@ -84,14 +84,14 @@ class MovingAverageStrategy(BaseStrategy):
         if len(data) < self.long_window:
             logger.warning(f"Not enough data ({len(data)} rows) to calculate the long SMA ({self.long_window}). Returning no signals.")
             signals = pd.DataFrame(index=data.index)
-            signals['signal'] = 0
-            signals['positions'] = 0
+            signals['Signal'] = 0
+            signals['Positions'] = 0
             return signals
 
         # Utwórz kopię, aby uniknąć modyfikacji oryginalnego DataFrame (jeśli jest to wymagane)
         df = data.copy()
         signals = pd.DataFrame(index=df.index)
-        signals['signal'] = 0 # Domyślnie brak sygnału
+        signals['Signal'] = 0  # Domyślnie brak sygnału
 
         short_sma_col = f'SMA_{self.short_window}'
         long_sma_col = f'SMA_{self.long_window}'
@@ -110,22 +110,22 @@ class MovingAverageStrategy(BaseStrategy):
             buy_condition = (df[short_sma_col] > df[long_sma_col]) & (df[short_sma_col].shift(1) <= df[long_sma_col].shift(1))
             sell_condition = (df[short_sma_col] < df[long_sma_col]) & (df[short_sma_col].shift(1) >= df[long_sma_col].shift(1))
 
-            signals.loc[buy_condition, 'signal'] = 1
-            signals.loc[sell_condition, 'signal'] = -1
+            signals.loc[buy_condition, 'Signal'] = 1
+            signals.loc[sell_condition, 'Signal'] = -1
 
             # --- Logika utrzymywania pozycji ---
-            signals['positions'] = signals['signal'].replace(0, pd.NA).ffill().fillna(0)
-            signals['positions'] = signals['positions'].replace(-1, 0) # Zakładamy brak pozycji krótkich
+            signals['Positions'] = signals['Signal'].replace(0, pd.NA).ffill().fillna(0).astype(int)
+            signals['Positions'] = signals['Positions'].replace(-1, 0)  # No short positions
 
             # --- Zaktualizowano log, aby pasował do nazwy strategii ---
-            logger.debug(f"Generated {signals['signal'].ne(0).sum()} signals for Moving Average strategy.")
-            logger.debug(f"Buy signals: {signals['signal'].eq(1).sum()}, Sell signals: {signals['signal'].eq(-1).sum()}")
+            logger.debug(f"Generated {signals['Signal'].ne(0).sum()} signals for Moving Average strategy.")
+            logger.debug(f"Buy signals: {signals['Signal'].eq(1).sum()}, Sell signals: {signals['Signal'].eq(-1).sum()}")
 
         except Exception as e:
             # --- Zaktualizowano log, aby pasował do nazwy strategii ---
             logger.error(f"Error during Moving Average signal generation: {e}", exc_info=True)
-            signals['signal'] = 0
-            signals['positions'] = 0
+            signals['Signal'] = 0
+            signals['Positions'] = 0
             # raise e # Opcjonalnie
 
-        return signals[['signal', 'positions']]
+        return signals[['Signal', 'Positions']]

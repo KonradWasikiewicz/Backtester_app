@@ -740,3 +740,59 @@ class VisualizationService:
         """
         self.color_map.update(color_map)
         logger.info(f"Updated color map with {len(color_map)} elements")
+        
+    def create_monthly_returns_heatmap(self, portfolio_series):
+        """
+        Create a heatmap of monthly returns from a portfolio value series.
+        """
+        import calendar
+        # Calculate end-of-month portfolio values and monthly returns
+        monthly_vals = portfolio_series.resample('ME').last()
+        monthly_ret = monthly_vals.pct_change().dropna()
+        # Prepare pivot table
+        df = monthly_ret.to_frame(name='Return')
+        df['Year'] = df.index.year
+        df['Month'] = df.index.month
+        pivot = df.pivot(index='Year', columns='Month', values='Return').fillna(0)
+        # Map month numbers to names
+        month_names = [calendar.month_abbr[m] for m in pivot.columns]
+        # Plot heatmap
+        fig = px.imshow(
+            pivot.values,
+            x=month_names,
+            y=pivot.index,
+            color_continuous_scale='RdYlGn',
+            labels={'x':'Month','y':'Year','color':'Return'},
+            aspect='auto',
+            title='Monthly Returns Heatmap'
+        )
+        fig.update_layout(height=self.height, template=self.theme, margin=dict(l=50, r=50, b=50, t=80))
+        return fig
+
+    def prepare_trades_for_table(self, trades):
+        """
+        Format trade records for display in a table.
+        """
+        formatted = []
+        for t in trades:
+            # Format dates
+            entry = t.get('entry_date')
+            exit = t.get('exit_date')
+            entry_str = entry.strftime('%Y-%m-%d') if hasattr(entry, 'strftime') else str(entry)
+            exit_str = exit.strftime('%Y-%m-%d') if hasattr(exit, 'strftime') else str(exit)
+            # Format PnL
+            pnl = t.get('pnl', 0)
+            pnl_str = f"${pnl:.2f}"
+            pnl_pct = t.get('pnl_pct', 0)
+            pct_str = f"{pnl_pct:.2f}%"
+            formatted.append({
+                'Ticker': t.get('ticker'),
+                'Entry': entry_str,
+                'Exit': exit_str,
+                'PnL': pnl_str,
+                'PnL_pct': pct_str,
+                'Reason': t.get('exit_reason', '')
+            })
+        return formatted
+
+# end of class

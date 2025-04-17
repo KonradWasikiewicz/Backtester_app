@@ -94,9 +94,22 @@ class PortfolioManager:
         if not self.risk_manager.can_open_new_position(len(self.positions)): logger.info(f"Max positions limit ({self.risk_manager.max_open_positions}) reached."); return False
 
         current_total_value = self.get_current_portfolio_value({ticker: entry_price})
-        shares_to_trade = self.risk_manager.calculate_position_size(current_portfolio_value=current_total_value, available_cash=self.cash, price=entry_price, volatility=volatility)
-        if shares_to_trade <= 0: logger.info(f"Position size is {shares_to_trade} for {ticker}. Cannot open."); return False
-
+        # Determine position size
+        if getattr(self.risk_manager, '_use_position_sizing', True) is False:
+            shares_to_trade = int(self.cash // entry_price)
+        else:
+            shares_to_trade = self.risk_manager.calculate_position_size(
+                current_portfolio_value=current_total_value,
+                available_cash=self.cash,
+                price=entry_price,
+                volatility=volatility
+            )
+        logger.debug(f"Sizing inputs: cash={self.cash:.2f}, portfolio_value={current_total_value:.2f}, price={entry_price:.2f}, volatility={volatility}; calculated shares={shares_to_trade}")
+        # Fallback to 1 share if risk manager allocates zero
+        if shares_to_trade <= 0:
+            logger.info(f"No shares allocated by risk manager for {ticker}. Defaulting to 1 share.")
+            shares_to_trade = 1
+         
         cost = shares_to_trade * entry_price
         if cost > self.cash: logger.warning(f"Insufficient cash for {ticker}. Required: ${cost:.2f}, Available: ${self.cash:.2f}."); return False
 
