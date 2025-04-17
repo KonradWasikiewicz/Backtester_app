@@ -60,7 +60,7 @@ def get_strategy_dropdown(available_strategies: List[Dict[str, str]]) -> dcc.Dro
         # --- Corrected ID ---
         id='strategy-dropdown', # Use ID consistent with callbacks
         options=options,
-        placeholder="Select a strategy...",
+        placeholder="Click here...",
         className="mb-3", # Add bottom margin
         clearable=False # Usually, we don't want to clear the strategy selection
     )
@@ -145,8 +145,8 @@ def create_strategy_config_section(tickers=None):
                     get_strategy_dropdown(AVAILABLE_STRATEGIES),
                     # --- Corrected ID for strategy description ---
                     html.Div(id="strategy-description-output", className="mb-3 mt-3"), # Use ID from callback
-                    html.H6("Strategy Parameters:", className="mt-4 mb-2"),
-                    html.Div(id='strategy-param-inputs', className="mb-3"), # Inputs will be inserted here
+                    # Strategy parameters header and inputs will be inserted here upon selection
+                    html.Div(id='strategy-param-section', className="mt-4 mb-3"),
                     dbc.Button(
                         "Confirm",
                         id="confirm-strategy", # ID consistent with callbacks
@@ -179,13 +179,17 @@ def create_strategy_config_section(tickers=None):
                 "Step 3: Tickers Selection",
                 html.Div([
                     html.Label("Select tickers to trade:", className="mb-2"),
-                    create_ticker_checklist(tickers if tickers else []), # Use helper function
+                    html.Div([
+                        dbc.Button("Select All", id="select-all-tickers", color="secondary", size="sm", className="me-2"),
+                        dbc.Button("Deselect All", id="deselect-all-tickers", color="secondary", size="sm")
+                    ], className="mb-2"),
+                    create_ticker_checklist(tickers if tickers else []),
                     dbc.Button(
                         "Confirm",
-                        id="confirm-tickers", # ID consistent with callbacks
+                        id="confirm-tickers",
                         color="primary",
                         className="mt-3",
-                        disabled=True # Initially disabled
+                        disabled=True
                     )
                 ]),
                 is_hidden=True,
@@ -196,13 +200,66 @@ def create_strategy_config_section(tickers=None):
                 "Step 4: Risk Management",
                 html.Div([
                     html.Label("Configure risk parameters:", className="mb-2"),
-                    html.Div(id="risk-management-inputs", className="mb-3"), # Container for dynamic inputs
+                    # Checklist of risk features
+                    dcc.Checklist(
+                        id="risk-features-checklist",
+                        options=[
+                            {'label': 'Position Sizing', 'value': 'position_sizing'},
+                            {'label': 'Stop Loss', 'value': 'stop_loss'},
+                            {'label': 'Take Profit', 'value': 'take_profit'},
+                            {'label': 'Risk per Trade', 'value': 'risk_per_trade'},
+                            {'label': 'Market Filter', 'value': 'market_filter'},
+                            {'label': 'Drawdown Protection', 'value': 'drawdown_protection'}
+                        ],
+                        value=[],
+                        labelStyle={'display': 'block'},
+                        className="mb-3"
+                    ),
+                    # Panels for each risk feature, hidden by default
+                    html.Div([  # Position Sizing Panel
+                        html.Label("Max Position Size (%):", className="mb-2"),
+                        dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1)
+                    ], id="position_sizing-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                    html.Div([  # Stop Loss Panel
+                        html.Label("Stop Loss Type:", className="mb-2"),
+                        dcc.Dropdown(
+                            id="stop-loss-type",
+                            options=[{'label': 'Fixed', 'value': 'fixed'}, {'label': 'Trailing', 'value': 'trailing'}],
+                            value='fixed'
+                        ),
+                        html.Label("Stop Loss Value (%):", className="mt-2 mb-2"),
+                        dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1)
+                    ], id="stop_loss-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                    html.Div([  # Take Profit Panel
+                        html.Label("Take Profit Type:", className="mb-2"),
+                        dcc.Dropdown(
+                            id="take-profit-type",
+                            options=[{'label': 'Fixed', 'value': 'fixed'}, {'label': 'Trailing', 'value': 'trailing'}],
+                            value='fixed'
+                        ),
+                        html.Label("Take Profit Value (%):", className="mt-2 mb-2"),
+                        dbc.Input(id="take-profit-value", type="number", min=0, step=0.1)
+                    ], id="take_profit-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                    html.Div([  # Risk per Trade Panel
+                        html.Label("Max Risk per Trade (%):", className="mb-2"),
+                        dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1)
+                    ], id="risk_per_trade-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                    html.Div([  # Market Filter Panel
+                        html.Label("Market Trend Lookback (days):", className="mb-2"),
+                        dbc.Input(id="market-trend-lookback", type="number", min=1, step=1)
+                    ], id="market_filter-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                    html.Div([  # Drawdown Protection Panel
+                        html.Label("Max Drawdown (%):", className="mb-2"),
+                        dbc.Input(id="max-drawdown", type="number", min=0, step=0.1),
+                        html.Label("Max Daily Loss (%):", className="mt-2 mb-2"),
+                        dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1)
+                    ], id="drawdown_protection-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
                     dbc.Button(
-                        "Confirm",
-                        id="confirm-risk", # ID consistent with callbacks
+                        "Continue without additional risk measures",
+                        id="confirm-risk",
                         color="primary",
                         className="mt-3",
-                        disabled=True # Initially disabled
+                        disabled=True
                     )
                 ]),
                 is_hidden=True, step_number=4

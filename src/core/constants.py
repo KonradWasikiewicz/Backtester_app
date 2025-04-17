@@ -38,28 +38,44 @@ STRATEGY_DESCRIPTIONS: dict[str, str] = {
 
 # --- Default Strategy Parameters ---
 DEFAULT_STRATEGY_PARAMS: dict[str, dict] = {
-    "RSI": {"rsi_period": 14, "buy_threshold": 30, "sell_threshold": 70},
-    "MAC": {"fast_ma": 12, "slow_ma": 26, "signal_ma": 9},
+    "RSI": {"rsi_period": 14, "lower_bound": 30, "upper_bound": 70},
+    "MAC": {"short_window": 12, "long_window": 26},
     "BB": {"bb_period": 20, "bb_std_dev": 2.0},
     # --- ADD DEFAULT PARAMS FOR ALL YOUR STRATEGIES ---
 }
 
-# --- Strategy Class Mapping (Consider moving elsewhere if circular imports occur) ---
-try:
-    from src.strategies.moving_average import MovingAverageStrategy
-    from src.strategies.rsi import RSIStrategy
-    from src.strategies.bollinger import BollingerBandsStrategy
-    # Import other strategy classes...
-
-    STRATEGY_CLASS_MAP: dict[str, type] = {
-        "RSI": RSIStrategy,
-        "MAC": MovingAverageStrategy,
-        "BB": BollingerBandsStrategy,
-        # --- ADD MAPPINGS FOR ALL YOUR STRATEGIES ---
+# --- Parameter Descriptions for tooltips and documentation ---
+PARAM_DESCRIPTIONS: dict[str, dict[str, str]] = {
+    "RSI": {
+        "rsi_period": "Number of lookback periods to calculate the RSI (e.g., 14 days)",
+        "lower_bound": "RSI value below which the strategy generates a buy signal (e.g., 30)",
+        "upper_bound": "RSI value above which the strategy generates a sell signal (e.g., 70)"
+    },
+    "MAC": {
+        "short_window": "Number of periods for the short-term moving average (e.g., 12)",
+        "long_window": "Number of periods for the long-term moving average (e.g., 26)"
+    },
+    "BB": {
+        "bb_period": "Number of periods to compute the Bollinger Bands moving average (e.g., 20)",
+        "bb_std_dev": "Number of standard deviations for the upper/lower bands (e.g., 2)"
     }
-except ImportError as e:
-    logger.error(f"Could not import strategy classes in constants.py: {e}. Check paths/names.", exc_info=True)
-    STRATEGY_CLASS_MAP = {}
+    # Add entries for other strategies...
+}
+
+import importlib
+
+# --- Strategy Class Mapping (dynamic import to avoid missing when dependencies absent) ---
+STRATEGY_CLASS_MAP: dict[str, type] = {}
+# Map strategy keys to their module and class names
+_MODULE_MAP: dict[str, str] = {"RSI": "rsi", "MAC": "moving_average", "BB": "bollinger"}
+_CLASS_MAP: dict[str, str] = {"RSI": "RSIStrategy", "MAC": "MovingAverageStrategy", "BB": "BollingerBandsStrategy"}
+for _key, _module in _MODULE_MAP.items():
+    try:
+        _mod = importlib.import_module(f"src.strategies.{_module}")
+        _cls = getattr(_mod, _CLASS_MAP[_key])
+        STRATEGY_CLASS_MAP[_key] = _cls
+    except Exception as _err:
+        logger.warning(f"Could not import strategy class '{_CLASS_MAP[_key]}' for key '{_key}': {_err}")
 
 # --- Log Loaded Strategy Information ---
 try:

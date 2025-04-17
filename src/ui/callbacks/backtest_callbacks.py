@@ -51,14 +51,14 @@ def register_backtest_callbacks(app):
         [Output("backtest-status", "children"),
          Output("results-section", "style"),
          Output("no-results-placeholder", "style"),
-         Output("ticker-selector", "options")],  # Removed duplicate ticker-selector value output
+         Output("ticker-selector", "options")],  # Updates ticker dropdown in results
         Input("run-backtest-button", "n_clicks"),
-        [State("strategy-selector", "value"),
-         State("ticker-selector", "value"),
-         State("slider-start-date-picker", "date"),
-         State("slider-end-date-picker", "date"),
-         State({"type": "strategy-param", "index": ALL}, "value"),
-         State({"type": "strategy-param", "index": ALL}, "id"),
+        [State("strategy-dropdown", "value"),      # From step 1
+         State("ticker-input", "value"),          # From step 3
+         State("backtest-start-date", "date"),    # From step 2
+         State("backtest-end-date", "date"),      # From step 2
+         State({"type": "strategy-param", "strategy": ALL, "param": ALL}, "value"),
+         State({"type": "strategy-param", "strategy": ALL, "param": ALL}, "id"),
          State("risk-features-checklist", "value"),
          State("max-risk-per-trade", "value"),
          State("stop-loss-type", "value"),
@@ -91,7 +91,8 @@ def register_backtest_callbacks(app):
         # Prepare parameters
         try:
             tickers = selected_tickers if isinstance(selected_tickers, list) else [selected_tickers]
-            strategy_params = {param_id["index"]: strategy_param_values[i] for i, param_id in enumerate(strategy_param_ids)}
+            # Map each parameter id dict's 'param' key to its provided value
+            strategy_params = {param_id["param"]: strategy_param_values[i] for i, param_id in enumerate(strategy_param_ids)}
             risk_params = {
                 # Set continue_iterate to False by default, regardless of the risk_features input
                 "continue_iterate": False,  # Removed conditional to prevent continuous iteration prompts

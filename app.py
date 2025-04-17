@@ -23,7 +23,9 @@ except ImportError as e:
 # Basic logging configuration for the main application entry point
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-logger.info("--- Application Start ---")
+# Only log application start once, after the reloader has initialized main process
+if __name__ == '__main__' and os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+    logger.info("--- Application Start ---")
 
 
 try:
@@ -33,19 +35,21 @@ try:
     # 2. Configuring logging (via configure_logging)
     # 3. Setting the layout (via create_app_layout)
     # 4. Registering all necessary callbacks (via register_callbacks)
-    logger.info("Creating Dash application via create_app...")
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        logger.info("Creating Dash application via create_app...")
     app = create_app(suppress_callback_exceptions=True) 
-    logger.info("Dash application created successfully.")
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        logger.info("Dash application created successfully.")
 
     # Callback registration is handled within create_app
     # Layout is set within create_app
 
     # --- Run Server ---
     if __name__ == '__main__':
-        logger.info("Starting Dash development server...")
-        # debug=True enables Dash Dev Tools (error reporting, callback graph)
-        # dev_tools_hot_reload=False prevents automatic browser refresh on code changes
-        app.run(debug=True, dev_tools_hot_reload=False)
+        if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+            logger.info("Starting Dash development server...")
+        # Disable reloader to avoid duplicate runs
+        app.run(debug=True, dev_tools_hot_reload=False, use_reloader=False)
 
 except Exception as e:
     # Catch any exceptions during the app setup process

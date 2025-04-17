@@ -44,7 +44,7 @@ class DataLoader:
         self._data_cache: Dict[str, pd.DataFrame] = {} # Cache dla danych tickerów
         self._full_data_cache: Optional[pd.DataFrame] = None # Cache dla całego wczytanego pliku
         self._available_tickers: Optional[List[str]] = None # Cache dla listy tickerów
-        logger.info(f"DataLoader initialized. Data path: '{self.data_path}', Benchmark: '{self.benchmark_ticker}'")
+        logger.debug(f"DataLoader initialized. Data path: '{self.data_path}', Benchmark: '{self.benchmark_ticker}'")
 
 
     def _load_and_cache_full_data(self) -> bool:
@@ -60,14 +60,14 @@ class DataLoader:
              return False
 
         try:
-            logger.info(f"Loading historical data from: {self.data_path}...")
+            logger.debug(f"Loading historical data from: {self.data_path}...")
             # Kluczowe kolumny: Date, Ticker, Open, High, Low, Close, Volume
             # Upewnij się, że 'Date' jest parsowana poprawnie
             df = pd.read_csv(
                 self.data_path,
                 parse_dates=['Date'] # Powiedz pandas, która kolumna to data
             )
-            logger.info(f"CSV loaded successfully: {len(df)} rows, {len(df.columns)} columns.")
+            logger.debug(f"CSV loaded successfully: {len(df)} rows, {len(df.columns)} columns.")
 
             # --- Podstawowa Walidacja Danych ---
             required_columns = ['Date', 'Ticker', 'Open', 'High', 'Low', 'Close', 'Volume']

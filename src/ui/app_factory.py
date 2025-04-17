@@ -247,7 +247,7 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
     # Set app title
     app.title = "Financial Backtester"
 
-    # Configure logging
+    # Configure logging (demoted to debug in detailed steps)
     configure_logging()
 
     # Create the app layout using the function
@@ -334,7 +334,7 @@ def create_app_layout() -> html.Div:
         html.Div: The main app layout
     """
     try:
-        logger.info("Creating app layout")
+        logger.debug("Creating app layout")
 
         # Get available tickers for the strategy configuration
         available_tickers = get_available_tickers()
@@ -458,7 +458,7 @@ def register_callbacks(app: dash.Dash) -> None:
         app: The Dash application instance
     """
     try:
-        logger.info("Registering application callbacks...") # Added log
+        logger.debug("Registering application callbacks...") # Demoted log
 
         # Register wizard navigation and validation callbacks
         register_wizard_callbacks(app)
@@ -483,7 +483,7 @@ def register_callbacks(app: dash.Dash) -> None:
         register_debug_callbacks(app)
         # Removed duplicate log here
 
-        logger.info("Finished registering application callbacks.") # Added log
+        logger.debug("Finished registering application callbacks.") # Demoted log
 
     except Exception as e:
         logger.error(f"Error registering callbacks: {e}", exc_info=True)

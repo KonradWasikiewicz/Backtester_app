@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Import strategy logic and constants
 try:
     # --- POPRAWIONE IMPORTY ---
-    from src.core.constants import DEFAULT_STRATEGY_PARAMS, STRATEGY_DESCRIPTIONS # Importuj domyślne parametry i opisy
+    from src.core.constants import DEFAULT_STRATEGY_PARAMS, STRATEGY_DESCRIPTIONS, PARAM_DESCRIPTIONS # Importuj domyślne parametry i opisy
     from src.core.data import DataLoader
     # --- USUNIĘTO BŁĘDNY IMPORT 'generate_strategy_parameters' ---
 except ImportError:
@@ -28,6 +28,7 @@ except ImportError:
     # Definiuj puste stałe jako fallback
     DEFAULT_STRATEGY_PARAMS = {}
     STRATEGY_DESCRIPTIONS = {}
+    PARAM_DESCRIPTIONS = {}
     # Możesz też rzucić wyjątek lub zakończyć działanie
 
 # --- Funkcja pomocnicza do generowania inputów parametrów ---
@@ -40,6 +41,7 @@ def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
         return [html.P("Select a valid strategy to see its parameters.", className="text-muted")]
 
     params = DEFAULT_STRATEGY_PARAMS.get(strategy_value, {})
+    descriptions = PARAM_DESCRIPTIONS.get(strategy_value, {})  # get tooltip texts
     if not params:
         logger.warning(f"No default parameters found for strategy: {strategy_value}")
         return [html.P(f"No parameters defined for strategy: {strategy_value}", className="text-warning")]
@@ -51,24 +53,29 @@ def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
 
     for param_name in sorted_param_keys:
         default_value = params[param_name]
-        input_type = "number"
-        step = 1 if isinstance(default_value, int) else 0.01
-
-        input_id = {
-            "type": "strategy-param",
-            "strategy": strategy_value,
-            "param": param_name
-        }
-        label = html.Label(f"{param_name.replace('_', ' ').title()}:", htmlFor=json.dumps(input_id, sort_keys=True), className="mb-1")
+        input_id = {"type": "strategy-param", "strategy": strategy_value, "param": param_name}
+        # Create label with info icon
+        tooltip_id = f"tooltip-{strategy_value}-{param_name}"
+        label = html.Div([
+            html.Span(param_name.replace('_', ' ').title(), className="me-1"),
+            html.Span(html.I(className="fas fa-info-circle"), id=tooltip_id, style={'cursor':'help', 'color':'#0d6efd'})
+        ], className="param-label mb-1")
+        # Input component
         input_component = dbc.Input(
             id=input_id,
-            type=input_type,
+            type="number",
             value=default_value,
-            step=step,
-            min=0 if input_type == "number" else None,
+            step=1 if isinstance(default_value, int) else 0.01,
+            min=0,
             className="mb-3"
         )
-        inputs.extend([label, input_component])
+        # Tooltip for parameter description
+        tooltip = dbc.Tooltip(
+            descriptions.get(param_name, ""),
+            target=tooltip_id,
+            placement="right"
+        )
+        inputs.extend([label, input_component, tooltip])
 
     return inputs
 
@@ -94,18 +101,24 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
         return html.P(description)
 
     @app.callback(
-        Output('strategy-param-inputs', 'children'),
+        [Output('strategy-param-section', 'children'), Output('confirm-strategy', 'disabled')],
         Input('strategy-dropdown', 'value')
     )
-    def update_strategy_parameters(selected_strategy: Optional[str]) -> List[Any]:
+    def update_strategy_parameters(selected_strategy: Optional[str]):
         logger.info(f"Strategy selected: {selected_strategy}. Updating parameter inputs.")
         if not selected_strategy:
-            return []
+            # Clear section and disable confirm
+            return [], True
+        # Build section: header + generated inputs
+        header = html.H6("Strategy Parameters:", className="mt-4 mb-2")
+        inputs = []
         try:
-            return _generate_parameter_inputs(selected_strategy)
+            inputs = _generate_parameter_inputs(selected_strategy)
         except Exception as e:
             logger.error(f"Error generating parameters for strategy {selected_strategy}: {e}", exc_info=True)
-            return [dbc.Alert(f"Error loading parameters: {e}", color="danger")]
+            inputs = [dbc.Alert(f"Error loading parameters: {e}", color="danger")]
+        # Enable confirm when strategy selected (defaults assumed valid)
+        return [header] + inputs, False
 
     @app.callback(
         Output("strategy-config-store", "data"),

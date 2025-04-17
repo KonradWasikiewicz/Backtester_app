@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # --- Importy Lokalne ---
 try:
-    from src.core.constants import AVAILABLE_STRATEGIES, TRADING_DAYS_PER_YEAR
+    from src.core.constants import STRATEGY_CLASS_MAP, TRADING_DAYS_PER_YEAR
     from src.core.data import DataLoader
     from src.core.config import config
     from src.portfolio.portfolio_manager import PortfolioManager
@@ -51,12 +51,19 @@ class BacktestManager:
 
         try:
             # --- 1. Initialization ---
-            if strategy_type not in AVAILABLE_STRATEGIES: logger.error(f"Strategy '{strategy_type}' not found."); return None, None, None
-            strategy_class: type[BaseStrategy] = AVAILABLE_STRATEGIES[strategy_type]
+            # Find matching key in STRATEGY_CLASS_MAP (case-insensitive)
+            strategy_key = next((k for k in STRATEGY_CLASS_MAP.keys() if k.lower() == strategy_type.lower()), None)
+            if not strategy_key:
+                logger.error(f"Strategy '{strategy_type}' not found in STRATEGY_CLASS_MAP.")
+                return None, None, None
+            strategy_class: type[BaseStrategy] = STRATEGY_CLASS_MAP[strategy_key]
             if not tickers: logger.error("No tickers provided."); return None, None, None
 
             strategy_params = strategy_params or {}
-            try: strategy = strategy_class(tickers=tickers, **strategy_params); logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
+            try:
+                # Instantiate strategy with only its specific parameters
+                strategy = strategy_class(**strategy_params)
+                logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
             except Exception as e: logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True); return None, None, None
 
             # Process risk parameters and feature flags
@@ -119,7 +126,8 @@ class BacktestManager:
             for ticker in valid_tickers:
                 try:
                     ticker_data_full = all_ticker_data[ticker]
-                    signals_df = strategy.generate_signals(ticker, ticker_data_full)
+                    # generate_signals expects only the data frame
+                    signals_df = strategy.generate_signals(ticker_data_full)
                     if signals_df is not None and not signals_df.empty:
                          signals_df.index = pd.to_datetime(signals_df.index).tz_localize(None)
                          all_signals[ticker] = signals_df.reindex(combined_df.index).ffill()
