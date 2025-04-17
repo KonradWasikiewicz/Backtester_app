@@ -18,7 +18,8 @@ from src.core.data import DataLoader
 from src.ui.callbacks.strategy_callbacks import register_strategy_callbacks
 from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
 from src.ui.callbacks.risk_management_callbacks import register_risk_management_callbacks
-from src.ui.layouts.strategy_config import create_strategy_config_section
+from src.ui.callbacks.wizard_callbacks import register_wizard_callbacks
+from src.ui.layouts.strategy_config import create_strategy_config_section  # Use full wizard layout with all steps
 from src.ui.layouts.results_display import create_results_section
 from src.version import get_version, get_version_info, RELEASE_DATE, get_changelog  # Import version info
 
@@ -459,6 +460,9 @@ def register_callbacks(app: dash.Dash) -> None:
     try:
         logger.info("Registering application callbacks...") # Added log
 
+        # Register wizard navigation and validation callbacks
+        register_wizard_callbacks(app)
+        logger.debug("Registered wizard callbacks.")
         # Register strategy-related callbacks
         register_strategy_callbacks(app)
         logger.debug("Registered strategy callbacks.") # Added log

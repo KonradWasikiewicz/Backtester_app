@@ -35,7 +35,7 @@ The application follows a layered architecture with clear separation of concerns
 
 ## Component Responsibilities
 
-### 1. UI Layer
+## 1. UI Layer
 
 **Location**: `src/ui/`
 
@@ -47,9 +47,11 @@ The application follows a layered architecture with clear separation of concerns
 - Components should be reusable where possible
 
 **Sub-components**:
-- `layouts/`: Page structure and layout components
-- `components/`: Reusable UI elements
-- `callbacks/`: UI event handler registration (only dispatch to Application Layer)
+- `app_factory.py`: App setup and entry point
+- `wizard/`: Strategy configuration wizard layout and logic
+- `layouts/`: Other page layout components (e.g., results display)
+- `components/`: Reusable UI elements (cards, tooltips, etc.)
+- `callbacks/`: UI event handlers registration
 
 ### 2. Application Layer
 
@@ -117,7 +119,7 @@ The application follows a layered architecture with clear separation of concerns
 
 ### 6. Data Layer
 
-**Location**: `src/data/` (proposed)
+**Location**: `src/core/data/` (formerly `src/data/`)
 
 **Primary Responsibility**: Data access, transformation, and caching.
 
@@ -162,15 +164,14 @@ The communication between components should follow these rules:
 ```
 src/
   ├── analysis/         # Analysis utilities and performance metrics
-  ├── core/             # Core business logic
+  ├── core/             # Core business logic and data access
+  │   ├── data/         # Data loader and transformer
+  │   │   ├── data.py    # Data loading operations
+  │   │   └── ...
   │   ├── engine.py     # Backtest execution engine
   │   ├── config.py     # Configuration management
   │   ├── constants.py  # Application constants
   │   └── exceptions.py # Custom exception types
-  ├── data/             # Data access and transformation (proposed)
-  │   ├── loader.py     # Data loading operations
-  │   ├── transformer.py # Data transformation utilities
-  │   └── cache.py      # Data caching mechanisms
   ├── portfolio/        # Portfolio and position management
   │   ├── portfolio_manager.py # Portfolio tracking
   │   └── risk_manager.py      # Risk management
@@ -182,9 +183,18 @@ src/
   │   ├── moving_average.py # MA strategy implementation
   │   └── rsi.py        # RSI strategy implementation
   ├── ui/               # User interface components
-  │   ├── callbacks/    # UI event handlers
-  │   ├── components/   # Reusable UI components
-  │   └── layouts/      # Page layouts
+  │   ├── app_factory.py      # Dash app creation and setup
+  │   ├── components.py       # Common UI components (can be split further)
+  │   ├── wizard/             # Strategy wizard layout and callbacks
+  │   │   ├── layout.py
+  │   │   └── ... wizard subpackage files
+  │   ├── layouts/            # Page layout modules
+  │   │   ├── results_display.py
+  │   ├── callbacks/          # Dash callbacks for UI interactions
+  │   │   ├── strategy_callbacks.py
+  │   │   ├── wizard_callbacks.py
+  │   │   ├── backtest_callbacks.py
+  │   │   └── risk_management_callbacks.py
   ├── visualization/    # Data visualization
   │   ├── visualizer.py # Main visualization class
   │   └── chart_utils.py # Chart creation utilities

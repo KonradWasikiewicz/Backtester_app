@@ -87,7 +87,7 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
         Input('strategy-dropdown', 'value')
     )
     def update_strategy_description(selected_strategy: Optional[str]) -> html.P:
-        logger.debug(f"Updating description for strategy: {selected_strategy}")
+        """Update the strategy description text when a strategy is selected."""
         if not selected_strategy:
             return html.P("Select a strategy to see its description.")
         description = STRATEGY_DESCRIPTIONS.get(selected_strategy, "No description available.")

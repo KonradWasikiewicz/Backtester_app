@@ -1,9 +1,10 @@
 import dash
-from dash import html, dcc, callback, Input, Output, State, ALL, MATCH, ctx, no_update
+from dash import html, dcc, Input, Output, State, ALL, MATCH, ctx, no_update
 import logging
 # Make sure logging is configured appropriately elsewhere (e.g., in app_factory or main app.py)
 # from ...config.logging_config import setup_logging
 from src.core.constants import STRATEGY_DESCRIPTIONS # Poprawna ścieżka do stałych
+from src.core.constants import DEFAULT_STRATEGY_PARAMS  # added import for default params
 
 logger = logging.getLogger(__name__)
 
@@ -13,35 +14,12 @@ def register_wizard_callbacks(app):
     """
     logger.info("Registering wizard callbacks...")
 
-    # Callback to show strategy description
-    @callback(
-        Output('strategy-description-output', 'children'),
-        Input('strategy-dropdown', 'value') # Ensure 'strategy-dropdown' is the correct ID
-    )
-    def update_strategy_description(selected_strategy):
-        """Updates the strategy description text based on the dropdown selection."""
-        logger.debug(f"Updating description for strategy: {selected_strategy}")
-        if not selected_strategy:
-            # Return an empty P tag or specific text when nothing is selected
-            return html.P("Select a strategy to see its description.")
-        
-        # Get description from dictionary
-        description_text = STRATEGY_DESCRIPTIONS.get(selected_strategy, f"No description available for {selected_strategy}.")
-        
-        # Ensure we return a valid Dash component (e.g., html.P)
-        if isinstance(description_text, str):
-             logger.debug(f"Returning description: {description_text[:50]}...") # Log snippet
-             return html.P(description_text)
-        else:
-             # Log an error if the description is not a string
-             logger.error(f"Description for {selected_strategy} is not a string: {type(description_text)}. Value: {description_text}")
-             # Return an error message in the UI
-             return html.P(f"Error loading description for {selected_strategy}.", style={'color': 'red'})
+    # Removed duplicate strategy description callback (registered in strategy_callbacks)
 
     # --- Consolidated Step Transition Callback ---
     @app.callback(
         [
-            # Step Content Visibility (7 steps)
+            # Step Content Visibility
             Output("strategy-selection-content", "style"),
             Output("date-range-selection-content", "style"),
             Output("tickers-selection-content", "style"),
@@ -49,14 +27,14 @@ def register_wizard_callbacks(app):
             Output("trading-costs-content", "style"),
             Output("rebalancing-rules-content", "style"),
             Output("wizard-summary-content", "style"),
-            # Step Status Indicators (7 steps) - Verify these IDs in wizard_layout.py
-            Output("strategy-selection-status", "className"),
-            Output("date-range-selection-status", "className"),
-            Output("tickers-selection-status", "className"),
-            Output("risk-management-status", "className"),
-            Output("trading-costs-status", "className"),
-            Output("rebalancing-rules-status", "className"),
-            Output("summary-status", "className"),
+            # Header class toggles for each step
+            Output("strategy-selection-header", "className"),
+            Output("date-range-selection-header", "className"),
+            Output("tickers-selection-header", "className"),
+            Output("risk-management-header", "className"),
+            Output("trading-costs-header", "className"),
+            Output("rebalancing-rules-header", "className"),
+            Output("wizard-summary-header", "className"),
             # Progress Bar
             Output("wizard-progress", "value")
         ],
@@ -75,7 +53,7 @@ def register_wizard_callbacks(app):
             Input("risk-management-header", "n_clicks"),
             Input("trading-costs-header", "n_clicks"),
             Input("rebalancing-rules-header", "n_clicks"),
-            Input("summary-header", "n_clicks")
+            Input("wizard-summary-header", "n_clicks")
         ],
         prevent_initial_call=True
     )
@@ -112,7 +90,7 @@ def register_wizard_callbacks(app):
                 header_map = {
                     "strategy-selection-header": 0, "date-range-selection-header": 1,
                     "tickers-selection-header": 2, "risk-management-header": 3,
-                    "trading-costs-header": 4, "rebalancing-rules-header": 5, "summary-header": 6
+                    "trading-costs-header": 4, "rebalancing-rules-header": 5, "wizard-summary-header": 6
                 }
                 target_step_index = header_map.get(trigger_id)
                 if target_step_index is None:
@@ -155,16 +133,18 @@ def register_wizard_callbacks(app):
 
     # --- Validation Callbacks (Crucial for enabling Confirm buttons) ---
 
-    @callback(
+    @app.callback(
         Output("confirm-strategy", "disabled"),
-        Input("strategy-dropdown", "value") # Verify this ID
+        Input("strategy-dropdown", "value"),
+        prevent_initial_call=False
     )
     def validate_strategy_selection(strategy_value):
+        # Enable Confirm as soon as a strategy is selected; default params assumed valid
         is_disabled = not bool(strategy_value)
         logger.debug(f"Strategy selected: {strategy_value}. Confirm button disabled: {is_disabled}")
         return is_disabled
 
-    @callback(
+    @app.callback(
         Output("confirm-dates", "disabled"),
         [Input("backtest-start-date", "date"), # Verify these IDs
          Input("backtest-end-date", "date")]
@@ -174,7 +154,7 @@ def register_wizard_callbacks(app):
         logger.debug(f"Dates selected: Start={start_date}, End={end_date}. Confirm Dates button disabled: {is_disabled}")
         return is_disabled
 
-    @callback(
+    @app.callback(
         Output("confirm-tickers", "disabled"),
         Input("ticker-input", "value") # Verify this ID (or the correct component for ticker selection)
     )
@@ -184,18 +164,23 @@ def register_wizard_callbacks(app):
         logger.debug(f"Tickers selected: {tickers}. Confirm Tickers button disabled: {is_disabled}")
         return is_disabled
 
-    # --- Add validation callbacks for Risk, Costs, and Rebalancing steps ---
-    # Example for Risk (assuming an input with ID 'risk-param-input')
-    # @callback(
-    #     Output("confirm-risk", "disabled"),
-    #     Input("risk-param-input", "value") # Verify this ID
-    # )
-    # def validate_risk_params(risk_value):
-    #     is_disabled = not bool(risk_value) # Basic check, adjust as needed
-    #     logger.debug(f"Risk param: {risk_value}. Confirm Risk button disabled: {is_disabled}")
-    #     return is_disabled
+    @app.callback(
+        Output("confirm-costs", "disabled"),
+        [Input("commission-input", "value"), Input("slippage-input", "value")]
+    )
+    def validate_costs(commission, slippage):
+        ok = commission is not None and slippage is not None
+        logger.debug(f"Costs inputs: commission={commission}, slippage={slippage}, valid: {ok}")
+        return not ok
 
-    # ... Implement similar validation for Costs and Rebalancing steps ...
+    @app.callback(
+        Output("confirm-rebalancing", "disabled"),
+        [Input("rebalancing-frequency", "value"), Input("rebalancing-threshold", "value")]
+    )
+    def validate_rebalancing(frequency, threshold):
+        ok = bool(frequency) and threshold is not None
+        logger.debug(f"Rebalancing inputs: freq={frequency}, thresh={threshold}, valid: {ok}")
+        return not ok
 
     logger.info("Wizard callbacks registered successfully.")
 

@@ -12,24 +12,24 @@ from datetime import datetime
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Dodanie ścieżki głównego katalogu projektu do sys.path dla importów
+# Add project root to sys.path for imports
 try:
-    # Próba importu z src (dla pełnej aplikacji)
+    # Try import from src for full application
     from src.core.data import DataLoader
-    from src.core.constants import AVAILABLE_STRATEGIES # Importuj listę strategii
+    from src.core.constants import AVAILABLE_STRATEGIES
 except ModuleNotFoundError:
-    # Jeśli nie działa, dostosuj ścieżkę i zaimportuj ponownie
+    # On import failure, append project root to sys.path and retry imports
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(current_dir, '..', '..', '..'))
     if project_root not in sys.path:
         sys.path.append(project_root)
 
-    # Ponowna próba importu
+    # Retry import after path adjustment
     from src.core.data import DataLoader
     from src.core.constants import AVAILABLE_STRATEGIES
 
-# --- Funkcja tworząca dropdown strategii ---
-def get_strategy_dropdown(available_strategies: List[Dict[str, str]]) -> dcc.Dropdown: # Zmieniono typowanie na listę słowników
+# --- Strategy dropdown creation function ---
+def get_strategy_dropdown(available_strategies: List[Dict[str, str]]) -> dcc.Dropdown: # Changed typing to list of dicts
     """
     Creates a Dash Dropdown component for selecting a strategy.
 
@@ -45,45 +45,45 @@ def get_strategy_dropdown(available_strategies: List[Dict[str, str]]) -> dcc.Dro
         logger.error(f"available_strategies is not a list: {type(available_strategies)}. Using empty options.")
         options = []
     else:
-        # --- POPRAWIONA LOGIKA TWORZENIA OPCJI ---
-        # Zakładamy, że available_strategies to lista słowników: [{'label': 'Display Name', 'value': 'ID'}, ...]
+        # --- Corrected logic for creating options ---
+        # Assume available_strategies is a list of dicts: [{'label': 'Display Name', 'value': 'ID'}, ...]
         options = [
             {"label": strategy.get("label", "Missing Label"), "value": strategy.get("value", "Missing Value")}
             for strategy in available_strategies
-            if isinstance(strategy, dict) # Upewnij się, że element jest słownikiem
+            if isinstance(strategy, dict) # Ensure element is a dict
         ]
-        # Sprawdź, czy opcje nie są puste
+        # Check if options are empty
         if not options:
              logger.warning("Generated empty options for strategy dropdown. Check AVAILABLE_STRATEGIES structure in constants.py.")
 
     return dcc.Dropdown(
-        # --- POPRAWIONE ID ---
-        id='strategy-dropdown', # Użyj ID zgodnego z callbackami
+        # --- Corrected ID ---
+        id='strategy-dropdown', # Use ID consistent with callbacks
         options=options,
         placeholder="Select a strategy...",
-        className="mb-3", # Dodaj margines dolny
-        clearable=False # Zazwyczaj nie chcemy czyścić wyboru strategii
+        className="mb-3", # Add bottom margin
+        clearable=False # Usually, we don't want to clear the strategy selection
     )
 
-# ... (reszta funkcji pomocniczych: generate_strategy_parameters, create_ticker_checklist, create_backtest_parameters - bez zmian w logice, ale upewnij się, że ID są spójne) ...
-# Przykład create_ticker_checklist (upewnij się, że ID są poprawne)
+# ... (rest of the helper functions: generate_strategy_parameters, create_ticker_checklist, create_backtest_parameters - no changes in logic, but ensure IDs are consistent) ...
+# Example create_ticker_checklist (ensure IDs are correct)
 def create_ticker_checklist(tickers):
     """Creates a checklist for selecting tickers."""
     logger.debug(f"Creating ticker checklist with tickers: {tickers}")
     options = [{'label': ticker, 'value': ticker} for ticker in tickers] if tickers else []
     return dcc.Checklist(
-        # --- POPRAWIONE ID ---
-        id='ticker-input', # Użyj ID zgodnego z callbackami (np. 'ticker-input' lub 'ticker-checklist')
+        # --- Corrected ID ---
+        id='ticker-input', # Use ID consistent with callbacks (e.g., 'ticker-input' or 'ticker-checklist')
         options=options,
-        value=[], # Domyślnie nic nie jest zaznaczone
-        labelStyle={'display': 'block'} # Wyświetlaj każdy ticker w nowej linii
+        value=[], # Default to nothing selected
+        labelStyle={'display': 'block'} # Display each ticker on a new line
     )
 
-# Przykład create_backtest_parameters (upewnij się, że ID są poprawne)
+# Example create_backtest_parameters (ensure IDs are correct)
 def create_backtest_parameters():
     """Creates date pickers for backtest start and end dates."""
     logger.debug("Creating date range pickers.")
-    # ... (logika pobierania dat) ...
+    # ... (logic for fetching dates) ...
     try:
         data_loader = DataLoader()
         min_date, max_date = data_loader.get_date_range()
@@ -99,8 +99,8 @@ def create_backtest_parameters():
     return html.Div([
         dbc.Row([
             dbc.Col(dcc.DatePickerSingle(
-                # --- POPRAWIONE ID ---
-                id='backtest-start-date', # Użyj ID zgodnego z callbackami
+                # --- Corrected ID ---
+                id='backtest-start-date', # Use ID consistent with callbacks
                 date=default_start.strftime('%Y-%m-%d'),
                 min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else None,
                 max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
@@ -109,8 +109,8 @@ def create_backtest_parameters():
                 className="mb-2"
             ), width=6),
             dbc.Col(dcc.DatePickerSingle(
-                # --- POPRAWIONE ID ---
-                id='backtest-end-date', # Użyj ID zgodnego z callbackami
+                # --- Corrected ID ---
+                id='backtest-end-date', # Use ID consistent with callbacks
                 date=default_end.strftime('%Y-%m-%d'),
                 min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else None,
                 max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
@@ -119,11 +119,11 @@ def create_backtest_parameters():
                 className="mb-2"
             ), width=6)
         ])
-        # ... (reszta elementów dla date range, np. preview, buttons - jeśli istnieją) ...
+        # ... (rest of the elements for date range, e.g., preview, buttons - if any) ...
     ])
 
 
-# --- Główna funkcja tworząca sekcję konfiguracji strategii ---
+# --- Main function creating the strategy configuration section ---
 def create_strategy_config_section(tickers=None):
     """
     Creates the main layout for the strategy configuration wizard.
@@ -131,28 +131,28 @@ def create_strategy_config_section(tickers=None):
     """
     logger.info("Creating strategy configuration section layout...")
     try:
-        # --- Pasek postępu ---
+        # --- Progress bar ---
         progress = dbc.Progress(id="wizard-progress", value=0, striped=True, animated=True, className="mb-4")
 
-        # --- Definicja kroków kreatora ---
+        # --- Definition of wizard steps ---
         steps = [
             create_wizard_step(
                 "strategy-selection",
                 "Step 1: Strategy Selection",
                 html.Div([
                     html.Label("Select a strategy:", className="mb-2"),
-                    # --- Użyj poprawionej funkcji get_strategy_dropdown ---
+                    # --- Use corrected get_strategy_dropdown function ---
                     get_strategy_dropdown(AVAILABLE_STRATEGIES),
-                    # --- Poprawione ID dla opisu strategii ---
-                    html.Div(id="strategy-description-output", className="mb-3 mt-3"), # Użyj ID z callbacku
+                    # --- Corrected ID for strategy description ---
+                    html.Div(id="strategy-description-output", className="mb-3 mt-3"), # Use ID from callback
                     html.H6("Strategy Parameters:", className="mt-4 mb-2"),
-                    html.Div(id='strategy-param-inputs', className="mb-3"), # Tutaj będą wstawiane inputy
+                    html.Div(id='strategy-param-inputs', className="mb-3"), # Inputs will be inserted here
                     dbc.Button(
                         "Confirm",
-                        id="confirm-strategy", # ID zgodne z callbackami
+                        id="confirm-strategy", # ID consistent with callbacks
                         color="primary",
                         className="mt-3",
-                        disabled=True # Domyślnie wyłączony, włączany przez callback walidacyjny
+                        disabled=True # Initially disabled, enabled by validation callback
                     )
                 ]),
                 step_number=1
@@ -162,13 +162,13 @@ def create_strategy_config_section(tickers=None):
                 "Step 2: Date Range Selection",
                 html.Div([
                     html.Label("Select date range:", className="mb-2"),
-                    create_backtest_parameters(), # Użyj funkcji pomocniczej
+                    create_backtest_parameters(), # Use helper function
                     dbc.Button(
                         "Confirm",
-                        id="confirm-dates", # ID zgodne z callbackami
+                        id="confirm-dates", # ID consistent with callbacks
                         color="primary",
                         className="mt-3",
-                        disabled=True # Domyślnie wyłączony
+                        disabled=True # Initially disabled
                     )
                 ]),
                 is_hidden=True,
@@ -179,13 +179,13 @@ def create_strategy_config_section(tickers=None):
                 "Step 3: Tickers Selection",
                 html.Div([
                     html.Label("Select tickers to trade:", className="mb-2"),
-                    create_ticker_checklist(tickers if tickers else []), # Użyj funkcji pomocniczej
+                    create_ticker_checklist(tickers if tickers else []), # Use helper function
                     dbc.Button(
                         "Confirm",
-                        id="confirm-tickers", # ID zgodne z callbackami
+                        id="confirm-tickers", # ID consistent with callbacks
                         color="primary",
                         className="mt-3",
-                        disabled=True # Domyślnie wyłączony
+                        disabled=True # Initially disabled
                     )
                 ]),
                 is_hidden=True,
@@ -196,13 +196,13 @@ def create_strategy_config_section(tickers=None):
                 "Step 4: Risk Management",
                 html.Div([
                     html.Label("Configure risk parameters:", className="mb-2"),
-                    html.Div(id="risk-management-inputs", className="mb-3"), # Kontener na dynamiczne inputy
+                    html.Div(id="risk-management-inputs", className="mb-3"), # Container for dynamic inputs
                     dbc.Button(
                         "Confirm",
-                        id="confirm-risk", # ID zgodne z callbackami
+                        id="confirm-risk", # ID consistent with callbacks
                         color="primary",
                         className="mt-3",
-                        disabled=True # Domyślnie wyłączony
+                        disabled=True # Initially disabled
                     )
                 ]),
                 is_hidden=True, step_number=4
@@ -215,19 +215,19 @@ def create_strategy_config_section(tickers=None):
                     dbc.Row([
                          dbc.Col([
                               html.Label("Commission (%):", className="mb-2"),
-                              # --- POPRAWIONE/SPÓJNE ID ---
+                              # --- Corrected/Consistent ID ---
                               dbc.Input(id="commission-input", type="number", min=0, step=0.01, value=0.1, className="mb-3"),
                               html.Label("Slippage (%):", className="mb-2"),
-                              # --- POPRAWIONE/SPÓJNE ID ---
+                              # --- Corrected/Consistent ID ---
                               dbc.Input(id="slippage-input", type="number", min=0, step=0.01, value=0.05, className="mb-3"),
                          ])
                     ]),
                     dbc.Button(
                         "Confirm",
-                        id="confirm-costs", # ID zgodne z callbackami
+                        id="confirm-costs", # ID consistent with callbacks
                         color="primary",
                         className="mt-3",
-                        disabled=True # Domyślnie wyłączony
+                        disabled=True # Initially disabled
                     )
                 ]),
                 is_hidden=True, step_number=5
@@ -241,47 +241,47 @@ def create_strategy_config_section(tickers=None):
                          dbc.Col([
                               html.Label("Rebalancing Frequency:", className="mb-2"),
                               dcc.Dropdown(
-                                   # --- POPRAWIONE/SPÓJNE ID ---
-                                   id="rebalancing-frequency", # Użyj ID zgodnego z callbackami
+                                   # --- Corrected/Consistent ID ---
+                                   id="rebalancing-frequency", # Use ID consistent with callbacks
                                    options=[
                                         {'label': 'Daily', 'value': 'D'},
                                         {'label': 'Weekly', 'value': 'W'},
                                         {'label': 'Monthly', 'value': 'M'},
                                         {'label': 'Quarterly', 'value': 'Q'},
-                                        {'label': 'Annually', 'value': 'A'}, # Zmieniono Yearly na Annually dla spójności z pandas
+                                        {'label': 'Annually', 'value': 'A'}, # Changed Yearly to Annually for consistency with pandas
                                         {'label': 'None', 'value': 'N'}
                                    ],
                                    value='M', className="mb-3"
                               ),
                               html.Label("Rebalancing Threshold (%):", className="mb-2"),
-                              # --- POPRAWIONE/SPÓJNE ID ---
+                              # --- Corrected/Consistent ID ---
                               dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, className="mb-3"),
                          ])
                     ]),
                     dbc.Button(
                         "Confirm",
-                        id="confirm-rebalancing", # ID zgodne z callbackami
+                        id="confirm-rebalancing", # ID consistent with callbacks
                         color="primary",
                         className="mt-3",
-                        disabled=True # Domyślnie wyłączony
+                        disabled=True # Initially disabled
                     )
                 ]),
                 is_hidden=True, step_number=6
             ),
             create_wizard_step(
-                # --- POPRAWIONE ID KROKU ---
-                "wizard-summary", # Użyj ID zgodnego z callbackami
+                # --- Corrected step ID ---
+                "wizard-summary", # Use ID consistent with callbacks
                 "Step 7: Summary and Run Backtest",
                 html.Div([
                     html.H5("Review Configuration Summary", className="mb-3"),
-                    # --- POPRAWIONE ID OUTPUTU ---
-                    html.Div(id="wizard-summary-output", className="mb-3"), # Użyj ID zgodnego z callbackami
+                    # --- Corrected output ID ---
+                    html.Div(id="wizard-summary-output", className="mb-3"), # Use ID consistent with callbacks
                     dbc.Button(
                         children=[html.I(className="fas fa-play me-2"), "Run Backtest"],
-                        id="run-backtest-button", # ID zgodne z callbackami
-                        color="success", # Zmieniono kolor na success
+                        id="run-backtest-button", # ID consistent with callbacks
+                        color="success", # Changed color to success
                         className="w-100 mt-3",
-                        disabled=True # Domyślnie wyłączony, włączany po przejściu wszystkich kroków
+                        disabled=True # Initially disabled, enabled after completing all steps
                     )
                 ]),
                 is_hidden=True,
@@ -297,53 +297,47 @@ def create_strategy_config_section(tickers=None):
 
     except Exception as e:
         logger.error(f"Error creating strategy config section: {e}", exc_info=True)
-        # Zwróć komunikat błędu w layoucie
+        # Return error message in layout
         return html.Div([
             dbc.Alert(f"Error generating strategy configuration layout: {e}", color="danger")
         ])
 
-# --- Funkcja pomocnicza tworząca krok kreatora ---
+# --- Helper function creating a wizard step ---
 def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
     """
     Creates a wizard step container with header, status, and content.
     """
     logger.debug(f"Creating wizard step: {step_id}, Hidden: {is_hidden}")
     content_style = {"display": "none"} if is_hidden else {"display": "block"}
-    # Dodaj marginesy dla lepszego wyglądu
+    # Add margins for better appearance
     content_style.update({"marginLeft": "30px", "paddingTop": "10px"})
 
     return html.Div([
-        # --- Nagłówek kroku (klikalny) ---
+        # --- Step header (clickable) ---
         html.Div([
-             # --- Kontener na status kroku (np. kółko z numerem) ---
-             html.Span(
-                  f"{step_number}",
-                  # --- ID dla statusu kroku ---
-                  id=f"{step_id}-status",
-                  className="step-status pending me-2" # Domyślnie pending
-             ),
+             # Removed numeric status span per request
              html.H5(title, className="mb-0 d-inline")
         ],
-        # --- ID dla nagłówka kroku ---
+        # --- ID for step header ---
         id=f"{step_id}-header",
-        className="wizard-step-header mb-2", # Dodano klasę dla stylizacji
-        style={"cursor": "pointer"} # Wskaźnik myszy sugerujący klikalność
+        className="wizard-step-header mb-2", # Added class for styling
+        style={"cursor": "pointer"} # Mouse pointer suggesting clickability
         ),
 
-        # --- Kontener na zawartość kroku ---
+        # --- Container for step content ---
         html.Div(
             content,
-            # --- ID dla zawartości kroku ---
+            # --- ID for step content ---
             id=f"{step_id}-content",
-            style=content_style # Styl ukrywający/pokazujący
+            style=content_style # Style for hiding/showing
         ),
-        html.Hr(className="my-3") # Linia oddzielająca kroki
+        html.Hr(className="my-3") # Line separating steps
     ],
-    # ID dla całego kontenera kroku (opcjonalne, może nie być potrzebne)
+    # ID for entire step container (optional, may not be needed)
     # id=f"{step_id}-container",
-    className="wizard-step mb-3") # Usunięto border-bottom, Hr() dodaje linię
+    className="wizard-step mb-3") # Removed border-bottom, Hr() adds line
 
-# ... (reszta pliku, np. create_import_tickers_modal - bez zmian) ...
+# ... (rest of the file, e.g., create_import_tickers_modal - no changes) ...
 def create_import_tickers_modal() -> dbc.Modal:
     """
     Creates a modal for importing tickers from a file or text.

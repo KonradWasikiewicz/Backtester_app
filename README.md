@@ -88,6 +88,37 @@ Available options:
 
 Without specifying a version, the script will display an interactive selection menu.
 
+## Project Structure
+
+Current workspace layout:
+```
+app.py
+...
+src/
+  version.py
+  analysis/
+  core/
+  portfolio/
+  services/
+  strategies/
+  ui/
+    __init__.py
+    app_factory.py
+    components.py        # Common UI components (to split into components/)
+    wizard/
+      layout.py          # Strategy configuration wizard layout
+    layouts/
+      results_display.py # Results panel layouts
+    callbacks/
+      strategy_callbacks.py
+      wizard_callbacks.py
+      backtest_callbacks.py
+      risk_management_callbacks.py
+  visualization/
+```
+
+> Note: The `ui/components.py` can be further modularized into `ui/components/cards.py`, `ui/components/inputs.py`, etc., for better separation of UI elements.
+
 ## Documentation
 
 More detailed documentation is available in the `docs/` directory:

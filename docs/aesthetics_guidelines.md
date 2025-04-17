@@ -173,4 +173,4 @@ Before implementing a new feature or component, check:
 ---
 
 *Document created: April 11, 2025*  
-*Last updated: April 11, 2025*
+*Last updated: April 17, 2025*

@@ -59,4 +59,4 @@ Backtester App is an application for testing investment strategies on historical
 ---
 
 *Created: April 11, 2025*
-*Last updated: April 15, 2025*
+*Last updated: April 17, 2025*
