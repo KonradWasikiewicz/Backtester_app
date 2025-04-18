@@ -61,19 +61,24 @@ def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
             style={'cursor': 'help', 'color': '#0d6efd'}
         )
 
-        # Label
-        label_text = html.Label(param_name.replace('_', ' ').title(), htmlFor=json.dumps(input_id), className="ms-1 me-2") # Added htmlFor
+        # Create display label, ensuring acronym uppercase for this strategy
+        parts = param_name.split('_')
+        if parts[0].upper() == strategy_value:
+            display_label = ' '.join([strategy_value] + [p.title() for p in parts[1:]])
+        else:
+            display_label = param_name.replace('_', ' ').title()
+        label_text = html.Label(display_label, htmlFor=json.dumps(input_id), className="ms-1 me-2 text-white")
 
-        # Input component
+        # Input component styled like dropdown
         input_component = dbc.Input(
             id=input_id,
             type="number",
             value=default_value,
             step=1 if isinstance(default_value, int) else 0.01,
             min=0,
-            # Removed mb-3, added size="sm" for smaller input
             size="sm",
-            style={"width": "100px"} # Fixed width for the input field
+            style={"width": "100px"}, # Fixed width
+            className="Select-control"  # Match dropdown color scheme
         )
 
         # Tooltip for parameter description

@@ -57,12 +57,12 @@ def get_strategy_dropdown(available_strategies: List[Dict[str, str]]) -> dcc.Dro
              logger.warning("Generated empty options for strategy dropdown. Check AVAILABLE_STRATEGIES structure in constants.py.")
 
     return dcc.Dropdown(
-        # --- Corrected ID ---
-        id='strategy-dropdown', # Use ID consistent with callbacks
+        id='strategy-dropdown',
         options=options,
         placeholder="Click here...",
-        className="mb-3", # Add bottom margin
-        clearable=False # Usually, we don't want to clear the strategy selection
+        className="mb-3 w-100",
+        clearable=False,
+        style={"backgroundColor": "#1e222d", "color": "#ffffff"}
     )
 
 # ... (rest of the helper functions: generate_strategy_parameters, create_ticker_checklist, create_backtest_parameters - no changes in logic, but ensure IDs are consistent) ...
@@ -220,43 +220,71 @@ def create_strategy_config_section(tickers=None):
                     ),
                     # Panels for each risk feature, hidden by default
                     html.Div([  # Position Sizing Panel
-                        html.Label("Max Position Size (%):", className="mb-2"),
-                        dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1)
-                    ], id="position_sizing-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Max Position Size (%):", className="mb-1"),
+                                dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1, size="sm", style={"width": "100px"})
+                            ], width="auto")
+                        ], className="align-items-center ms-3 mb-3")
+                    ], id="position_sizing-panel", style={"display": "none"}),
+
                     html.Div([  # Stop Loss Panel
-                        html.Label("Stop Loss Type:", className="mb-2"),
-                        dcc.Dropdown(
-                            id="stop-loss-type",
-                            options=[{'label': 'Fixed', 'value': 'fixed'}, {'label': 'Trailing', 'value': 'trailing'}],
-                            value='fixed'
-                        ),
-                        html.Label("Stop Loss Value (%):", className="mt-2 mb-2"),
-                        dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1)
-                    ], id="stop_loss-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Type:", className="mb-1"),
+                                dcc.Dropdown(id="stop-loss-type", options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
+                            ], width=5),
+                            dbc.Col([
+                                html.Label("Value (%):", className="mb-1"),
+                                dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                            ], width="auto")
+                        ], className="align-items-center ms-3 mb-3")
+                    ], id="stop_loss-panel", style={"display": "none"}),
+
                     html.Div([  # Take Profit Panel
-                        html.Label("Take Profit Type:", className="mb-2"),
-                        dcc.Dropdown(
-                            id="take-profit-type",
-                            options=[{'label': 'Fixed', 'value': 'fixed'}, {'label': 'Trailing', 'value': 'trailing'}],
-                            value='fixed'
-                        ),
-                        html.Label("Take Profit Value (%):", className="mt-2 mb-2"),
-                        dbc.Input(id="take-profit-value", type="number", min=0, step=0.1)
-                    ], id="take_profit-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Type:", className="mb-1"),
+                                dcc.Dropdown(id="take-profit-type", options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
+                            ], width=5),
+                            dbc.Col([
+                                html.Label("Value (%):", className="mb-1"),
+                                dbc.Input(id="take-profit-value", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                            ], width="auto")
+                        ], className="align-items-center ms-3 mb-3")
+                    ], id="take_profit-panel", style={"display": "none"}),
+
                     html.Div([  # Risk per Trade Panel
-                        html.Label("Max Risk per Trade (%):", className="mb-2"),
-                        dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1)
-                    ], id="risk_per_trade-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Max Risk per Trade (%):", className="mb-1"),
+                                dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                            ], width="auto")
+                        ], className="align-items-center ms-3 mb-3")
+                    ], id="risk_per_trade-panel", style={"display": "none"}),
+
                     html.Div([  # Market Filter Panel
-                        html.Label("Market Trend Lookback (days):", className="mb-2"),
-                        dbc.Input(id="market-trend-lookback", type="number", min=1, step=1)
-                    ], id="market_filter-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Trend Lookback (days):", className="mb-1"),
+                                dbc.Input(id="market-trend-lookback", type="number", min=1, step=1, size="sm", style={"width":"100px"})
+                            ], width="auto")
+                        ], className="align-items-center ms-3 mb-3")
+                    ], id="market_filter-panel", style={"display": "none"}),
+
                     html.Div([  # Drawdown Protection Panel
-                        html.Label("Max Drawdown (%):", className="mb-2"),
-                        dbc.Input(id="max-drawdown", type="number", min=0, step=0.1),
-                        html.Label("Max Daily Loss (%):", className="mt-2 mb-2"),
-                        dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1)
-                    ], id="drawdown_protection-panel", style={"display": "none", "marginLeft": "16px", "marginBottom": "12px"}),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Label("Max Drawdown (%):", className="mb-1"),
+                                dbc.Input(id="max-drawdown", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                            ], width="auto", className="me-4"),
+                            dbc.Col([
+                                html.Label("Max Daily Loss (%):", className="mb-1"),
+                                dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                            ], width="auto")
+                        ], className="align-items-center ms-3 mb-3")
+                    ], id="drawdown_protection-panel", style={"display": "none"}),
+
                     dbc.Button(
                         "Continue without additional risk measures",
                         id="confirm-risk",
@@ -273,15 +301,21 @@ def create_strategy_config_section(tickers=None):
                 html.Div([
                     html.Label("Configure trading costs:", className="mb-2"),
                     dbc.Row([
-                         dbc.Col([
-                              html.Label("Commission (%):", className="mb-2"),
-                              # --- Corrected/Consistent ID ---
-                              dbc.Input(id="commission-input", type="number", min=0, step=0.01, value=0.1, className="mb-3"),
-                              html.Label("Slippage (%):", className="mb-2"),
-                              # --- Corrected/Consistent ID ---
-                              dbc.Input(id="slippage-input", type="number", min=0, step=0.01, value=0.05, className="mb-3"),
-                         ])
-                    ]),
+                        dbc.Col([
+                            html.Label("Commission (%):", className="mb-1"),
+                            dbc.Input(
+                                id="commission-input", type="number", min=0, step=0.01, value=0.1,
+                                size="sm", style={"width": "100px"}
+                            )
+                        ], width="auto", className="d-flex flex-column align-items-start me-4"),
+                        dbc.Col([
+                            html.Label("Slippage (%):", className="mb-1"),
+                            dbc.Input(
+                                id="slippage-input", type="number", min=0, step=0.01, value=0.05,
+                                size="sm", style={"width": "100px"}
+                            )
+                        ], width="auto", className="d-flex flex-column align-items-start")
+                    ], className="align-items-center mb-3"),
                     dbc.Button(
                         "Confirm",
                         id="confirm-costs", # ID consistent with callbacks
@@ -297,33 +331,30 @@ def create_strategy_config_section(tickers=None):
                 "Step 6: Rebalancing Rules",
                 html.Div([
                     html.Label("Configure rebalancing rules:", className="mb-2"),
-                     dbc.Row([
-                         dbc.Col([
-                              html.Label("Rebalancing Frequency:", className="mb-2"),
-                              dcc.Dropdown(
-                                   # --- Corrected/Consistent ID ---
-                                   id="rebalancing-frequency", # Use ID consistent with callbacks
-                                   options=[
-                                        {'label': 'Daily', 'value': 'D'},
-                                        {'label': 'Weekly', 'value': 'W'},
-                                        {'label': 'Monthly', 'value': 'M'},
-                                        {'label': 'Quarterly', 'value': 'Q'},
-                                        {'label': 'Annually', 'value': 'A'}, # Changed Yearly to Annually for consistency with pandas
-                                        {'label': 'None', 'value': 'N'}
-                                   ],
-                                   value='M', className="mb-3"
-                              ),
-                              html.Label("Rebalancing Threshold (%):", className="mb-2"),
-                              # --- Corrected/Consistent ID ---
-                              dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, className="mb-3"),
-                         ])
-                    ]),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Frequency:", className="mb-1"),
+                            dcc.Dropdown(id="rebalancing-frequency", options=[
+                                {'label': 'Daily', 'value': 'D'},
+                                {'label': 'Weekly', 'value': 'W'},
+                                {'label': 'Monthly', 'value': 'M'},
+                                {'label': 'Quarterly', 'value': 'Q'},
+                                {'label': 'Annually', 'value': 'A'}, # Changed Yearly to Annually for consistency with pandas
+                                {'label': 'None', 'value': 'N'}
+                            ], value='M', clearable=False, className="mb-2 w-100")
+                        ], width=5),
+                        dbc.Col([
+                            html.Label("Threshold (%):", className="mb-1"),
+                            dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, size="sm", style={"width":"100px"})
+                        ], width="auto")
+                    ], className="align-items-center ms-3 mb-3"),
+                    # Confirm button for Step 6
                     dbc.Button(
                         "Confirm",
-                        id="confirm-rebalancing", # ID consistent with callbacks
+                        id="confirm-rebalancing",  # Consistent with callback Input
                         color="primary",
                         className="mt-3",
-                        disabled=True # Initially disabled
+                        disabled=True  # Initially disabled
                     )
                 ]),
                 is_hidden=True, step_number=6

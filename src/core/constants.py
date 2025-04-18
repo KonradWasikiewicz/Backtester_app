@@ -24,7 +24,7 @@ RISK_FREE_RATE: float = 0.02
 AVAILABLE_STRATEGIES: list[dict[str, str]] = [
     {"label": "Relative Strength Index (RSI)", "value": "RSI"},
     {"label": "Moving Average Crossover (MAC)", "value": "MAC"},
-    {"label": "Bollinger Bands", "value": "BB"},
+    {"label": "Bollinger Bands (BB)", "value": "BB"},
     # Add other strategies here
 ]
 
