@@ -14,6 +14,8 @@ from src.core.constants import AVAILABLE_STRATEGIES
 from src.core.config import config
 from src.services.data_service import DataService
 from src.services.visualization_service import VisualizationService
+from src.visualization.visualizer import BacktestVisualizer
+from src.core.constants import CHART_THEME
 
 class BacktestService:
     """
@@ -141,29 +143,25 @@ class BacktestService:
     
     def get_portfolio_chart(self, chart_type: str = "value"):
         """
-        Generate a portfolio performance chart using the visualization service.
-        
-        Args:
-            chart_type: Type of chart to generate (value, returns, drawdown)
-            
-        Returns:
-            Plotly figure object
+        Generate a portfolio performance chart.
         """
         if not self.current_results or "Portfolio_Value" not in self.current_results:
             return None
-        
         try:
             portfolio_values = self.current_results["Portfolio_Value"]
             benchmark_series = self.current_results.get("Benchmark")
-            
-            # Use performance chart for portfolio values
-            return self.visualization_service.create_performance_chart(
-                {'portfolio_values': portfolio_values}
+            # Use BacktestVisualizer to generate chart based on selected type
+            visualizer = BacktestVisualizer()
+            visualizer.theme = CHART_THEME
+            return visualizer.create_equity_curve_figure(
+                portfolio_values=portfolio_values,
+                benchmark_values=benchmark_series,
+                chart_type=chart_type
             )
         except Exception as e:
             logger.error(f"Error generating portfolio chart: {e}", exc_info=True)
             return None
-    
+
     def get_monthly_returns_heatmap(self):
         """
         Generate monthly returns heatmap using the visualization service.
@@ -202,22 +200,14 @@ class BacktestService:
             return None
         
         try:
-            # Get signals for the ticker
+            # Get signals and trade data for the ticker
             signals_df = self.current_signals[ticker]
-            
-            # Get trade data for the ticker
-            trades = []
-            if "trades" in self.current_results:
-                trades = [t for t in self.current_results["trades"] if t["ticker"] == ticker]
-            
-            # Load price data and create signals chart
+            trades = [t for t in self.current_results.get("trades", []) if t.get('ticker') == ticker]
+            # Load price data and create trades chart
             price_data = self.data_service.load_data(ticker)
-            return self.visualization_service.create_ohlc_chart(
-                data=price_data,
-                ticker=ticker,
-                show_volume=True,
-                signals_df=signals_df
-            )
+            # Use trades chart to display entries/exits
+            trades_df = pd.DataFrame(trades)
+            return self.visualization_service.create_trades_chart(trades_df, price_data)
         except Exception as e:
             logger.error(f"Error generating signals chart: {e}", exc_info=True)
             return None
@@ -234,7 +224,24 @@ class BacktestService:
         
         try:
             trades = self.current_results["trades"]
-            return self.visualization_service.prepare_trades_for_table(trades)
+            formatted = []
+            for t in trades:
+                entry = t.get('entry_date')
+                exit_dt = t.get('exit_date')
+                entry_str = entry.strftime('%Y-%m-%d') if hasattr(entry, 'strftime') else str(entry)
+                exit_str = exit_dt.strftime('%Y-%m-%d') if hasattr(exit_dt, 'strftime') else str(exit_dt)
+                formatted.append({
+                    'ticker': t.get('ticker'),
+                    'entry_date': entry_str,
+                    'exit_date': exit_str,
+                    'entry_price': t.get('entry_price'),
+                    'exit_price': t.get('exit_price'),
+                    'profit_loss': t.get('pnl', t.get('profit', 0)),
+                    'profit_loss_pct': t.get('pnl_pct', t.get('profit_loss_pct', 0)),
+                    'shares': t.get('shares'),
+                    'reason': t.get('exit_reason', t.get('reason', ''))
+                })
+            return formatted
         except Exception as e:
             logger.error(f"Error formatting trades table data: {e}", exc_info=True)
             return []

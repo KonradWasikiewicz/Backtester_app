@@ -51,7 +51,8 @@ def register_backtest_callbacks(app):
         [Output("backtest-status", "children"),
          Output("results-section", "style"),
          Output("no-results-placeholder", "style"),
-         Output("ticker-selector", "options")],  # Updates ticker dropdown in results
+         Output("ticker-selector", "options"),  # Updates ticker dropdown in results
+         Output("ticker-selector", "value")],  # Default select first ticker for signals
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-dropdown", "value"),      # From step 1
          State("ticker-input", "value"),          # From step 3
@@ -73,7 +74,7 @@ def register_backtest_callbacks(app):
         Execute backtest when the Run Backtest button is clicked.
         """
         if not n_clicks:
-            return "", {"display": "none"}, {"display": "block"}, []  # Return value adjusted for removed output
+            return "", {"display": "none"}, {"display": "block"}, [], None
 
         # Validate required inputs
         missing_inputs = []
@@ -86,7 +87,7 @@ def register_backtest_callbacks(app):
 
         if missing_inputs:
             error_msg = f"Please provide required inputs: {', '.join(missing_inputs)}"
-            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, []  # Return value adjusted
+            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
 
         # Prepare parameters
         try:
@@ -118,15 +119,16 @@ def register_backtest_callbacks(app):
 
             if result.get("success"):
                 ticker_options = [{"label": ticker, "value": ticker} for ticker in tickers if ticker in result.get("signals", {})]
-                return html.Div([html.I(className="fas fa-check-circle me-2"), "Backtest completed successfully"], className="text-success"), {"display": "block"}, {"display": "none"}, ticker_options
+                default_ticker = ticker_options[0]["value"] if ticker_options else None
+                return html.Div([html.I(className="fas fa-check-circle me-2"), "Backtest completed successfully"], className="text-success"), {"display": "block"}, {"display": "none"}, ticker_options, default_ticker
             else:
                 error_msg = f"Backtest failed: {result.get('error', 'Unknown error')}"
-                return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, []
+                return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
 
         except Exception as e:
             logger.error(f"Error running backtest: {e}", exc_info=True)
             error_msg = f"Error running backtest: {str(e)}"
-            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, []
+            return html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
     
     @app.callback(
         [Output("metric-total-return", "children"),
@@ -195,7 +197,7 @@ def register_backtest_callbacks(app):
             return [None] * 9
     
     @app.callback(
-        Output("portfolio-performance-chart", "figure"),
+        Output("portfolio-chart", "figure"),
         Input("results-section", "style")
     )
     def update_portfolio_chart(results_style):
