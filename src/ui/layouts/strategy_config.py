@@ -146,6 +146,17 @@ def create_strategy_config_section(tickers=None):
                     html.Label("Select a strategy:", className="mb-2"),
                     # --- Use corrected get_strategy_dropdown function ---
                     get_strategy_dropdown(AVAILABLE_STRATEGIES),
+                    # Add Initial Capital Input Field here
+                    html.Label("Initial Capital (USD):", className="mb-2 mt-3"), # Added margin-top
+                    dbc.Input(
+                        id='initial-capital-input', # Ensure this ID matches the callback State
+                        type='number',
+                        value=100000,  # Default value
+                        min=1000,      # Minimum value
+                        step=1000,     # Step increment
+                        className="mb-3",
+                        # Add formatting or validation if needed later
+                    ),
                     # --- Corrected ID for strategy description ---
                     html.Div(id="strategy-description-output", className="mb-3 mt-3"), # Use ID from callback
                     # Strategy parameters header and inputs will be inserted here upon selection

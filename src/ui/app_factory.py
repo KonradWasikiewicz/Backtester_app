@@ -12,6 +12,15 @@ import pandas as pd
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# --- Custom Log Filter ---
+class DeprecationFilter(logging.Filter):
+    """Filter out specific deprecation warnings."""
+    def filter(self, record):
+        # Check if the message contains the specific deprecation warning text
+        if "is deprecated and will change in a future version" in record.getMessage():
+            return False  # Do not log this message
+        return True # Log other messages
+
 # Import local modules
 from src.core.constants import AVAILABLE_STRATEGIES
 from src.core.data import DataLoader
@@ -625,7 +634,8 @@ def configure_logging(log_level=logging.INFO) -> None:
         log_level: Logging level to use
     """
     # Check if root logger already has handlers to prevent duplicate setup
-    if not logging.getLogger().hasHandlers():
+    root_logger = logging.getLogger()
+    if not root_logger.hasHandlers():
         log_format = '%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s'
         date_format = '%Y-%m-%d %H:%M:%S'
 
@@ -639,8 +649,22 @@ def configure_logging(log_level=logging.INFO) -> None:
             ]
         )
         logger.info("Logger configured")
+
+        # Add the custom filter to the handlers
+        deprecation_filter = DeprecationFilter()
+        for handler in root_logger.handlers:
+            handler.addFilter(deprecation_filter)
+            logger.debug(f"Added DeprecationFilter to handler {handler}")
+
     else:
         logger.debug("Logger already configured")
+        # Ensure filter is added even if logger was configured elsewhere (e.g., by another module)
+        deprecation_filter = DeprecationFilter()
+        filter_exists = any(isinstance(f, DeprecationFilter) for h in root_logger.handlers for f in h.filters)
+        if not filter_exists:
+            for handler in root_logger.handlers:
+                handler.addFilter(deprecation_filter)
+                logger.debug(f"Added DeprecationFilter to existing handler {handler}")
 
     # Set logging level for external libraries
     logging.getLogger("werkzeug").setLevel(logging.WARNING)

@@ -58,6 +58,17 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                     className="mb-3",
                     clearable=False
                 ),
+                # Add Initial Capital Input Field
+                html.Label("Initial Capital (USD):", className="mb-2"),
+                dbc.Input(
+                    id='initial-capital-input',
+                    type='number',
+                    value=100000,  # Default value
+                    min=1000,      # Minimum value
+                    step=1000,     # Step increment
+                    className="mb-3",
+                    # Add formatting or validation if needed later
+                ),
                 html.Div(id="strategy-description-output", className="mb-3 mt-3"),
                 html.H6("Strategy Parameters:", className="mt-4 mb-2"),
                 html.Div(id='strategy-param-inputs', className="mb-3"),

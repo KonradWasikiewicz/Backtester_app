@@ -55,6 +55,7 @@ def register_backtest_callbacks(app):
          Output("ticker-selector", "value")],  # Default select first ticker for signals
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-dropdown", "value"),      # From step 1
+         State("initial-capital-input", "value"),  # From step 1 - Added
          State("ticker-input", "value"),          # From step 3
          State("backtest-start-date", "date"),    # From step 2
          State("backtest-end-date", "date"),      # From step 2
@@ -67,7 +68,7 @@ def register_backtest_callbacks(app):
          State("max-position-size", "value")],
         prevent_initial_call=True
     )
-    def run_backtest(n_clicks, strategy_type, selected_tickers, start_date, end_date,
+    def run_backtest(n_clicks, strategy_type, initial_capital, selected_tickers, start_date, end_date,  # Added initial_capital
                      strategy_param_values, strategy_param_ids, risk_features,
                      risk_per_trade, stop_loss_type, stop_loss_value, max_positions):
         """
@@ -84,6 +85,8 @@ def register_backtest_callbacks(app):
             missing_inputs.append("tickers")
         if not start_date or not end_date:
             missing_inputs.append("date range")
+        if not initial_capital or initial_capital < 1000:  # Added validation for initial capital
+            missing_inputs.append("valid initial capital (>= 1000)")
 
         if missing_inputs:
             error_msg = f"Please provide required inputs: {', '.join(missing_inputs)}"
@@ -110,6 +113,7 @@ def register_backtest_callbacks(app):
             # Run backtest
             result = backtest_service.run_backtest(
                 strategy_type=strategy_type,
+                initial_capital=float(initial_capital),  # Pass initial capital
                 tickers=tickers,
                 start_date=start_date,
                 end_date=end_date,

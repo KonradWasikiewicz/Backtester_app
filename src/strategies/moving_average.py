@@ -114,7 +114,12 @@ class MovingAverageStrategy(BaseStrategy):
             signals.loc[sell_condition, 'Signal'] = -1
 
             # --- Logika utrzymywania pozycji ---
-            signals['Positions'] = signals['Signal'].replace(0, pd.NA).ffill().fillna(0).astype(int)
+            # Replace 0 with NA, forward fill, fill remaining NA with 0
+            positions_series = signals['Signal'].replace(0, pd.NA).ffill().fillna(0)
+            # Infer the best possible dtype after filling NAs, as suggested by the warning
+            positions_series = positions_series.infer_objects(copy=False)
+            # Ensure the final type is integer
+            signals['Positions'] = positions_series.astype(int)
             signals['Positions'] = signals['Positions'].replace(-1, 0)  # No short positions
 
             # --- Zaktualizowano log, aby pasował do nazwy strategii ---

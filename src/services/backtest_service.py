@@ -48,29 +48,33 @@ class BacktestService:
                      tickers: List[str],
                      start_date: str,
                      end_date: str,
+                     initial_capital: float = 100000.0,  # Added initial_capital parameter
                      strategy_params: Optional[Dict[str, Any]] = None,
                      risk_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Run a backtest with the specified parameters.
         
         Args:
-            strategy_type: Type of strategy to run
-            tickers: List of ticker symbols
-            start_date: Start date for backtest (YYYY-MM-DD)
-            end_date: End date for backtest (YYYY-MM-DD)
-            strategy_params: Parameters for the strategy
-            risk_params: Parameters for risk management
+            strategy_type: The type of strategy to run.
+            tickers: List of ticker symbols.
+            start_date: Backtest start date.
+            end_date: Backtest end date.
+            initial_capital: The starting capital for the backtest.  # Added docstring
+            strategy_params: Dictionary of strategy-specific parameters.
+            risk_params: Dictionary of risk management parameters.
             
         Returns:
-            Dict containing backtest results information
+            Dictionary containing backtest results and status.
         """
         try:
-            logger.info(f"Starting backtest with strategy: {strategy_type}, tickers: {tickers}")
-            logger.info(f"Date range: {start_date} to {end_date}")
+            logger.info(f"Running backtest: Strategy={strategy_type}, Tickers={tickers}, Start={start_date}, End={end_date}, Capital={initial_capital}")  # Log initial capital
             
             # Update configuration with date range
             config.START_DATE = start_date
             config.END_DATE = end_date
+            
+            # Re-initialize BacktestManager with the new initial capital
+            self.backtest_manager = BacktestManager(initial_capital=initial_capital)
             
             # Run the backtest
             signals, results, stats = self.backtest_manager.run_backtest(
