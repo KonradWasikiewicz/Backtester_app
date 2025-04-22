@@ -90,6 +90,8 @@ src/
 - Calculating performance metrics and statistics
 
 #### 4.1.4 Results Visualization
+- Strategy Overview metrics card: Starting Balance, Ending Balance, CAGR, Sharpe Ratio, Calmar Ratio, Recovery Factor, Signals Generated
+- Trades Overview metrics card: Trades Count, Win Rate, Profit Factor, Unexecuted Signals
 - Portfolio growth chart
 - Monthly returns heatmap
 - Transaction table

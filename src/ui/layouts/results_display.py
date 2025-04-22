@@ -6,12 +6,13 @@ from typing import Dict, List, Any, Optional
 # Configure logging
 logger = logging.getLogger(__name__)
 
-def create_overview_metrics(metrics_ids: List[str]) -> dbc.Card:
+def create_overview_metrics(metrics_ids: List[str], header: str = "Performance Overview") -> dbc.Card:
     """
     Creates overview metrics card with placeholders for key performance metrics.
 
     Args:
         metrics_ids: List of metric IDs to include
+        header: Header title for the card
 
     Returns:
         dbc.Card: Card component with overview metrics
@@ -27,7 +28,12 @@ def create_overview_metrics(metrics_ids: List[str]) -> dbc.Card:
         "profit-factor": "Profit Factor",
         "avg-trade": "Avg Trade P/L",
         "recovery-factor": "Recovery Factor", # Added
-        "calmar-ratio": "Calmar Ratio"       # Added
+        "calmar-ratio": "Calmar Ratio",       # Added
+        "starting-balance": "Starting Balance",
+        "ending-balance": "Ending Balance",
+        "signals-generated": "Signals Generated",
+        "trades-count": "Trades Count",
+        "unexecuted-signals": "Unexecuted Signals"
     }
 
     for metric_id in metrics_ids:
@@ -45,7 +51,7 @@ def create_overview_metrics(metrics_ids: List[str]) -> dbc.Card:
         )
 
     return dbc.Card([
-        dbc.CardHeader("Performance Overview"),
+        dbc.CardHeader(header),
         dbc.CardBody([
             dbc.Row(
                 metrics_containers,
@@ -214,20 +220,27 @@ def create_results_section() -> html.Div:
     Returns:
         html.Div: Container with results section
     """
-    # --- UPDATED metrics_ids list ---
-    metrics_ids = [
-        "total-return", "cagr", "sharpe", "max-drawdown",
-        "win-rate", "profit-factor", "avg-trade",
-        "recovery-factor", "calmar-ratio" # Added missing IDs
-    ]
-
     return html.Div([
         html.Div(id="backtest-status", className="mb-3 text-center"),
         # Results section (initially hidden)
         html.Div(
             id="results-section",
             children=[
-                create_overview_metrics(metrics_ids),
+                # Strategy Overview
+                create_overview_metrics(
+                    metrics_ids=[
+                        "total-return", "cagr", "sharpe", "max-drawdown", "calmar-ratio",
+                        "recovery-factor", "starting-balance", "ending-balance", "signals-generated"
+                    ],
+                    header="Strategy Overview"
+                ),
+                # Trades Overview
+                create_overview_metrics(
+                    metrics_ids=[
+                        "trades-count", "win-rate", "profit-factor", "avg-trade", "unexecuted-signals"
+                    ],
+                    header="Trades Overview"
+                ),
                 create_portfolio_charts(),
 
                 dbc.Row([

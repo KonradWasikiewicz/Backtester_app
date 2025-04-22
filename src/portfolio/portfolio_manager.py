@@ -112,7 +112,6 @@ class PortfolioManager:
                 logger.info(f"No shares allocated by risk manager for {ticker}. Defaulting to 1 share.")
                 shares_to_trade = 1
             else:
-                logger.warning(f"Insufficient cash to default to 1 share for {ticker}. Required: ${entry_price:.2f}, Available: ${self.cash:.2f}.")
                 return False
          
         cost = shares_to_trade * entry_price
