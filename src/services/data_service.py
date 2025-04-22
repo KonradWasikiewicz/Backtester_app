@@ -92,15 +92,27 @@ class DataService:
             data = self.data_cache[cache_key].copy()
             logger.debug(f"Using cached data for {ticker}")
         else:
-            # Load data from file
+            # Load data from file or fallback to aggregated
             try:
                 file_path = os.path.join(self.data_dir, f"{ticker.lower()}.csv")
-                if not os.path.isfile(file_path):
-                    logger.warning(f"Data file for {ticker} not found at {file_path}")
-                    return None
-                
-                # Read the CSV file
-                data = pd.read_csv(file_path, parse_dates=['Date'], index_col='Date')
+                if os.path.isfile(file_path):
+                    data = pd.read_csv(file_path, parse_dates=['Date'], index_col='Date')
+                else:
+                    # Fallback to aggregated data
+                    agg_path = os.path.join(self.data_dir, 'historical_prices.csv')
+                    if os.path.isfile(agg_path):
+                        logger.info(f"Using aggregated data file {agg_path} for ticker {ticker}")
+                        df_all = pd.read_csv(agg_path, parse_dates=['Date'])
+                        df_t = df_all[df_all['Ticker'].str.upper() == ticker.upper()].copy()
+                        if df_t.empty:
+                            logger.warning(f"No data for {ticker} in aggregated file")
+                            return None
+                        df_t.set_index('Date', inplace=True)
+                        df_t.drop(columns=['Ticker'], inplace=True)
+                        data = df_t
+                    else:
+                        logger.warning(f"Data file for {ticker} not found at {file_path}")
+                        return None
                 
                 # Standardize column names
                 data.columns = [col.capitalize() for col in data.columns]

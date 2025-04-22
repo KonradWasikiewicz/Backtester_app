@@ -107,8 +107,13 @@ class PortfolioManager:
         logger.debug(f"Sizing inputs: cash={self.cash:.2f}, portfolio_value={current_total_value:.2f}, price={entry_price:.2f}, volatility={volatility}; calculated shares={shares_to_trade}")
         # Fallback to 1 share if risk manager allocates zero
         if shares_to_trade <= 0:
-            logger.info(f"No shares allocated by risk manager for {ticker}. Defaulting to 1 share.")
-            shares_to_trade = 1
+            # Only default to 1 share if cash covers one share
+            if entry_price <= self.cash:
+                logger.info(f"No shares allocated by risk manager for {ticker}. Defaulting to 1 share.")
+                shares_to_trade = 1
+            else:
+                logger.warning(f"Insufficient cash to default to 1 share for {ticker}. Required: ${entry_price:.2f}, Available: ${self.cash:.2f}.")
+                return False
          
         cost = shares_to_trade * entry_price
         if cost > self.cash: logger.warning(f"Insufficient cash for {ticker}. Required: ${cost:.2f}, Available: ${self.cash:.2f}."); return False
