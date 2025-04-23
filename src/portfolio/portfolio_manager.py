@@ -115,7 +115,7 @@ class PortfolioManager:
                 shares_to_trade = int(self.cash // entry_price)
             else:
                 shares_to_trade = 0 # Avoid division by zero
-            logger.debug(f"Position sizing disabled. Attempting to use full cash for {ticker}. Shares: {shares_to_trade}")
+            # logger.debug(f"Position sizing disabled. Attempting to use full cash for {ticker}. Shares: {shares_to_trade}") # <-- Zakomentowano, aby wyciszyć log
         else:
             # Use risk manager for sizing
             shares_to_trade = self.risk_manager.calculate_position_size(
@@ -134,18 +134,18 @@ class PortfolioManager:
         shares_to_trade = 0 # Initialize shares_to_trade
         cost = 0.0 # Initialize cost
 
-        if self.risk_manager.use_position_sizing:
+        # Access the attribute with the correct name (leading underscore)
+        if self.risk_manager._use_position_sizing:
             # Calculate size based on risk parameters
-            size_result = self.risk_manager.calculate_position_size(
-                account_equity=self.get_current_portfolio_value({ticker: entry_price}),
-                entry_price=entry_price,
-                stop_loss_price=self.risk_manager.calculate_stops(entry_price=entry_price, direction=direction)[0],
+            shares_to_trade = self.risk_manager.calculate_position_size(
+                current_portfolio_value=self.get_current_portfolio_value({ticker: entry_price}),
+                available_cash=self.cash,
+                price=entry_price,
                 volatility=signal_data.get('volatility') # Pass volatility if available
             )
-            if size_result is None or size_result <= 0:
-                logger.debug(f"Risk manager rejected position size for {ticker}.")
-                return 'risk_rejected_size'
-            shares_to_trade = size_result
+            if shares_to_trade <= 0:
+                logger.debug(f"Risk manager calculated zero shares for {ticker}.")
+                return 'risk_rejected_size' # Or potentially 'insufficient_cash' if shares=0 due to cash
             cost = shares_to_trade * entry_price
         else:
             # If position sizing is disabled, attempt to use full available cash
@@ -156,11 +156,25 @@ class PortfolioManager:
                     return 'insufficient_cash'
             else:
                 logger.warning(f"Entry price for {ticker} is zero or negative, cannot calculate shares.")
-                return 'other_rejection' # Or a more specific reason
+                return 'invalid_price' # More specific reason
 
         # --- Cost Calculation & Final Cash Check ---
         if self.cash < cost:
-            return 'insufficient_cash'
+            # Recalculate shares based on actual affordable cost if sizing was enabled
+            if self.risk_manager._use_position_sizing and entry_price > 0:
+                 affordable_shares = int(self.cash // entry_price)
+                 if affordable_shares < shares_to_trade:
+                     logger.debug(f"Reducing shares for {ticker} from {shares_to_trade} to {affordable_shares} due to cash limit.")
+                     shares_to_trade = affordable_shares
+                     cost = shares_to_trade * entry_price
+                     if shares_to_trade <= 0: return 'insufficient_cash'
+            else: # If sizing was disabled or price is invalid, this check confirms insufficient cash
+                return 'insufficient_cash'
+
+        # Double-check cost after potential adjustment
+        if self.cash < cost:
+             logger.error(f"Logic Error: Still insufficient cash (${self.cash:.2f}) for cost (${cost:.2f}) after adjustment for {ticker}.")
+             return 'insufficient_cash'
 
         # --- Calculate Stops (if applicable) ---
         stop_loss_price, take_profit_price = self.risk_manager.calculate_stops(entry_price=entry_price, direction=direction)

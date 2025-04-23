@@ -229,7 +229,6 @@ def create_results_section() -> html.Div:
         html.Div: Container with results section
     """
     return html.Div([
-        html.Div(id="backtest-status", className="mb-3 text-center"),
         # Results section (initially hidden)
         html.Div(
             id="results-section",

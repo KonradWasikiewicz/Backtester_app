@@ -413,6 +413,8 @@ def create_app_layout() -> html.Div:
                     # Left panel: Strategy configuration
                     dbc.Col([
                         create_strategy_config_section(available_tickers),
+                        # Add the backtest status message container here
+                        html.Div(id="backtest-status", className="mb-3 text-center"),
                         # Spacer
                         html.Div(className="my-4")
                     ], md=4, lg=3),

@@ -57,23 +57,7 @@ class BacktestManager:
             strategy_class: type[BaseStrategy] = STRATEGY_CLASS_MAP[strategy_key]
             if not tickers: logger.error("No tickers provided."); return None, None, None
 
-            strategy_params = strategy_params or {}
-            try:
-                # Instantiate strategy with tickers list and unpack its specific parameters
-                strategy = strategy_class(tickers=valid_tickers, **strategy_params)
-                logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
-            except Exception as e: logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True); return None, None, None
-
-            # Initialize RiskManager with configuration dict (keys expected: apply_risk_rules, use_*, stop_loss_pct, risk_per_trade, max_open_positions, etc.)
-            try:
-                risk_manager = RiskManager(risk_params or {})
-                logger.info("Initialized RiskManager with provided risk_params configuration.")
-            except Exception as e:
-                logger.error(f"Error initializing RiskManager with provided config: {e}. Using default RiskManager.", exc_info=True)
-                risk_manager = RiskManager()
-            portfolio_manager = PortfolioManager(initial_capital=self.initial_capital, risk_manager=risk_manager)
-
-            # --- 2. Data Loading and Preparation ---
+            # --- 2. Data Loading and Preparation (Moved Before Strategy Init) ---
             all_ticker_data = self.data_loader.load_all_data()
             if not all_ticker_data: logger.error("Failed to load any ticker data."); return None, None, None
 
@@ -91,7 +75,24 @@ class BacktestManager:
                 logger.info(f"Combined data prepared. Shape: {combined_df_filtered.shape}. Date range: {backtest_range.min()} to {backtest_range.max()}")
             except Exception as e: logger.error(f"Error creating combined data panel: {e}", exc_info=True); return None, None, None
 
-            # --- 3. Signal Generation (Pre-computation) ---
+            # --- 3. Strategy and Risk Manager Initialization ---
+            strategy_params = strategy_params or {}
+            try:
+                # Instantiate strategy with VALID tickers list and the parameters dictionary
+                strategy = strategy_class(tickers=valid_tickers, parameters=strategy_params) # Pass strategy_params as 'parameters'
+                logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
+            except Exception as e: logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True); return None, None, None
+
+            # Initialize RiskManager with configuration dict
+            try:
+                risk_manager = RiskManager(risk_params or {})
+                logger.info("Initialized RiskManager with provided risk_params configuration.")
+            except Exception as e:
+                logger.error(f"Error initializing RiskManager with provided config: {e}. Using default RiskManager.", exc_info=True)
+                risk_manager = RiskManager()
+            portfolio_manager = PortfolioManager(initial_capital=self.initial_capital, risk_manager=risk_manager)
+
+            # --- 4. Signal Generation (Pre-computation) ---
             all_signals = {}
             logger.info("Generating signals for all tickers...")
             for ticker in valid_tickers:
@@ -105,7 +106,7 @@ class BacktestManager:
                 except Exception as e: logger.error(f"Error generating signals for {ticker}: {e}", exc_info=True)
             logger.info(f"Signal generation complete for {len(all_signals)} tickers.")
 
-            # --- 4. Backtest Execution Loop ---
+            # --- 5. Backtest Execution Loop ---
             logger.info("Starting backtest simulation loop...")
             portfolio_history = []
             # Initialize rejection counters
