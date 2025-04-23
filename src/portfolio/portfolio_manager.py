@@ -131,8 +131,8 @@ class PortfolioManager:
             # Check if it was due to risk rules or simply not enough potential
             # If sizing was disabled, it means cash wasn't enough for even 1 share
             if not use_sizing and entry_price > self.cash:
-                 logger.warning(f"Insufficient cash for 1 share of {ticker}. Required: ${entry_price:.2f}, Available: ${self.cash:.2f}.")
-                 return 'insufficient_cash'
+                logger.debug(f"Insufficient cash for 1 share of {ticker}. Required: ${entry_price:.2f}, Available: ${self.cash:.2f}.") # Changed to debug
+                return 'insufficient_cash'
             # If sizing was enabled, risk manager decided 0 shares
             elif use_sizing:
                 logger.info(f"Risk manager allocated 0 shares for {ticker}. Signal rejected by sizing rules.")
@@ -144,7 +144,7 @@ class PortfolioManager:
         # --- Cost Validation ---
         cost = shares_to_trade * entry_price
         if cost > self.cash: 
-            logger.warning(f"Insufficient cash for {shares_to_trade} shares of {ticker}. Required: ${cost:.2f}, Available: ${self.cash:.2f}.")
+            logger.debug(f"Insufficient cash for {shares_to_trade} shares of {ticker}. Required: ${cost:.2f}, Available: ${self.cash:.2f}.") # Changed to debug
             return 'insufficient_cash' # Return reason
 
         # --- Calculate Stops (if applicable) ---

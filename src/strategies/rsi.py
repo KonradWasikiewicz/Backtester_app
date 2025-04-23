@@ -18,11 +18,12 @@ class RSIStrategy(BaseStrategy):
     | **Application** | Suitable for range-bound markets or markets without a clear trend (mean reversion strategy). |
     | **Limitations** | May generate premature signals in strong trends (RSI can remain in overbought/oversold zones for extended periods), sensitive to parameter selection. |
     """
-    def __init__(self, rsi_period: int = 14, lower_bound: int = 30, upper_bound: int = 70):
+    def __init__(self, tickers: list[str], rsi_period: int = 14, lower_bound: int = 30, upper_bound: int = 70):
         """
         Inicjalizuje strategię RSI.
 
         Args:
+            tickers (list[str]): Lista tickerów dla strategii.
             rsi_period (int): Okres (liczba świec) do obliczenia RSI. Domyślnie 14.
             lower_bound (int): Dolny próg RSI wskazujący na wyprzedanie rynku. Domyślnie 30.
             upper_bound (int): Górny próg RSI wskazujący na wykupienie rynku. Domyślnie 70.
@@ -30,7 +31,7 @@ class RSIStrategy(BaseStrategy):
         Raises:
             ValueError: Jeśli parametry są nieprawidłowe (np. okres <= 1, progi poza zakresem 0-100, lower >= upper).
         """
-        super().__init__() # Wywołanie konstruktora klasy bazowej
+        super().__init__() # Wywołanie konstruktora klasy bazowej bez argumentów
         if not (isinstance(rsi_period, int) and rsi_period > 1):
              logger.error(f"Invalid rsi_period: {rsi_period}. Must be an integer greater than 1.")
              raise ValueError("Okres RSI musi być liczbą całkowitą większą niż 1.")
@@ -38,6 +39,7 @@ class RSIStrategy(BaseStrategy):
              logger.error(f"Invalid RSI bounds: lower={lower_bound}, upper={upper_bound}. Must be between 0 and 100, and lower < upper.")
              raise ValueError("Poziomy RSI (lower_bound, upper_bound) muszą być liczbami między 0 a 100, a lower_bound musi być mniejszy niż upper_bound.")
 
+        self.tickers = tickers
         self.rsi_period = rsi_period
         self.lower_bound = lower_bound
         self.upper_bound = upper_bound

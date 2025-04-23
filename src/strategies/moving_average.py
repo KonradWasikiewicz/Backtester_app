@@ -28,18 +28,19 @@ class MovingAverageStrategy(BaseStrategy):
     | **Application** | Suitable for trending markets. May generate false signals during consolidation periods. |
     | **Limitations** | Delayed reaction to price changes, sensitivity to period selection, poor performance in sideways markets. |
     """
-    def __init__(self, short_window: int = 20, long_window: int = 50):
+    def __init__(self, tickers: list[str], short_window: int = 20, long_window: int = 50):
         """
         Inicjalizuje strategię MA Cross.
 
         Args:
+            tickers (list[str]): Lista tickerów dla strategii.
             short_window (int): Okres (liczba świec) dla krótkoterminowej średniej kroczącej. Domyślnie 20.
             long_window (int): Okres (liczba świec) dla długoterminowej średniej kroczącej. Domyślnie 50.
 
         Raises:
             ValueError: Jeśli okresy nie są dodatnimi liczbami całkowitymi lub short_window >= long_window.
         """
-        super().__init__() # Wywołanie konstruktora klasy bazowej
+        super().__init__() # Wywołanie konstruktora klasy bazowej bez argumentów
         if not (isinstance(short_window, int) and isinstance(long_window, int) and short_window > 0 and long_window > 0):
             logger.error(f"Invalid window parameters: short={short_window}, long={long_window}. Must be positive integers.")
             raise ValueError("Okresy średnich kroczących muszą być dodatnimi liczbami całkowitymi.")
@@ -47,6 +48,7 @@ class MovingAverageStrategy(BaseStrategy):
             logger.error(f"Invalid window parameters: short={short_window}, long={long_window}. Short must be less than long.")
             raise ValueError("Krótki okres (short_window) musi być mniejszy niż długi okres (long_window).")
 
+        self.tickers = tickers  # Przechowuj tickery, jeśli są potrzebne
         self.short_window = short_window
         self.long_window = long_window
         # Przechowuj parametry również w słowniku dla łatwiejszego dostępu/logowania
@@ -58,11 +60,12 @@ class MovingAverageStrategy(BaseStrategy):
         """Zwraca słownik z aktualnymi parametrami strategii."""
         return self.parameters
 
-    def generate_signals(self, data: pd.DataFrame) -> pd.DataFrame:
+    def generate_signals(self, ticker: str, data: pd.DataFrame) -> pd.DataFrame: # Dodano argument 'ticker'
         """
         Generuje sygnały transakcyjne na podstawie przecięć średnich kroczących.
 
         Args:
+            ticker (str): Ticker instrumentu (obecnie nieużywany w tej logice, ale wymagany przez interfejs).
             data (pd.DataFrame): DataFrame zawierający co najmniej kolumnę 'Close'
                                  i wystarczającą historię do obliczenia najdłuższej średniej.
 
@@ -82,7 +85,7 @@ class MovingAverageStrategy(BaseStrategy):
 
         # Sprawdź, czy jest wystarczająco danych
         if len(data) < self.long_window:
-            logger.warning(f"Not enough data ({len(data)} rows) to calculate the long SMA ({self.long_window}). Returning no signals.")
+            logger.warning(f"Not enough data ({len(data)} rows) to calculate the long SMA ({self.long_window}). Returning no signals for {ticker}.") # Dodano ticker do logu
             signals = pd.DataFrame(index=data.index)
             signals['Signal'] = 0
             signals['Positions'] = 0
@@ -103,8 +106,8 @@ class MovingAverageStrategy(BaseStrategy):
 
             # Sprawdź, czy kolumny zostały poprawnie dodane
             if short_sma_col not in df.columns or long_sma_col not in df.columns:
-                 logger.error(f"SMA columns ({short_sma_col}, {long_sma_col}) not found after pandas_ta calculation.")
-                 raise KeyError(f"SMA columns not found after calculation.")
+                 logger.error(f"SMA columns ({short_sma_col}, {long_sma_col}) not found after pandas_ta calculation for {ticker}.") # Dodano ticker
+                 raise KeyError(f"SMA columns not found after calculation for {ticker}.")
 
             # --- Logika generowania sygnałów ---
             buy_condition = (df[short_sma_col] > df[long_sma_col]) & (df[short_sma_col].shift(1) <= df[long_sma_col].shift(1))
@@ -123,12 +126,12 @@ class MovingAverageStrategy(BaseStrategy):
             signals['Positions'] = signals['Positions'].replace(-1, 0)  # No short positions
 
             # --- Zaktualizowano log, aby pasował do nazwy strategii ---
-            logger.debug(f"Generated {signals['Signal'].ne(0).sum()} signals for Moving Average strategy.")
-            logger.debug(f"Buy signals: {signals['Signal'].eq(1).sum()}, Sell signals: {signals['Signal'].eq(-1).sum()}")
+            logger.debug(f"Generated {signals['Signal'].ne(0).sum()} signals for Moving Average strategy on {ticker}.") # Dodano ticker
+            logger.debug(f"Buy signals: {signals['Signal'].eq(1).sum()}, Sell signals: {signals['Signal'].eq(-1).sum()} for {ticker}.") # Dodano ticker
 
         except Exception as e:
             # --- Zaktualizowano log, aby pasował do nazwy strategii ---
-            logger.error(f"Error during Moving Average signal generation: {e}", exc_info=True)
+            logger.error(f"Error during Moving Average signal generation for {ticker}: {e}", exc_info=True) # Dodano ticker
             signals['Signal'] = 0
             signals['Positions'] = 0
             # raise e # Opcjonalnie

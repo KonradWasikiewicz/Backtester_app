@@ -97,8 +97,8 @@ class BacktestManager:
             for ticker in valid_tickers:
                 try:
                     ticker_data_full = all_ticker_data[ticker]
-                    # generate_signals expects only the data frame
-                    signals_df = strategy.generate_signals(ticker_data_full)
+                    # Pass both ticker and data to generate_signals
+                    signals_df = strategy.generate_signals(ticker, ticker_data_full)
                     if signals_df is not None and not signals_df.empty:
                          signals_df.index = pd.to_datetime(signals_df.index).tz_localize(None)
                          all_signals[ticker] = signals_df.reindex(combined_df.index).fillna(0)

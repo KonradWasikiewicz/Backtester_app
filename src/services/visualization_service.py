@@ -778,7 +778,11 @@ class VisualizationService:
             yaxis_nticks=len(pivot.index) # Ensure all years are shown
         )
         # Ensure text color contrasts with the heatmap colors
-        fig.update_traces(textfont_color='black') # Black text for better contrast on RdYlGn
+        # Use white text for better contrast on dark theme
+        fig.update_layout(
+            font=dict(color='white') # Set default font color for the whole chart
+        )
+        fig.update_traces(textfont_color='black') # Keep cell text black for RdYlGn contrast
         return fig
 
     def prepare_trades_for_table(self, trades):

@@ -32,7 +32,7 @@ class BollingerBandsStrategy(BaseStrategy):
         Raises:
             ValueError: If parameters are invalid.
         """
-        super().__init__(tickers) # Wywołaj konstruktor klasy bazowej
+        super().__init__()
 
         # --- Parameter Validation ---
         if not isinstance(window, int) or window <= 1:
@@ -45,6 +45,7 @@ class BollingerBandsStrategy(BaseStrategy):
             raise ValueError(msg)
 
         # --- Store Parameters ---
+        self.tickers = tickers
         self.window = window
         self.num_std = num_std
         logger.debug(f"BollingerBandsStrategy initialized for tickers {tickers} with window={window}, num_std={num_std}")
