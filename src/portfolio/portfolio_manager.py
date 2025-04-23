@@ -126,26 +126,41 @@ class PortfolioManager:
             )
             logger.debug(f"Sizing inputs: cash={self.cash:.2f}, portfolio_value={current_total_value:.2f}, price={entry_price:.2f}, volatility={volatility}; calculated shares={shares_to_trade}")
         
-        # --- Size Validation ---
-        if shares_to_trade <= 0:
-            # Check if it was due to risk rules or simply not enough potential
-            # If sizing was disabled, it means cash wasn't enough for even 1 share
-            if not use_sizing and entry_price > self.cash:
-                logger.debug(f"Insufficient cash for 1 share of {ticker}. Required: ${entry_price:.2f}, Available: ${self.cash:.2f}.") # Changed to debug
-                return 'insufficient_cash'
-            # If sizing was enabled, risk manager decided 0 shares
-            elif use_sizing:
-                logger.info(f"Risk manager allocated 0 shares for {ticker}. Signal rejected by sizing rules.")
+        # --- Check if enough cash for at least 1 share (basic check) ---
+        if self.cash < entry_price:
+            return 'insufficient_cash'
+
+        # --- Position Sizing ---
+        shares_to_trade = 0 # Initialize shares_to_trade
+        cost = 0.0 # Initialize cost
+
+        if self.risk_manager.use_position_sizing:
+            # Calculate size based on risk parameters
+            size_result = self.risk_manager.calculate_position_size(
+                account_equity=self.get_current_portfolio_value({ticker: entry_price}),
+                entry_price=entry_price,
+                stop_loss_price=self.risk_manager.calculate_stops(entry_price=entry_price, direction=direction)[0],
+                volatility=signal_data.get('volatility') # Pass volatility if available
+            )
+            if size_result is None or size_result <= 0:
+                logger.debug(f"Risk manager rejected position size for {ticker}.")
                 return 'risk_rejected_size'
-            else: # Catch other edge cases (e.g., price <= 0)
-                logger.warning(f"Calculated 0 shares for {ticker}, possibly due to invalid price or low cash.")
-                return 'risk_rejected_size' # Group under risk rejection for now
-         
-        # --- Cost Validation ---
-        cost = shares_to_trade * entry_price
-        if cost > self.cash: 
-            logger.debug(f"Insufficient cash for {shares_to_trade} shares of {ticker}. Required: ${cost:.2f}, Available: ${self.cash:.2f}.") # Changed to debug
-            return 'insufficient_cash' # Return reason
+            shares_to_trade = size_result
+            cost = shares_to_trade * entry_price
+        else:
+            # If position sizing is disabled, attempt to use full available cash
+            if entry_price > 0:
+                shares_to_trade = int(self.cash // entry_price) # Calculate max shares based on cash
+                cost = shares_to_trade * entry_price
+                if shares_to_trade <= 0:
+                    return 'insufficient_cash'
+            else:
+                logger.warning(f"Entry price for {ticker} is zero or negative, cannot calculate shares.")
+                return 'other_rejection' # Or a more specific reason
+
+        # --- Cost Calculation & Final Cash Check ---
+        if self.cash < cost:
+            return 'insufficient_cash'
 
         # --- Calculate Stops (if applicable) ---
         stop_loss_price, take_profit_price = self.risk_manager.calculate_stops(entry_price=entry_price, direction=direction)

@@ -121,7 +121,7 @@ def register_wizard_callbacks(app):
 
             progress = ((target_step_index + 1) / num_steps) * 100
 
-            logger.debug(f"Returning styles: {step_styles}")
+            # logger.debug(f"Returning styles: {step_styles}") # Removed this log
             logger.debug(f"Returning statuses: {status_classes}")
             logger.debug(f"Returning progress: {progress}")
 

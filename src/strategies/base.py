@@ -13,9 +13,9 @@ class BaseStrategy:
     """
     
     def __init__(self):
-        """Initialize the strategy with default parameters."""
-        self.parameters = {}
-        logger.info("BaseStrategy initialized")
+        """Initialize the strategy.""" # Removed parameters argument
+        # No parameters needed for the base class itself
+        logger.info(f"BaseStrategy initialized for {self.__class__.__name__}")
         
     def get_parameters(self) -> dict:
         """

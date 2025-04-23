@@ -380,10 +380,17 @@ def calculate_trade_statistics(trades: List[Dict]) -> Dict[str, Any]:
     win_pnls = []
     loss_pnls = []
 
+    logger.debug(f"Calculating trade stats for {len(trades)} trades.") # DEBUG
+    trade_count_processed = 0 # DEBUG
+
     for trade in trades:
         pnl = trade.get('pnl')
+        if trade_count_processed < 5: # Log first 5 PnLs # DEBUG
+            logger.debug(f"Processing trade {trade_count_processed + 1}, PnL: {pnl}") # DEBUG
+
         if pnl is None or not isinstance(pnl, (int, float)) or np.isnan(pnl):
             logger.warning(f"Skipping trade due to invalid PnL: {trade}")
+            trade_count_processed += 1 # DEBUG
             continue
 
         pnls.append(pnl)
@@ -392,12 +399,18 @@ def calculate_trade_statistics(trades: List[Dict]) -> Dict[str, Any]:
         elif pnl < 0:
             loss_pnls.append(pnl)
         # Trades with PnL == 0 are counted in total but not in win/loss counts here
+        trade_count_processed += 1 # DEBUG
 
     total_trades = len(pnls)
     winning_trades = len(win_pnls)
     losing_trades = len(loss_pnls)
 
-    if total_trades == 0: return stats # No valid PnLs found
+    # DEBUG: Log intermediate values
+    logger.debug(f"Trade stats intermediate: total={total_trades}, wins={winning_trades}, losses={losing_trades}")
+
+    if total_trades == 0: 
+        logger.debug("No valid trades found for statistics.") # DEBUG
+        return stats # No valid PnLs found
 
     stats['total_trades'] = total_trades
     stats['winning_trades'] = winning_trades
@@ -407,10 +420,14 @@ def calculate_trade_statistics(trades: List[Dict]) -> Dict[str, Any]:
     gross_profit = sum(win_pnls)
     gross_loss = abs(sum(loss_pnls)) # Use absolute value for gross loss
 
+    # DEBUG: Log profit/loss values
+    logger.debug(f"Trade stats intermediate: gross_profit={gross_profit:.2f}, gross_loss={gross_loss:.2f}")
+
     stats['total_pnl'] = gross_profit - gross_loss # Same as sum(pnls)
     stats['avg_trade_pnl'] = stats['total_pnl'] / total_trades
 
-    stats['profit_factor'] = gross_profit / gross_loss if gross_loss > 0 else np.inf
+    # Return None if gross_loss is 0, as infinity might cause issues downstream/in UI
+    stats['profit_factor'] = gross_profit / gross_loss if gross_loss > 0 else None 
 
     stats['avg_win_pnl'] = gross_profit / winning_trades if winning_trades > 0 else 0.0
     stats['avg_loss_pnl'] = -gross_loss / losing_trades if losing_trades > 0 else 0.0 # Avg loss is negative
@@ -418,15 +435,6 @@ def calculate_trade_statistics(trades: List[Dict]) -> Dict[str, Any]:
     stats['largest_win_pnl'] = max(win_pnls) if winning_trades > 0 else 0.0
     stats['largest_loss_pnl'] = min(loss_pnls) if losing_trades > 0 else 0.0 # Largest loss is most negative
 
-    # Calculate average holding period if dates are available
-    # holding_days = []
-    # for trade in trades:
-    #     entry_date = pd.to_datetime(trade.get('entry_date'), errors='coerce')
-    #     exit_date = pd.to_datetime(trade.get('exit_date'), errors='coerce')
-    #     if pd.notna(entry_date) and pd.notna(exit_date):
-    #         holding_days.append((exit_date - entry_date).days)
-    # if holding_days:
-    #     stats['avg_holding_days'] = np.mean(holding_days)
-
+    logger.debug(f"Calculated trade stats: {stats}") # DEBUG
 
     return stats

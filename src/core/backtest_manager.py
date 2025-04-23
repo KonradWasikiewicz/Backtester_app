@@ -59,8 +59,8 @@ class BacktestManager:
 
             strategy_params = strategy_params or {}
             try:
-                # Instantiate strategy with tickers list and its specific parameters
-                strategy = strategy_class(tickers, **strategy_params)
+                # Instantiate strategy with tickers list and unpack its specific parameters
+                strategy = strategy_class(tickers=valid_tickers, **strategy_params)
                 logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
             except Exception as e: logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True); return None, None, None
 

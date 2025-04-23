@@ -21,7 +21,7 @@ except ImportError as e:
     sys.exit(1) # Exit if essential imports fail
 
 # Basic logging configuration for the main application entry point
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s') # Changed level to DEBUG
 logger = logging.getLogger(__name__)
 # Only log application start once, after the reloader has initialized main process
 if __name__ == '__main__' and os.environ.get('WERKZEUG_RUN_MAIN') == 'true':

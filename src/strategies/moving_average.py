@@ -48,12 +48,11 @@ class MovingAverageStrategy(BaseStrategy):
             logger.error(f"Invalid window parameters: short={short_window}, long={long_window}. Short must be less than long.")
             raise ValueError("Krótki okres (short_window) musi być mniejszy niż długi okres (long_window).")
 
-        self.tickers = tickers  # Przechowuj tickery, jeśli są potrzebne
+        self.tickers = tickers
         self.short_window = short_window
         self.long_window = long_window
         # Przechowuj parametry również w słowniku dla łatwiejszego dostępu/logowania
         self.parameters = {'short_window': short_window, 'long_window': long_window}
-        # --- Zaktualizowano log, aby pasował do nazwy klasy ---
         logger.info(f"Moving Average Strategy initialized with parameters: {self.parameters}")
 
     def get_parameters(self) -> dict:
