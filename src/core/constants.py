@@ -40,7 +40,7 @@ STRATEGY_DESCRIPTIONS: dict[str, str] = {
 DEFAULT_STRATEGY_PARAMS: dict[str, dict] = {
     "RSI": {"rsi_period": 14, "lower_bound": 30, "upper_bound": 70},
     "MAC": {"short_window": 12, "long_window": 26},
-    "BB": {"bb_period": 20, "bb_std_dev": 2.0},
+    "BB": {"window": 20, "num_std": 2.0}, # Changed bb_period to window, bb_std_dev to num_std
     # --- ADD DEFAULT PARAMS FOR ALL YOUR STRATEGIES ---
 }
 
@@ -56,8 +56,8 @@ PARAM_DESCRIPTIONS: dict[str, dict[str, str]] = {
         "long_window": "Number of periods for the long-term moving average (e.g., 26)"
     },
     "BB": {
-        "bb_period": "Number of periods to compute the Bollinger Bands moving average (e.g., 20)",
-        "bb_std_dev": "Number of standard deviations for the upper/lower bands (e.g., 2)"
+        "window": "Number of periods to compute the Bollinger Bands moving average (e.g., 20)", # Changed bb_period to window
+        "num_std": "Number of standard deviations for the upper/lower bands (e.g., 2)" # Changed bb_std_dev to num_std
     }
     # Add entries for other strategies...
 }

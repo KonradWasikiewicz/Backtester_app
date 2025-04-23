@@ -27,13 +27,20 @@ def create_overview_metrics(metrics_ids: List[str], header: str = "Performance O
         "win-rate": "Win Rate",
         "profit-factor": "Profit Factor",
         "avg-trade": "Avg Trade P/L",
-        "recovery-factor": "Recovery Factor", # Added
-        "calmar-ratio": "Calmar Ratio",       # Added
+        "recovery-factor": "Recovery Factor",
+        "calmar-ratio": "Calmar Ratio",
         "starting-balance": "Starting Balance",
         "ending-balance": "Ending Balance",
-        "signals-generated": "Signals Generated",
-        "trades-count": "Trades Count",
-        "unexecuted-signals": "Unexecuted Signals"
+        "signals-generated": "Total Entry Signals", # Updated name
+        "trades-count": "Executed Trades", # Updated name
+        # Add new rejection metric display names
+        "rejected-signals-total": "Rejected Signals (Total)",
+        "rejected-signals-cash": "Rejected: Insufficient Cash",
+        "rejected-signals-risk": "Rejected: Risk/Size Rules",
+        "rejected-signals-maxpos": "Rejected: Max Positions",
+        "rejected-signals-exists": "Rejected: Position Exists",
+        "rejected-signals-filter": "Rejected: Market Filter",
+        "rejected-signals-other": "Rejected: Other Reasons"
     }
 
     for metric_id in metrics_ids:
@@ -42,10 +49,11 @@ def create_overview_metrics(metrics_ids: List[str], header: str = "Performance O
             dbc.Col(
                 html.Div([
                     html.Small(display_name, className="text-muted d-block mb-1"), # Add label
-                    html.Div(id=f"metric-{metric_id}", children="--", className="metric-value h5") # Add default value and class
+                    # Ensure the ID matches the callback output format: metric-<id>
+                    html.Div(id=f"metric-{metric_id}", children="--", className="metric-value h5") 
                 ]),
-                # Adjusted column widths for potentially more metrics
-                width=6, sm=4, md=3, lg=2, xxl=2, # Added xxl, adjusted others
+                # Use slightly wider columns for potentially longer labels
+                width=6, sm=4, md=4, lg=3, xxl=2, # Adjusted widths
                 className="mb-2" # Add bottom margin
             )
         )
@@ -55,7 +63,7 @@ def create_overview_metrics(metrics_ids: List[str], header: str = "Performance O
         dbc.CardBody([
             dbc.Row(
                 metrics_containers,
-                className="g-2" # Use g-2 for smaller gutters
+                className="g-3" # Slightly larger gutters
             )
         ])
     ], className="mb-4")
@@ -230,29 +238,41 @@ def create_results_section() -> html.Div:
                 create_overview_metrics(
                     metrics_ids=[
                         "total-return", "cagr", "sharpe", "max-drawdown", "calmar-ratio",
-                        "recovery-factor", "starting-balance", "ending-balance", "signals-generated"
+                        "recovery-factor", "starting-balance", "ending-balance"
                     ],
-                    header="Strategy Overview"
+                    header="Strategy Performance Overview"
                 ),
-                # Trades Overview
+                # Trades & Signals Overview
                 create_overview_metrics(
                     metrics_ids=[
-                        "trades-count", "win-rate", "profit-factor", "avg-trade", "unexecuted-signals"
+                        "signals-generated", # Total entry signals
+                        "trades-count",      # Executed trades
+                        "rejected-signals-total", # Total rejected
+                        "win-rate", 
+                        "profit-factor", 
+                        "avg-trade",
+                        # Detailed Rejection Reasons
+                        "rejected-signals-cash",
+                        "rejected-signals-risk",
+                        "rejected-signals-maxpos",
+                        "rejected-signals-exists",
+                        "rejected-signals-filter",
+                        "rejected-signals-other"
                     ],
-                    header="Trades Overview"
+                    header="Trade & Signal Execution Overview"
                 ),
                 create_portfolio_charts(),
 
                 dbc.Row([
-                    dbc.Col(create_monthly_returns_heatmap(), lg=6, className="mb-4"), # Add bottom margin to cols
-                    dbc.Col(create_trades_table(), lg=6, className="mb-4") # Add bottom margin to cols
+                    dbc.Col(create_monthly_returns_heatmap(), lg=6, className="mb-4"),
+                    dbc.Col(create_trades_table(), lg=6, className="mb-4")
                 ]),
 
-                create_signals_chart() # This takes full width row
+                create_signals_chart()
             ],
             style={"display": "none"} # Start hidden
         ),
 
         # Placeholder section (initially visible)
-        create_no_results_placeholder() # Changed: placeholder is now created by its own function
+        create_no_results_placeholder()
     ])

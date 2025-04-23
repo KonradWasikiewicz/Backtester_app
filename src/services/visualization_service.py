@@ -761,12 +761,24 @@ class VisualizationService:
             pivot.values,
             x=month_names,
             y=pivot.index,
-            color_continuous_scale='RdYlGn',
+            color_continuous_scale='RdYlGn', # Red-Yellow-Green scale
             labels={'x':'Month','y':'Year','color':'Return'},
             aspect='auto',
-            title='Monthly Returns Heatmap'
+            title='Monthly Returns Heatmap',
+            text_auto='.2%' # Format text as percentage
         )
-        fig.update_layout(height=self.height, template=self.theme, margin=dict(l=50, r=50, b=50, t=80))
+        # Update layout for dark theme and better appearance
+        fig.update_layout(
+            height=self.height, 
+            template=self.theme, # Use the service's theme (e.g., 'plotly_dark')
+            plot_bgcolor='rgba(0,0,0,0)', # Transparent plot background
+            paper_bgcolor='rgba(0,0,0,0)', # Transparent paper background
+            margin=dict(l=50, r=50, b=50, t=80),
+            xaxis_nticks=12, # Ensure all months are shown
+            yaxis_nticks=len(pivot.index) # Ensure all years are shown
+        )
+        # Ensure text color contrasts with the heatmap colors
+        fig.update_traces(textfont_color='black') # Black text for better contrast on RdYlGn
         return fig
 
     def prepare_trades_for_table(self, trades):

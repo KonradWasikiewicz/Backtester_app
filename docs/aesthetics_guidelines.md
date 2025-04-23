@@ -105,8 +105,10 @@ This document defines aesthetic standards for the Backtester App, ensuring a con
   - Input height: 38px
   - Internal padding: 8px 12px
   - Margin between fields: 16px
+  - **Input Style**: Dark background (`#1e222d`), white text (`#ffffff`) for consistency with dropdowns.
 - **Labels**: Above fields, semi-bold font
 - **Error messages**: Below fields, red color, small font
+- **Numeric Input Formatting**: Large numbers (e.g., Initial Capital) should use spaces as thousand separators (e.g., `100 000`). This is handled client-side via JavaScript for inputs with the `.numeric-input-formatted` class.
 
 ### 5.3 Cards and Containers
 - **Internal padding**: 16px or 24px
@@ -173,4 +175,4 @@ Before implementing a new feature or component, check:
 ---
 
 *Document created: April 11, 2025*  
-*Last updated: April 17, 2025*
+*Last updated: April 23, 2025*

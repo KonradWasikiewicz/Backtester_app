@@ -141,33 +141,21 @@ def create_strategy_config_section(tickers=None):
         steps = [
             create_wizard_step(
                 "strategy-selection",
-                "Step 1: Strategy Selection",
+                "Step 1: Initial Capital and Strategy Selection",
                 html.Div([
-                    html.Label("Select a strategy:", className="mb-2"),
-                    # --- Use corrected get_strategy_dropdown function ---
-                    get_strategy_dropdown(AVAILABLE_STRATEGIES),
-                    # Add Initial Capital Input Field here
-                    html.Label("Initial Capital (USD):", className="mb-2 mt-3"), # Added margin-top
+                    html.Label("Initial Capital (USD):", className="mb-2"),
                     dbc.Input(
-                        id='initial-capital-input', # Ensure this ID matches the callback State
-                        type='number',
-                        value=100000,  # Default value
-                        min=1000,      # Minimum value
-                        step=1000,     # Step increment
-                        className="mb-3",
-                        # Add formatting or validation if needed later
+                        id='initial-capital-input',
+                        type='text',  # Changed to text for formatting
+                        value="100 000",  # Default value formatted
+                        className="mb-3 numeric-input-formatted", # Added class for JS
+                        style={"backgroundColor": "#1e222d", "color": "#ffffff"} # Added style
                     ),
-                    # --- Corrected ID for strategy description ---
-                    html.Div(id="strategy-description-output", className="mb-3 mt-3"), # Use ID from callback
-                    # Strategy parameters header and inputs will be inserted here upon selection
+                    html.Label("Select a strategy:", className="mb-2"), # Added mt-3 for spacing
+                    get_strategy_dropdown(AVAILABLE_STRATEGIES),
+                    html.Div(id="strategy-description-output", className="mb-3 mt-3"),
                     html.Div(id='strategy-param-section', className="mt-4 mb-3"),
-                    dbc.Button(
-                        "Confirm",
-                        id="confirm-strategy", # ID consistent with callbacks
-                        color="primary",
-                        className="mt-3",
-                        disabled=True # Initially disabled, enabled by validation callback
-                    )
+                    dbc.Button("Confirm", id="confirm-strategy", color="primary", className="mt-3", disabled=True)
                 ]),
                 step_number=1
             ),
@@ -234,7 +222,7 @@ def create_strategy_config_section(tickers=None):
                         dbc.Row([
                             dbc.Col([
                                 html.Label("Max Position Size (%):", className="mb-1"),
-                                dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1, size="sm", style={"width": "100px"})
+                                dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1, size="sm", style={"width": "100px", "backgroundColor": "#1e222d", "color": "#ffffff"}) # Added style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="position_sizing-panel", style={"display": "none"}),
@@ -247,7 +235,7 @@ def create_strategy_config_section(tickers=None):
                             ], width=5),
                             dbc.Col([
                                 html.Label("Value (%):", className="mb-1"),
-                                dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                                dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1, size="sm", style={"width":"100px", "backgroundColor": "#1e222d", "color": "#ffffff"}) # Added style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="stop_loss-panel", style={"display": "none"}),
@@ -260,7 +248,7 @@ def create_strategy_config_section(tickers=None):
                             ], width=5),
                             dbc.Col([
                                 html.Label("Value (%):", className="mb-1"),
-                                dbc.Input(id="take-profit-value", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                                dbc.Input(id="take-profit-value", type="number", min=0, step=0.1, size="sm", style={"width":"100px", "backgroundColor": "#1e222d", "color": "#ffffff"}) # Added style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="take_profit-panel", style={"display": "none"}),
@@ -269,7 +257,7 @@ def create_strategy_config_section(tickers=None):
                         dbc.Row([
                             dbc.Col([
                                 html.Label("Max Risk per Trade (%):", className="mb-1"),
-                                dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                                dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1, size="sm", style={"width":"100px", "backgroundColor": "#1e222d", "color": "#ffffff"}) # Added style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="risk_per_trade-panel", style={"display": "none"}),
@@ -278,7 +266,7 @@ def create_strategy_config_section(tickers=None):
                         dbc.Row([
                             dbc.Col([
                                 html.Label("Trend Lookback (days):", className="mb-1"),
-                                dbc.Input(id="market-trend-lookback", type="number", min=1, step=1, size="sm", style={"width":"100px"})
+                                dbc.Input(id="market-trend-lookback", type="number", min=1, step=1, size="sm", style={"width":"100px", "backgroundColor": "#1e222d", "color": "#ffffff"}) # Added style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="market_filter-panel", style={"display": "none"}),
@@ -287,11 +275,11 @@ def create_strategy_config_section(tickers=None):
                         dbc.Row([
                             dbc.Col([
                                 html.Label("Max Drawdown (%):", className="mb-1"),
-                                dbc.Input(id="max-drawdown", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                                dbc.Input(id="max-drawdown", type="number", min=0, step=0.1, size="sm", style={"width":"100px", "backgroundColor": "#1e222d", "color": "#ffffff"}) # Added style
                             ], width="auto", className="me-4"),
                             dbc.Col([
                                 html.Label("Max Daily Loss (%):", className="mb-1"),
-                                dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1, size="sm", style={"width":"100px"})
+                                dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1, size="sm", style={"width":"100px", "backgroundColor": "#1e222d", "color": "#ffffff"}) # Added style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="drawdown_protection-panel", style={"display": "none"}),
@@ -316,14 +304,14 @@ def create_strategy_config_section(tickers=None):
                             html.Label("Commission (%):", className="mb-1"),
                             dbc.Input(
                                 id="commission-input", type="number", min=0, step=0.01, value=0.1,
-                                size="sm", style={"width": "100px"}
+                                size="sm", style={"width": "100px", "backgroundColor": "#1e222d", "color": "#ffffff"} # Added style
                             )
                         ], width="auto", className="d-flex flex-column align-items-start me-4"),
                         dbc.Col([
                             html.Label("Slippage (%):", className="mb-1"),
                             dbc.Input(
                                 id="slippage-input", type="number", min=0, step=0.01, value=0.05,
-                                size="sm", style={"width": "100px"}
+                                size="sm", style={"width": "100px", "backgroundColor": "#1e222d", "color": "#ffffff"} # Added style
                             )
                         ], width="auto", className="d-flex flex-column align-items-start")
                     ], className="align-items-center mb-3"),
@@ -356,10 +344,9 @@ def create_strategy_config_section(tickers=None):
                         ], width=5),
                         dbc.Col([
                             html.Label("Threshold (%):", className="mb-1"),
-                            dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, size="sm", style={"width":"100px"})
+                            dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, size="sm", style={"width":"100px", "backgroundColor": "#1e222d", "color": "#ffffff"}) # Added style
                         ], width="auto")
                     ], className="align-items-center ms-3 mb-3"),
-                    # Confirm button for Step 6
                     dbc.Button(
                         "Confirm",
                         id="confirm-rebalancing",  # Consistent with callback Input
@@ -371,19 +358,17 @@ def create_strategy_config_section(tickers=None):
                 is_hidden=True, step_number=6
             ),
             create_wizard_step(
-                # --- Corrected step ID ---
-                "wizard-summary", # Use ID consistent with callbacks
+                "wizard-summary",
                 "Step 7: Summary and Run Backtest",
                 html.Div([
                     html.H5("Review Configuration Summary", className="mb-3"),
-                    # --- Corrected output ID ---
-                    html.Div(id="wizard-summary-output", className="mb-3"), # Use ID consistent with callbacks
+                    html.Div(id="wizard-summary-output", className="mb-3"),
                     dbc.Button(
                         children=[html.I(className="fas fa-play me-2"), "Run Backtest"],
-                        id="run-backtest-button", # ID consistent with callbacks
-                        color="success", # Changed color to success
+                        id="run-backtest-button",
+                        color="success",
                         className="w-100 mt-3",
-                        disabled=True # Initially disabled, enabled after completing all steps
+                        disabled=True
                     )
                 ]),
                 is_hidden=True,
@@ -399,7 +384,6 @@ def create_strategy_config_section(tickers=None):
 
     except Exception as e:
         logger.error(f"Error creating strategy config section: {e}", exc_info=True)
-        # Return error message in layout
         return html.Div([
             dbc.Alert(f"Error generating strategy configuration layout: {e}", color="danger")
         ])
@@ -411,35 +395,25 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
     """
     logger.debug(f"Creating wizard step: {step_id}, Hidden: {is_hidden}")
     content_style = {"display": "none"} if is_hidden else {"display": "block"}
-    # Add margins for better appearance
     content_style.update({"marginLeft": "30px", "paddingTop": "10px"})
 
     return html.Div([
-        # --- Step header (clickable) ---
         html.Div([
-             # Removed numeric status span per request
              html.H5(title, className="mb-0 d-inline")
         ],
-        # --- ID for step header ---
         id=f"{step_id}-header",
-        className="wizard-step-header mb-2", # Added class for styling
-        style={"cursor": "pointer"} # Mouse pointer suggesting clickability
+        className="wizard-step-header mb-2",
+        style={"cursor": "pointer"}
         ),
-
-        # --- Container for step content ---
         html.Div(
             content,
-            # --- ID for step content ---
             id=f"{step_id}-content",
-            style=content_style # Style for hiding/showing
+            style=content_style
         ),
-        html.Hr(className="my-3") # Line separating steps
+        html.Hr(className="my-3")
     ],
-    # ID for entire step container (optional, may not be needed)
-    # id=f"{step_id}-container",
-    className="wizard-step mb-3") # Removed border-bottom, Hr() adds line
+    className="wizard-step mb-3")
 
-# ... (rest of the file, e.g., create_import_tickers_modal - no changes) ...
 def create_import_tickers_modal() -> dbc.Modal:
     """
     Creates a modal for importing tickers from a file or text.

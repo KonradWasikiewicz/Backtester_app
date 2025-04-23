@@ -106,26 +106,27 @@ class BacktestService:
     
     def get_performance_metrics(self) -> Dict[str, Any]:
         """
-        Generate performance metrics from current backtest results.
+        Generate performance metrics from current backtest results, including signal rejection details.
         
         Returns:
             Dict of formatted metric values
         """
-        if not self.current_stats:
+        if not self.current_stats or not self.backtest_manager:
             return {}
         
         metrics = {}
         
         try:
-            # Format total return with sign
+            # --- Standard Performance Metrics ---
             total_return = self.current_stats.get('Total Return', 0)
             total_return_str = f"+{total_return:.2f}%" if total_return >= 0 else f"{total_return:.2f}%"
-            
-            # Format CAGR with sign
             cagr = self.current_stats.get('CAGR', 0)
             cagr_str = f"+{cagr:.2f}%" if cagr >= 0 else f"{cagr:.2f}%"
-            
-            # Format metrics for display
+            start_balance = self.backtest_manager.initial_capital
+            end_balance = self.current_results["Portfolio_Value"].iloc[-1] if self.current_results and "Portfolio_Value" in self.current_results and not self.current_results["Portfolio_Value"].empty else start_balance
+            trades_count = self.current_stats.get('total_trades', 0) # Use stats value
+            total_entry_signals = self.current_stats.get('total_entry_signals', 0) # Use stats value
+
             metrics = {
                 "total-return": total_return_str,
                 "cagr": cagr_str,
@@ -133,12 +134,23 @@ class BacktestService:
                 "max-drawdown": f"{self.current_stats.get('Max Drawdown', 0):.2f}%",
                 "win-rate": f"{self.current_stats.get('Win Rate', 0) * 100:.1f}%",
                 "profit-factor": f"{self.current_stats.get('Profit Factor', 0):.2f}",
-                "avg-trade": f"${self.current_stats.get('Avg Trade', 0):.2f}",
-                
-                # Additional metrics
+                "avg-trade": f"${self.current_stats.get('Avg Trade', 0):,.2f}",
                 "recovery-factor": f"{self.current_stats.get('Recovery Factor', 0):.2f}x",
-                "calmar-ratio": f"{self.current_stats.get('Calmar Ratio', 0):.2f}"
+                "calmar-ratio": f"{self.current_stats.get('Calmar Ratio', 0):.2f}",
+                "starting-balance": f"${start_balance:,.2f}",
+                "ending-balance": f"${end_balance:,.2f}",
+                "signals-generated": f"{total_entry_signals:,}", # Renamed from signals-generated
+                "trades-count": f"{trades_count:,}",
             }
+
+            # --- Detailed Signal Rejection Metrics ---
+            metrics["rejected-signals-total"] = f"{self.current_stats.get('total_rejected_signals', 0):,}"
+            metrics["rejected-signals-cash"] = f"{self.current_stats.get('rejected_signals_cash', 0):,}"
+            metrics["rejected-signals-risk"] = f"{self.current_stats.get('rejected_signals_risk_size', 0):,}"
+            metrics["rejected-signals-maxpos"] = f"{self.current_stats.get('rejected_signals_max_pos', 0):,}"
+            metrics["rejected-signals-exists"] = f"{self.current_stats.get('rejected_signals_exists', 0):,}"
+            metrics["rejected-signals-filter"] = f"{self.current_stats.get('rejected_signals_market_filter', 0):,}"
+            metrics["rejected-signals-other"] = f"{self.current_stats.get('rejected_signals_other', 0):,}"
             
             return metrics
         except Exception as e:

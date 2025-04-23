@@ -84,47 +84,89 @@ class PortfolioManager:
         return total_value
 
     # Poprawiony Type Hint tutaj:
-    def open_position(self, signal_data: Dict[str, Any]) -> bool:
-        """Attempts to open a new position based on a signal and risk rules."""
+    def open_position(self, signal_data: Dict[str, Any]) -> Optional[str]: # Changed return type
+        """Attempts to open a new position based on a signal and risk rules.
+        Returns None on success, or a string reason on failure.
+        """
         ticker = signal_data.get('ticker'); entry_price = signal_data.get('price'); entry_date = signal_data.get('date'); direction = signal_data.get('direction', 1); volatility = signal_data.get('volatility')
 
-        if not all([ticker, entry_price, entry_date, direction]): logger.error(f"Missing data in open signal: {signal_data}"); return False
-        if entry_price <= 0: logger.warning(f"Invalid entry price ${entry_price:.2f} for {ticker}."); return False
-        if ticker in self.positions: logger.info(f"Position {ticker} already exists."); return False
-        if not self.risk_manager.can_open_new_position(len(self.positions)): logger.info(f"Max positions limit ({self.risk_manager.max_open_positions}) reached."); return False
+        # --- Validation Checks ---
+        if not all([ticker, entry_price, entry_date, direction]): 
+            logger.error(f"Missing data in open signal: {signal_data}")
+            return 'missing_data' # Return reason
+        if entry_price <= 0: 
+            logger.warning(f"Invalid entry price ${entry_price:.2f} for {ticker}.")
+            return 'invalid_price' # Return reason
+        if ticker in self.positions: 
+            # logger.info(f"Position {ticker} already exists.") # Reduce log noise
+            return 'position_exists' # Return reason
+        if not self.risk_manager.can_open_new_position(len(self.positions)): 
+            logger.info(f"Max positions limit ({self.risk_manager.max_open_positions}) reached.")
+            return 'max_positions_reached' # Return reason
 
         current_total_value = self.get_current_portfolio_value({ticker: entry_price})
-        # Determine position size
-        if getattr(self.risk_manager, '_use_position_sizing', True) is False:
-            shares_to_trade = int(self.cash // entry_price)
+        
+        # --- Determine position size ---
+        # Check if position sizing is explicitly disabled (defaults to True if not set)
+        use_sizing = getattr(self.risk_manager, '_use_position_sizing', True)
+        if not use_sizing:
+            # If sizing disabled, try to use all available cash (simple approach)
+            if entry_price > 0:
+                shares_to_trade = int(self.cash // entry_price)
+            else:
+                shares_to_trade = 0 # Avoid division by zero
+            logger.debug(f"Position sizing disabled. Attempting to use full cash for {ticker}. Shares: {shares_to_trade}")
         else:
+            # Use risk manager for sizing
             shares_to_trade = self.risk_manager.calculate_position_size(
                 current_portfolio_value=current_total_value,
                 available_cash=self.cash,
                 price=entry_price,
                 volatility=volatility
             )
-        logger.debug(f"Sizing inputs: cash={self.cash:.2f}, portfolio_value={current_total_value:.2f}, price={entry_price:.2f}, volatility={volatility}; calculated shares={shares_to_trade}")
-        # Fallback to 1 share if risk manager allocates zero
+            logger.debug(f"Sizing inputs: cash={self.cash:.2f}, portfolio_value={current_total_value:.2f}, price={entry_price:.2f}, volatility={volatility}; calculated shares={shares_to_trade}")
+        
+        # --- Size Validation ---
         if shares_to_trade <= 0:
-            # Only default to 1 share if cash covers one share
-            if entry_price <= self.cash:
-                logger.info(f"No shares allocated by risk manager for {ticker}. Defaulting to 1 share.")
-                shares_to_trade = 1
-            else:
-                return False
+            # Check if it was due to risk rules or simply not enough potential
+            # If sizing was disabled, it means cash wasn't enough for even 1 share
+            if not use_sizing and entry_price > self.cash:
+                 logger.warning(f"Insufficient cash for 1 share of {ticker}. Required: ${entry_price:.2f}, Available: ${self.cash:.2f}.")
+                 return 'insufficient_cash'
+            # If sizing was enabled, risk manager decided 0 shares
+            elif use_sizing:
+                logger.info(f"Risk manager allocated 0 shares for {ticker}. Signal rejected by sizing rules.")
+                return 'risk_rejected_size'
+            else: # Catch other edge cases (e.g., price <= 0)
+                logger.warning(f"Calculated 0 shares for {ticker}, possibly due to invalid price or low cash.")
+                return 'risk_rejected_size' # Group under risk rejection for now
          
+        # --- Cost Validation ---
         cost = shares_to_trade * entry_price
-        if cost > self.cash: logger.warning(f"Insufficient cash for {ticker}. Required: ${cost:.2f}, Available: ${self.cash:.2f}."); return False
+        if cost > self.cash: 
+            logger.warning(f"Insufficient cash for {shares_to_trade} shares of {ticker}. Required: ${cost:.2f}, Available: ${self.cash:.2f}.")
+            return 'insufficient_cash' # Return reason
 
+        # --- Calculate Stops (if applicable) ---
         stop_loss_price, take_profit_price = self.risk_manager.calculate_stops(entry_price=entry_price, direction=direction)
 
-        new_position = Position(ticker=ticker, entry_date=entry_date, entry_price=entry_price, shares=shares_to_trade, direction=direction, stop_loss_price=stop_loss_price, take_profit_price=take_profit_price, initial_stop_price=stop_loss_price, use_trailing=self.risk_manager.use_trailing_stop)
+        # --- Open Position --- 
+        new_position = Position(
+            ticker=ticker, 
+            entry_date=entry_date, 
+            entry_price=entry_price, 
+            shares=shares_to_trade, 
+            direction=direction, 
+            stop_loss_price=stop_loss_price, 
+            take_profit_price=take_profit_price, 
+            initial_stop_price=stop_loss_price, 
+            use_trailing=self.risk_manager.use_trailing_stop
+        )
         self.positions[ticker] = new_position
         self.cash -= cost
 
         logger.debug(f"Opened {'LONG' if direction > 0 else 'SHORT'} position: {shares_to_trade} {ticker} @ ${entry_price:.2f} on {entry_date.date()}. Cost: ${cost:.2f}, Cash: ${self.cash:.2f}, SL: ${stop_loss_price:.2f}, TP: ${take_profit_price:.2f}")
-        return True
+        return None # Success
 
     def close_position(self, ticker: str, exit_price: float, exit_date: pd.Timestamp, reason: str = "unknown") -> bool:
         """Closes an existing position and records the trade."""

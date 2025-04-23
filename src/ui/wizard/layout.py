@@ -48,17 +48,9 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
     steps = [
         create_wizard_step(
             "strategy-selection",
-            "Step 1: Strategy Selection",
+            "Step 1: Initial Capital and Strategy Selection",
             html.Div([
-                html.Label("Select a strategy:", className="mb-2"),
-                dcc.Dropdown(
-                    id='strategy-dropdown',
-                    options=[{'label': s['label'], 'value': s['value']} for s in AVAILABLE_STRATEGIES],
-                    placeholder="Select a strategy...",
-                    className="mb-3",
-                    clearable=False
-                ),
-                # Add Initial Capital Input Field
+                # moved initial capital above strategy selection
                 html.Label("Initial Capital (USD):", className="mb-2"),
                 dbc.Input(
                     id='initial-capital-input',
@@ -68,6 +60,14 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                     step=1000,     # Step increment
                     className="mb-3",
                     # Add formatting or validation if needed later
+                ),
+                html.Label("Select a strategy:", className="mb-2"),
+                dcc.Dropdown(
+                    id='strategy-dropdown',
+                    options=[{'label': s['label'], 'value': s['value']} for s in AVAILABLE_STRATEGIES],
+                    placeholder="Select a strategy...",
+                    className="mb-3",
+                    clearable=False
                 ),
                 html.Div(id="strategy-description-output", className="mb-3 mt-3"),
                 html.H6("Strategy Parameters:", className="mt-4 mb-2"),

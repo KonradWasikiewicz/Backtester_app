@@ -23,7 +23,9 @@ Backtester App is an application for testing investment strategies on historical
 2. **Spacing**: All spacing values must be divisible by 8 or 4
 3. **Colors**: Follow 60/30/10 distribution (neutral/complementary/accent)
 4. **Visual Structure**: Logical grouping with consistent spacing
-5. **Refer to**: [Aesthetics Guidelines](aesthetics_guidelines.md) for complete details
+5. **Input Fields**: Styled with dark background (`#1e222d`) and white text (`#ffffff`).
+6. **Numeric Formatting**: Large numbers in specific inputs (e.g., Initial Capital) use spaces as thousand separators (client-side JS).
+7. **Refer to**: [Aesthetics Guidelines](aesthetics_guidelines.md) for complete details
 
 ## Technical Stack
 - **Backend**: Python 3.8+, pandas, numpy
@@ -59,4 +61,4 @@ Backtester App is an application for testing investment strategies on historical
 ---
 
 *Created: April 11, 2025*
-*Last updated: April 17, 2025*
+*Last updated: April 23, 2025*

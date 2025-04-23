@@ -68,7 +68,7 @@ def register_backtest_callbacks(app):
          State("max-position-size", "value")],
         prevent_initial_call=True
     )
-    def run_backtest(n_clicks, strategy_type, initial_capital, selected_tickers, start_date, end_date,  # Added initial_capital
+    def run_backtest(n_clicks, strategy_type, initial_capital_str, selected_tickers, start_date, end_date,  # Renamed initial_capital to _str
                      strategy_param_values, strategy_param_ids, risk_features,
                      risk_per_trade, stop_loss_type, stop_loss_value, max_positions):
         """
@@ -76,6 +76,16 @@ def register_backtest_callbacks(app):
         """
         if not n_clicks:
             return "", {"display": "none"}, {"display": "block"}, [], None
+
+        # --- Convert and validate initial capital ---
+        initial_capital = None
+        if initial_capital_str:
+            try:
+                # Remove spaces and convert to float
+                initial_capital = float(str(initial_capital_str).replace(" ", ""))
+            except ValueError:
+                # Handle cases where conversion fails (e.g., non-numeric input)
+                return html.Div([html.I(className="fas fa-exclamation-circle me-2"), "Invalid Initial Capital format."], className="text-danger"), {"display": "none"}, {"display": "block"}, [], None
 
         # Validate required inputs
         missing_inputs = []
@@ -85,8 +95,9 @@ def register_backtest_callbacks(app):
             missing_inputs.append("tickers")
         if not start_date or not end_date:
             missing_inputs.append("date range")
-        if not initial_capital or initial_capital < 1000:  # Added validation for initial capital
-            missing_inputs.append("valid initial capital (>= 1000)")
+        # Use the converted numeric value for validation
+        if initial_capital is None or initial_capital < 1000:
+            missing_inputs.append("valid initial capital (>= 1 000)")
 
         if missing_inputs:
             error_msg = f"Please provide required inputs: {', '.join(missing_inputs)}"
@@ -95,7 +106,6 @@ def register_backtest_callbacks(app):
         # Prepare parameters
         try:
             tickers = selected_tickers if isinstance(selected_tickers, list) else [selected_tickers]
-            # Map each parameter id dict's 'param' key to its provided value
             strategy_params = {param_id["param"]: strategy_param_values[i] for i, param_id in enumerate(strategy_param_ids)}
             risk_params = {
                 # Set continue_iterate to False by default, regardless of the risk_features input
@@ -110,10 +120,10 @@ def register_backtest_callbacks(app):
                 "max_open_positions": int(max_positions) if max_positions else 5
             }
 
-            # Run backtest
+            # Run backtest using the converted numeric initial_capital
             result = backtest_service.run_backtest(
                 strategy_type=strategy_type,
-                initial_capital=float(initial_capital),  # Pass initial capital
+                initial_capital=initial_capital,  # Use the converted float value
                 tickers=tickers,
                 start_date=start_date,
                 end_date=end_date,
@@ -143,62 +153,99 @@ def register_backtest_callbacks(app):
          Output("metric-profit-factor", "children"),
          Output("metric-avg-trade", "children"),
          Output("metric-recovery-factor", "children"),
-         Output("metric-calmar-ratio", "children")],
+         Output("metric-calmar-ratio", "children"),
+         Output("metric-starting-balance", "children"),
+         Output("metric-ending-balance", "children"),
+         Output("metric-signals-generated", "children"), # Total entry signals
+         Output("metric-trades-count", "children"), # Executed trades
+         # Add outputs for the detailed rejection metrics
+         Output("metric-rejected-signals-total", "children"),
+         Output("metric-rejected-signals-cash", "children"),
+         Output("metric-rejected-signals-risk", "children"),
+         Output("metric-rejected-signals-maxpos", "children"),
+         Output("metric-rejected-signals-exists", "children"),
+         Output("metric-rejected-signals-filter", "children"),
+         Output("metric-rejected-signals-other", "children")],
         Input("results-section", "style")
     )
     def update_performance_metrics(results_style):
         """
         Update performance metrics when results section becomes visible.
-        
-        Args:
-            results_style: Style of the results section
-            
-        Returns:
-            Performance metric components
         """
+        num_metrics = 20 # Updated count of metrics (13 standard + 7 rejection details)
         if not backtest_service or results_style.get("display") == "none":
-            return [None] * 9
+            return ["--"] * num_metrics # Return default placeholder for all
         
         try:
             metrics = backtest_service.get_performance_metrics()
+            if not metrics:
+                 return ["--"] * num_metrics
             
-            # Format metrics with appropriate styling
-            total_return = metrics.get("total-return")
-            total_return_class = "text-success" if total_return and total_return.startswith("+") else "text-danger"
+            # Helper to get metric or default
+            def get_metric(key, default="--"):
+                return metrics.get(key, default)
+
+            # --- Format Standard Metrics (with styling) ---
+            total_return = get_metric("total-return")
+            total_return_class = "text-success" if total_return != "--" and total_return.startswith("+") else "text-danger"
             
-            cagr = metrics.get("cagr")
-            cagr_class = "text-success" if cagr and cagr.startswith("+") else "text-danger"
+            cagr = get_metric("cagr")
+            cagr_class = "text-success" if cagr != "--" and cagr.startswith("+") else "text-danger"
             
-            sharpe = metrics.get("sharpe")
-            sharpe_class = "text-success" if sharpe and float(sharpe.replace(',', '.')) >= 1.0 else "text-warning"
-            
-            # Add additional metrics with appropriate formatting
-            recovery_factor = metrics.get("recovery-factor", "N/A")
+            sharpe = get_metric("sharpe")
+            sharpe_val = 0
+            try:
+                sharpe_val = float(sharpe.replace(',', '.')) if sharpe != "--" else 0
+            except ValueError:
+                pass # Keep sharpe_val as 0
+            sharpe_class = "text-success" if sharpe_val >= 1.0 else ("text-warning" if sharpe_val > 0 else "text-danger")
+
+            recovery_factor = get_metric("recovery-factor", "N/A")
             recovery_class = "text-muted"
             if recovery_factor != "N/A":
-                value = float(recovery_factor.replace(',', '.').replace('x', ''))
-                recovery_class = "text-success" if value > 1.0 else "text-warning"
+                try:
+                    value = float(recovery_factor.replace(',', '.').replace('x', ''))
+                    recovery_class = "text-success" if value > 1.0 else "text-warning"
+                except ValueError:
+                     pass # Keep muted class
             
-            calmar_ratio = metrics.get("calmar-ratio", "N/A")
+            calmar_ratio = get_metric("calmar-ratio", "N/A")
             calmar_class = "text-muted"
             if calmar_ratio != "N/A":
-                value = float(calmar_ratio.replace(',', '.'))
-                calmar_class = "text-success" if value > 0.5 else "text-warning"
+                try:
+                    value = float(calmar_ratio.replace(',', '.'))
+                    calmar_class = "text-success" if value > 0.5 else "text-warning"
+                except ValueError:
+                    pass # Keep muted class
             
+            # --- Return all metrics in the order of the Outputs ---
             return [
-                html.Span(metrics.get("total-return"), className=total_return_class),
-                html.Span(metrics.get("cagr"), className=cagr_class),
-                html.Span(metrics.get("sharpe"), className=sharpe_class),
-                html.Span(metrics.get("max-drawdown"), className="text-danger"),
-                html.Span(metrics.get("win-rate"), className="text-info"),
-                html.Span(metrics.get("profit-factor"), className="text-info"),
-                html.Span(metrics.get("avg-trade"), className="text-info"),
+                # Standard Metrics
+                html.Span(total_return, className=total_return_class),
+                html.Span(cagr, className=cagr_class),
+                html.Span(sharpe, className=sharpe_class),
+                html.Span(get_metric("max-drawdown"), className="text-danger"),
+                html.Span(get_metric("win-rate"), className="text-info"),
+                html.Span(get_metric("profit-factor"), className="text-info"),
+                html.Span(get_metric("avg-trade"), className="text-info"),
                 html.Span(recovery_factor, className=recovery_class),
-                html.Span(calmar_ratio, className=calmar_class)
+                html.Span(calmar_ratio, className=calmar_class),
+                html.Span(get_metric("starting-balance"), className="text-muted"),
+                html.Span(get_metric("ending-balance"), className="text-info"),
+                html.Span(get_metric("signals-generated"), className="text-muted"), # Total entry signals
+                html.Span(get_metric("trades-count"), className="text-info"), # Executed trades
+                # Detailed Rejection Metrics
+                html.Span(get_metric("rejected-signals-total"), className="text-warning"),
+                html.Span(get_metric("rejected-signals-cash"), className="text-warning"),
+                html.Span(get_metric("rejected-signals-risk"), className="text-warning"),
+                html.Span(get_metric("rejected-signals-maxpos"), className="text-warning"),
+                html.Span(get_metric("rejected-signals-exists"), className="text-warning"),
+                html.Span(get_metric("rejected-signals-filter"), className="text-warning"),
+                html.Span(get_metric("rejected-signals-other"), className="text-warning")
             ]
         except Exception as e:
             logger.error(f"Error updating performance metrics: {e}", exc_info=True)
-            return [None] * 9
+            return ["Error"] * num_metrics # Return error message for all
     
     @app.callback(
         Output("portfolio-chart", "figure"),
@@ -299,6 +346,9 @@ def register_backtest_callbacks(app):
             if not trades_data:
                 return "No trades were executed in this backtest."
             
+            # Define the font family consistent with the CSS
+            consistent_font = "'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
+            
             return dash_table.DataTable(
                 id="trades-table",
                 columns=[
@@ -318,13 +368,15 @@ def register_backtest_callbacks(app):
                     "textAlign": "left",
                     "padding": "10px",
                     "backgroundColor": "#2a2e39",
-                    "color": "#e0e0e0"
+                    "color": "#e0e0e0",
+                    "fontFamily": consistent_font # Explicitly set font family
                 },
                 style_header={
                     "backgroundColor": "#1e222d",
                     "color": "#ffffff",
                     "fontWeight": "bold",
-                    "textAlign": "center"
+                    "textAlign": "center",
+                    "fontFamily": consistent_font # Explicitly set font family for header
                 },
                 style_data_conditional=[
                     {
@@ -338,7 +390,7 @@ def register_backtest_callbacks(app):
                 ],
                 page_size=10,
                 sort_action="native",
-                filter_action="native"
+                # filter_action="native" # Removed filter action to hide the filter row
             )
         except Exception as e:
             logger.error(f"Error updating trades table: {e}", exc_info=True)

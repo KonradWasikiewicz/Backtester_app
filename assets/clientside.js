@@ -54,6 +54,43 @@
 })();
 // --- DASH ERROR LOGGER: END ---
 
+// Function to format number with spaces as thousand separators
+function formatNumberWithSpaces(number) {
+    // Remove existing spaces and non-digit characters (except decimal point)
+    let numStr = String(number).replace(/\s+/g, '');
+    // Allow only digits
+    numStr = numStr.replace(/[^\d]/g, '');
+    // Add spaces
+    return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+// Function to apply formatting to relevant input fields
+function applyInputFormatting() {
+    const numericInputs = document.querySelectorAll('.numeric-input-formatted');
+    numericInputs.forEach(input => {
+        // Format on initial load
+        input.value = formatNumberWithSpaces(input.value);
+
+        // Format on input change
+        input.addEventListener('input', function(e) {
+            // Store cursor position
+            let cursorPosition = e.target.selectionStart;
+            let originalLength = e.target.value.length;
+            
+            // Format the value
+            e.target.value = formatNumberWithSpaces(e.target.value);
+
+            // Restore cursor position
+            let newLength = e.target.value.length;
+            cursorPosition += (newLength - originalLength);
+            // Ensure cursor position is valid
+            if (cursorPosition < 0) cursorPosition = 0;
+            if (cursorPosition > newLength) cursorPosition = newLength;
+            e.target.setSelectionRange(cursorPosition, cursorPosition);
+        });
+    });
+}
+
 // Add wizard step header interaction
 if (document) {
     // Wait for DOM content to be loaded
@@ -61,12 +98,14 @@ if (document) {
         // Set up event listeners for step headers after a short delay to ensure React has rendered
         setTimeout(function() {
             setupStepHeaders();
+            applyInputFormatting(); // Apply formatting after setup
         }, 1000);
     });
 
-    // Re-setup listeners when the page changes
+    // Re-setup listeners and formatting when the page changes or updates
     window.addEventListener('load', function() {
         setupStepHeaders();
+        applyInputFormatting();
     });
 }
 
