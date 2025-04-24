@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from dash import dcc, html
 import logging
+from src.core.config import config, VISUALIZATION_CONFIG as VIZ_CFG
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,6 @@ class BacktestVisualizer:
         
         # Import visualization config for consistent colors/styles
         try:
-            from src.core.config import VISUALIZATION_CONFIG as VIZ_CFG
             self.viz_cfg = VIZ_CFG
         except ImportError:
             logger.warning("Could not import VISUALIZATION_CONFIG. Using fallback colors.")
@@ -194,14 +194,15 @@ class BacktestVisualizer:
             figure_data = {}
             figure_data['Portfolio'] = portfolio_values
             
+            benchmark_name = f"Benchmark ({config.BENCHMARK_TICKER})" if config.BENCHMARK_TICKER else "Benchmark"
             if benchmark_values is not None and not benchmark_values.empty:
-                benchmark_values.name = benchmark_values.name or "Benchmark"
+                benchmark_values.name = benchmark_name # Use dynamic name
                 figure_data[benchmark_values.name] = benchmark_values
                 
             # Create chart using existing utility function
+            # Remove the layout_title argument here
             chart = create_styled_chart(
                 figure_data=figure_data,
-                layout_title="Portfolio Performance",
                 yaxis_title="Portfolio Value",
                 yaxis_format="$",
                 height=400
@@ -228,12 +229,13 @@ class BacktestVisualizer:
                 line=dict(color=self.viz_cfg["colors"]["portfolio"], width=2)
             ))
             
+            benchmark_name = f"Benchmark ({config.BENCHMARK_TICKER})" if config.BENCHMARK_TICKER else "Benchmark"
             if benchmark_cum_returns is not None:
                 fig.add_trace(go.Scatter(
                     x=benchmark_cum_returns.index, 
                     y=benchmark_cum_returns.values,
                     mode='lines',
-                    name='Benchmark',
+                    name=benchmark_name, # Use dynamic name
                     line=dict(color=self.viz_cfg["colors"]["benchmark"], width=2)
                 ))
             
@@ -273,12 +275,13 @@ class BacktestVisualizer:
                           f'{int(self.viz_cfg["colors"]["loss"][5:7], 16)}, 0.3)'
             ))
             
+            benchmark_name = f"Benchmark ({config.BENCHMARK_TICKER})" if config.BENCHMARK_TICKER else "Benchmark"
             if benchmark_drawdowns is not None:
                 fig.add_trace(go.Scatter(
                     x=benchmark_drawdowns.index, 
                     y=benchmark_drawdowns.values,
                     mode='lines',
-                    name='Benchmark',
+                    name=benchmark_name, # Use dynamic name
                     line=dict(color=self.viz_cfg["colors"]["benchmark"], width=2)
                 ))
             
@@ -298,7 +301,8 @@ class BacktestVisualizer:
         else:
             # Default to value chart
             logger.warning(f"Unknown chart type: {chart_type}. Using value chart.")
-            return self.create_equity_curve_figure(portfolio_values, benchmark_values)
+            # Pass benchmark_values correctly to the recursive call
+            return self.create_equity_curve_figure(portfolio_values, benchmark_values, chart_type="value")
 
     
     def create_monthly_returns_heatmap(self, portfolio_values: pd.Series) -> go.Figure:

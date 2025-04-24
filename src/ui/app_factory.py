@@ -187,6 +187,19 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
                     color: #ccc !important;
                 }
 
+                /* --- NEW: Style dbc.Select --- */
+                .form-select {
+                    background-color: #1e222d !important;
+                    color: white !important;
+                    border-color: #444 !important;
+                }
+                /* Style options within dbc.Select */
+                .form-select option {
+                    background-color: #2a2e39 !important; /* Match dropdown menu */
+                    color: white !important;
+                }
+                /* --- END NEW --- */
+
                 /* Fix for overlapping callbacks error */
                 .error-container {
                     background-color: #1e222d !important;
@@ -272,29 +285,17 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
 
 def create_version_display():
     """
-    Create an enhanced version display component with popover for additional details.
+    Create an enhanced version display component without a popover.
 
     Returns:
         html component: The version display component
     """
     version = get_version()
-    version_info = get_version_info()
 
-    # Create version changes list for popover
-    changelog = get_changelog()
-    current_version_log = changelog.get(version, changelog.get(version_info['full'], {}))
-
-    changes_list = []
-    if current_version_log:
-        changes = current_version_log.get('changes', [])
-        for change in changes:
-            changes_list.append(html.Li(change))
-
-    # Create version badge with popover
+    # Create version badge without popover icon
     version_badge = dbc.Button(
         [
             html.Span("v" + version, className="version-badge"),
-            html.I(className="fas fa-info-circle ms-1")
         ],
         id="version-badge",
         color="link",
@@ -302,38 +303,7 @@ def create_version_display():
         className="p-0 text-light text-decoration-none"
     )
 
-    version_popover = dbc.Popover(
-        [
-            dbc.PopoverHeader(f"Backtester v{version}"),
-            dbc.PopoverBody([
-                html.P([
-                    html.Strong("Release: "),
-                    RELEASE_DATE
-                ]),
-                html.Hr(className="my-2"),
-                html.P(
-                    html.Strong("What's in this version:"),
-                    className="mb-2"
-                ),
-                html.Ul(
-                    changes_list if changes_list else [html.Li("Initial release")],
-                    className="ps-3 mb-0"
-                ),
-                html.Hr(className="my-2"),
-                html.Small([
-                    html.A("View changelog", href="#", id="view-changelog", className="text-primary"),
-                    " | ",
-                    html.A("Report issue", href="https://github.com/", target="_blank", className="text-primary")
-                ])
-            ])
-        ],
-        target="version-badge",
-        trigger="hover",
-        placement="bottom",
-        className="version-popover"
-    )
-
-    return html.Div([version_badge, version_popover])
+    return html.Div([version_badge])
 
 def create_app_layout() -> html.Div:
     """
@@ -383,24 +353,16 @@ def create_app_layout() -> html.Div:
                     ),
                     dbc.Row([
                         dbc.Col([
-                            create_version_display()
-                        ], width="auto"),
-                        dbc.Col([
-                            # Add debug button
-                            dbc.Button(
-                                html.I(className="fas fa-bug"),
-                                id="toggle-debug-btn",
-                                color="link",
-                                className="p-0 text-light me-3",
-                                title="Toggle debug mode"
-                            ),
+                            create_version_display(), # Version display
+                            # GitHub icon moved here
                             html.A(
-                                html.I(className="fab fa-github fa-lg"),
-                                href="https://github.com/",
-                                target="_blank"
+                                html.I(className="fab fa-github fa-lg ms-2"), # Added margin-start
+                                href="https://github.com/KonradWasikiewicz/Backtester_app", # Updated URL
+                                target="_blank",
+                                className="text-light text-decoration-none" # Added classes for styling
                             )
-                        ], width="auto")
-                    ])
+                        ], width="auto", className="d-flex align-items-center"), # Use flexbox for alignment
+                    ], justify="end") # Justify content to the end (right)
                 ], fluid=True),
                 color="dark",
                 dark=True,
@@ -682,8 +644,12 @@ def get_available_tickers() -> List[str]:
     """
     try:
         data_loader = DataLoader()
+        # Ensure data is loaded before getting tickers
+        # data_loader.load_data() # Assuming load_data is called elsewhere or implicitly
         tickers = data_loader.get_available_tickers()
         logger.debug(f"Available tickers retrieved: {len(tickers)}") # Added log
+        if not tickers:
+             logger.warning("No available tickers found. Check data source.")
         return tickers
     except Exception as e:
         logger.error(f"Error getting available tickers: {e}", exc_info=True) # Log full traceback

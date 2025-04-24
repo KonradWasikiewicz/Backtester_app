@@ -6,6 +6,7 @@ import json
 import traceback
 from typing import Dict, List, Any, Optional
 from datetime import datetime
+import plotly.graph_objects as go # Added import
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -15,6 +16,7 @@ from src.services.backtest_service import BacktestService
 from src.services.data_service import DataService
 from src.services.visualization_service import VisualizationService
 from src.core.constants import AVAILABLE_STRATEGIES
+from src.visualization.chart_utils import _create_base_layout # ADDED import
 
 # Create shared service instances
 backtest_service = None
@@ -249,29 +251,103 @@ def register_backtest_callbacks(app):
     
     @app.callback(
         Output("portfolio-chart", "figure"),
-        Input("results-section", "style")
+        # ADDED: Trigger based on chart type buttons
+        [Input("btn-chart-value", "n_clicks"),
+         Input("btn-chart-returns", "n_clicks"),
+         Input("btn-chart-drawdown", "n_clicks")],
+        State("results-section", "style"), # Keep state for visibility check
+        # Removed original Input("results-section", "style") as it's now a State
+        prevent_initial_call=True # Prevent running on load
     )
-    def update_portfolio_chart(results_style):
+    def update_portfolio_chart(n_value, n_returns, n_drawdown, results_style): # Updated inputs/state
         """
-        Update portfolio performance chart when results section becomes visible.
-        
-        Args:
-            results_style: Style of the results section
-            
-        Returns:
-            Plotly figure for portfolio performance chart
+        Update portfolio performance chart based on selected type and when results are visible.
         """
+        # Check visibility first
         if not backtest_service or results_style.get("display") == "none":
-            return {}
-        
+            # Return default empty figure if no results or section hidden
+            # Use a basic layout structure matching plotly figure dictionary
+            return {'data': [], 'layout': {'template': 'plotly_dark', 'height': 400, 'title': 'Portfolio Performance', 'xaxis': {'visible': False}, 'yaxis': {'visible': False}, 'annotations': [{'text': 'Run backtest to see results', 'xref': 'paper', 'yref': 'paper', 'showarrow': False, 'align': 'center'}]}}
+
+        # Determine which button was clicked last
+        ctx = callback_context
+        # Default to 'value' if no button triggered (e.g., initial load after backtest)
+        chart_type = "value"
+        if ctx.triggered:
+            button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+            if button_id == "btn-chart-returns":
+                chart_type = "returns"
+            elif button_id == "btn-chart-drawdown":
+                chart_type = "drawdown"
+            # else: chart_type remains "value"
+
+        logger.debug(f"Updating portfolio chart with type: {chart_type}")
+
         try:
-            # Get portfolio chart from the backtest service
-            # This now uses the visualization service internally
-            return backtest_service.get_portfolio_chart(chart_type="value") or {}
+            # Get the appropriate chart figure from the backtest service
+            figure = backtest_service.get_portfolio_chart(chart_type=chart_type)
+
+            if not figure:
+                 logger.warning(f"get_portfolio_chart returned None for type {chart_type}")
+                 # Return a styled empty figure dictionary
+                 # CORRECTED: Call _create_base_layout directly
+                 empty_layout = _create_base_layout(
+                     title=f"Portfolio Performance ({chart_type.capitalize()}) - No Data",
+                     height=400
+                 )
+                 empty_layout.annotations = [
+                     go.layout.Annotation(
+                         text="No data available for this view.",
+                         showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5
+                     )
+                 ]
+                 empty_layout.xaxis.visible = False
+                 empty_layout.yaxis.visible = False
+                 return {'data': [], 'layout': empty_layout}
+
+            return figure # Return the figure dictionary directly
         except Exception as e:
-            logger.error(f"Error updating portfolio chart: {e}", exc_info=True)
-            return {}
-    
+            logger.error(f"Error updating portfolio chart (type: {chart_type}): {e}", exc_info=True)
+            # Return a styled empty figure dictionary with error message
+            # CORRECTED: Call _create_base_layout directly
+            empty_layout = _create_base_layout(
+                 title=f"Error loading {chart_type.capitalize()} chart",
+                 height=400
+            )
+            empty_layout.annotations = [
+                go.layout.Annotation(
+                    text=f"Error: {str(e)}",
+                    showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5
+                )
+            ]
+            empty_layout.xaxis.visible = False
+            empty_layout.yaxis.visible = False
+            return {'data': [], 'layout': empty_layout}
+
+    # Callback to manage button states (outline)
+    @app.callback(
+        [Output("btn-chart-value", "outline"),
+         Output("btn-chart-returns", "outline"),
+         Output("btn-chart-drawdown", "outline")],
+        [Input("btn-chart-value", "n_clicks"),
+         Input("btn-chart-returns", "n_clicks"),
+         Input("btn-chart-drawdown", "n_clicks")],
+        # prevent_initial_call=True # Allow initial state setting
+    )
+    def update_chart_button_styles(n_value, n_returns, n_drawdown):
+        ctx = callback_context
+        # Default: Value selected if no clicks yet or context unclear
+        if not ctx.triggered_id:
+            return False, True, True
+
+        button_id = ctx.triggered_id.split(".")[0]
+        if button_id == "btn-chart-returns":
+            return True, False, True
+        elif button_id == "btn-chart-drawdown":
+            return True, True, False
+        else: # Default to value button
+            return False, True, True
+
     @app.callback(
         Output("monthly-returns-heatmap", "figure"),
         Input("results-section", "style")

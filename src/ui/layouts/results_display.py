@@ -69,9 +69,9 @@ def create_overview_metrics(metrics_ids: List[str], header: str = "Performance O
     ], className="mb-4")
 
 
-def create_portfolio_charts() -> dbc.Card:
+def create_portfolio_value_returns_chart() -> dbc.Card: # RENAMED function
     """
-    Creates card with portfolio performance charts.
+    Creates card with portfolio performance charts (Value and Returns).
 
     Returns:
         dbc.Card: Card component with portfolio charts
@@ -98,14 +98,15 @@ def create_portfolio_charts() -> dbc.Card:
                             size="sm",
                             n_clicks=0
                         ),
-                        dbc.Button(
-                            "Drawdown",
-                            id="btn-chart-drawdown",
-                            color="primary",
-                            outline=True, # Others outlined
-                            size="sm",
-                            n_clicks=0
-                        )
+                        # REMOVED Drawdown button
+                        # dbc.Button(
+                        #     "Drawdown",
+                        #     id="btn-chart-drawdown",
+                        #     color="primary",
+                        #     outline=True,
+                        #     size="sm",
+                        #     n_clicks=0
+                        # )
                     ],
                     className="ms-auto" # Align buttons to the right
                 )
@@ -118,6 +119,29 @@ def create_portfolio_charts() -> dbc.Card:
                     config={"displayModeBar": True, "scrollZoom": True},
                      # Add a default empty figure to prevent errors before first calculation
                     figure={'data': [], 'layout': {'template': 'plotly_dark', 'height': 400}}
+                ),
+                type="circle"
+            )
+        ])
+    ], className="mb-4")
+
+
+def create_drawdown_chart() -> dbc.Card:
+    """
+    Creates card specifically for the portfolio drawdown chart.
+
+    Returns:
+        dbc.Card: Card component with the drawdown chart.
+    """
+    return dbc.Card([
+        dbc.CardHeader("Portfolio Drawdown"),
+        dbc.CardBody([
+            dcc.Loading(
+                dcc.Graph(
+                    id="drawdown-chart", # New ID for the drawdown graph
+                    config={"displayModeBar": True, "scrollZoom": True},
+                    # Add a default empty figure
+                    figure={'data': [], 'layout': {'template': 'plotly_dark', 'height': 300}} # Slightly smaller height
                 ),
                 type="circle"
             )
@@ -260,7 +284,8 @@ def create_results_section() -> html.Div:
                     ],
                     header="Trade & Signal Execution Overview"
                 ),
-                create_portfolio_charts(), # Portfolio chart remains full width
+                create_portfolio_value_returns_chart(), # UPDATED function call
+                create_drawdown_chart(), # ADDED call for the new drawdown chart
 
                 # Move heatmap above trades table, both full width
                 dbc.Row([
