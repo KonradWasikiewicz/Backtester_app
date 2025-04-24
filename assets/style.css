@@ -356,3 +356,21 @@ input, select, textarea {
     background-color: #2a2e39;
     margin-bottom: 20px; /* Add space below progress bar */
 }
+
+/* Style the main fullscreen loader */
+.main-loader-fullscreen ._dash-loading {
+    /* Increase the size of the spinner */
+    width: 120px !important; /* Increased size */
+    height: 120px !important; /* Increased size */
+    /* Ensure it's centered within its container (not fixed) */
+    position: relative !important; /* Changed from fixed */
+    margin: 50px auto !important; /* Add some top margin and center horizontally */
+    /* transform: translate(-50%, -50%) !important; REMOVED fixed positioning transform */
+    /* Optional: Change spinner color if needed */
+    /* border-top-color: #0dcaf0 !important; */
+}
+
+/* Hide the spinner when loading is finished */
+.main-loader-fullscreen.loading-finished ._dash-loading {
+    display: none !important;
+}

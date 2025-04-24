@@ -362,9 +362,19 @@ def create_strategy_config_section(tickers=None):
                 "Step 7: Summary and Run Backtest",
                 html.Div([
                     html.H5("Review Configuration Summary", className="mb-3"),
-                    html.Div(id="wizard-summary-output", className="mb-3"),
+                    html.Div([
+                        html.Div([
+                            html.Strong("Strategy:"),
+                            html.Span(id="summary-strategy-name", className="ms-2")
+                        ], className="mb-2"),
+                        html.Div([
+                            html.Strong("Initial Capital:"),
+                            html.Span(id="summary-initial-capital", className="ms-2")
+                        ], className="mb-2"),
+                        # Add other summary items here if needed
+                    ], id="wizard-summary-output", className="mb-3"),
                     dbc.Button(
-                        children=[html.I(className="fas fa-play me-2"), "Run Backtest"],
+                        "Run Backtest",
                         id="run-backtest-button",
                         color="success",
                         className="w-100 mt-3",

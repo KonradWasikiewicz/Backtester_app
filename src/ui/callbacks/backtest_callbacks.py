@@ -601,3 +601,41 @@ def register_backtest_callbacks(app):
         except Exception as e:
             logger.error(f"Error updating trades table: {e}", exc_info=True)
             return f"Error displaying trades: {str(e)}"
+
+    # --- ADDED: Callback to manage main loader visibility ---
+    @app.callback(
+        Output("results-loading", "className"),
+        [
+            Input("portfolio-chart-loading", "loading_state"),
+            Input("drawdown-chart-loading", "loading_state"),
+            Input("heatmap-chart-loading", "loading_state"),
+            Input("trades-table-loading", "loading_state"),
+            Input("signals-chart-loading", "loading_state"),
+            Input("backtest-results-store", "data") # Also trigger when backtest finishes/fails
+        ],
+        prevent_initial_call=True
+    )
+    def manage_main_loader_visibility(portfolio_ls, drawdown_ls, heatmap_ls, trades_ls, signals_ls, results_timestamp):
+        """
+        Hides the main fullscreen loader only when all individual result components have finished loading.
+        """
+        # If backtest hasn't run or failed (no timestamp), keep loader visible (without finished class)
+        if not results_timestamp:
+            return "main-loader-fullscreen"
+
+        # Check if any of the individual loaders are still loading
+        # loading_state is None initially, check for that too
+        still_loading = (
+            (portfolio_ls and portfolio_ls.get("is_loading")) or
+            (drawdown_ls and drawdown_ls.get("is_loading")) or
+            (heatmap_ls and heatmap_ls.get("is_loading")) or
+            (trades_ls and trades_ls.get("is_loading")) or
+            (signals_ls and signals_ls.get("is_loading"))
+        )
+
+        if still_loading:
+            # Keep loader visible if anything is still loading
+            return "main-loader-fullscreen"
+        else:
+            # Add the 'loading-finished' class to hide the spinner via CSS
+            return "main-loader-fullscreen loading-finished"

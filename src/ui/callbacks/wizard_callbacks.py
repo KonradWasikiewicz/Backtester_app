@@ -5,6 +5,7 @@ import logging
 # from ...config.logging_config import setup_logging
 from src.core.constants import STRATEGY_DESCRIPTIONS # Poprawna ścieżka do stałych
 from src.core.constants import DEFAULT_STRATEGY_PARAMS  # added import for default params
+from src.core.constants import AVAILABLE_STRATEGIES # Ensure this is imported
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +231,8 @@ def register_wizard_callbacks(app):
         Input('wizard-summary-content', 'style'),
         [
             State('strategy-dropdown', 'value'),
+            # ADDED: State for initial capital
+            State('initial-capital-input', 'value'),
             State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'value'),
             State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'id'),
             State('backtest-start-date', 'date'),
@@ -252,49 +255,113 @@ def register_wizard_callbacks(app):
         ],
         prevent_initial_call=True
     )
-    def update_summary_and_run(summary_style, strat, param_values, param_ids,
+    def update_summary_and_run(summary_style, strat_value, initial_capital, # Added initial_capital
+                               param_values, param_ids,
                                start_date, end_date, tickers,
                                risk_feats, max_ps, sl_type, sl_val,
                                tp_type, tp_val, rpt, mtl,
                                mdd, mdl, comm, slip, reb_freq, reb_thresh):
-        """Populates the summary step with all chosen configurations and enables Run button."""
         if not summary_style or summary_style.get('display') != 'block':
-            return no_update
-        summary_items = []
-        # Strategy
-        summary_items.append(html.Li(f"Strategy: {strat}"))
-        # Strategy parameters
+            # Don't update if the summary step is not visible
+            return no_update, no_update # Return no_update for both outputs
+
+        summary_elements = []
+
+        # --- Strategy ---
+        strategy_label = strat_value # Default to value if not found
+        for strategy_info in AVAILABLE_STRATEGIES:
+            if strategy_info.get('value') == strat_value:
+                strategy_label = strategy_info.get('label', strat_value)
+                break
+        summary_elements.append(html.Div([
+            html.Strong("Strategy: "),
+            html.Span(strategy_label)
+        ], className="mb-1")) # Use mb-1 for closer spacing like screenshot
+
+        # --- Initial Capital ---
+        summary_elements.append(html.Div([
+            html.Strong("Initial Capital: "),
+            # Assuming initial_capital is already formatted string like "100 000"
+            html.Span(f"${initial_capital}" if initial_capital else "Not Set")
+        ], className="mb-1"))
+
+        # --- Parameters ---
         if param_ids and param_values:
-            params = []
+            params_list = []
             for i, pid in enumerate(param_ids):
-                name = pid.get('param')
-                val = param_values[i]
-                params.append(f"{name.replace('_', ' ').title()}: {val}")
-            summary_items.append(html.Li(["Parameters: ", html.Ul([html.Li(p) for p in params])]))
-        # Dates
-        summary_items.append(html.Li(f"Date Range: {start_date} to {end_date}"))
-        # Tickers
-        summary_items.append(html.Li(f"Tickers: {', '.join(tickers or [])}"))
-        # Risk settings
-        if not risk_feats:
-            summary_items.append(html.Li("Risk Measures: None"))
+                # Ensure pid is a dictionary and has 'param' key
+                if isinstance(pid, dict) and 'param' in pid:
+                    name = pid.get('param')
+                    val = param_values[i] if i < len(param_values) else 'N/A'
+                    # Format parameter name nicely
+                    formatted_name = name.replace('_', ' ').title()
+                    params_list.append(html.Li(f"{formatted_name}: {val}"))
+                else:
+                     logger.warning(f"Invalid param_id structure found: {pid}")
+
+            if params_list: # Only add if there are valid parameters
+                 summary_elements.append(html.Div([
+                     html.Strong("Parameters:"),
+                     html.Ul(params_list, style={'paddingLeft': '20px', 'marginTop': '0px', 'marginBottom': '4px'}) # Indent list
+                 ], className="mb-1"))
+
+
+        # --- Date Range ---
+        summary_elements.append(html.Div([
+            html.Strong("Date Range: "),
+            html.Span(f"{start_date} to {end_date}")
+        ], className="mb-1"))
+
+        # --- Tickers ---
+        summary_elements.append(html.Div([
+            html.Strong("Tickers: "),
+            html.Span(", ".join(tickers or ["None"]))
+        ], className="mb-1"))
+
+        # --- Risk Measures ---
+        risk_measures_list = []
+        if risk_feats:
+            if 'position_sizing' in risk_feats: risk_measures_list.append(html.Li(f"Position Sizing: {max_ps}%"))
+            if 'stop_loss' in risk_feats: risk_measures_list.append(html.Li(f"Stop Loss ({sl_type}): {sl_val}%"))
+            if 'take_profit' in risk_feats: risk_measures_list.append(html.Li(f"Take Profit ({tp_type}): {tp_val}%"))
+            if 'risk_per_trade' in risk_feats: risk_measures_list.append(html.Li(f"Risk per Trade: {rpt}%"))
+            if 'market_filter' in risk_feats: risk_measures_list.append(html.Li(f"Market Filter lookback: {mtl} days"))
+            if 'drawdown_protection' in risk_feats: risk_measures_list.append(html.Li(f"Max Drawdown: {mdd}%, Max Daily Loss: {mdl}%"))
+
+        if risk_measures_list:
+             summary_elements.append(html.Div([
+                 html.Strong("Risk Measures:"),
+                 html.Ul(risk_measures_list, style={'paddingLeft': '20px', 'marginTop': '0px', 'marginBottom': '4px'}) # Indent list
+             ], className="mb-1"))
         else:
-            measures = []
-            if 'position_sizing' in risk_feats: measures.append(f"Position Sizing: {max_ps}%")
-            if 'stop_loss' in risk_feats: measures.append(f"Stop Loss ({sl_type}): {sl_val}%")
-            if 'take_profit' in risk_feats: measures.append(f"Take Profit ({tp_type}): {tp_val}%")
-            if 'risk_per_trade' in risk_feats: measures.append(f"Risk per Trade: {rpt}%")
-            if 'market_filter' in risk_feats: measures.append(f"Market Filter lookback: {mtl} days")
-            if 'drawdown_protection' in risk_feats: measures.append(f"Max Drawdown: {mdd}%, Max Daily Loss: {mdl}%")
-            summary_items.append(html.Li(["Risk Measures: ", html.Ul([html.Li(m) for m in measures])]))
-        # Costs
-        summary_items.append(html.Li(f"Commission: {comm}%, Slippage: {slip}%"))
-        # Rebalancing
-        summary_items.append(html.Li(f"Rebalancing: {reb_freq}, Threshold: {reb_thresh}%"))
-        # Build children
-        summary_children = html.Ul(summary_items)
-        # Enable Run Backtest
-        return summary_children, False
+             summary_elements.append(html.Div([
+                 html.Strong("Risk Measures: "),
+                 html.Span("None")
+             ], className="mb-1"))
+
+
+        # --- Costs ---
+        summary_elements.append(html.Div([
+            html.Strong("Commission: "),
+            html.Span(f"{comm}%"),
+            html.Strong(", Slippage: ", style={'marginLeft': '5px'}),
+            html.Span(f"{slip}%")
+        ], className="mb-1"))
+
+        # --- Rebalancing ---
+        rebal_freq_label = reb_freq # Default
+        freq_map = {'D': 'Daily', 'W': 'Weekly', 'M': 'Monthly', 'Q': 'Quarterly', 'A': 'Annually', 'N': 'None'}
+        rebal_freq_label = freq_map.get(reb_freq, reb_freq)
+
+        summary_elements.append(html.Div([
+            html.Strong("Rebalancing: "),
+            html.Span(f"{rebal_freq_label}"),
+            html.Strong(", Threshold: ", style={'marginLeft': '5px'}),
+            html.Span(f"{reb_thresh}%")
+        ], className="mb-1"))
+
+        # Enable Run Backtest button
+        return summary_elements, False
 
     logger.info("Wizard callbacks registered successfully.")
 

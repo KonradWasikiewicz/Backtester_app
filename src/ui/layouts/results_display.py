@@ -114,7 +114,8 @@ def create_portfolio_value_returns_chart() -> dbc.Card: # RENAMED function
         ]),
         dbc.CardBody([
             dcc.Loading(
-                dcc.Graph(
+                id="portfolio-chart-loading", # ADDED ID
+                children=dcc.Graph(
                     id="portfolio-chart",
                     config={"displayModeBar": True, "scrollZoom": True},
                      # Add a default empty figure to prevent errors before first calculation
@@ -137,7 +138,8 @@ def create_drawdown_chart() -> dbc.Card:
         dbc.CardHeader("Portfolio Drawdown"),
         dbc.CardBody([
             dcc.Loading(
-                dcc.Graph(
+                id="drawdown-chart-loading", # ADDED ID
+                children=dcc.Graph(
                     id="drawdown-chart", # New ID for the drawdown graph
                     config={"displayModeBar": True, "scrollZoom": True},
                     # Add a default empty figure
@@ -160,7 +162,8 @@ def create_monthly_returns_heatmap() -> dbc.Card:
         dbc.CardHeader("Monthly Returns"),
         dbc.CardBody([
             dcc.Loading(
-                dcc.Graph(
+                id="heatmap-chart-loading", # ADDED ID
+                children=dcc.Graph(
                     id="monthly-returns-heatmap",
                     config={"displayModeBar": False},
                     # Add a default empty figure
@@ -217,7 +220,8 @@ def create_signals_chart() -> dbc.Card:
         ]),
         dbc.CardBody([
             dcc.Loading(
-                dcc.Graph(
+                id="signals-chart-loading", # ADDED ID
+                children=dcc.Graph(
                     id="signals-chart",
                     config={"displayModeBar": True, "scrollZoom": True},
                     # Add a default empty figure
@@ -260,5 +264,6 @@ def create_results_section() -> html.Div:
             type="circle", # Or "graph", "cube", "dot"
             children=create_no_results_placeholder(), # Initially show the placeholder
             # The children will be replaced by the callback with either the results-section or an error message
+            className="main-loader-fullscreen" # Keep custom class for styling
         )
     ])
