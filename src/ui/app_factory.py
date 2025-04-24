@@ -322,6 +322,8 @@ def create_app_layout() -> html.Div:
         layout = html.Div([
             # Store for app state
             dcc.Store(id="app-state", data={}),
+            # --- ADDED: Store to signal backtest completion ---
+            dcc.Store(id='backtest-results-store'),
 
             # Changelog modal
             dbc.Modal(

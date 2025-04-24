@@ -247,59 +247,18 @@ def create_no_results_placeholder() -> html.Div:
 
 def create_results_section() -> html.Div:
     """
-    Creates the complete results display section with all visualizations.
+    Creates the complete results display section with all visualizations,
+    wrapped in a Loading component.
 
     Returns:
-        html.Div: Container with results section
+        html.Div: Container with results section or placeholder, managed by Loading.
     """
     return html.Div([
-        # Results section (initially hidden)
-        html.Div(
-            id="results-section",
-            children=[
-                # Strategy Overview
-                create_overview_metrics(
-                    metrics_ids=[
-                        "total-return", "cagr", "sharpe", "max-drawdown", "calmar-ratio",
-                        "recovery-factor", "starting-balance", "ending-balance"
-                    ],
-                    header="Strategy Performance Overview"
-                ),
-                # Trades & Signals Overview
-                create_overview_metrics(
-                    metrics_ids=[
-                        "signals-generated", # Total entry signals
-                        "trades-count",      # Executed trades
-                        "rejected-signals-total", # Total rejected
-                        "win-rate", 
-                        "profit-factor", 
-                        "avg-trade",
-                        # Detailed Rejection Reasons
-                        "rejected-signals-cash",
-                        "rejected-signals-risk",
-                        "rejected-signals-maxpos",
-                        "rejected-signals-exists",
-                        "rejected-signals-filter",
-                        "rejected-signals-other"
-                    ],
-                    header="Trade & Signal Execution Overview"
-                ),
-                create_portfolio_value_returns_chart(), # UPDATED function call
-                create_drawdown_chart(), # ADDED call for the new drawdown chart
-
-                # Move heatmap above trades table, both full width
-                dbc.Row([
-                    dbc.Col(create_monthly_returns_heatmap(), width=12, className="mb-4"),
-                ]),
-                dbc.Row([
-                     dbc.Col(create_trades_table(), width=12, className="mb-4") # Trades table full width
-                ]),
-
-                create_signals_chart() # Signals chart remains full width
-            ],
-            style={"display": "none"} # Start hidden
-        ),
-
-        # Placeholder section (initially visible)
-        create_no_results_placeholder()
+        # Loading component wraps the area where results or placeholder will appear
+        dcc.Loading(
+            id="results-loading", # ID for the Loading component itself
+            type="circle", # Or "graph", "cube", "dot"
+            children=create_no_results_placeholder(), # Initially show the placeholder
+            # The children will be replaced by the callback with either the results-section or an error message
+        )
     ])
