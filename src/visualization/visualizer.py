@@ -190,24 +190,39 @@ class BacktestVisualizer:
             return fig
 
         if chart_type == "value":
-            # Standard equity curve
-            figure_data = {}
-            figure_data['Portfolio'] = portfolio_values
+            # --- CORRECTED: Create Value chart figure directly --- 
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=portfolio_values.index, 
+                y=portfolio_values.values,
+                mode='lines',
+                name='Portfolio',
+                line=dict(color=self.viz_cfg["colors"]["portfolio"], width=2)
+            ))
             
             benchmark_name = f"Benchmark ({config.BENCHMARK_TICKER})" if config.BENCHMARK_TICKER else "Benchmark"
             if benchmark_values is not None and not benchmark_values.empty:
-                benchmark_values.name = benchmark_name # Use dynamic name
-                figure_data[benchmark_values.name] = benchmark_values
-                
-            # Create chart using existing utility function
-            # Remove the layout_title argument here
-            chart = create_styled_chart(
-                figure_data=figure_data,
-                yaxis_title="Portfolio Value",
-                yaxis_format="$",
-                height=400
+                fig.add_trace(go.Scatter(
+                    x=benchmark_values.index, 
+                    y=benchmark_values.values,
+                    mode='lines',
+                    name=benchmark_name,
+                    line=dict(color=self.viz_cfg["colors"]["benchmark"], width=2)
+                ))
+            
+            # Use _create_base_layout for consistent title and styling
+            layout = _create_base_layout(
+                title="Portfolio Value", # Set title here
+                height=400,
+                xaxis_title="Date",
+                yaxis=dict(
+                    title="Portfolio Value ($)", 
+                    tickprefix="$",
+                    tickformat=",.2f" # Format as currency
+                )
             )
-            return chart.figure
+            fig.update_layout(layout)
+            return fig
             
         elif chart_type == "returns":
             # Calculate returns series
@@ -239,8 +254,9 @@ class BacktestVisualizer:
                     line=dict(color=self.viz_cfg["colors"]["benchmark"], width=2)
                 ))
             
+            # Use _create_base_layout for consistent title and styling
             layout = _create_base_layout(
-                title="Cumulative Returns",
+                title="Cumulative Returns", # Set title here
                 height=400,
                 xaxis_title="Date",
                 yaxis=dict(
@@ -285,9 +301,10 @@ class BacktestVisualizer:
                     line=dict(color=self.viz_cfg["colors"]["benchmark"], width=2)
                 ))
             
+            # Use _create_base_layout for consistent title and styling
             layout = _create_base_layout(
-                title="Drawdown Analysis",
-                height=400,
+                title="Portfolio Drawdown", # Set title here
+                height=300, # Keep drawdown height slightly smaller as per previous change
                 xaxis_title="Date",
                 yaxis=dict(
                     title="Drawdown (%)", 

@@ -78,9 +78,11 @@ class BacktestManager:
             # --- 3. Strategy and Risk Manager Initialization ---
             strategy_params = strategy_params or {}
             try:
-                # Instantiate strategy with VALID tickers list and the parameters dictionary
-                # Changed from **strategy_params to parameters=strategy_params
-                strategy = strategy_class(tickers=valid_tickers, parameters=strategy_params) 
+                # Instantiate the strategy
+                # CORRECTED: Access the class directly from the map
+                strategy_class = STRATEGY_CLASS_MAP[strategy_type]
+                # Unpack strategy_params dictionary into keyword arguments
+                strategy = strategy_class(tickers=valid_tickers, **strategy_params) 
                 logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
             except Exception as e: logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True); return None, None, None
 

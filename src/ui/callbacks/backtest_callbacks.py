@@ -251,37 +251,36 @@ def register_backtest_callbacks(app):
     
     @app.callback(
         Output("portfolio-chart", "figure"),
-        # ADDED: Trigger based on chart type buttons
+        # UPDATED: Added results-section style as input
         [Input("btn-chart-value", "n_clicks"),
          Input("btn-chart-returns", "n_clicks"),
-         Input("btn-chart-drawdown", "n_clicks")],
-        State("results-section", "style"), # Keep state for visibility check
-        # Removed original Input("results-section", "style") as it's now a State
-        prevent_initial_call=True # Prevent running on load
+         Input("results-section", "style")],
+        # State("results-section", "style"), # Keep as State if only needed for check
+        prevent_initial_call=True
     )
-    def update_portfolio_chart(n_value, n_returns, n_drawdown, results_style): # Updated inputs/state
+    # UPDATED: Added results_style parameter
+    def update_portfolio_chart(n_value, n_returns, results_style):
         """
-        Update portfolio performance chart based on selected type and when results are visible.
+        Update portfolio performance chart (Value/Returns) based on selected type and when results are visible.
         """
-        # Check visibility first
+        # Check if results section is hidden (even if triggered by button)
         if not backtest_service or results_style.get("display") == "none":
             # Return default empty figure if no results or section hidden
             # Use a basic layout structure matching plotly figure dictionary
             return {'data': [], 'layout': {'template': 'plotly_dark', 'height': 400, 'title': 'Portfolio Performance', 'xaxis': {'visible': False}, 'yaxis': {'visible': False}, 'annotations': [{'text': 'Run backtest to see results', 'xref': 'paper', 'yref': 'paper', 'showarrow': False, 'align': 'center'}]}}
 
-        # Determine which button was clicked last
+        # Determine which button was clicked last, or default to 'value' if triggered by style change
         ctx = callback_context
-        # Default to 'value' if no button triggered (e.g., initial load after backtest)
-        chart_type = "value"
+        chart_type = "value" # Default to value
         if ctx.triggered:
-            button_id = ctx.triggered[0]["prop_id"].split(".")[0]
-            if button_id == "btn-chart-returns":
+            triggered_input = ctx.triggered[0]["prop_id"]
+            if "btn-chart-returns" in triggered_input:
                 chart_type = "returns"
-            elif button_id == "btn-chart-drawdown":
-                chart_type = "drawdown"
-            # else: chart_type remains "value"
+            elif "btn-chart-value" in triggered_input:
+                chart_type = "value"
+            # If triggered by results-section style, chart_type remains 'value'
 
-        logger.debug(f"Updating portfolio chart with type: {chart_type}")
+        logger.debug(f"Updating portfolio chart with type: {chart_type} (Trigger: {ctx.triggered[0]['prop_id'] if ctx.triggered else 'None'})")
 
         try:
             # Get the appropriate chart figure from the backtest service
@@ -305,7 +304,8 @@ def register_backtest_callbacks(app):
                  empty_layout.yaxis.visible = False
                  return {'data': [], 'layout': empty_layout}
 
-            return figure # Return the figure dictionary directly
+            # CORRECTED: Return figure as dictionary
+            return figure.to_dict()
         except Exception as e:
             logger.error(f"Error updating portfolio chart (type: {chart_type}): {e}", exc_info=True)
             # Return a styled empty figure dictionary with error message
@@ -326,27 +326,76 @@ def register_backtest_callbacks(app):
 
     # Callback to manage button states (outline)
     @app.callback(
+        # UPDATED: Removed Drawdown button output
         [Output("btn-chart-value", "outline"),
-         Output("btn-chart-returns", "outline"),
-         Output("btn-chart-drawdown", "outline")],
+         Output("btn-chart-returns", "outline")],
+        # UPDATED: Removed Drawdown button input
         [Input("btn-chart-value", "n_clicks"),
-         Input("btn-chart-returns", "n_clicks"),
-         Input("btn-chart-drawdown", "n_clicks")],
-        # prevent_initial_call=True # Allow initial state setting
+         Input("btn-chart-returns", "n_clicks")],
     )
-    def update_chart_button_styles(n_value, n_returns, n_drawdown):
+    # UPDATED: Removed n_drawdown parameter
+    def update_chart_button_styles(n_value, n_returns):
         ctx = callback_context
         # Default: Value selected if no clicks yet or context unclear
         if not ctx.triggered_id:
-            return False, True, True
+            return False, True
 
         button_id = ctx.triggered_id.split(".")[0]
         if button_id == "btn-chart-returns":
-            return True, False, True
-        elif button_id == "btn-chart-drawdown":
-            return True, True, False
+            return True, False
         else: # Default to value button
-            return False, True, True
+            return False, True
+
+    # ADDED: New callback for the separate Drawdown chart
+    @app.callback(
+        Output("drawdown-chart", "figure"),
+        Input("results-section", "style") # Trigger when results are shown
+    )
+    def update_drawdown_chart(results_style):
+        """
+        Update the separate portfolio drawdown chart when results section becomes visible.
+        """
+        chart_type = "drawdown"
+        if not backtest_service or results_style.get("display") == "none":
+            # Return default empty figure
+            return {'data': [], 'layout': {'template': 'plotly_dark', 'height': 300, 'title': 'Portfolio Drawdown', 'xaxis': {'visible': False}, 'yaxis': {'visible': False}, 'annotations': [{'text': 'Run backtest to see results', 'xref': 'paper', 'yref': 'paper', 'showarrow': False, 'align': 'center'}]}}
+
+        logger.debug(f"Updating drawdown chart")
+
+        try:
+            figure = backtest_service.get_portfolio_chart(chart_type=chart_type)
+            if not figure:
+                 logger.warning(f"get_portfolio_chart returned None for type {chart_type}")
+                 empty_layout = _create_base_layout(
+                     title="Portfolio Drawdown - No Data",
+                     height=300
+                 )
+                 empty_layout.annotations = [
+                     go.layout.Annotation(
+                         text="No data available for this view.",
+                         showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5
+                     )
+                 ]
+                 empty_layout.xaxis.visible = False
+                 empty_layout.yaxis.visible = False
+                 return {'data': [], 'layout': empty_layout}
+            # CORRECTED: Return figure as dictionary
+            return figure.to_dict()
+        except Exception as e:
+            logger.error(f"Error updating drawdown chart: {e}", exc_info=True)
+            empty_layout = _create_base_layout(
+                 title="Error loading Drawdown chart",
+                 height=300
+            )
+            empty_layout.annotations = [
+                go.layout.Annotation(
+                    text=f"Error: {str(e)}",
+                    showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5
+                )
+            ]
+            empty_layout.xaxis.visible = False
+            empty_layout.yaxis.visible = False
+            return {'data': [], 'layout': empty_layout}
 
     @app.callback(
         Output("monthly-returns-heatmap", "figure"),

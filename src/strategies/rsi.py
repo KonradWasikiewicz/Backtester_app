@@ -11,22 +11,22 @@ class RSIStrategy(BaseStrategy):
 
     Signals are generated when RSI crosses specified overbought or oversold levels.
     """
-    def __init__(self, tickers: list[str], parameters: dict):
+    def __init__(self, tickers: list[str], rsi_period: int = 14, lower_bound: int = 30, upper_bound: int = 70):
         """
         Initializes the RSI strategy.
 
         Args:
             tickers (list[str]): List of tickers (unused in this specific strategy but part of standard signature).
-            parameters (dict): Dictionary of strategy parameters. Expected keys:
-                               'rsi_period' (int): RSI period.
-                               'lower_bound' (int): Lower RSI threshold (oversold).
-                               'upper_bound' (int): Upper RSI threshold (overbought).
+            rsi_period (int): RSI period. Defaults to 14.
+            lower_bound (int): Lower RSI threshold (oversold). Defaults to 30.
+            upper_bound (int): Upper RSI threshold (overbought). Defaults to 70.
         """
         super().__init__() # Call base init without arguments
         self.tickers = tickers # Store tickers even if unused
-        self.rsi_period = parameters.get('rsi_period', 14)
-        self.lower_bound = parameters.get('lower_bound', 30)
-        self.upper_bound = parameters.get('upper_bound', 70)
+        # CORRECTED: Assign parameters directly from arguments
+        self.rsi_period = rsi_period
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
         # Store parameters dict as well
         self.parameters = {
             'rsi_period': self.rsi_period,

@@ -390,29 +390,34 @@ def create_strategy_config_section(tickers=None):
 
 # --- Helper function creating a wizard step ---
 def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
-    """
-    Creates a wizard step container with header, status, and content.
-    """
-    logger.debug(f"Creating wizard step: {step_id}, Hidden: {is_hidden}")
+    """Creates a single step (card) for the wizard."""
+    # Content style controlled by is_hidden initially, and by callback later
     content_style = {"display": "none"} if is_hidden else {"display": "block"}
+    # Add margin consistent with previous attempts
     content_style.update({"marginLeft": "30px", "paddingTop": "10px"})
 
-    return html.Div([
-        html.Div([
-             html.H5(title, className="mb-0 d-inline")
+    return dbc.Card(
+        [
+            dbc.CardHeader(
+                # Wrap H5 in an html.Div and assign the ID here
+                html.Div(
+                    html.H5(title, className="mb-0 fw-bold"), # Keep existing title style
+                    id=f"{step_id}-header", # ID for click events moved to Div
+                    style={"cursor": "pointer"} # Indicate it's clickable
+                ),
+                className="step-header p-2" # Use step-header class for styling
+                # Removed ID from CardHeader itself
+            ),
+            # Assign the ID expected by the callback for content visibility control
+            dbc.CardBody(
+                content,
+                id=f"{step_id}-content",
+                style=content_style # Apply visibility style here
+            )
         ],
-        id=f"{step_id}-header",
-        className="wizard-step-header mb-2",
-        style={"cursor": "pointer"}
-        ),
-        html.Div(
-            content,
-            id=f"{step_id}-content",
-            style=content_style
-        ),
-        html.Hr(className="my-3")
-    ],
-    className="wizard-step mb-3")
+        className="mb-3 wizard-step" # Keep class for potential CSS targeting
+        # No ID or style needed on the parent Card itself
+    )
 
 def create_import_tickers_modal() -> dbc.Modal:
     """

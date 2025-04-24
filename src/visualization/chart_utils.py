@@ -36,7 +36,8 @@ DEFAULT_HEIGHT = VIZ_CFG.get("chart_height", 400)
 def _create_base_layout(title: str = "", height: int = DEFAULT_HEIGHT, **kwargs) -> go.Layout:
     """Creates a base Plotly layout object with common theme settings."""
     layout = go.Layout(
-        title=dict(text=title, x=0.05, xanchor='left', font=dict(size=16, color=TEXT_COLOR)), # Tytuł po lewej
+        # CORRECTED: Center the title
+        title=dict(text=title, x=0.5, xanchor='center', font=dict(size=16, color=TEXT_COLOR)), # Tytuł po lewej
         height=height,
         template=CHART_TEMPLATE,
         paper_bgcolor=PAPER_BGCOLOR,
