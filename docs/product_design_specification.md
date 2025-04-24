@@ -166,5 +166,5 @@ To be added in future documentation versions
 ---
 
 *Document created: 2025-04-10*
-*Last update: 2025-04-10*
-*Documentation version: 1.0*
+*Last update: 2025-04-24*
+*Documentation version: 1.1*

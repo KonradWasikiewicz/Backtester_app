@@ -275,5 +275,5 @@ Migration from Dash to pure React is planned to increase UI flexibility and perf
 ---
 
 *Document created: 2025-04-10*
-*Last update: 2025-04-15*
-*Documentation version: 1.1*
+*Last update: 2025-04-24*
+*Documentation version: 1.2*

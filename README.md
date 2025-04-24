@@ -44,86 +44,63 @@ The project uses **Semantic Versioning (SemVer)** in MAJOR.MINOR.PATCH format:
 
 ## Version Management
 
-The project includes a set of scripts for version management that facilitate working with SemVer and Git:
+The project uses a unified version management system via `scripts/version_manager.py` that follows Semantic Versioning (MAJOR.MINOR.PATCH). See the [Workflow Guide](docs/workflow_guide.md) for detailed usage.
 
-### Updating Versions
+### Key Commands
 
+```bash
+# Display current version
+python scripts/version_manager.py info
+
+# Update version (e.g., patch)
+python scripts/version_manager.py update patch --changes "Description of changes"
+
+# Create and push git tag
+python scripts/version_manager.py tag --push
+
+# Restore a previous version
+python scripts/version_manager.py restore --version vX.Y.Z
 ```
-python scripts/update_version.py --minor --changes "Added new strategy" "Fixed interface bugs"
-```
-
-Available options:
-- `--major`: Increases major version (MAJOR)
-- `--minor`: Increases minor version (MINOR)
-- `--patch`: Increases patch version (PATCH)
-- `--pre`: Adds pre-release label (e.g., alpha, beta, rc)
-- `--pre-num`: Pre-release version number (e.g., for beta.1)
-- `--build`: Build metadata
-- `--changes`: List of changes to add to the changelog
-
-### Tagging Versions in Git Repository
-
-```
-python scripts/tag_version.py
-```
-
-The script automatically:
-1. Gets the current version from `src/version.py`
-2. Creates a Git tag with "v" prefix (e.g., v1.2.3)
-3. Adds changelog information to the tag description
-4. Optionally publishes the tag to the remote repository
-
-### Restoring Previous Versions
-
-```
-python scripts/restore_version.py --list
-python scripts/restore_version.py --version v1.0.0 --deps
-```
-
-Available options:
-- `--list`: Displays list of available versions
-- `--version`: Specifies version to restore
-- `--deps`: Installs dependencies for the restored version
-- `--force`: Forces checkout (discards local changes)
-
-Without specifying a version, the script will display an interactive selection menu.
 
 ## Project Structure
 
-Current workspace layout:
-```
-app.py
-...
-src/
-  version.py
-  analysis/
-  core/
-  portfolio/
-  services/
-  strategies/
-  ui/
-    __init__.py
-    app_factory.py
-    components.py        # Common UI components (to split into components/)
-    wizard/
-      layout.py          # Strategy configuration wizard layout
-    layouts/
-      results_display.py # Results panel layouts
-    callbacks/
-      strategy_callbacks.py
-      wizard_callbacks.py
-      backtest_callbacks.py
-      risk_management_callbacks.py
-  visualization/
-```
+Key directories and files:
 
-> Note: The `ui/components.py` can be further modularized into `ui/components/cards.py`, `ui/components/inputs.py`, etc., for better separation of UI elements.
+```
+app.py                 # Main application entry point
+requirements.txt       # Project dependencies
+assets/                # CSS and JavaScript files
+data/                  # Historical data files
+docs/                  # Project documentation
+logs/                  # Log files
+scripts/               # Utility and management scripts
+  version_manager.py   # Script for version control
+src/
+  __init__.py
+  version.py           # Stores current version
+  analysis/            # Performance metrics calculation
+  core/                # Core backtesting logic, data handling
+  portfolio/           # Portfolio and risk management
+  services/            # Application layer services
+  strategies/          # Trading strategy implementations
+  ui/                  # User Interface (Dash)
+    app_factory.py     # Creates the Dash app instance
+    components.py      # Reusable UI components
+    callbacks/         # Dash callback definitions
+    layouts/           # UI layout definitions
+    wizard/            # Multi-step configuration wizard UI
+  visualization/       # Charting and visualization logic
+```
 
 ## Documentation
 
-More detailed documentation is available in the `docs/` directory:
+Detailed documentation is available in the `docs/` directory:
+- [Project Context](docs/project_context.md)
+- [Architecture Guide](docs/architecture.md)
 - [Product Design Specification](docs/product_design_specification.md)
 - [Technical Specification](docs/technical_specification.md)
+- [Aesthetics Guidelines](docs/aesthetics_guidelines.md)
+- [Workflow Guide](docs/workflow_guide.md)
 
 ## License
 

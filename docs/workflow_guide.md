@@ -94,8 +94,4 @@ Before submitting changes:
 3. Run the UI consistency checklist from the aesthetics document
 4. Ensure all code and comments are in English
 5. Commit with descriptive messages that appropriately indicate version bump type
-
----
-
-*Document created: April 11, 2025*  
-*Last updated: April 11, 2025*
+*Last updated: April 24, 2025*
