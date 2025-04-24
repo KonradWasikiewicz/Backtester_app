@@ -48,7 +48,7 @@ class RSIStrategy(BaseStrategy):
             data (pd.DataFrame): DataFrame containing at least the 'Close' column.
 
         Returns:
-            pd.DataFrame: DataFrame with signals ('Signal') and positions ('Positions').
+            pd.DataFrame: DataFrame with signals ('Signal'), positions ('Positions'), and reasons ('Reason').
         """
         required_column = 'Close'
         if required_column not in data.columns:
@@ -61,11 +61,13 @@ class RSIStrategy(BaseStrategy):
             signals = pd.DataFrame(index=data.index)
             signals['Signal'] = 0
             signals['Positions'] = 0
+            signals['Reason'] = ''
             return signals
 
         df = data.copy()
         signals = pd.DataFrame(index=df.index)
         signals['Signal'] = 0
+        signals['Reason'] = '' # Nowa kolumna na powód sygnału
 
         rsi_col = f'RSI_{self.rsi_period}'
 
@@ -84,7 +86,10 @@ class RSIStrategy(BaseStrategy):
             sell_condition = (df[rsi_col] < self.upper_bound) & (df[rsi_col].shift(1) >= self.upper_bound)
 
             signals.loc[buy_condition, 'Signal'] = 1
+            signals.loc[buy_condition, 'Reason'] = f'RSI Cross Above {self.lower_bound}'
+            
             signals.loc[sell_condition, 'Signal'] = -1
+            signals.loc[sell_condition, 'Reason'] = f'RSI Cross Below {self.upper_bound}'
 
             # --- Position holding logic ---
             # Replace 0 with NA, forward fill, fill remaining NA with 0
@@ -102,6 +107,8 @@ class RSIStrategy(BaseStrategy):
             logger.error(f"Error during RSI signal generation for {ticker}: {e}", exc_info=True) # Added ticker
             signals['Signal'] = 0
             signals['Positions'] = 0
+            signals['Reason'] = '' # Resetuj powód w razie błędu
             # raise e # Optional
 
-        return signals[['Signal', 'Positions']]
+        # Zwróć sygnały, pozycje i powody
+        return signals[['Signal', 'Positions', 'Reason']]

@@ -260,14 +260,17 @@ def create_results_section() -> html.Div:
                     ],
                     header="Trade & Signal Execution Overview"
                 ),
-                create_portfolio_charts(),
+                create_portfolio_charts(), # Portfolio chart remains full width
 
+                # Move heatmap above trades table, both full width
                 dbc.Row([
-                    dbc.Col(create_monthly_returns_heatmap(), lg=6, className="mb-4"),
-                    dbc.Col(create_trades_table(), lg=6, className="mb-4")
+                    dbc.Col(create_monthly_returns_heatmap(), width=12, className="mb-4"),
+                ]),
+                dbc.Row([
+                     dbc.Col(create_trades_table(), width=12, className="mb-4") # Trades table full width
                 ]),
 
-                create_signals_chart()
+                create_signals_chart() # Signals chart remains full width
             ],
             style={"display": "none"} # Start hidden
         ),

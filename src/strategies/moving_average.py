@@ -72,6 +72,7 @@ class MovingAverageStrategy(BaseStrategy):
             pd.DataFrame: DataFrame z indeksem takim samym jak `data`, zawierający kolumny:
                           'Signal' (1 dla kupna, -1 dla sprzedaży, 0 dla braku sygnału w danym dniu)
                           'Positions' (1 dla pozycji długiej, -1 dla krótkiej (jeśli zaimplementowano), 0 dla braku pozycji)
+                          'Reason' (opisowy powód wygenerowania sygnału)
 
         Raises:
             ValueError: Jeśli w danych brakuje kolumny 'Close'.
@@ -88,12 +89,14 @@ class MovingAverageStrategy(BaseStrategy):
             signals = pd.DataFrame(index=data.index)
             signals['Signal'] = 0
             signals['Positions'] = 0
+            signals['Reason'] = ''
             return signals
 
         # Utwórz kopię, aby uniknąć modyfikacji oryginalnego DataFrame (jeśli jest to wymagane)
         df = data.copy()
         signals = pd.DataFrame(index=df.index)
         signals['Signal'] = 0  # Domyślnie brak sygnału
+        signals['Reason'] = '' # Nowa kolumna na powód sygnału
 
         short_sma_col = f'SMA_{self.short_window}'
         long_sma_col = f'SMA_{self.long_window}'
@@ -109,11 +112,17 @@ class MovingAverageStrategy(BaseStrategy):
                  raise KeyError(f"SMA columns not found after calculation for {ticker}.")
 
             # --- Logika generowania sygnałów ---
+            # Warunek kupna: krótka SMA przecina długą SMA od dołu
             buy_condition = (df[short_sma_col] > df[long_sma_col]) & (df[short_sma_col].shift(1) <= df[long_sma_col].shift(1))
+            # Warunek sprzedaży: krótka SMA przecina długą SMA od góry
             sell_condition = (df[short_sma_col] < df[long_sma_col]) & (df[short_sma_col].shift(1) >= df[long_sma_col].shift(1))
 
+            # Przypisz sygnały i powody
             signals.loc[buy_condition, 'Signal'] = 1
+            signals.loc[buy_condition, 'Reason'] = f'SMA{self.short_window} Cross Above SMA{self.long_window}'
+            
             signals.loc[sell_condition, 'Signal'] = -1
+            signals.loc[sell_condition, 'Reason'] = f'SMA{self.short_window} Cross Below SMA{self.long_window}'
 
             # --- Logika utrzymywania pozycji ---
             # Replace 0 with NA, forward fill, fill remaining NA with 0
@@ -133,6 +142,8 @@ class MovingAverageStrategy(BaseStrategy):
             logger.error(f"Error during Moving Average signal generation for {ticker}: {e}", exc_info=True) # Dodano ticker
             signals['Signal'] = 0
             signals['Positions'] = 0
+            signals['Reason'] = '' # Resetuj powód w razie błędu
             # raise e # Opcjonalnie
 
-        return signals[['Signal', 'Positions']]
+        # Zwróć sygnały, pozycje i powody
+        return signals[['Signal', 'Positions', 'Reason']]

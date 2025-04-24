@@ -348,7 +348,15 @@ def register_backtest_callbacks(app):
             
             # Define the font family consistent with the CSS
             consistent_font = "'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
-            
+
+            # Format exit reasons
+            formatted_trades_data = []
+            for trade in trades_data:
+                raw_reason = trade.get('reason', '')
+                formatted_reason = raw_reason.replace('_', ' ').title() if raw_reason else 'Unknown'
+                trade['reason'] = formatted_reason # Update the reason in the dictionary
+                formatted_trades_data.append(trade)
+
             return dash_table.DataTable(
                 id="trades-table",
                 columns=[
@@ -362,8 +370,8 @@ def register_backtest_callbacks(app):
                     {"name": "Shares", "id": "shares", "type": "numeric", "format": {"specifier": ",d"}},
                     {"name": "Exit Reason", "id": "reason"}
                 ],
-                data=trades_data,
-                style_table={"overflowX": "auto"},
+                data=formatted_trades_data, # Use formatted data
+                style_table={"overflowX": "auto", "width": "100%"}, # Ensure table uses full width
                 style_cell={
                     "textAlign": "left",
                     "padding": "10px",
@@ -388,7 +396,6 @@ def register_backtest_callbacks(app):
                         "color": "#00cc96"  # Green for gains
                     }
                 ],
-                page_size=10,
                 sort_action="native",
                 # filter_action="native" # Removed filter action to hide the filter row
             )

@@ -68,7 +68,7 @@ class BollingerBandsStrategy(BaseStrategy):
         Returns:
             Optional[pd.DataFrame]: A DataFrame with the same index as the input data,
                                     containing 'SMA', 'Upper_Band', 'Lower_Band',
-                                    'Signal', and 'Position' columns.
+                                    'Signal', 'Position', and 'Reason' columns.
                                     Returns None if data is insufficient or signals cannot be generated.
         """
         required_data_length = self.window # Need 'window' periods for calculation
@@ -116,8 +116,13 @@ class BollingerBandsStrategy(BaseStrategy):
 
         # Assign signals
         df['Signal'] = 0.0
+        df['Reason'] = '' # Nowa kolumna na powód sygnału
+        
         df.loc[buy_signal, 'Signal'] = 1.0
+        df.loc[buy_signal, 'Reason'] = 'Price Below Lower Band'
+        
         df.loc[sell_signal, 'Signal'] = -1.0 # Assuming sell means exit long / enter short
+        df.loc[sell_signal, 'Reason'] = 'Price Above Upper Band'
 
         # --- Determine Position ---
         # Position: Hold the position indicated by the last signal.
@@ -136,4 +141,4 @@ class BollingerBandsStrategy(BaseStrategy):
         #logger.debug(f"Bollinger Strategy ({ticker}): Generated {int(sum(abs(df['Signal'])))} signals.")
 
         # Return relevant columns
-        return df[['Close', 'SMA', 'Upper_Band', 'Lower_Band', 'Signal', 'Position']]
+        return df[['Close', 'SMA', 'Upper_Band', 'Lower_Band', 'Signal', 'Position', 'Reason']]
