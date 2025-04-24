@@ -58,13 +58,11 @@ def register_backtest_callbacks(app):
         logger.error(f"Failed to initialize services: {e}", exc_info=True)
         # We'll handle this in the callbacks
 
-    # --- MODIFIED: run_backtest callback to output to dcc.Loading and dcc.Store ---
+    # --- MODIFIED: run_backtest callback - Removed ticker-selector outputs ---
     @app.callback(
         [Output("backtest-status", "children"),
          Output("results-loading", "children"),
-         Output("backtest-results-store", "data"),
-         Output("ticker-selector", "options"),
-         Output("ticker-selector", "value")],
+         Output("backtest-results-store", "data")],
         Input("run-backtest-button", "n_clicks"),
         [State("strategy-dropdown", "value"),
          State("initial-capital-input", "value"),
@@ -88,8 +86,8 @@ def register_backtest_callbacks(app):
         Updates the content of the dcc.Loading component and signals completion via dcc.Store.
         """
         if not n_clicks:
-            # Return initial state: no status, placeholder, no store update, no options, no value
-            return "", create_no_results_placeholder(), no_update, [], None
+            # MODIFIED: Removed last two return values
+            return "", create_no_results_placeholder(), no_update
 
         # --- Convert and validate initial capital ---
         initial_capital = None
@@ -98,8 +96,8 @@ def register_backtest_callbacks(app):
                 initial_capital = float(str(initial_capital_str).replace(" ", ""))
             except ValueError:
                 error_msg = html.Div([html.I(className="fas fa-exclamation-circle me-2"), "Invalid Initial Capital format."], className="text-danger")
-                # MODIFIED: Return error status, placeholder, no store update
-                return error_msg, create_no_results_placeholder(), no_update, [], None
+                # MODIFIED: Removed last two return values
+                return error_msg, create_no_results_placeholder(), no_update
 
         # Validate required inputs
         missing_inputs = []
@@ -111,8 +109,8 @@ def register_backtest_callbacks(app):
         if missing_inputs:
             error_msg_text = f"Please provide required inputs: {', '.join(missing_inputs)}"
             error_msg = html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg_text], className="text-danger")
-            # MODIFIED: Return error status, placeholder, no store update
-            return error_msg, create_no_results_placeholder(), no_update, [], None
+            # MODIFIED: Removed last two return values
+            return error_msg, create_no_results_placeholder(), no_update
 
         # Prepare parameters
         try:
@@ -142,8 +140,6 @@ def register_backtest_callbacks(app):
             )
 
             if result.get("success"):
-                ticker_options = [{"label": ticker, "value": ticker} for ticker in tickers if ticker in result.get("signals", {})]
-                default_ticker = ticker_options[0]["value"] if ticker_options else None
                 status_msg = html.Div([html.I(className="fas fa-check-circle me-2"), "Backtest completed successfully"], className="text-success")
 
                 # Build the results section layout dynamically
@@ -174,20 +170,57 @@ def register_backtest_callbacks(app):
                         create_signals_chart()
                     ]
                 )
-                # --- MODIFIED: Return success status, results layout, timestamp for store, options, value ---
-                return status_msg, results_layout, datetime.now().isoformat(), ticker_options, default_ticker
+                # --- MODIFIED: Return success status, results layout, timestamp for store ---
+                return status_msg, results_layout, datetime.now().isoformat()
             else:
                 error_msg_text = f"Backtest failed: {result.get('error', 'Unknown error')}"
                 error_msg = html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg_text], className="text-danger")
-                # MODIFIED: Return error status, placeholder, no store update
-                return error_msg, create_no_results_placeholder(), no_update, [], None
+                # MODIFIED: Removed last two return values
+                return error_msg, create_no_results_placeholder(), no_update
 
         except Exception as e:
             logger.error(f"Error running backtest: {e}", exc_info=True)
             error_msg_text = f"Error running backtest: {str(e)}"
             error_msg = html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg_text], className="text-danger")
-            # MODIFIED: Return error status, placeholder, no store update
-            return error_msg, create_no_results_placeholder(), no_update, [], None
+            # MODIFIED: Removed last two return values
+            return error_msg, create_no_results_placeholder(), no_update
+
+    # --- ADDED: Callback to update ticker selector after results are loaded ---
+    @app.callback(
+        [Output("ticker-selector", "options"),
+         Output("ticker-selector", "value")],
+        Input("backtest-results-store", "data"),
+        prevent_initial_call=True
+    )
+    def update_ticker_selector_options(results_timestamp):
+        """
+        Update the ticker selector options and value after backtest results are available.
+        """
+        if not backtest_service or not results_timestamp:
+            return [], None # Return empty options and no value if no results
+
+        try:
+            # CORRECTED: Access the attribute directly instead of calling a non-existent method
+            signals_data = backtest_service.current_signals
+            if not signals_data:
+                logger.warning("No signals data found in backtest service (current_signals) to populate ticker selector.")
+                return [], None
+
+            # Extract tickers that actually have signals
+            tickers_with_signals = list(signals_data.keys())
+            if not tickers_with_signals:
+                logger.warning("No tickers with signals found in backtest results (current_signals)." )
+                return [], None
+
+            ticker_options = [{"label": ticker, "value": ticker} for ticker in tickers_with_signals]
+            default_ticker = ticker_options[0]["value"] if ticker_options else None
+
+            logger.debug(f"Updating ticker selector with options: {ticker_options}, default: {default_ticker}")
+            return ticker_options, default_ticker
+
+        except Exception as e:
+            logger.error(f"Error updating ticker selector options: {e}", exc_info=True)
+            return [], None # Return empty on error
 
     # --- MODIFIED: Update performance metrics callback ---
     @app.callback(
