@@ -1,269 +1,237 @@
 import dash_bootstrap_components as dbc
-from dash import html, dcc
+from dash import dcc, html
+from typing import List
 import logging
-from typing import Dict, List, Any, Optional
 
-# Configure logging
 logger = logging.getLogger(__name__)
 
 def create_overview_metrics(metrics_ids: List[str], header: str = "Performance Overview") -> dbc.Card:
     """
-    Creates overview metrics card with placeholders for key performance metrics.
+    Creates the card structure for displaying overview metrics.
+    The actual metric values will be populated by a callback.
 
     Args:
-        metrics_ids: List of metric IDs to include
-        header: Header title for the card
+        metrics_ids: List of IDs for the metrics to be displayed (used by callback).
+        header: The title for the card header.
 
     Returns:
-        dbc.Card: Card component with overview metrics
+        dbc.Card: Card component containing the metrics layout.
     """
-    metrics_containers = []
-    # Define display names, handling special cases if needed
-    display_names = {
-        "total-return": "Total Return",
-        "cagr": "CAGR",
-        "sharpe": "Sharpe Ratio",
-        "max-drawdown": "Max Drawdown",
-        "win-rate": "Win Rate",
-        "profit-factor": "Profit Factor",
-        "avg-trade": "Avg Trade P/L",
-        "recovery-factor": "Recovery Factor",
-        "calmar-ratio": "Calmar Ratio",
-        "starting-balance": "Starting Balance",
-        "ending-balance": "Ending Balance",
-        "signals-generated": "Total Entry Signals", # Updated name
-        "trades-count": "Executed Trades", # Updated name
-        # Add new rejection metric display names
-        "rejected-signals-total": "Rejected Signals (Total)",
-        "rejected-signals-cash": "Rejected: Insufficient Cash",
-        "rejected-signals-risk": "Rejected: Risk/Size Rules",
-        "rejected-signals-maxpos": "Rejected: Max Positions",
-        "rejected-signals-exists": "Rejected: Position Exists",
-        "rejected-signals-filter": "Rejected: Market Filter",
-        "rejected-signals-other": "Rejected: Other Reasons"
-    }
-
-    for metric_id in metrics_ids:
-        display_name = display_names.get(metric_id, metric_id.replace("-", " ").title()) # Use display name map
-        metrics_containers.append(
-            dbc.Col(
-                html.Div([
-                    html.Small(display_name, className="text-muted d-block mb-1"), # Add label
-                    # Ensure the ID matches the callback output format: metric-<id>
-                    html.Div(id=f"metric-{metric_id}", children="--", className="metric-value h5")
-                ]),
-                # Use slightly wider columns for potentially longer labels
-                width=6, sm=4, md=4, lg=3, xxl=2, # Adjusted widths
-                className="mb-2" # Add bottom margin
-            )
-        )
-
+    logger.debug(f"Creating overview metrics card structure for IDs: {metrics_ids}")
+    # The Row inside CardBody will be targeted by the callback to insert metric cards
     return dbc.Card([
         dbc.CardHeader(header),
         dbc.CardBody([
+            # This Row is the target for the update_metrics_display callback
             dbc.Row(
-                metrics_containers,
-                className="g-3" # Slightly larger gutters
+                [], # Initially empty, populated by update_metrics_display
+                id="metrics-summary-container", # Ensure this ID exists and is targeted
+                className="g-3" # Add gutters between metric cards
             )
         ])
     ], className="mb-4")
 
-
-def create_portfolio_value_returns_chart() -> dbc.Card: # RENAMED function
+def create_portfolio_value_returns_chart() -> dbc.Card:
     """
-    Creates card with portfolio performance charts (Value and Returns).
+    Creates the card containing the portfolio value/returns chart and toggle buttons.
 
     Returns:
-        dbc.Card: Card component with portfolio charts
+        dbc.Card: Card component with the chart placeholder and buttons.
     """
+    logger.debug("Creating portfolio value/returns chart card structure.")
     return dbc.Card([
-        dbc.CardHeader([
-            html.Div([
-                html.Span("Portfolio Performance", className="me-2"),
-                dbc.ButtonGroup(
-                    [
-                        dbc.Button(
-                            "Value",
-                            id="btn-chart-value",
-                            color="primary",
-                            outline=False, # Start with Value selected
-                            size="sm",
-                            n_clicks=0
-                        ),
-                        dbc.Button(
-                            "Returns",
-                            id="btn-chart-returns",
-                            color="primary",
-                            outline=True, # Others outlined
-                            size="sm",
-                            n_clicks=0
-                        ),
-                        # REMOVED Drawdown button
-                        # dbc.Button(
-                        #     "Drawdown",
-                        #     id="btn-chart-drawdown",
-                        #     color="primary",
-                        #     outline=True,
-                        #     size="sm",
-                        #     n_clicks=0
-                        # )
-                    ],
-                    className="ms-auto" # Align buttons to the right
+        dbc.CardHeader(
+            dbc.Row([
+                dbc.Col("Portfolio Performance", width="auto"),
+                dbc.Col(
+                    dbc.ButtonGroup([
+                        dbc.Button("Value", id="btn-chart-value", color="primary", outline=False, size="sm", n_clicks=0),
+                        dbc.Button("Returns", id="btn-chart-returns", color="primary", outline=True, size="sm", n_clicks=0),
+                    ], size="sm"),
+                    width="auto"
                 )
-            ], className="d-flex align-items-center")
-        ]),
+            ], justify="between", align="center")
+        ),
         dbc.CardBody([
             dcc.Loading(
-                id="portfolio-chart-loading", # ADDED ID
+                id="portfolio-chart-loading",
                 children=dcc.Graph(
                     id="portfolio-chart",
-                    config={"displayModeBar": True, "scrollZoom": True},
-                     # Add a default empty figure to prevent errors before first calculation
-                    figure={'data': [], 'layout': {'template': 'plotly_dark', 'height': 400}}
+                    # config={'displayModeBar': False} # Optional: hide mode bar
                 ),
                 type="circle"
             )
         ])
     ], className="mb-4")
-
 
 def create_drawdown_chart() -> dbc.Card:
     """
-    Creates card specifically for the portfolio drawdown chart.
+    Creates the card containing the drawdown chart.
 
     Returns:
-        dbc.Card: Card component with the drawdown chart.
+        dbc.Card: Card component with the drawdown chart placeholder.
     """
+    logger.debug("Creating drawdown chart card structure.")
     return dbc.Card([
-        dbc.CardHeader("Portfolio Drawdown"),
+        dbc.CardHeader("Drawdown"),
         dbc.CardBody([
             dcc.Loading(
-                id="drawdown-chart-loading", # ADDED ID
+                id="drawdown-chart-loading", # Unique ID for drawdown loading
                 children=dcc.Graph(
-                    id="drawdown-chart", # New ID for the drawdown graph
-                    config={"displayModeBar": True, "scrollZoom": True},
-                    # Add a default empty figure
-                    figure={'data': [], 'layout': {'template': 'plotly_dark', 'height': 300}} # Slightly smaller height
+                    id="drawdown-chart",
+                    # config={'displayModeBar': False}
                 ),
                 type="circle"
             )
         ])
     ], className="mb-4")
-
 
 def create_monthly_returns_heatmap() -> dbc.Card:
     """
-    Creates card with monthly returns heatmap.
+    Creates the card containing the monthly returns heatmap.
 
     Returns:
-        dbc.Card: Card component with monthly returns heatmap
+        dbc.Card: Card component with the heatmap placeholder.
     """
+    logger.debug("Creating monthly returns heatmap card structure.")
     return dbc.Card([
-        dbc.CardHeader("Monthly Returns"),
+        dbc.CardHeader("Monthly Returns Heatmap"),
         dbc.CardBody([
             dcc.Loading(
-                id="heatmap-chart-loading", # ADDED ID
+                id="heatmap-chart-loading", # Corrected ID
                 children=dcc.Graph(
                     id="monthly-returns-heatmap",
-                    config={"displayModeBar": False},
-                    # Add a default empty figure
-                    figure={'data': [], 'layout': {'template': 'plotly_dark', 'height': 350}}
+                    # config={'displayModeBar': False}
                 ),
                 type="circle"
             )
         ])
     ], className="mb-4")
 
-
 def create_trades_table() -> dbc.Card:
     """
-    Creates card with trades table.
+    Creates card with a container for the trades table.
+    The table itself will be generated by a callback.
 
     Returns:
-        dbc.Card: Card component with trades data table
+        dbc.Card: Card component with trades data table container.
     """
+    logger.debug("Creating trades table card structure.")
     return dbc.Card([
         dbc.CardHeader("Trade History"),
         dbc.CardBody([
             dcc.Loading(
-                id="trades-table-loading", # ADDED ID
-                children=html.Div(
-                    "Run a backtest to view trade history.", # Default message
-                    id="trades-table-container"
-                    ),
+                id="trades-table-loading", # Corrected ID
+                # The children here will be replaced by the update_trades_table callback
+                # We need a container for the DataTable
+                children=html.Div(id="trades-table-container", children=[
+                    # Placeholder or initial message
+                    html.Div("Run a backtest to view trade history.") 
+                ]),
                 type="circle"
             )
         ])
     ], className="mb-4")
 
-
 def create_signals_chart() -> dbc.Card:
     """
-    Creates card with signals overlay chart.
+    Creates the card containing the signals chart and ticker selector.
 
     Returns:
-        dbc.Card: Card component with signals chart
+        dbc.Card: Card component with the signals chart placeholder and selector.
     """
+    logger.debug("Creating signals chart card structure.")
     return dbc.Card([
-        dbc.CardHeader([
-            html.Div([
-                html.Span("Signals & Trades", className="me-auto"), # Align left
-                dbc.Select(
-                    id="ticker-selector",
-                    options=[], # Options populated by callback
-                    value=None,
-                    placeholder="Select ticker...",
-                    className="ticker-select ms-2", # Add margin
-                    style={"width": "150px"}
+        dbc.CardHeader(
+            dbc.Row([
+                dbc.Col("Signals & Price Action", width="auto"),
+                dbc.Col(
+                    dbc.Select(
+                        id="ticker-selector",
+                        options=[], # Populated by callback
+                        placeholder="Select Ticker...",
+                        size="sm"
+                    ),
+                    width=4 # Adjust width as needed
                 )
-            ], className="d-flex align-items-center")
-        ]),
+            ], justify="between", align="center")
+        ),
         dbc.CardBody([
             dcc.Loading(
-                id="signals-chart-loading", # ADDED ID
+                id="signals-chart-loading",
                 children=dcc.Graph(
                     id="signals-chart",
-                    config={"displayModeBar": True, "scrollZoom": True},
-                    # Add a default empty figure
-                    figure={'data': [], 'layout': {'template': 'plotly_dark', 'height': 400}}
+                    # config={'displayModeBar': False}
                 ),
                 type="circle"
             )
         ])
-    ]) # Removed mb-4, let the grid handle spacing
-
+    ], className="mb-4")
 
 def create_no_results_placeholder() -> html.Div:
     """
-    Creates placeholder to display when no results are available.
+    Creates a placeholder message to display when no backtest results are available.
 
     Returns:
-        html.Div: Placeholder component
+        html.Div: Placeholder component.
     """
+    logger.debug("Creating 'no results' placeholder.")
     return html.Div([
         html.I(className="fas fa-chart-line fa-3x text-muted mb-3"),
-        html.H4("No Backtest Results", className="text-muted"),
-        html.P("Configure and run a backtest to see results here.", className="text-muted")
-    ], id="no-results-placeholder", # Added ID here
-       className="text-center py-5",
-       style={"display": "block"}) # Default to visible
+        html.H5("No Backtest Results Yet", className="text-muted"),
+        html.P("Configure and run a backtest to see the results here.", className="text-muted")
+    ], className="text-center py-5", id="no-results-placeholder") # Added ID for clarity
 
+# --- NEW FUNCTION --- 
+def create_full_results_layout() -> html.Div:
+    """
+    Creates the complete layout structure for displaying all backtest results.
+    This includes placeholders for metrics, charts, and tables.
+    """
+    logger.debug("Creating full results layout structure.")
+    # Define which metrics to show in the overview
+    overview_metric_ids = [
+        "starting-balance", "ending-balance", "total-return", "cagr",
+        "sharpe", "max-drawdown", "calmar-ratio", "recovery-factor",
+        "trades-count", "win-rate", "profit-factor", "avg-trade",
+        "signals-generated", "rejected-signals-total"
+    ]
+    
+    return html.Div([
+        # Row 1: Overview Metrics
+        dbc.Row([
+            dbc.Col(create_overview_metrics(overview_metric_ids), width=12)
+        ]),
+        # Row 2: Portfolio Chart and Drawdown Chart
+        dbc.Row([
+            dbc.Col(create_portfolio_value_returns_chart(), lg=8, className="mb-4"),
+            dbc.Col(create_drawdown_chart(), lg=4, className="mb-4")
+        ]),
+        # Row 3: Heatmap and Signals Chart
+        dbc.Row([
+            dbc.Col(create_monthly_returns_heatmap(), lg=6, className="mb-4"),
+            dbc.Col(create_signals_chart(), lg=6, className="mb-4")
+        ]),
+        # Row 4: Trades Table
+        dbc.Row([
+            dbc.Col(create_trades_table(), width=12)
+        ])
+    ], id="results-content-area") # Add ID to the main container
 
 def create_results_section() -> html.Div:
     """
-    Creates the complete results display section with all visualizations,
+    Creates the results display section, initially showing a placeholder
     wrapped in a Loading component.
-
-    Returns:
-        html.Div: Container with results section or placeholder, managed by Loading.
+    The Loading component's children will be updated by a callback.
     """
+    logger.debug("Creating initial results section with placeholder.")
     return html.Div([
         # Loading component wraps the area where results or placeholder will appear
         dcc.Loading(
             id="results-loading", # ID for the Loading component itself
-            type="circle", # Or "graph", "cube", "dot"
-            children=create_no_results_placeholder(), # Initially show the placeholder
-            # The children will be replaced by the callback with either the results-section or an error message
-            className="main-loader-fullscreen" # Keep custom class for styling
+            type="circle",
+            # Initially show the placeholder. This will be replaced by the update_results_area callback.
+            children=create_no_results_placeholder(), 
+            className="main-loader-fullscreen" # Optional: style the loader
         )
     ])

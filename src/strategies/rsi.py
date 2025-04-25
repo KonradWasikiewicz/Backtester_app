@@ -67,7 +67,7 @@ class RSIStrategy(BaseStrategy):
         df = data.copy()
         signals = pd.DataFrame(index=df.index)
         signals['Signal'] = 0
-        signals['Reason'] = '' # Nowa kolumna na powód sygnału
+        signals['Reason'] = '' # New column for signal reason
 
         rsi_col = f'RSI_{self.rsi_period}'
 
@@ -93,8 +93,10 @@ class RSIStrategy(BaseStrategy):
 
             # --- Position holding logic ---
             # Replace 0 with NA, forward fill, fill remaining NA with 0
-            positions_series = signals['Signal'].replace(0, pd.NA).ffill().fillna(0)
-            # Infer the best possible dtype after filling NAs
+            positions_series = signals['Signal'].replace(0, pd.NA)
+            positions_series = positions_series.ffill()
+            positions_series = positions_series.fillna(0)
+            # Infer the best possible dtype after filling NAs, as suggested by the warning
             positions_series = positions_series.infer_objects(copy=False)
             # Ensure the final type is integer
             signals['Positions'] = positions_series.astype(int)
@@ -107,8 +109,8 @@ class RSIStrategy(BaseStrategy):
             logger.error(f"Error during RSI signal generation for {ticker}: {e}", exc_info=True) # Added ticker
             signals['Signal'] = 0
             signals['Positions'] = 0
-            signals['Reason'] = '' # Resetuj powód w razie błędu
+            signals['Reason'] = '' # Reset reason in case of error
             # raise e # Optional
 
-        # Zwróć sygnały, pozycje i powody
+        # Return signals, positions, and reasons
         return signals[['Signal', 'Positions', 'Reason']]
