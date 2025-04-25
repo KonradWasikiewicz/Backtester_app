@@ -97,12 +97,13 @@ except Exception as e:
 
 # --- Visualization Config (Separate for clarity, could be part of Config class) ---
 VISUALIZATION_CONFIG = {
-    "chart_height": 400, # Slightly reduced default height
-    "dark_theme": True,  # Matches DARKLY theme
-    "template": "plotly_dark", # Explicitly set template name
+    "chart_height": 400,
+    "dark_theme": True,
+    "template": "plotly_dark",
     "colors": {
-        "portfolio": "#17B897",    # Teal/Green for portfolio
-        "benchmark": "#FF6B6B",    # Red/Pink for benchmark
+        # Changed portfolio and benchmark colors
+        "portfolio": "#1f77b4",    # Plotly Blue
+        "benchmark": "#ff7f0e",    # Plotly Orange
         "profit": "#28a745",       # Standard Bootstrap success green
         "loss": "#dc3545",         # Standard Bootstrap danger red
         "primary": "#0d6efd",      # Standard Bootstrap primary blue

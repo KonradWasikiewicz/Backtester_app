@@ -271,43 +271,44 @@ class BacktestVisualizer:
             # Calculate drawdowns
             rolling_max = portfolio_values.cummax()
             drawdowns = -((portfolio_values - rolling_max) / rolling_max) * 100
-            
+
             benchmark_drawdowns = None
             if benchmark_values is not None and not benchmark_values.empty:
                 bench_rolling_max = benchmark_values.cummax()
                 benchmark_drawdowns = -((benchmark_values - bench_rolling_max) / bench_rolling_max) * 100
-            
+
             # Create figure
             fig = go.Figure()
+            # Use portfolio color instead of loss color for portfolio drawdown
+            portfolio_color_hex = self.viz_cfg["colors"]["portfolio"]
+            portfolio_color_rgb = f'rgba({int(portfolio_color_hex[1:3], 16)}, {int(portfolio_color_hex[3:5], 16)}, {int(portfolio_color_hex[5:7], 16)}, 0.3)'
             fig.add_trace(go.Scatter(
-                x=drawdowns.index, 
+                x=drawdowns.index,
                 y=drawdowns.values,
                 mode='lines',
                 name='Portfolio',
-                line=dict(color=self.viz_cfg["colors"]["loss"], width=2),
+                line=dict(color=portfolio_color_hex, width=2), # Use portfolio color
                 fill='tozeroy',
-                fillcolor=f'rgba({int(self.viz_cfg["colors"]["loss"][1:3], 16)}, '
-                          f'{int(self.viz_cfg["colors"]["loss"][3:5], 16)}, '
-                          f'{int(self.viz_cfg["colors"]["loss"][5:7], 16)}, 0.3)'
+                fillcolor=portfolio_color_rgb # Use portfolio color with alpha
             ))
-            
+
             benchmark_name = f"Benchmark ({config.BENCHMARK_TICKER})" if config.BENCHMARK_TICKER else "Benchmark"
             if benchmark_drawdowns is not None:
                 fig.add_trace(go.Scatter(
-                    x=benchmark_drawdowns.index, 
+                    x=benchmark_drawdowns.index,
                     y=benchmark_drawdowns.values,
                     mode='lines',
                     name=benchmark_name, # Use dynamic name
                     line=dict(color=self.viz_cfg["colors"]["benchmark"], width=2)
                 ))
-            
+
             # Use _create_base_layout for consistent title and styling
             layout = _create_base_layout(
                 title="Portfolio Drawdown", # Set title here
                 height=300, # Keep drawdown height slightly smaller as per previous change
                 xaxis_title="Date",
                 yaxis=dict(
-                    title="Drawdown (%)", 
+                    title="Drawdown (%)",
                     ticksuffix="%",
                     autorange="reversed"  # Invert y-axis for better visualization
                 )
