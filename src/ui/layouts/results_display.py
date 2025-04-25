@@ -220,18 +220,18 @@ def create_full_results_layout() -> html.Div:
 
 def create_results_section() -> html.Div:
     """
-    Creates the results display section, initially showing a placeholder
-    wrapped in a Loading component.
-    The Loading component's children will be updated by a callback.
+    Creates the results display section, wrapped in a Loading component.
+    The full results layout is included initially.
     """
-    logger.debug("Creating initial results section with placeholder.")
+    logger.debug("Creating results section with full layout inside Loading.")
     return html.Div([
-        # Loading component wraps the area where results or placeholder will appear
+        # Loading component wraps the area where results will appear
         dcc.Loading(
             id="results-loading", # ID for the Loading component itself
             type="circle",
-            # Initially show the placeholder. This will be replaced by the update_results_area callback.
-            children=create_no_results_placeholder(), 
+            # Include the full results layout structure directly.
+            # Individual components within this layout will be updated by their respective callbacks.
+            children=create_full_results_layout(), 
             className="main-loader-fullscreen" # Optional: style the loader
         )
     ])

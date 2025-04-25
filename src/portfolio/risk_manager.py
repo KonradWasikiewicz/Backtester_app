@@ -53,27 +53,29 @@ class RiskManager:
         """Load configuration parameters from dictionary"""
         if not config:
             return
-            
-        # Load risk parameters if they exist in config
-        self.max_position_size = config.get('max_position_size', self.max_position_size)
-        self.min_position_size = config.get('min_position_size', self.min_position_size)
-        self.risk_per_trade = config.get('risk_per_trade', self.risk_per_trade)
-        self.max_portfolio_risk = config.get('max_portfolio_risk', self.max_portfolio_risk)
-        self.max_drawdown = config.get('max_drawdown', self.max_drawdown)
-        self.max_correlated_positions = config.get('max_correlated_positions', 
-                                                self.max_correlated_positions)
-        
-        # Load feature flags if they exist
+
+        # Helper function to safely get numeric config values, falling back to current value if None
+        def get_numeric_config(key, current_value):
+            value = config.get(key, current_value)
+            return value if value is not None else current_value
+
+        # Load risk parameters safely
+        self.max_position_size = get_numeric_config('max_position_size', self.max_position_size)
+        self.min_position_size = get_numeric_config('min_position_size', self.min_position_size)
+        self.risk_per_trade = get_numeric_config('risk_per_trade', self.risk_per_trade)
+        self.max_portfolio_risk = get_numeric_config('max_portfolio_risk', self.max_portfolio_risk)
+        self.max_drawdown = get_numeric_config('max_drawdown', self.max_drawdown)
+        self.max_correlated_positions = get_numeric_config('max_correlated_positions', self.max_correlated_positions)
+        self.max_open_positions = get_numeric_config('max_open_positions', self.max_open_positions)
+        self.stop_loss_pct = get_numeric_config('stop_loss_pct', self.stop_loss_pct)
+        self.profit_target_ratio = get_numeric_config('profit_target_ratio', self.profit_target_ratio)
+
+        # Load feature flags (booleans are generally safe with .get)
         self._apply_risk_rules = config.get('apply_risk_rules', self._apply_risk_rules)
         self._use_position_sizing = config.get('use_position_sizing', self._use_position_sizing)
         self._use_risk_per_trade = config.get('use_risk_per_trade', self._use_risk_per_trade)
         self._use_max_drawdown = config.get('use_max_drawdown', self._use_max_drawdown)
         self._use_max_correlated = config.get('use_max_correlated', self._use_max_correlated)
-        # Load additional settings
-        self.max_open_positions = config.get('max_open_positions', self.max_open_positions)
-        self.stop_loss_pct = config.get('stop_loss_pct', self.stop_loss_pct)
-        self.profit_target_ratio = config.get('profit_target_ratio', self.profit_target_ratio)
-        # Load feature flags for SL, TP, trailing
         self._use_stop_loss = config.get('use_stop_loss', self._use_stop_loss)
         self._use_take_profit = config.get('use_take_profit', self._use_take_profit)
         self._use_trailing_stop = config.get('use_trailing_stop', self._use_trailing_stop)

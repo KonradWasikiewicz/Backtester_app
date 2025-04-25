@@ -77,10 +77,17 @@ class BacktestService:
             # Update configuration with date range
             config.START_DATE = start_date
             config.END_DATE = end_date
-            
-            # Re-initialize BacktestManager with the new initial capital
-            self.backtest_manager = BacktestManager(initial_capital=initial_capital)
-            
+
+            # Convert initial_capital string (potentially with spaces) to float
+            try:
+                parsed_capital = float(str(initial_capital).replace(' ', '').replace(',', ''))
+            except ValueError:
+                logger.error(f"Invalid format for initial_capital: {initial_capital}. Using default 100000.0")
+                parsed_capital = 100000.0 # Default value or handle error appropriately
+
+            # Re-initialize BacktestManager with the parsed initial capital
+            self.backtest_manager = BacktestManager(initial_capital=parsed_capital)
+
             # Run the backtest - Pass new params to manager
             signals, results, stats = self.backtest_manager.run_backtest(
                 strategy_type=strategy_type,

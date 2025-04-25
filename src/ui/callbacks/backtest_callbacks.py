@@ -185,43 +185,6 @@ def register_backtest_callbacks(app: Dash):
             logger.info("--- run_backtest: Storing EXCEPTION results ---") # ADDED LOG
             return {"timestamp": time.time(), "success": False, "error": error_msg}
 
-    # --- NEW CALLBACK: Update Main Results Area ---
-    @app.callback(
-        Output('results-loading', 'children'), # Target the children of the main loading component
-        Input('backtest-results-store', 'data'),
-        prevent_initial_call=True
-    )
-    def update_results_area(store_data):
-        logger.info("--- update_results_area callback triggered ---") # ADDED LOG
-        logger.debug(f"Store data received: {store_data}") # ADDED LOG
-        if store_data and store_data.get("success"):
-            logger.info("Backtest successful, returning full results layout.")
-            # Return the full layout structure containing all result components
-            try:
-                layout = create_full_results_layout()
-                logger.info("--- update_results_area: Returning full layout ---") # ADDED LOG
-                return layout
-            except Exception as e:
-                 logger.error(f"Error creating full results layout: {e}", exc_info=True)
-                 return html.Div(f"Error generating results layout: {e}")
-        elif store_data and not store_data.get("success"):
-            error_msg = store_data.get("error", "An unknown error occurred during the backtest.")
-            logger.warning(f"Backtest failed, displaying error message. Error: {error_msg}")
-            # Return an error message component
-            error_layout = html.Div([
-                html.I(className="fas fa-exclamation-triangle fa-3x text-danger mb-3"),
-                html.H4("Backtest Failed", className="text-danger"),
-                html.P(error_msg, className="text-muted")
-            ], className="text-center py-5")
-            logger.info("--- update_results_area: Returning error message ---") # ADDED LOG
-            return error_layout
-        else:
-            logger.debug("No backtest data in store or initial call, returning placeholder.")
-            # Return the initial placeholder if no data or not run yet
-            placeholder = create_no_results_placeholder()
-            logger.info("--- update_results_area: Returning placeholder ---") # ADDED LOG
-            return placeholder
-
     # --- Result Update Callbacks (Triggered by Store) ---
 
     # Update Metrics Card
@@ -608,8 +571,6 @@ def register_backtest_callbacks(app: Dash):
         Input('portfolio-chart-loading', 'loading_state'),
         Input('drawdown-chart-loading', 'loading_state'),
         Input('heatmap-chart-loading', 'loading_state'),
-        Input('signals-chart-loading', 'loading_state'),
-        Input('trades-table-loading', 'loading_state'),
         prevent_initial_call=True
     )
 
