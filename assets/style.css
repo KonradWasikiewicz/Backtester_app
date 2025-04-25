@@ -169,6 +169,34 @@
     display: none !important;
 }
 
+/* Style for the main loading overlay */
+#loading-overlay {
+    position: absolute; /* Cover the results area */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(30, 34, 45, 0.85); /* Semi-transparent dark background */
+    z-index: 1050; /* High z-index to cover content */
+    display: flex; /* Use flexbox to center spinner */
+    justify-content: center;
+    align-items: center;
+    /* Initially hidden, controlled by clientside callback */
+    /* display: none; */ 
+}
+
+/* Style for the spinner inside the overlay */
+#loading-overlay ._dash-loading {
+    /* Spinner styling */
+    width: 60px !important; 
+    height: 60px !important; 
+    border-width: 5px !important; 
+    /* Center the spinner within the flex container */
+    position: static !important; /* Override default fixed positioning */
+    transform: none !important; /* Override default transform */
+    margin: 0 !important; /* Remove default margins */
+}
+
 /* Style for the date display picker (transparent overlay) */
 .date-display-picker {
     cursor: pointer;
@@ -358,19 +386,61 @@ input, select, textarea {
 }
 
 /* Style the main fullscreen loader */
-.main-loader-fullscreen ._dash-loading {
-    /* Increase the size of the spinner */
-    width: 120px !important; /* Increased size */
-    height: 120px !important; /* Increased size */
-    /* Ensure it's centered within its container (not fixed) */
-    position: relative !important; /* Changed from fixed */
-    margin: 50px auto !important; /* Add some top margin and center horizontally */
-    /* transform: translate(-50%, -50%) !important; REMOVED fixed positioning transform */
-    /* Optional: Change spinner color if needed */
-    /* border-top-color: #0dcaf0 !important; */
+.main-loader-fullscreen {
+    /* Ensure it covers the content area */
+    position: relative; /* Changed from absolute/fixed */
+    min-height: 400px; /* Ensure it has some height */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(30, 34, 45, 0.8); /* Semi-transparent dark background */
+    z-index: 1050; /* High z-index */
+    transition: opacity 0.3s ease-out; /* Smooth fade-out */
+    opacity: 1;
 }
 
-/* Hide the spinner when loading is finished */
+.main-loader-fullscreen ._dash-loading {
+    /* Spinner styling */
+    width: 80px !important; /* Adjusted size */
+    height: 80px !important; /* Adjusted size */
+    border-width: 6px !important; /* Make spinner thicker */
+    /* Center the spinner within the flex container */
+    position: static !important; /* Override default fixed */
+    transform: none !important; /* Override default transform */
+    margin: 0 !important; /* Remove default margins */
+}
+
+/* Hide the loader container smoothly when loading is finished */
+.main-loader-fullscreen.loading-finished {
+    opacity: 0;
+    pointer-events: none; /* Prevent interaction when hidden */
+    /* Optionally, set height to 0 after transition if needed */
+    /* height: 0; */
+    /* transition: opacity 0.3s ease-out, height 0s linear 0.3s; */
+}
+
+/* Hide the spinner itself immediately when finished class is added */
+/* This prevents the spinner showing during the fade-out */
 .main-loader-fullscreen.loading-finished ._dash-loading {
+    display: none !important;
+}
+
+/* Ensure the placeholder is hidden when the loader is active but not finished */
+.main-loader-fullscreen:not(.loading-finished) #no-results-placeholder {
+    display: none !important;
+}
+
+/* Ensure the results section is hidden when the loader is active but not finished */
+.main-loader-fullscreen:not(.loading-finished) #results-section {
+    display: none !important;
+}
+
+/* Ensure the results section is visible when loading is finished */
+.main-loader-fullscreen.loading-finished #results-section {
+    display: block !important; /* Or flex, grid, etc., depending on layout */
+}
+
+/* Ensure the placeholder is hidden when loading is finished and results are shown */
+.main-loader-fullscreen.loading-finished #no-results-placeholder {
     display: none !important;
 }

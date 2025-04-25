@@ -67,14 +67,20 @@ def get_strategy_dropdown(available_strategies: List[Dict[str, str]]) -> dcc.Dro
 
 # ... (rest of the helper functions: generate_strategy_parameters, create_ticker_checklist, create_backtest_parameters - no changes in logic, but ensure IDs are consistent) ...
 # Example create_ticker_checklist (ensure IDs are correct)
-def create_ticker_checklist(tickers):
-    """Creates a checklist for selecting tickers."""
-    logger.debug(f"Creating ticker checklist with tickers: {tickers}")
-    options = [{'label': ticker, 'value': ticker} for ticker in tickers] if tickers else []
+def create_ticker_checklist(ticker_options: List[Dict[str, str]]):
+    """Creates a checklist for selecting tickers, accepting pre-formatted options."""
+    logger.debug(f"Creating ticker checklist with options: {ticker_options}")
+    # Directly use the provided options, assuming they are already in the correct format
+    # Add a check for safety
+    options = []
+    if isinstance(ticker_options, list) and all(isinstance(opt, dict) and 'label' in opt and 'value' in opt for opt in ticker_options):
+        options = ticker_options
+    elif ticker_options: # Log if the format is unexpected
+        logger.warning(f"Received unexpected format for ticker options: {ticker_options}. Expected list of dicts like {{'label': 'X', 'value': 'X'}}.")
+
     return dcc.Checklist(
-        # --- Corrected ID ---
-        id='ticker-input', # Use ID consistent with callbacks (e.g., 'ticker-input' or 'ticker-checklist')
-        options=options,
+        id='ticker-input',
+        options=options, # Use the already formatted options directly
         value=[], # Default to nothing selected
         labelStyle={'display': 'block'} # Display each ticker on a new line
     )

@@ -1,641 +1,252 @@
-from dash import Input, Output, State, callback_context, html, dcc, dash_table, ALL, no_update
-import dash_bootstrap_components as dbc
-import pandas as pd
 import logging
-import json
+import time
 import traceback
-from typing import Dict, List, Any, Optional
-from datetime import datetime # ADDED import
-import plotly.graph_objects # CORRECTED: Removed 'as go' alias initially, will use full path
+from datetime import datetime
+import pandas as pd
+from dash import Dash, dcc, html, Input, Output, State, callback, no_update, ctx, ClientsideFunction
+from dash.exceptions import PreventUpdate
+import plotly.graph_objects as go
+
+# Import services and components
+from src.services.backtest_service import BacktestService
+from src.ui.components import create_metric_card 
+from src.visualization.chart_utils import create_empty_chart 
+from src.core.exceptions import BacktestError, DataError
+from src.core.constants import CHART_THEME
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Import local modules
-from src.services.backtest_service import BacktestService
-from src.services.data_service import DataService
-from src.services.visualization_service import VisualizationService
-from src.core.constants import AVAILABLE_STRATEGIES
-from src.visualization.chart_utils import _create_base_layout # ADDED import
-# --- ADDED: Import layout functions for results section ---
-from src.ui.layouts.results_display import (
-    create_overview_metrics,
-    create_portfolio_value_returns_chart,
-    create_drawdown_chart,
-    create_monthly_returns_heatmap,
-    create_trades_table,
-    create_signals_chart,
-    create_no_results_placeholder
-)
+# Initialize services (assuming a singleton or shared instance mechanism if needed)
+# In a real Dash app, this might be handled differently (e.g., global variable, app context)
+backtest_service = BacktestService()
 
-# Create shared service instances
-backtest_service = None
-data_service = None
-visualization_service = None
+def register_backtest_callbacks(app: Dash):
+    """Register callbacks related to running backtests and displaying results."""
+    
+    logger.info("Registering backtest callbacks...")
 
-def register_backtest_callbacks(app):
-    """
-    Register all backtest execution and results display callbacks with the Dash app.
-
-    Args:
-        app: The Dash application instance
-    """
-    global backtest_service, data_service, visualization_service
-
-    # Initialize the services
-    try:
-        if backtest_service is None:
-            backtest_service = BacktestService()
-
-        if data_service is None:
-            data_service = DataService()
-
-        if visualization_service is None:
-            visualization_service = VisualizationService()
-
-        logger.info("Services initialized for backtest callbacks")
-    except Exception as e:
-        logger.error(f"Failed to initialize services: {e}", exc_info=True)
-        # We'll handle this in the callbacks
-
-    # --- MODIFIED: run_backtest callback - Removed ticker-selector outputs ---
+    # --- Run Backtest Callback ---
+    # This callback now outputs to the store instead of directly to result components
     @app.callback(
-        [Output("backtest-status", "children"),
-         Output("results-loading", "children"),
-         Output("backtest-results-store", "data")],
-        Input("run-backtest-button", "n_clicks"),
-        [State("strategy-dropdown", "value"),
-         State("initial-capital-input", "value"),
-         State("ticker-input", "value"),
-         State("backtest-start-date", "date"),
-         State("backtest-end-date", "date"),
-         State({"type": "strategy-param", "strategy": ALL, "param": ALL}, "value"),
-         State({"type": "strategy-param", "strategy": ALL, "param": ALL}, "id"),
-         State("risk-features-checklist", "value"),
-         State("max-risk-per-trade", "value"),
-         State("stop-loss-type", "value"),
-         State("stop-loss-value", "value"),
-         State("max-position-size", "value")],
+        Output('backtest-results-store', 'data'),
+        Input('run-backtest-button', 'n_clicks'),
+        State('strategy-selector', 'value'),
+        State('instrument-selector', 'value'),
+        State('date-range-slider', 'value'), # Assuming this provides [start_timestamp, end_timestamp]
+        State('initial-capital-input', 'value'),
+        # Strategy parameters (example, adjust based on actual inputs)
+        State({'type': 'strategy-param-input', 'index': 'param1'}, 'value'), 
+        State({'type': 'strategy-param-input', 'index': 'param2'}, 'value'),
+        # Risk parameters (example)
+        State('max-drawdown-input', 'value'),
+        State('stop-loss-input', 'value'),
         prevent_initial_call=True
     )
-    def run_backtest(n_clicks, strategy_type, initial_capital_str, selected_tickers, start_date, end_date,
-                     strategy_param_values, strategy_param_ids, risk_features,
-                     risk_per_trade, stop_loss_type, stop_loss_value, max_positions):
-        """
-        Execute backtest when the Run Backtest button is clicked.
-        Updates the content of the dcc.Loading component and signals completion via dcc.Store.
-        """
-        if not n_clicks:
-            # MODIFIED: Removed last two return values
-            return "", create_no_results_placeholder(), no_update
+    def run_backtest(n_clicks, strategy_type, tickers, date_range_ts, initial_capital, 
+                     param1, param2, max_drawdown, stop_loss):
+        if not n_clicks or not strategy_type or not tickers or not date_range_ts:
+            logger.warning("Run backtest triggered with insufficient inputs.")
+            return {"timestamp": time.time(), "success": False, "error": "Missing required inputs."}
 
-        # --- Convert and validate initial capital ---
-        initial_capital = None
-        if initial_capital_str:
-            try:
-                initial_capital = float(str(initial_capital_str).replace(" ", ""))
-            except ValueError:
-                error_msg = html.Div([html.I(className="fas fa-exclamation-circle me-2"), "Invalid Initial Capital format."], className="text-danger")
-                # MODIFIED: Removed last two return values
-                return error_msg, create_no_results_placeholder(), no_update
-
-        # Validate required inputs
-        missing_inputs = []
-        if not strategy_type: missing_inputs.append("strategy")
-        if not selected_tickers: missing_inputs.append("tickers")
-        if not start_date or not end_date: missing_inputs.append("date range")
-        if initial_capital is None or initial_capital < 1000: missing_inputs.append("valid initial capital (>= 1 000)")
-
-        if missing_inputs:
-            error_msg_text = f"Please provide required inputs: {', '.join(missing_inputs)}"
-            error_msg = html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg_text], className="text-danger")
-            # MODIFIED: Removed last two return values
-            return error_msg, create_no_results_placeholder(), no_update
-
-        # Prepare parameters
         try:
-            tickers = selected_tickers if isinstance(selected_tickers, list) else [selected_tickers]
-            strategy_params = {param_id["param"]: strategy_param_values[i] for i, param_id in enumerate(strategy_param_ids)}
-            risk_params = {
-                "continue_iterate": False,
-                "use_position_sizing": "position_sizing" in (risk_features or []),
-                "use_stop_loss": "stop_loss" in (risk_features or []),
-                "use_take_profit": "take_profit" in (risk_features or []),
-                "use_market_filter": "market_filter" in (risk_features or []),
-                "use_drawdown_protection": "drawdown_protection" in (risk_features or []),
-                "stop_loss_pct": float(stop_loss_value) / 100.0 if stop_loss_value and stop_loss_type in ["fixed", "percent"] else 0.99,
-                "risk_per_trade_pct": float(risk_per_trade) / 100.0 if risk_per_trade else None,
-                "max_open_positions": int(max_positions) if max_positions else 5
-            }
+            # Convert timestamps to 'YYYY-MM-DD' strings
+            start_date = datetime.fromtimestamp(date_range_ts[0]).strftime('%Y-%m-%d')
+            end_date = datetime.fromtimestamp(date_range_ts[1]).strftime('%Y-%m-%d')
+            
+            # --- Parameter Aggregation ---
+            # This needs to be robust based on how strategy params are dynamically generated
+            # Example: Assuming param1 and param2 are relevant for the selected strategy
+            strategy_params = {}
+            if param1 is not None: strategy_params['param1'] = param1 # Use actual param names
+            if param2 is not None: strategy_params['param2'] = param2 # Use actual param names
+            
+            risk_params = {}
+            if max_drawdown is not None: risk_params['max_drawdown'] = max_drawdown / 100.0 # Assuming percentage
+            if stop_loss is not None: risk_params['stop_loss'] = stop_loss / 100.0 # Assuming percentage
 
-            # Run backtest
-            result = backtest_service.run_backtest(
+            logger.info(f"Running backtest with: Strategy={strategy_type}, Tickers={tickers}, Start={start_date}, End={end_date}, Capital={initial_capital}, Strategy Params={strategy_params}, Risk Params={risk_params}")
+
+            # Run backtest via service
+            results_data = backtest_service.run_backtest(
                 strategy_type=strategy_type,
-                initial_capital=initial_capital,
                 tickers=tickers,
                 start_date=start_date,
                 end_date=end_date,
+                initial_capital=float(initial_capital) if initial_capital else 100000.0,
                 strategy_params=strategy_params,
                 risk_params=risk_params
             )
 
-            if result.get("success"):
-                status_msg = html.Div([html.I(className="fas fa-check-circle me-2"), "Backtest completed successfully"], className="text-success")
-
-                # Build the results section layout dynamically
-                results_layout = html.Div(
-                    id="results-section", # Keep the ID for other callbacks
-                    children=[
-                        create_overview_metrics(
-                            metrics_ids=[
-                                "total-return", "cagr", "sharpe", "max-drawdown", "calmar-ratio",
-                                "recovery-factor", "starting-balance", "ending-balance"
-                            ],
-                            header="Strategy Performance Overview"
-                        ),
-                        create_overview_metrics(
-                            metrics_ids=[
-                                "signals-generated", "trades-count", "rejected-signals-total",
-                                "win-rate", "profit-factor", "avg-trade",
-                                "rejected-signals-cash", "rejected-signals-risk",
-                                "rejected-signals-maxpos", "rejected-signals-exists",
-                                "rejected-signals-filter", "rejected-signals-other"
-                            ],
-                            header="Trade & Signal Execution Overview"
-                        ),
-                        create_portfolio_value_returns_chart(),
-                        create_drawdown_chart(),
-                        dbc.Row([dbc.Col(create_monthly_returns_heatmap(), width=12, className="mb-4")]),
-                        dbc.Row([dbc.Col(create_trades_table(), width=12, className="mb-4")]),
-                        create_signals_chart()
-                    ]
-                )
-                # --- MODIFIED: Return success status, results layout, timestamp for store ---
-                return status_msg, results_layout, datetime.now().isoformat()
+            if results_data.get("success"):
+                logger.info("Backtest completed successfully.")
+                return {"timestamp": time.time(), "success": True}
             else:
-                error_msg_text = f"Backtest failed: {result.get('error', 'Unknown error')}"
-                error_msg = html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg_text], className="text-danger")
-                # MODIFIED: Removed last two return values
-                return error_msg, create_no_results_placeholder(), no_update
+                error_msg = results_data.get("error", "Unknown error during backtest execution.")
+                logger.error(f"Backtest failed: {error_msg}")
+                return {"timestamp": time.time(), "success": False, "error": error_msg}
 
         except Exception as e:
-            logger.error(f"Error running backtest: {e}", exc_info=True)
-            error_msg_text = f"Error running backtest: {str(e)}"
-            error_msg = html.Div([html.I(className="fas fa-exclamation-circle me-2"), error_msg_text], className="text-danger")
-            # MODIFIED: Removed last two return values
-            return error_msg, create_no_results_placeholder(), no_update
+            logger.error(f"Exception during backtest execution: {e}", exc_info=True)
+            error_msg = f"An unexpected error occurred: {e}"
+            return {"timestamp": time.time(), "success": False, "error": error_msg}
 
-    # --- ADDED: Callback to update ticker selector after results are loaded ---
+    # --- Result Update Callbacks (Triggered by Store) ---
+
+    # Update Metrics Card
     @app.callback(
-        [Output("ticker-selector", "options"),
-         Output("ticker-selector", "value")],
-        Input("backtest-results-store", "data"),
+        Output('metrics-summary-container', 'children'),
+        Input('backtest-results-store', 'data'),
         prevent_initial_call=True
     )
-    def update_ticker_selector_options(results_timestamp):
-        """
-        Update the ticker selector options and value after backtest results are available.
-        """
-        if not backtest_service or not results_timestamp:
-            return [], None # Return empty options and no value if no results
-
-        try:
-            # CORRECTED: Access the attribute directly instead of calling a non-existent method
-            signals_data = backtest_service.current_signals
-            if not signals_data:
-                logger.warning("No signals data found in backtest service (current_signals) to populate ticker selector.")
-                return [], None
-
-            # Extract tickers that actually have signals
-            tickers_with_signals = list(signals_data.keys())
-            if not tickers_with_signals:
-                logger.warning("No tickers with signals found in backtest results (current_signals)." )
-                return [], None
-
-            ticker_options = [{"label": ticker, "value": ticker} for ticker in tickers_with_signals]
-            default_ticker = ticker_options[0]["value"] if ticker_options else None
-
-            logger.debug(f"Updating ticker selector with options: {ticker_options}, default: {default_ticker}")
-            return ticker_options, default_ticker
-
-        except Exception as e:
-            logger.error(f"Error updating ticker selector options: {e}", exc_info=True)
-            return [], None # Return empty on error
-
-    # --- MODIFIED: Update performance metrics callback ---
-    @app.callback(
-        [Output("metric-total-return", "children"),
-         Output("metric-cagr", "children"),
-         Output("metric-sharpe", "children"),
-         Output("metric-max-drawdown", "children"),
-         Output("metric-win-rate", "children"),
-         Output("metric-profit-factor", "children"),
-         Output("metric-avg-trade", "children"),
-         Output("metric-recovery-factor", "children"),
-         Output("metric-calmar-ratio", "children"),
-         Output("metric-starting-balance", "children"),
-         Output("metric-ending-balance", "children"),
-         Output("metric-signals-generated", "children"), # Total entry signals
-         Output("metric-trades-count", "children"), # Executed trades
-         # Add outputs for the detailed rejection metrics
-         Output("metric-rejected-signals-total", "children"),
-         Output("metric-rejected-signals-cash", "children"),
-         Output("metric-rejected-signals-risk", "children"),
-         Output("metric-rejected-signals-maxpos", "children"),
-         Output("metric-rejected-signals-exists", "children"),
-         Output("metric-rejected-signals-filter", "children"),
-         Output("metric-rejected-signals-other", "children")],
-        # MODIFIED: Triggered by the results store data
-        Input("backtest-results-store", "data")
-    )
-    # MODIFIED: Function signature accepts store data
-    def update_performance_metrics(results_timestamp):
-        """
-        Update performance metrics when backtest results are available (signaled by store).
-        """
-        num_metrics = 20
-        # MODIFIED: Check if timestamp exists
-        if not backtest_service or not results_timestamp:
-            return ["--"] * num_metrics # Return default placeholder for all
-
+    def update_metrics_display(store_data):
+        if not store_data or not store_data.get("success"):
+            # Handle backtest failure or initial state - maybe show an error message card
+            error = store_data.get("error", "Backtest failed or not run yet.") if store_data else "Run a backtest to see metrics."
+            # You might want a specific component for errors, or return an empty list
+            return [html.Div(f"Error: {error}", className="alert alert-danger")] 
+            
         try:
             metrics = backtest_service.get_performance_metrics()
             if not metrics:
-                 return ["--"] * num_metrics
-
-            # Helper to get metric or default
-            def get_metric(key, default="--"):
-                return metrics.get(key, default)
-
-            # --- Format Standard Metrics (with styling) ---
-            total_return = get_metric("total-return")
-            total_return_class = "text-success" if total_return != "--" and total_return.startswith("+") else "text-danger"
-
-            cagr = get_metric("cagr")
-            cagr_class = "text-success" if cagr != "--" and cagr.startswith("+") else "text-danger"
-
-            sharpe = get_metric("sharpe")
-            sharpe_val = 0
-            try:
-                sharpe_val = float(sharpe.replace(',', '.')) if sharpe != "--" else 0
-            except ValueError:
-                pass # Keep sharpe_val as 0
-            sharpe_class = "text-success" if sharpe_val >= 1.0 else ("text-warning" if sharpe_val > 0 else "text-danger")
-
-            recovery_factor = get_metric("recovery-factor", "N/A")
-            recovery_class = "text-muted"
-            if recovery_factor != "N/A":
-                try:
-                    value = float(recovery_factor.replace(',', '.').replace('x', ''))
-                    recovery_class = "text-success" if value > 1.0 else "text-warning"
-                except ValueError:
-                     pass # Keep muted class
-
-            calmar_ratio = get_metric("calmar-ratio", "N/A")
-            calmar_class = "text-muted"
-            if calmar_ratio != "N/A":
-                try:
-                    value = float(calmar_ratio.replace(',', '.'))
-                    calmar_class = "text-success" if value > 0.5 else "text-warning"
-                except ValueError:
-                    pass # Keep muted class
-
-            # --- Return all metrics in the order of the Outputs ---
-            return [
-                # Standard Metrics
-                html.Span(total_return, className=total_return_class),
-                html.Span(cagr, className=cagr_class),
-                html.Span(sharpe, className=sharpe_class),
-                html.Span(get_metric("max-drawdown"), className="text-danger"),
-                html.Span(get_metric("win-rate"), className="text-info"),
-                html.Span(get_metric("profit-factor"), className="text-info"),
-                html.Span(get_metric("avg-trade"), className="text-info"),
-                html.Span(recovery_factor, className=recovery_class),
-                html.Span(calmar_ratio, className=calmar_class),
-                html.Span(get_metric("starting-balance"), className="text-muted"),
-                html.Span(get_metric("ending-balance"), className="text-info"),
-                html.Span(get_metric("signals-generated"), className="text-muted"), # Total entry signals
-                html.Span(get_metric("trades-count"), className="text-info"), # Executed trades
-                # Detailed Rejection Metrics
-                html.Span(get_metric("rejected-signals-total"), className="text-warning"),
-                html.Span(get_metric("rejected-signals-cash"), className="text-warning"),
-                html.Span(get_metric("rejected-signals-risk"), className="text-warning"),
-                html.Span(get_metric("rejected-signals-maxpos"), className="text-warning"),
-                html.Span(get_metric("rejected-signals-exists"), className="text-warning"),
-                html.Span(get_metric("rejected-signals-filter"), className="text-warning"),
-                html.Span(get_metric("rejected-signals-other"), className="text-warning")
+                 return [html.Div("No metrics data available.", className="alert alert-warning")]
+                 
+            # Create metric cards based on the retrieved metrics
+            # This assumes create_metric_card exists and works as expected
+            cards = [
+                # Strategy Overview
+                create_metric_card("Starting Balance", metrics.get("starting-balance", "N/A"), "bi bi-piggy-bank"),
+                create_metric_card("Ending Balance", metrics.get("ending-balance", "N/A"), "bi bi-cash-coin"),
+                create_metric_card("Total Return", metrics.get("total-return", "N/A"), "bi bi-graph-up-arrow"),
+                create_metric_card("CAGR", metrics.get("cagr", "N/A"), "bi bi-calendar-event"),
+                create_metric_card("Sharpe Ratio", metrics.get("sharpe", "N/A"), "bi bi-calculator"),
+                create_metric_card("Max Drawdown", metrics.get("max-drawdown", "N/A"), "bi bi-graph-down-arrow", danger=True),
+                create_metric_card("Calmar Ratio", metrics.get("calmar-ratio", "N/A"), "bi bi-speedometer2"),
+                create_metric_card("Recovery Factor", metrics.get("recovery-factor", "N/A"), "bi bi-arrow-clockwise"),
+                
+                # Trades Overview
+                create_metric_card("Signals Generated", metrics.get("signals-generated", "N/A"), "bi bi-bell"),
+                create_metric_card("Trades Executed", metrics.get("trades-count", "N/A"), "bi bi-arrow-left-right"),
+                create_metric_card("Win Rate", metrics.get("win-rate", "N/A"), "bi bi-trophy"),
+                create_metric_card("Profit Factor", metrics.get("profit-factor", "N/A"), "bi bi-percent"),
+                
+                # Rejected Signals Overview (Example - adjust as needed)
+                create_metric_card("Rejected Signals (Total)", metrics.get("rejected-signals-total", "N/A"), "bi bi-sign-stop", warning=True),
+                # Add more rejected signal cards if desired...
             ]
+            return cards
         except Exception as e:
-            logger.error(f"Error updating performance metrics: {e}", exc_info=True)
-            return ["Error"] * num_metrics # Return error message for all
+            logger.error(f"Error updating metrics display: {e}", exc_info=True)
+            return [html.Div(f"Error displaying metrics: {e}", className="alert alert-danger")]
 
-    # --- MODIFIED: Update portfolio chart callback ---
+    # Update Portfolio Chart
     @app.callback(
-        Output("portfolio-chart", "figure"),
-        [Input("btn-chart-value", "n_clicks"),
-         Input("btn-chart-returns", "n_clicks"),
-         # MODIFIED: Triggered by the results store data
-         Input("backtest-results-store", "data")],
+        Output('portfolio-chart', 'figure'),
+        Input('backtest-results-store', 'data'),
+        Input('portfolio-chart-type-selector', 'value'), # Add input for chart type
         prevent_initial_call=True
     )
-    # MODIFIED: Function signature accepts store data
-    def update_portfolio_chart(n_value, n_returns, results_timestamp):
-        """
-        Update portfolio performance chart based on selected type and when results are available.
-        """
-        # MODIFIED: Check if timestamp exists
-        if not backtest_service or not results_timestamp:
-            # Return default empty figure if no results or section hidden
-            # Use a basic layout structure matching plotly figure dictionary
-            return {'data': [], 'layout': {'template': 'plotly_dark', 'height': 400, 'title': 'Portfolio Performance', 'xaxis': {'visible': False}, 'yaxis': {'visible': False}, 'annotations': [{'text': 'Run backtest to see results', 'xref': 'paper', 'yref': 'paper', 'showarrow': False, 'align': 'center'}]}}
-
-        # Determine chart type based on button clicks
-        ctx = callback_context
-        chart_type = "value" # Default to value
-        if ctx.triggered:
-            triggered_input = ctx.triggered[0]["prop_id"]
-            if "btn-chart-returns" in triggered_input:
-                chart_type = "returns"
-            elif "btn-chart-value" in triggered_input:
-                chart_type = "value"
-            # If triggered by store, default to value
-
-        logger.debug(f"Updating portfolio chart with type: {chart_type} (Trigger: {ctx.triggered[0]['prop_id'] if ctx.triggered else 'None'})")
-
+    def update_portfolio_chart(store_data, chart_type):
+        if not store_data or not store_data.get("success"):
+            # Use create_empty_chart and access its figure attribute
+            return create_empty_chart("Run Backtest for Portfolio Chart").figure 
+            
         try:
-            figure = backtest_service.get_portfolio_chart(chart_type=chart_type)
-
-            if not figure:
-                 logger.warning(f"get_portfolio_chart returned None for type {chart_type}")
-                 empty_layout = _create_base_layout(
-                     title=f"Portfolio Performance ({chart_type.capitalize()}) - No Data",
-                     height=400
-                 )
-                 empty_layout.annotations = [
-                     # CORRECTED: Use full path instead of 'go' alias
-                     plotly.graph_objects.layout.Annotation(
-                         text="No data available for this view.",
-                         showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5
-                     )
-                 ]
-                 empty_layout.xaxis.visible = False
-                 empty_layout.yaxis.visible = False
-                 return {'data': [], 'layout': empty_layout}
-
-            # CORRECTED: Return figure as dictionary
-            return figure.to_dict()
+            fig = backtest_service.get_portfolio_chart(chart_type=chart_type) # Pass chart_type
+            # Use create_empty_chart if fig is None
+            return fig if fig else create_empty_chart("No portfolio data").figure
         except Exception as e:
-            logger.error(f"Error updating portfolio chart (type: {chart_type}): {e}", exc_info=True)
-            # Return a styled empty figure dictionary with error message
-            # CORRECTED: Call _create_base_layout directly
-            empty_layout = _create_base_layout(
-                 title=f"Error loading {chart_type.capitalize()} chart",
-                 height=400
-            )
-            empty_layout.annotations = [
-                # CORRECTED: Use full path instead of 'go' alias
-                plotly.graph_objects.layout.Annotation(
-                    text=f"Error: {str(e)}",
-                    showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5
-                )
-            ]
-            empty_layout.xaxis.visible = False
-            empty_layout.yaxis.visible = False
-            return {'data': [], 'layout': empty_layout}
+            logger.error(f"Error updating portfolio chart: {e}", exc_info=True)
+            # Use create_empty_chart for error display
+            return create_empty_chart(f"Error: {e}").figure
 
-    # Callback to manage button states (outline) - NO CHANGE NEEDED
+    # Update Monthly Returns Heatmap
     @app.callback(
-        [Output("btn-chart-value", "outline"),
-         Output("btn-chart-returns", "outline")],
-        [Input("btn-chart-value", "n_clicks"),
-         Input("btn-chart-returns", "n_clicks")],
+        Output('monthly-returns-heatmap', 'figure'),
+        Input('backtest-results-store', 'data'),
+        prevent_initial_call=True
     )
-    def update_chart_button_styles(n_value, n_returns):
-        ctx = callback_context
-        # Default: Value selected if no clicks yet or context unclear
-        if not ctx.triggered_id:
-            return False, True
-
-        button_id = ctx.triggered_id.split(".")[0]
-        if button_id == "btn-chart-returns":
-            return True, False
-        else: # Default to value button
-            return False, True
-
-    # --- MODIFIED: Update drawdown chart callback ---
-    @app.callback(
-        Output("drawdown-chart", "figure"),
-        # MODIFIED: Triggered by the results store data
-        Input("backtest-results-store", "data")
-    )
-    # MODIFIED: Function signature accepts store data
-    def update_drawdown_chart(results_timestamp):
-        """
-        Update the separate portfolio drawdown chart when results are available.
-        """
-        chart_type = "drawdown"
-        # MODIFIED: Check if timestamp exists
-        if not backtest_service or not results_timestamp:
-            # Return default empty figure
-            return {'data': [], 'layout': {'template': 'plotly_dark', 'height': 300, 'title': 'Portfolio Drawdown', 'xaxis': {'visible': False}, 'yaxis': {'visible': False}, 'annotations': [{'text': 'Run backtest to see results', 'xref': 'paper', 'yref': 'paper', 'showarrow': False, 'align': 'center'}]}}
-
-        logger.debug(f"Updating drawdown chart")
-
+    def update_heatmap(store_data):
+        if not store_data or not store_data.get("success"):
+            # Use create_empty_chart
+            return create_empty_chart("Run Backtest for Heatmap").figure 
+            
         try:
-            figure = backtest_service.get_portfolio_chart(chart_type=chart_type)
-            if not figure:
-                 logger.warning(f"get_portfolio_chart returned None for type {chart_type}")
-                 empty_layout = _create_base_layout(
-                     title="Portfolio Drawdown - No Data",
-                     height=300
-                 )
-                 empty_layout.annotations = [
-                     # CORRECTED: Use full path instead of 'go' alias
-                     plotly.graph_objects.layout.Annotation(
-                         text="No data available for this view.",
-                         showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5
-                     )
-                 ]
-                 empty_layout.xaxis.visible = False
-                 empty_layout.yaxis.visible = False
-                 return {'data': [], 'layout': empty_layout}
-            # CORRECTED: Return figure as dictionary
-            return figure.to_dict()
+            fig = backtest_service.get_monthly_returns_heatmap()
+            # Use create_empty_chart if fig is None
+            return fig if fig else create_empty_chart("No returns data").figure
         except Exception as e:
-            logger.error(f"Error updating drawdown chart: {e}", exc_info=True)
-            empty_layout = _create_base_layout(
-                 title="Error loading Drawdown chart",
-                 height=300
-            )
-            empty_layout.annotations = [
-                # CORRECTED: Use full path instead of 'go' alias
-                plotly.graph_objects.layout.Annotation(
-                    text=f"Error: {str(e)}",
-                    showarrow=False, xref="paper", yref="paper", x=0.5, y=0.5
-                )
-            ]
-            empty_layout.xaxis.visible = False
-            empty_layout.yaxis.visible = False
-            return {'data': [], 'layout': empty_layout}
+            logger.error(f"Error updating heatmap: {e}", exc_info=True)
+            # Use create_empty_chart for error display
+            return create_empty_chart(f"Error: {e}").figure
 
-    # --- MODIFIED: Update monthly returns heatmap callback ---
+    # Update Signals Chart (needs ticker selection)
     @app.callback(
-        Output("monthly-returns-heatmap", "figure"),
-        # MODIFIED: Triggered by the results store data
-        Input("backtest-results-store", "data")
+        Output('signals-chart', 'figure'),
+        Input('backtest-results-store', 'data'),
+        Input('instrument-selector', 'value'), # Assuming this holds selected tickers
+        prevent_initial_call=True
     )
-    # MODIFIED: Function signature accepts store data
-    def update_monthly_returns_heatmap(results_timestamp):
-        """
-        Update monthly returns heatmap when results are available.
-        """
-        # MODIFIED: Check if timestamp exists
-        if not backtest_service or not results_timestamp:
-            return {}
-
+    def update_signals_chart(store_data, selected_tickers):
+        # Only show chart if one ticker is selected for clarity
+        if not store_data or not store_data.get("success") or not selected_tickers or len(selected_tickers) != 1:
+             # Use create_empty_chart
+             return create_empty_chart("Select One Ticker to View Signals").figure 
+             
+        ticker = selected_tickers[0]
         try:
-            # Get monthly returns heatmap from the backtest service
-            # This now uses the visualization service internally
-            return backtest_service.get_monthly_returns_heatmap() or {}
+            fig = backtest_service.get_signals_chart(ticker=ticker)
+            # Use create_empty_chart if fig is None
+            return fig if fig else create_empty_chart(f"No signal data for {ticker}").figure
         except Exception as e:
-            logger.error(f"Error updating monthly returns heatmap: {e}", exc_info=True)
-            return {}
+            logger.error(f"Error updating signals chart for {ticker}: {e}", exc_info=True)
+            # Use create_empty_chart for error display
+            return create_empty_chart(f"Error: {e}").figure
 
-    # --- MODIFIED: Update signals chart callback ---
+    # Update Trades Table
     @app.callback(
-        Output("signals-chart", "figure"),
-        # MODIFIED: Triggered by store data and ticker selector
-        [Input("backtest-results-store", "data"),
-         Input("ticker-selector", "value")]
+        Output('trades-table', 'data'),
+        Output('trades-table', 'tooltip_data'), # Add tooltip output
+        Input('backtest-results-store', 'data'),
+        prevent_initial_call=True
     )
-    # MODIFIED: Function signature accepts store data
-    def update_signals_chart(results_timestamp, ticker):
-        """
-        Update signals chart when results are available or ticker selection changes.
-        """
-        # MODIFIED: Check if timestamp exists
-        if not backtest_service or not results_timestamp or not ticker:
-            return {}
-
-        try:
-            # If ticker is a list, use only the first element
-            ticker_value = ticker[0] if isinstance(ticker, list) and len(ticker) > 0 else ticker
-            return backtest_service.get_signals_chart(ticker_value) or {}
-        except Exception as e:
-            logger.error(f"Error updating signals chart: {e}", exc_info=True)
-            return {}
-
-    # --- MODIFIED: Update trades table callback ---
-    @app.callback(
-        Output("trades-table-container", "children"),
-        # MODIFIED: Triggered by the results store data
-        Input("backtest-results-store", "data")
-    )
-    # MODIFIED: Function signature accepts store data
-    def update_trades_table(results_timestamp):
-        """
-        Update trades table when results are available.
-        """
-        # MODIFIED: Check if timestamp exists
-        if not backtest_service or not results_timestamp:
-            return "Run a backtest to view trade history."
-
+    def update_trades_table(store_data):
+        if not store_data or not store_data.get("success"):
+            return [], [] # Return empty data and tooltips
+            
         try:
             trades_data = backtest_service.get_trades_table_data()
-            if not trades_data:
-                return "No trades were executed in this backtest."
-
-            # Define the font family consistent with the CSS
-            consistent_font = "'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
-
-            # Format exit reasons
-            formatted_trades_data = []
-            for trade in trades_data:
-                raw_reason = trade.get('reason', '')
-                formatted_reason = raw_reason.replace('_', ' ').title() if raw_reason else 'Unknown'
-                trade['reason'] = formatted_reason # Update the reason in the dictionary
-                formatted_trades_data.append(trade)
-
-            return dash_table.DataTable(
-                id="trades-table",
-                columns=[
-                    {"name": "Ticker", "id": "ticker"},
-                    {"name": "Entry Date", "id": "entry_date"},
-                    {"name": "Exit Date", "id": "exit_date"},
-                    {"name": "Entry Price", "id": "entry_price", "type": "numeric", "format": dash_table.FormatTemplate.money(2)},
-                    {"name": "Exit Price", "id": "exit_price", "type": "numeric", "format": dash_table.FormatTemplate.money(2)},
-                    {"name": "P/L ($)", "id": "profit_loss", "type": "numeric", "format": dash_table.FormatTemplate.money(2)},
-                    {"name": "P/L (%)", "id": "profit_loss_pct", "type": "numeric", "format": dash_table.FormatTemplate.percentage(2)},
-                    {"name": "Shares", "id": "shares", "type": "numeric", "format": {"specifier": ",d"}},
-                    {"name": "Exit Reason", "id": "reason"}
-                ],
-                data=formatted_trades_data, # Use formatted data
-                style_table={"overflowX": "auto", "width": "100%"}, # Ensure table uses full width
-                style_cell={
-                    "textAlign": "left",
-                    "padding": "10px",
-                    "backgroundColor": "#2a2e39",
-                    "color": "#e0e0e0",
-                    "fontFamily": consistent_font # Explicitly set font family
-                },
-                style_header={
-                    "backgroundColor": "#1e222d",
-                    "color": "#ffffff",
-                    "fontWeight": "bold",
-                    "textAlign": "center",
-                    "fontFamily": consistent_font # Explicitly set font family for header
-                },
-                style_data_conditional=[
+            
+            # Prepare tooltip data (example: show exit reason)
+            tooltip_data = []
+            if trades_data:
+                 tooltip_data = [
                     {
-                        "if": {"filter_query": "{profit_loss_pct} < 0"},
-                        "color": "#ff4a68"  # Red for losses
-                    },
-                    {
-                        "if": {"filter_query": "{profit_loss_pct} >= 0"},
-                        "color": "#00cc96"  # Green for gains
-                    }
-                ],
-                sort_action="native",
-                # filter_action="native" # Removed filter action to hide the filter row
-            )
+                        'profit_loss_pct': {'value': f"{row.get('profit_loss_pct', 0):.2f}%", 'type': 'markdown'},
+                        'reason': {'value': row.get('reason', 'N/A'), 'type': 'markdown'} 
+                    } for row in trades_data
+                 ]
+
+            return trades_data, tooltip_data
         except Exception as e:
             logger.error(f"Error updating trades table: {e}", exc_info=True)
-            return f"Error displaying trades: {str(e)}"
+            return [], [] # Return empty on error
 
-    # --- ADDED: Callback to manage main loader visibility ---
-    @app.callback(
-        Output("results-loading", "className"),
-        [
-            Input("portfolio-chart-loading", "loading_state"),
-            Input("drawdown-chart-loading", "loading_state"),
-            Input("heatmap-chart-loading", "loading_state"),
-            Input("trades-table-loading", "loading_state"),
-            Input("signals-chart-loading", "loading_state"),
-            Input("backtest-results-store", "data") # Also trigger when backtest finishes/fails
-        ],
+    # --- Main Loader Callback ---
+    # Controls the visibility of the main loading overlay
+    app.clientside_callback(
+        ClientsideFunction(
+            namespace='clientside',
+            function_name='updateMainLoader'
+        ),
+        Output('loading-overlay', 'style'),
+        # Inputs: loading_state of all components within the results section
+        Input('metrics-summary-loader', 'loading_state'),
+        Input('portfolio-chart-loader', 'loading_state'),
+        Input('monthly-returns-heatmap-loader', 'loading_state'),
+        Input('signals-chart-loader', 'loading_state'),
+        Input('trades-table-loader', 'loading_state'),
         prevent_initial_call=True
     )
-    def manage_main_loader_visibility(portfolio_ls, drawdown_ls, heatmap_ls, trades_ls, signals_ls, results_timestamp):
-        """
-        Hides the main fullscreen loader only when all individual result components have finished loading.
-        """
-        # If backtest hasn't run or failed (no timestamp), keep loader visible (without finished class)
-        if not results_timestamp:
-            return "main-loader-fullscreen"
 
-        # Check if any of the individual loaders are still loading
-        # loading_state is None initially, check for that too
-        still_loading = (
-            (portfolio_ls and portfolio_ls.get("is_loading")) or
-            (drawdown_ls and drawdown_ls.get("is_loading")) or
-            (heatmap_ls and heatmap_ls.get("is_loading")) or
-            (trades_ls and trades_ls.get("is_loading")) or
-            (signals_ls and signals_ls.get("is_loading"))
-        )
-
-        if still_loading:
-            # Keep loader visible if anything is still loading
-            return "main-loader-fullscreen"
-        else:
-            # Add the 'loading-finished' class to hide the spinner via CSS
-            return "main-loader-fullscreen loading-finished"
+    logger.info("Backtest callbacks registered.")

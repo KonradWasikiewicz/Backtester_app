@@ -50,7 +50,7 @@ def create_overview_metrics(metrics_ids: List[str], header: str = "Performance O
                 html.Div([
                     html.Small(display_name, className="text-muted d-block mb-1"), # Add label
                     # Ensure the ID matches the callback output format: metric-<id>
-                    html.Div(id=f"metric-{metric_id}", children="--", className="metric-value h5") 
+                    html.Div(id=f"metric-{metric_id}", children="--", className="metric-value h5")
                 ]),
                 # Use slightly wider columns for potentially longer labels
                 width=6, sm=4, md=4, lg=3, xxl=2, # Adjusted widths
@@ -186,7 +186,7 @@ def create_trades_table() -> dbc.Card:
         dbc.CardHeader("Trade History"),
         dbc.CardBody([
             dcc.Loading(
-                id="trades-table-loading",
+                id="trades-table-loading", # ADDED ID
                 children=html.Div(
                     "Run a backtest to view trade history.", # Default message
                     id="trades-table-container"

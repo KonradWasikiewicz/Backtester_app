@@ -1,6 +1,6 @@
 import dash
 import dash_bootstrap_components as dbc
-from dash import html, dcc
+from dash import html, dcc, Input, Output, State, no_update
 import logging
 import os
 from pathlib import Path
@@ -322,6 +322,7 @@ def create_app_layout() -> html.Div:
         layout = html.Div([
             # Store for app state
             dcc.Store(id="app-state", data={}),
+
             # --- ADDED: Store to signal backtest completion ---
             dcc.Store(id='backtest-results-store'),
 
@@ -354,6 +355,7 @@ def create_app_layout() -> html.Div:
                         className="w-100",
                     ),
                     dbc.Row([
+
                         dbc.Col([
                             create_version_display(), # Version display
                             # GitHub icon moved here
@@ -381,12 +383,12 @@ def create_app_layout() -> html.Div:
                         html.Div(id="backtest-status", className="mb-3 text-center"),
                         # Spacer
                         html.Div(className="my-4")
-                    ], md=4, lg=3),
+                    ], md=4, className="mb-4"), # Added column width and margin
 
                     # Right panel: Results display
                     dbc.Col([
-                        create_results_section()
-                    ], md=8, lg=9)
+                        create_results_section() # Use the function that includes the loader
+                    ], md=8)
                 ])
             ], fluid=True),
 
@@ -416,14 +418,53 @@ def create_app_layout() -> html.Div:
             )
         ])
 
+        logger.debug("App layout created")
         return layout
 
     except Exception as e:
         logger.error(f"Error creating app layout: {e}", exc_info=True)
-        return html.Div([
-            html.H3("Error initializing application layout", className="text-danger"),
-            html.P(f"Details: {str(e)}")
-        ])
+        # Return a simple error message layout
+        return html.Div([html.H1("Error creating application layout"), html.P(str(e))])
+
+def configure_logging(log_level=logging.INFO) -> None:
+    """
+    Configures the application's logging.
+    Uses console output only, suppresses external library logs,
+    and prevents duplicate handler registration.
+    """
+    # Check if root logger already has handlers to prevent duplicate setup
+    root_logger = logging.getLogger()
+    if not root_logger.hasHandlers():
+        log_format = '%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s'
+        date_format = '%Y-%m-%d %H:%M:%S'
+
+        # Configure root logger with console output only
+        logging.basicConfig(
+            level=log_level,
+            format=log_format,
+            datefmt=date_format,
+            handlers=[
+                logging.StreamHandler(sys.stdout)
+            ]
+        )
+        logger.info(f"Root logger configured with level {logging.getLevelName(log_level)}")
+
+        # Add the custom filter to the root logger
+        deprecation_filter = DeprecationFilter()
+        root_logger.addFilter(deprecation_filter)
+        logger.info("DeprecationFilter added to root logger.")
+
+    else:
+        logger.debug("Root logger already has handlers. Skipping basicConfig.")
+        # Ensure level is set even if handlers exist
+        root_logger.setLevel(log_level)
+
+    # Limit external library logs
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("dash").setLevel(logging.WARNING)
+    logging.getLogger("plotly").setLevel(logging.WARNING) # Added plotly
+    logger.debug("External library log levels set to WARNING.")
 
 def register_callbacks(app: dash.Dash) -> None:
     """
@@ -432,227 +473,58 @@ def register_callbacks(app: dash.Dash) -> None:
     Args:
         app: The Dash application instance
     """
+    logger.debug("Registering callbacks...")
     try:
-        logger.debug("Registering application callbacks...") # Demoted log
-
-        # Register wizard navigation and validation callbacks
-        register_wizard_callbacks(app)
-        logger.debug("Registered wizard callbacks.")
-        # Register strategy-related callbacks
         register_strategy_callbacks(app)
-        logger.debug("Registered strategy callbacks.") # Added log
-
-        # Register backtest execution and results display callbacks
         register_backtest_callbacks(app)
-        logger.debug("Registered backtest callbacks.") # Added log
-
-        # Register risk management callbacks
         register_risk_management_callbacks(app)
-        logger.debug("Registered risk management callbacks.") # Added log
+        register_wizard_callbacks(app)
 
-        # Register version and changelog callbacks
-        register_version_callbacks(app)
-        # Removed duplicate log here
-
-        # Register debug mode toggle callback
-        register_debug_callbacks(app)
-        # Removed duplicate log here
-
-        logger.debug("Finished registering application callbacks.") # Demoted log
-
-    except Exception as e:
-        logger.error(f"Error registering callbacks: {e}", exc_info=True)
-        print(f"Error registering callbacks: {e}")
-        traceback.print_exc()
-
-def register_version_callbacks(app: dash.Dash) -> None:
-    """
-    Register callbacks for version-related functionality.
-
-    Args:
-        app: The Dash application instance
-    """
-    logger.debug("Registering version callbacks...") # Added log
-    from dash.dependencies import Input, Output, State
-
-    # Callback to show changelog modal
-    @app.callback(
-        Output("changelog-modal", "is_open"),
-        [Input("view-changelog", "n_clicks"),
-         Input("footer-version", "n_clicks"),
-         Input("close-changelog", "n_clicks")],
-        [State("changelog-modal", "is_open")],
-        prevent_initial_call=True # Added prevent_initial_call
-    )
-    def toggle_changelog_modal(view_clicks, footer_clicks, close_clicks, is_open):
-        ctx = dash.callback_context
-        if not ctx.triggered:
-            # This should not happen with prevent_initial_call=True, but good practice
-            return dash.no_update # Use no_update instead of is_open
-
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        logger.debug(f"Changelog modal trigger: {trigger_id}") # Added log
-        if trigger_id in ["view-changelog", "footer-version"]:
-            return True
-        elif trigger_id == "close-changelog":
-            return False
-        return dash.no_update # Default to no update
-
-    # Callback to populate changelog content
-    @app.callback(
-        Output("changelog-content", "children"),
-        [Input("changelog-modal", "is_open")],
-         prevent_initial_call=True # Added prevent_initial_call
-    )
-    def update_changelog(is_open):
-        logger.debug(f"Update changelog callback triggered. is_open: {is_open}") # Added log
-        if not is_open:
-            # Return no_update instead of empty list when not open
-            # This prevents unnecessary updates when the modal closes
-            return dash.no_update
-
-        try:
-            logger.info("Loading and formatting changelog content...") # Added log
-            # Get the full changelog
-            changelog = get_changelog()
-
-            # Format the changelog for display
-            changelog_content = []
-
-            for version, details in sorted(
-                changelog.items(),
-                key=lambda x: [int(n) for n in x[0].split('.')],
-                reverse=True
-            ):
-                date = details.get('date', '')
-                changes = details.get('changes', [])
-
-                version_section = [
-                    html.H4(f"v{version}", className="mt-3"),
-                    html.P(f"Released: {date}", className="text-muted"),
-                    html.Ul([
-                        html.Li(change) for change in changes
-                    ]) if changes else html.P("No changes documented.")
-                ]
-
-                changelog_content.extend(version_section)
-
-            if not changelog_content:
-                logger.warning("No changelog content generated.") # Added log
-                return html.P("No changelog information available.")
-
-            logger.info("Changelog content generated successfully.") # Added log
-            return changelog_content
-        except Exception as e:
-            logger.error(f"Error generating changelog: {e}", exc_info=True)
-            return html.P(f"Error loading changelog: {str(e)}")
-    logger.debug("Finished registering version callbacks.") # Added log
-
-def register_debug_callbacks(app: dash.Dash) -> None:
-    """
-    Register callbacks for debug functionality.
-    Simple implementation that just toggles a debug toast notification.
-
-    Args:
-        app: The Dash application instance
-    """
-    logger.debug("Registering debug callbacks...")
-    from dash.dependencies import Input, Output, State
-
-    # Create a simple toast for debug info
-    debug_elements = html.Div(
-        dbc.Toast(
-            "Debug mode active",
-            id="debug-toast",
-            header="Debug Info",
-            icon="info",
-            is_open=False,
-            dismissable=True,
-            duration=3000,
-            style={"position": "fixed", "top": 10, "right": 10, "zIndex": 9999}
-        ),
-        id='debug-container-marker'
-    )
-    
-    # Add debug elements to layout if not already present
-    if 'debug-container-marker' not in app.layout:
-        if isinstance(app.layout, html.Div) and isinstance(app.layout.children, list):
-            app.layout.children.append(debug_elements)
-        else:
-            logger.debug("Could not add debug elements to layout")
-
-    # Simple callback to show notification
-    @app.callback(
-        Output('debug-toast', 'is_open'),
-        [Input('toggle-debug-btn', 'n_clicks')],
-        [State('debug-toast', 'is_open')],
-        prevent_initial_call=True
-    )
-    def toggle_debug_toast(n_clicks, is_open):
-        logger.info(f"Debug button clicked. Toggling debug info toast.")
-        return not is_open
-
-def configure_logging(log_level=logging.INFO) -> None:
-    """
-    Configure logging for the application.
-
-    Args:
-        log_level: Logging level to use
-    """
-    # Check if root logger already has handlers to prevent duplicate setup
-    root_logger = logging.getLogger()
-    if not root_logger.hasHandlers():
-        log_format = '%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s'
-        date_format = '%Y-%m-%d %H:%M:%S'
-
-        # Configure root logger - simplified system with single handler
-        logging.basicConfig(
-            level=log_level,
-            format=log_format,
-            datefmt=date_format,
-            handlers=[
-                logging.StreamHandler(sys.stdout) # Console output only
-            ]
+        # --- Register Changelog Modal Callbacks ---
+        @app.callback(
+            Output("changelog-modal", "is_open"),
+            [Input("version-badge", "n_clicks"), Input("close-changelog", "n_clicks")],
+            [State("changelog-modal", "is_open")],
+            prevent_initial_call=True,
         )
-        logger.info("Logger configured")
+        def toggle_changelog_modal(n_badge, n_close, is_open):
+            if n_badge or n_close:
+                return not is_open
+            return is_open
 
-        # Add the custom filter to the handlers
-        deprecation_filter = DeprecationFilter()
-        for handler in root_logger.handlers:
-            handler.addFilter(deprecation_filter)
-            logger.debug(f"Added DeprecationFilter to handler {handler}")
+        @app.callback(
+            Output("changelog-content", "children"),
+            Input("version-badge", "n_clicks"),
+            prevent_initial_call=True,
+        )
+        def load_changelog_content(n_clicks):
+            if n_clicks:
+                try:
+                    changelog_md = get_changelog()
+                    # Convert markdown to HTML components
+                    return dcc.Markdown(changelog_md, dangerously_allow_html=True)
+                except Exception as e:
+                    logger.error(f"Error loading changelog: {e}")
+                    return html.P(f"Error loading changelog: {e}")
+            return no_update
 
-    else:
-        logger.debug("Logger already configured")
-        # Ensure filter is added even if logger was configured elsewhere (e.g., by another module)
-        deprecation_filter = DeprecationFilter()
-        filter_exists = any(isinstance(f, DeprecationFilter) for h in root_logger.handlers for f in h.filters)
-        if not filter_exists:
-            for handler in root_logger.handlers:
-                handler.addFilter(deprecation_filter)
-                logger.debug(f"Added DeprecationFilter to existing handler {handler}")
+        logger.info("All callbacks registered successfully.")
+    except Exception as e:
+        logger.error(f"Error during callback registration: {e}", exc_info=True)
+        raise # Re-raise the exception to prevent the app from starting incorrectly
 
-    # Set logging level for external libraries
-    logging.getLogger("werkzeug").setLevel(logging.WARNING)
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("dash").setLevel(logging.WARNING) # Added: limit Dash logs
-
-def get_available_tickers() -> List[str]:
+def get_available_tickers() -> List[Dict[str, str]]:
     """
-    Get list of available tickers from the data loader.
+    Get a list of available tickers from the data directory.
 
     Returns:
-        List[str]: List of available ticker symbols
+        List[Dict[str, str]]: List of dictionaries for dropdown options.
     """
     try:
         data_loader = DataLoader()
-        # Ensure data is loaded before getting tickers
-        # data_loader.load_data() # Assuming load_data is called elsewhere or implicitly
         tickers = data_loader.get_available_tickers()
-        logger.debug(f"Available tickers retrieved: {len(tickers)}") # Added log
-        if not tickers:
-             logger.warning("No available tickers found. Check data source.")
-        return tickers
+        # Format for dbc.Select or dcc.Checklist options
+        return [{'label': ticker, 'value': ticker} for ticker in tickers]
     except Exception as e:
-        logger.error(f"Error getting available tickers: {e}", exc_info=True) # Log full traceback
-        return []
+        logger.error(f"Error getting available tickers: {e}", exc_info=True)
+        return [] # Return empty list on error

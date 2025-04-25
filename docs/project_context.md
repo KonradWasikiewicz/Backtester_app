@@ -11,6 +11,7 @@ Backtester App is an application for testing investment strategies on historical
 2. **Separation of Concerns**: Components should have well-defined responsibilities
 3. **Dependency Direction**: Lower layers never depend on higher layers
 4. **Component Reusability**: UI and visualization components should be reusable
+5. **UI State Management**: Uses `dcc.Store` for managing key UI states like backtest results availability, triggering updates efficiently.
 
 ## Design Guidelines
 1. **Modern UI**: Clean, intuitive interface with responsive design
@@ -61,4 +62,4 @@ Backtester App is an application for testing investment strategies on historical
 ---
 
 *Created: April 11, 2025*
-*Last updated: April 24, 2025*
+*Last updated: April 25, 2025*

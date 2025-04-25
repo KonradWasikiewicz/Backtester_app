@@ -45,13 +45,14 @@ The application follows a layered architecture with clear separation of concerns
 - UI components should not contain business logic
 - UI should only interact with the Application Layer, never directly with Core or Data
 - Components should be reusable where possible
+- **State Management**: Uses `dcc.Store` components for managing specific UI states, such as backtest results availability.
 
 **Sub-components**:
-- `app_factory.py`: App setup and entry point
+- `app_factory.py`: App setup and entry point, including main layout and `dcc.Store` definitions.
 - `wizard/`: Strategy configuration wizard layout and logic
-- `layouts/`: Other page layout components (e.g., results display)
+- `layouts/`: Other page layout components (e.g., results display with loading indicators)
 - `components/`: Reusable UI elements (cards, tooltips, etc.)
-- `callbacks/`: UI event handlers registration
+- `callbacks/`: UI event handlers registration (results callbacks triggered by `dcc.Store`)
 
 ### 2. Application Layer
 
@@ -146,6 +147,8 @@ The communication between components should follow these rules:
 1. **UI Layer** → **Application Layer**:
    - UI components trigger callbacks that invoke service methods
    - UI never skips directly to core or data layers
+   - **State Updates**: Callbacks can update `dcc.Store` components to signal state changes (e.g., backtest completion).
+   - **State Reactions**: Other callbacks are triggered by changes in `dcc.Store` data to update relevant UI parts (e.g., displaying results).
 
 2. **Application Layer** → **Core/Strategy/Portfolio Layers**:
    - Services coordinate requests between these layers
@@ -183,17 +186,17 @@ src/
   │   ├── moving_average.py # MA strategy implementation
   │   └── rsi.py        # RSI strategy implementation
   ├── ui/               # User interface components
-  │   ├── app_factory.py      # Dash app creation and setup
+  │   ├── app_factory.py      # Dash app creation, setup, main layout, dcc.Store
   │   ├── components.py       # Common UI components (can be split further)
   │   ├── wizard/             # Strategy wizard layout and callbacks
   │   │   ├── layout.py
   │   │   └── ... wizard subpackage files
   │   ├── layouts/            # Page layout modules
-  │   │   ├── results_display.py
+  │   │   ├── results_display.py # Layout for results with loading states
   │   ├── callbacks/          # Dash callbacks for UI interactions
   │   │   ├── strategy_callbacks.py
   │   │   ├── wizard_callbacks.py
-  │   │   ├── backtest_callbacks.py
+  │   │   ├── backtest_callbacks.py # Handles backtest run and results display (triggered by dcc.Store)
   │   │   └── risk_management_callbacks.py
   ├── visualization/    # Data visualization
   │   ├── visualizer.py # Main visualization class
@@ -267,4 +270,4 @@ When making changes:
 
 - [Product Design Specification](product_design_specification.md)
 - [Technical Specification](technical_specification.md)
-*Last updated: April 24, 2025*
+*Last updated: April 25, 2025*

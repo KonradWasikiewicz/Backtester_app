@@ -34,10 +34,10 @@ Analysis of backtest results:
 
 #### 1.2.5 UI
 User interface:
-- `app_factory.py` - Creating Dash application instances
+- `app_factory.py` - Creating Dash application instances, includes main layout structure with `dcc.Store` for state management.
 - `components.py` - Reusable UI components
-- `callbacks/` - Dash callback implementations
-- `layouts/` - Layout templates
+- `callbacks/` - Dash callback implementations (now utilizing `dcc.Store` for results state)
+- `layouts/` - Layout templates (including results display with loading indicators)
 
 #### 1.2.6 Visualization
 Generating visualizations:
@@ -205,13 +205,14 @@ In Dash, data flow between components occurs via callbacks that react to user ev
 1. Updating strategy parameters based on selected strategy
 2. Filtering available instruments based on search
 3. Updating date range based on slider/pickers
-4. Running backtest and updating results
-5. Updating charts based on results
+4. Running backtest: This callback now triggers an update to a central `dcc.Store` component (`backtest-results-store`) upon completion or failure.
+5. Updating results display (metrics, charts, tables): These callbacks are now triggered by changes in the `backtest-results-store` data, ensuring they update only when new results are available.
+6. Individual loading states for result components are managed, and a main overlay loader is controlled based on the combined state of these components.
 
 ### 5.2 Callback Division in the Project
 Callbacks are grouped by functionality:
 - `strategy_callbacks.py` - Callbacks related to strategy configuration
-- `backtest_callbacks.py` - Callbacks related to running and displaying results
+- `backtest_callbacks.py` - Callbacks related to running the backtest and updating all result components (triggered by `dcc.Store`).
 - `risk_management_callbacks.py` - Callbacks for managing risk settings
 
 ## 6. Version Management and Migrations
@@ -250,30 +251,10 @@ pip install -r requirements.txt
 ## 7. Known Issues and Technical Limitations
 
 ### 7.1 Dash Callback Issues
-The application currently uses advanced monkey-patching techniques to solve problems with duplicate callbacks. This is a temporary solution that should be replaced with a more elegant approach in future versions.
+- **Previous Issue (Resolved/Mitigated):** The application previously used advanced monkey-patching techniques to solve problems with duplicate callbacks. 
+- **Current Approach:** The refactoring to use `dcc.Store` for managing the backtest results state has simplified the callback structure for the results section, reducing the complexity and potential for duplicate output issues in that area. While this specific issue is largely addressed for results display, careful callback design remains important throughout the application.
 
 ### 7.2 Backtest Performance
 For large datasets or complex strategies, backtest execution time can be long. Optimization for performance is necessary, potentially using parallel processing.
 
-### 7.3 Table Format
-There are issues with data formatting in Dash tables, especially for percentages. A workaround via runtime patch has been applied.
-
-## 8. Technical Development Plan
-
-### 8.1 UI Refactoring
-Migration from Dash to pure React is planned to increase UI flexibility and performance.
-
-### 8.2 Performance Optimization
-- Implementation of parallel processing for backtests
-- Optimization of strategy algorithms
-
-### 8.3 Feature Expansion
-- Adding strategy parameter optimization
-- Implementing machine learning for market prediction
-- Integration with broker APIs for algorithmic trading
-
----
-
-*Document created: 2025-04-10*
-*Last update: 2025-04-24*
-*Documentation version: 1.2*
+*Documentation version: 1.3*

@@ -294,17 +294,23 @@ class BacktestVisualizer:
 
             benchmark_name = f"Benchmark ({config.BENCHMARK_TICKER})" if config.BENCHMARK_TICKER else "Benchmark"
             if benchmark_drawdowns is not None:
+                # Add fill color for benchmark
+                benchmark_color_hex = self.viz_cfg["colors"]["benchmark"]
+                benchmark_color_rgb = f'rgba({int(benchmark_color_hex[1:3], 16)}, {int(benchmark_color_hex[3:5], 16)}, {int(benchmark_color_hex[5:7], 16)}, 0.3)'
                 fig.add_trace(go.Scatter(
                     x=benchmark_drawdowns.index,
                     y=benchmark_drawdowns.values,
                     mode='lines',
                     name=benchmark_name, # Use dynamic name
-                    line=dict(color=self.viz_cfg["colors"]["benchmark"], width=2)
+                    line=dict(color=self.viz_cfg["colors"]["benchmark"], width=2),
+                    fill='tozeroy', # Add fill
+                    fillcolor=benchmark_color_rgb # Add fill color
                 ))
 
             # Use _create_base_layout for consistent title and styling
+            # Remove title from the chart itself, it's already in the card header
             layout = _create_base_layout(
-                title="Portfolio Drawdown", # Set title here
+                title="", # Remove title here
                 height=300, # Keep drawdown height slightly smaller as per previous change
                 xaxis_title="Date",
                 yaxis=dict(
