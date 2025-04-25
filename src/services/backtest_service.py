@@ -48,9 +48,12 @@ class BacktestService:
                      tickers: List[str],
                      start_date: str,
                      end_date: str,
-                     initial_capital: float = 100000.0,  # Added initial_capital parameter
+                     initial_capital: float = 100000.0,
                      strategy_params: Optional[Dict[str, Any]] = None,
-                     risk_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                     risk_params: Optional[Dict[str, Any]] = None,
+                     cost_params: Optional[Dict[str, Any]] = None,      # Added cost_params
+                     rebalancing_params: Optional[Dict[str, Any]] = None # Added rebalancing_params
+                     ) -> Dict[str, Any]:
         """
         Run a backtest with the specified parameters.
         
@@ -59,15 +62,17 @@ class BacktestService:
             tickers: List of ticker symbols.
             start_date: Backtest start date.
             end_date: Backtest end date.
-            initial_capital: The starting capital for the backtest.  # Added docstring
+            initial_capital: The starting capital for the backtest.
             strategy_params: Dictionary of strategy-specific parameters.
             risk_params: Dictionary of risk management parameters.
+            cost_params: Dictionary of trading cost parameters (commission, slippage). # Added docstring
+            rebalancing_params: Dictionary of portfolio rebalancing parameters.       # Added docstring
             
         Returns:
             Dictionary containing backtest results and status.
         """
         try:
-            logger.info(f"Running backtest: Strategy={strategy_type}, Tickers={tickers}, Start={start_date}, End={end_date}, Capital={initial_capital}")  # Log initial capital
+            logger.info(f"Running backtest: Strategy={strategy_type}, Tickers={tickers}, Start={start_date}, End={end_date}, Capital={initial_capital}, Costs={cost_params}, Rebalancing={rebalancing_params}") # Log new params
             
             # Update configuration with date range
             config.START_DATE = start_date
@@ -76,12 +81,14 @@ class BacktestService:
             # Re-initialize BacktestManager with the new initial capital
             self.backtest_manager = BacktestManager(initial_capital=initial_capital)
             
-            # Run the backtest
+            # Run the backtest - Pass new params to manager
             signals, results, stats = self.backtest_manager.run_backtest(
                 strategy_type=strategy_type,
                 tickers=tickers,
                 strategy_params=strategy_params,
-                risk_params=risk_params
+                risk_params=risk_params,
+                cost_params=cost_params,          # Pass cost_params
+                rebalancing_params=rebalancing_params # Pass rebalancing_params
             )
             
             # Store results for later use

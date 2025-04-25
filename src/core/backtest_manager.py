@@ -41,11 +41,18 @@ class BacktestManager:
             logger.error(f"CRITICAL: Failed to initialize DataLoader in BacktestManager: {e}", exc_info=True)
             raise RuntimeError("DataLoader initialization failed") from e
 
-    def run_backtest(self, strategy_type: str, tickers: list[str], strategy_params: dict[str, Any] = None, risk_params: dict[str, Any] = None):
+    def run_backtest(self, 
+                     strategy_type: str, 
+                     tickers: list[str], 
+                     strategy_params: Optional[dict[str, Any]] = None, 
+                     risk_params: Optional[dict[str, Any]] = None,
+                     cost_params: Optional[Dict[str, Any]] = None,      # Added cost_params
+                     rebalancing_params: Optional[Dict[str, Any]] = None # Added rebalancing_params
+                     ):
         """Runs a backtest for the specified strategy, tickers, and parameters."""
         logger.info(f"--- Starting New Backtest ---")
         logger.info(f"Strategy: {strategy_type}, Tickers: {tickers}")
-        logger.info(f"Strategy Params: {strategy_params}, Risk Params: {risk_params}")
+        logger.info(f"Strategy Params: {strategy_params}, Risk Params: {risk_params}, Cost Params: {cost_params}, Rebalancing Params: {rebalancing_params}") # Log new params
 
         try:
             # --- 1. Initialization ---
@@ -93,7 +100,14 @@ class BacktestManager:
             except Exception as e:
                 logger.error(f"Error initializing RiskManager with provided config: {e}. Using default RiskManager.", exc_info=True)
                 risk_manager = RiskManager()
-            portfolio_manager = PortfolioManager(initial_capital=self.initial_capital, risk_manager=risk_manager)
+            
+            # Initialize PortfolioManager with initial capital, risk manager, cost params, and rebalancing params
+            portfolio_manager = PortfolioManager(
+                initial_capital=self.initial_capital, 
+                risk_manager=risk_manager,
+                cost_params=cost_params or {},          # Pass cost_params
+                rebalancing_params=rebalancing_params or {} # Pass rebalancing_params
+            )
 
             # --- 4. Signal Generation (Pre-computation) ---
             all_signals = {}

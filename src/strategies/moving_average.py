@@ -16,7 +16,7 @@ import logging
 # Configure logging for this module
 logger = logging.getLogger(__name__)
 
-# --- NAZWA KLASY POZOSTAJE BEZ ZMIAN (lub dostosuj do swojej) ---
+# --- CLASS NAME REMAINS UNCHANGED (or adjust to yours) ---
 class MovingAverageStrategy(BaseStrategy):
     """
     | Characteristic | Description |
@@ -30,120 +30,122 @@ class MovingAverageStrategy(BaseStrategy):
     """
     def __init__(self, tickers: list[str], short_window: int = 20, long_window: int = 50):
         """
-        Inicjalizuje strategię MA Cross.
+        Initializes the MA Cross strategy.
 
         Args:
-            tickers (list[str]): Lista tickerów dla strategii.
-            short_window (int): Okres (liczba świec) dla krótkoterminowej średniej kroczącej. Domyślnie 20.
-            long_window (int): Okres (liczba świec) dla długoterminowej średniej kroczącej. Domyślnie 50.
+            tickers (list[str]): List of tickers for the strategy.
+            short_window (int): Period (number of candles) for the short-term moving average. Default 20.
+            long_window (int): Period (number of candles) for the long-term moving average. Default 50.
 
         Raises:
-            ValueError: Jeśli okresy nie są dodatnimi liczbami całkowitymi lub short_window >= long_window.
+            ValueError: If periods are not positive integers or short_window >= long_window.
         """
-        super().__init__() # Wywołanie konstruktora klasy bazowej bez argumentów
+        super().__init__() # Call the base class constructor without arguments
         if not (isinstance(short_window, int) and isinstance(long_window, int) and short_window > 0 and long_window > 0):
             logger.error(f"Invalid window parameters: short={short_window}, long={long_window}. Must be positive integers.")
-            raise ValueError("Okresy średnich kroczących muszą być dodatnimi liczbami całkowitymi.")
+            raise ValueError("Moving average periods must be positive integers.")
         if short_window >= long_window:
             logger.error(f"Invalid window parameters: short={short_window}, long={long_window}. Short must be less than long.")
-            raise ValueError("Krótki okres (short_window) musi być mniejszy niż długi okres (long_window).")
+            raise ValueError("The short window must be smaller than the long window.")
 
         self.tickers = tickers
         self.short_window = short_window
         self.long_window = long_window
-        # Przechowuj parametry również w słowniku dla łatwiejszego dostępu/logowania
+        # Store parameters also in a dictionary for easier access/logging
         self.parameters = {'short_window': short_window, 'long_window': long_window}
         logger.info(f"Moving Average Strategy initialized with parameters: {self.parameters}")
 
     def get_parameters(self) -> dict:
-        """Zwraca słownik z aktualnymi parametrami strategii."""
+        """Returns a dictionary with the current strategy parameters."""
         return self.parameters
 
-    def generate_signals(self, ticker: str, data: pd.DataFrame) -> pd.DataFrame: # Dodano argument 'ticker'
+    def generate_signals(self, ticker: str, data: pd.DataFrame) -> pd.DataFrame: # Added 'ticker' argument
         """
-        Generuje sygnały transakcyjne na podstawie przecięć średnich kroczących.
+        Generates trading signals based on moving average crossovers.
 
         Args:
-            ticker (str): Ticker instrumentu (obecnie nieużywany w tej logice, ale wymagany przez interfejs).
-            data (pd.DataFrame): DataFrame zawierający co najmniej kolumnę 'Close'
-                                 i wystarczającą historię do obliczenia najdłuższej średniej.
+            ticker (str): Instrument ticker (currently unused in this logic, but required by the interface).
+            data (pd.DataFrame): DataFrame containing at least the 'Close' column
+                                 and enough history to calculate the longest average.
 
         Returns:
-            pd.DataFrame: DataFrame z indeksem takim samym jak `data`, zawierający kolumny:
-                          'Signal' (1 dla kupna, -1 dla sprzedaży, 0 dla braku sygnału w danym dniu)
-                          'Positions' (1 dla pozycji długiej, -1 dla krótkiej (jeśli zaimplementowano), 0 dla braku pozycji)
-                          'Reason' (opisowy powód wygenerowania sygnału)
+            pd.DataFrame: DataFrame with the same index as `data`, containing columns:
+                          'Signal' (1 for buy, -1 for sell, 0 for no signal on that day)
+                          'Positions' (1 for long position, -1 for short (if implemented), 0 for no position)
+                          'Reason' (descriptive reason for generating the signal)
 
         Raises:
-            ValueError: Jeśli w danych brakuje kolumny 'Close'.
-            KeyError: Jeśli obliczone kolumny SMA nie pojawią się w DataFrame.
+            ValueError: If the 'Close' column is missing in the data.
+            KeyError: If the calculated SMA columns do not appear in the DataFrame.
         """
         required_column = 'Close'
         if required_column not in data.columns:
             logger.error(f"Required column '{required_column}' not found in input data.")
             raise ValueError(f"DataFrame must contain '{required_column}' column.")
 
-        # Sprawdź, czy jest wystarczająco danych
+        # Check if there is enough data
         if len(data) < self.long_window:
-            logger.warning(f"Not enough data ({len(data)} rows) to calculate the long SMA ({self.long_window}). Returning no signals for {ticker}.") # Dodano ticker do logu
+            logger.warning(f"Not enough data ({len(data)} rows) to calculate the long SMA ({self.long_window}). Returning no signals for {ticker}.") # Added ticker to log
             signals = pd.DataFrame(index=data.index)
             signals['Signal'] = 0
             signals['Positions'] = 0
             signals['Reason'] = ''
             return signals
 
-        # Utwórz kopię, aby uniknąć modyfikacji oryginalnego DataFrame (jeśli jest to wymagane)
+        # Create a copy to avoid modifying the original DataFrame (if required)
         df = data.copy()
         signals = pd.DataFrame(index=df.index)
-        signals['Signal'] = 0  # Domyślnie brak sygnału
-        signals['Reason'] = '' # Nowa kolumna na powód sygnału
+        signals['Signal'] = 0  # Default to no signal
+        signals['Reason'] = '' # New column for signal reason
 
         short_sma_col = f'SMA_{self.short_window}'
         long_sma_col = f'SMA_{self.long_window}'
 
         try:
-            # Oblicz średnie kroczące używając pandas_ta
+            # Calculate moving averages using pandas_ta
             df.ta.sma(length=self.short_window, append=True, col_names=(short_sma_col,))
             df.ta.sma(length=self.long_window, append=True, col_names=(long_sma_col,))
 
-            # Sprawdź, czy kolumny zostały poprawnie dodane
+            # Check if columns were added correctly
             if short_sma_col not in df.columns or long_sma_col not in df.columns:
-                 logger.error(f"SMA columns ({short_sma_col}, {long_sma_col}) not found after pandas_ta calculation for {ticker}.") # Dodano ticker
+                 logger.error(f"SMA columns ({short_sma_col}, {long_sma_col}) not found after pandas_ta calculation for {ticker}.") # Added ticker
                  raise KeyError(f"SMA columns not found after calculation for {ticker}.")
 
-            # --- Logika generowania sygnałów ---
-            # Warunek kupna: krótka SMA przecina długą SMA od dołu
+            # --- Signal Generation Logic ---
+            # Buy condition: short SMA crosses above long SMA from below
             buy_condition = (df[short_sma_col] > df[long_sma_col]) & (df[short_sma_col].shift(1) <= df[long_sma_col].shift(1))
-            # Warunek sprzedaży: krótka SMA przecina długą SMA od góry
+            # Sell condition: short SMA crosses below long SMA from above
             sell_condition = (df[short_sma_col] < df[long_sma_col]) & (df[short_sma_col].shift(1) >= df[long_sma_col].shift(1))
 
-            # Przypisz sygnały i powody
+            # Assign signals and reasons
             signals.loc[buy_condition, 'Signal'] = 1
             signals.loc[buy_condition, 'Reason'] = f'SMA{self.short_window} Cross Above SMA{self.long_window}'
             
             signals.loc[sell_condition, 'Signal'] = -1
             signals.loc[sell_condition, 'Reason'] = f'SMA{self.short_window} Cross Below SMA{self.long_window}'
 
-            # --- Logika utrzymywania pozycji ---
+            # --- Position Holding Logic ---
             # Replace 0 with NA, forward fill, fill remaining NA with 0
-            positions_series = signals['Signal'].replace(0, pd.NA).ffill().fillna(0)
+            positions_series = signals['Signal'].replace(0, pd.NA)
+            positions_series = positions_series.ffill()
+            positions_series = positions_series.fillna(0)
             # Infer the best possible dtype after filling NAs, as suggested by the warning
             positions_series = positions_series.infer_objects(copy=False)
             # Ensure the final type is integer
             signals['Positions'] = positions_series.astype(int)
             signals['Positions'] = signals['Positions'].replace(-1, 0)  # No short positions
 
-            # --- Zaktualizowano log, aby pasował do nazwy strategii ---
-            logger.debug(f"Generated {signals['Signal'].ne(0).sum()} signals for Moving Average strategy on {ticker}.") # Dodano ticker
-            logger.debug(f"Buy signals: {signals['Signal'].eq(1).sum()}, Sell signals: {signals['Signal'].eq(-1).sum()} for {ticker}.") # Dodano ticker
+            # --- Updated log to match strategy name ---
+            logger.debug(f"Generated {signals['Signal'].ne(0).sum()} signals for Moving Average strategy on {ticker}.") # Added ticker
+            logger.debug(f"Buy signals: {signals['Signal'].eq(1).sum()}, Sell signals: {signals['Signal'].eq(-1).sum()} for {ticker}.") # Added ticker
 
         except Exception as e:
-            # --- Zaktualizowano log, aby pasował do nazwy strategii ---
-            logger.error(f"Error during Moving Average signal generation for {ticker}: {e}", exc_info=True) # Dodano ticker
+            # --- Updated log to match strategy name ---
+            logger.error(f"Error during Moving Average signal generation for {ticker}: {e}", exc_info=True) # Added ticker
             signals['Signal'] = 0
             signals['Positions'] = 0
-            signals['Reason'] = '' # Resetuj powód w razie błędu
-            # raise e # Opcjonalnie
+            signals['Reason'] = '' # Reset reason in case of error
+            # raise e # Optionally re-raise
 
-        # Zwróć sygnały, pozycje i powody
+        # Return signals, positions, and reasons
         return signals[['Signal', 'Positions', 'Reason']]

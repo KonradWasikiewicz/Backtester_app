@@ -42,7 +42,12 @@ class Position:
 class PortfolioManager:
     """Manages portfolio state, positions, cash, and trade execution."""
 
-    def __init__(self, initial_capital: float = 10000.0, risk_manager: Optional[RiskManager] = None):
+    def __init__(self, 
+                 initial_capital: float = 10000.0, 
+                 risk_manager: Optional[RiskManager] = None,
+                 cost_params: Optional[Dict[str, Any]] = None,      # Added cost_params
+                 rebalancing_params: Optional[Dict[str, Any]] = None # Added rebalancing_params
+                 ):
         if initial_capital <= 0: raise ValueError("Initial capital must be positive.")
         self.initial_capital = initial_capital
         self.cash = initial_capital
@@ -50,11 +55,18 @@ class PortfolioManager:
         self.closed_trades: List[Dict] = []
         self.portfolio_value_history: List[Tuple[pd.Timestamp, float]] = []
         self.risk_manager = risk_manager if risk_manager is not None else RiskManager()
+        
+        # Store cost and rebalancing parameters
+        self.cost_params = cost_params or {}
+        self.rebalancing_params = rebalancing_params or {}
+        self.commission_pct = self.cost_params.get('commission_pct', 0.0) # Default to 0 if not provided
+        self.slippage_pct = self.cost_params.get('slippage_pct', 0.0)     # Default to 0 if not provided
+
         # Store risk feature flags for easy access
         self.use_stop_loss = False  # Will be set when RiskManager has stop_loss enabled
         self.use_take_profit = False  # Will be set when RiskManager has take_profit enabled
         self._update_risk_features()
-        logger.info(f"PortfolioManager initialized with capital ${initial_capital:,.2f} and linked RiskManager.")
+        logger.info(f"PortfolioManager initialized with capital ${initial_capital:,.2f}, linked RiskManager, Cost Params: {self.cost_params}, Rebalancing Params: {self.rebalancing_params}.")
         
     def _update_risk_features(self):
         """Update internal flags based on risk manager settings"""
@@ -179,11 +191,31 @@ class PortfolioManager:
         # --- Calculate Stops (if applicable) ---
         stop_loss_price, take_profit_price = self.risk_manager.calculate_stops(entry_price=entry_price, direction=direction)
 
+        # --- Apply Slippage to Entry Price ---
+        slippage_amount = entry_price * self.slippage_pct
+        if direction > 0: # Long entry
+            entry_price += slippage_amount # Buy higher
+        else: # Short entry
+            entry_price -= slippage_amount # Sell lower
+        
+        # Recalculate cost after slippage
+        cost = shares_to_trade * entry_price
+
+        # --- Calculate Commission ---
+        commission = cost * self.commission_pct
+        total_cost = cost + commission
+
+        # --- Final Cash Check (including commission) ---
+        if self.cash < total_cost:
+            # If still not enough cash even after potential share reduction, reject
+            logger.warning(f"Insufficient cash (${self.cash:.2f}) for total cost (${total_cost:.2f} incl. commission) for {ticker}.")
+            return 'insufficient_cash'
+
         # --- Open Position --- 
         new_position = Position(
             ticker=ticker, 
             entry_date=entry_date, 
-            entry_price=entry_price, 
+            entry_price=entry_price, # Use slippage-adjusted price
             shares=shares_to_trade, 
             direction=direction, 
             stop_loss_price=stop_loss_price, 
@@ -192,26 +224,68 @@ class PortfolioManager:
             use_trailing=self.risk_manager.use_trailing_stop
         )
         self.positions[ticker] = new_position
-        self.cash -= cost
+        self.cash -= total_cost # Deduct cost + commission
 
-        logger.debug(f"Opened {'LONG' if direction > 0 else 'SHORT'} position: {shares_to_trade} {ticker} @ ${entry_price:.2f} on {entry_date.date()}. Cost: ${cost:.2f}, Cash: ${self.cash:.2f}, SL: ${stop_loss_price:.2f}, TP: ${take_profit_price:.2f}")
+        logger.debug(f"Opened {'LONG' if direction > 0 else 'SHORT'} position: {shares_to_trade} {ticker} @ ${entry_price:.2f} (after slippage) on {entry_date.date()}. Cost: ${cost:.2f}, Comm: ${commission:.2f}, Cash: ${self.cash:.2f}, SL: ${stop_loss_price:.2f}, TP: ${take_profit_price:.2f}")
         return None # Success
 
     def close_position(self, ticker: str, exit_price: float, exit_date: pd.Timestamp, reason: str = "unknown") -> bool:
-        """Closes an existing position and records the trade."""
+        """Closes an existing position and records the trade, including costs."""
         if ticker not in self.positions: logger.warning(f"Attempted to close non-existent position: {ticker}"); return False
         if pd.isna(exit_price) or exit_price <= 0: logger.error(f"Invalid exit price ({exit_price}) for closing {ticker}."); return False
 
-        position = self.positions[ticker]; proceeds = position.shares * exit_price; cost_basis = position.shares * position.entry_price
-        gross_pnl = (exit_price - position.entry_price) * position.shares * position.direction
-        pnl_pct = (gross_pnl / cost_basis) * 100 if cost_basis != 0 else 0.0
+        position = self.positions[ticker]
+        
+        # --- Apply Slippage to Exit Price ---
+        slippage_amount = exit_price * self.slippage_pct
+        if position.direction > 0: # Closing Long
+            exit_price -= slippage_amount # Sell lower
+        else: # Closing Short
+            exit_price += slippage_amount # Buy higher
 
-        trade_record = {'ticker': position.ticker, 'entry_date': position.entry_date, 'exit_date': exit_date, 'entry_price': position.entry_price, 'exit_price': exit_price, 'shares': position.shares, 'direction': position.direction, 'pnl': gross_pnl, 'pnl_pct': pnl_pct, 'exit_reason': reason, 'holding_period_days': (exit_date - position.entry_date).days if pd.notna(position.entry_date) and pd.notna(exit_date) else None, 'initial_stop_price': position.initial_stop_price, 'final_stop_price': position.stop_loss_price}
+        proceeds_before_commission = position.shares * exit_price
+        cost_basis = position.shares * position.entry_price # Cost basis uses the entry price (already includes slippage)
+
+        # --- Calculate Commission ---
+        commission = proceeds_before_commission * self.commission_pct
+        net_proceeds = proceeds_before_commission - commission
+
+        # --- Calculate PnL ---
+        # PnL calculation should use the actual transaction prices (entry with slippage, exit with slippage)
+        # and account for commissions on both entry and exit.
+        entry_commission = (position.shares * position.entry_price) * self.commission_pct # Commission paid at entry
+        exit_commission = commission # Commission paid at exit
+        total_commission = entry_commission + exit_commission
+
+        # Gross PnL (before commissions)
+        gross_pnl = (exit_price - position.entry_price) * position.shares * position.direction
+        # Net PnL (after commissions)
+        net_pnl = gross_pnl - total_commission
+        
+        pnl_pct = (net_pnl / cost_basis) * 100 if cost_basis != 0 else 0.0
+
+        trade_record = {
+            'ticker': position.ticker, 
+            'entry_date': position.entry_date, 
+            'exit_date': exit_date, 
+            'entry_price': position.entry_price, # Price after entry slippage
+            'exit_price': exit_price,         # Price after exit slippage
+            'shares': position.shares, 
+            'direction': position.direction, 
+            'gross_pnl': gross_pnl,
+            'net_pnl': net_pnl,               # Added net PnL
+            'commission': total_commission,   # Added total commission
+            'pnl_pct': pnl_pct,               # PnL % based on net PnL
+            'exit_reason': reason, 
+            'holding_period_days': (exit_date - position.entry_date).days if pd.notna(position.entry_date) and pd.notna(exit_date) else None, 
+            'initial_stop_price': position.initial_stop_price, 
+            'final_stop_price': position.stop_loss_price
+        }
         self.closed_trades.append(trade_record)
-        self.cash += proceeds
+        self.cash += net_proceeds # Add net proceeds (after commission)
         del self.positions[ticker]
 
-        logger.debug(f"Closed position: {position.shares} {ticker} @ ${exit_price:.2f} on {exit_date.date()} (Reason: {reason}). PnL: ${gross_pnl:,.2f} ({pnl_pct:.2f}%). Cash: ${self.cash:,.2f}")
+        logger.debug(f"Closed position: {position.shares} {ticker} @ ${exit_price:.2f} (after slippage) on {exit_date.date()} (Reason: {reason}). Gross PnL: ${gross_pnl:,.2f}, Net PnL: ${net_pnl:,.2f}, Comm: ${total_commission:.2f}. Cash: ${self.cash:,.2f}")
         return True
 
     def close_all_positions(self, current_prices: Dict[str, float], current_date: pd.Timestamp, reason: str = "liquidation"):

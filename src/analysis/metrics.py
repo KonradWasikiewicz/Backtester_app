@@ -384,12 +384,13 @@ def calculate_trade_statistics(trades: List[Dict]) -> Dict[str, Any]:
     trade_count_processed = 0 # DEBUG
 
     for trade in trades:
-        pnl = trade.get('pnl')
+        # Use 'net_pnl' instead of 'pnl' as it reflects profit after costs
+        pnl = trade.get('net_pnl') 
         if trade_count_processed < 5: # Log first 5 PnLs # DEBUG
-            logger.debug(f"Processing trade {trade_count_processed + 1}, PnL: {pnl}") # DEBUG
+            logger.debug(f"Processing trade {trade_count_processed + 1}, Net PnL: {pnl}") # DEBUG
 
         if pnl is None or not isinstance(pnl, (int, float)) or np.isnan(pnl):
-            logger.warning(f"Skipping trade due to invalid PnL: {trade}")
+            logger.warning(f"Skipping trade due to invalid Net PnL: {trade}")
             trade_count_processed += 1 # DEBUG
             continue
 
