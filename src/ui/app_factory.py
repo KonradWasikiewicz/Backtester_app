@@ -28,8 +28,10 @@ from src.ui.callbacks.strategy_callbacks import register_strategy_callbacks
 from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
 from src.ui.callbacks.risk_management_callbacks import register_risk_management_callbacks
 from src.ui.callbacks.wizard_callbacks import register_wizard_callbacks
-from src.ui.layouts.strategy_config import create_strategy_config_section  # Use full wizard layout with all steps
-from src.ui.layouts.results_display import create_results_section
+from src.ui.layouts.strategy_config import create_strategy_config_section
+# --- Import the new panel layout functions ---
+from src.ui.layouts.results_display import create_center_panel_layout, create_right_panel_layout
+# --- END Import ---
 from src.version import get_version, get_version_info, RELEASE_DATE, get_changelog  # Import version info
 
 def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -> dash.Dash:
@@ -307,7 +309,7 @@ def create_version_display():
 
 def create_app_layout() -> html.Div:
     """
-    Create the main app layout.
+    Create the main app layout with a three-panel structure.
 
     Returns:
         html.Div: The main app layout
@@ -322,8 +324,6 @@ def create_app_layout() -> html.Div:
         layout = html.Div([
             # Store for app state
             dcc.Store(id="app-state", data={}),
-
-            # --- ADDED: Store to signal backtest completion ---
             dcc.Store(id='backtest-results-store'),
 
             # Changelog modal
@@ -373,24 +373,29 @@ def create_app_layout() -> html.Div:
                 className="mb-4"
             ),
 
-            # Main content
+            # --- UPDATED Three-Panel Main Content ---
             dbc.Container([
                 dbc.Row([
-                    # Left panel: Strategy configuration
+                    # Left Panel (Steps/Config) - 25% width on large screens
                     dbc.Col([
                         create_strategy_config_section(available_tickers),
-                        # Add the backtest status message container here
                         html.Div(id="backtest-status", className="mb-3 text-center"),
-                        # Spacer
-                        html.Div(className="my-4")
-                    ], md=4, className="mb-4"), # Added column width and margin
+                    ], width=12, lg=3, className="mb-4", style={'paddingRight': '15px'}), # Add padding
 
-                    # Right panel: Results display
+                    # Center Panel (Charts/Table) - 50% width on large screens
                     dbc.Col([
-                        create_results_section() # Use the function that includes the loader
-                    ], md=8)
+                        # Use the new center panel layout function
+                        create_center_panel_layout()
+                    ], width=12, lg=6, className="mb-4", style={'paddingLeft': '15px', 'paddingRight': '15px'}), # Add padding
+
+                    # Right Panel (Stats) - 25% width on large screens
+                    dbc.Col([
+                        # Use the new right panel layout function
+                        create_right_panel_layout()
+                    ], width=12, lg=3, className="mb-4", style={'paddingLeft': '15px'}) # Add padding
                 ])
             ], fluid=True),
+            # --- END UPDATED Three-Panel Main Content ---
 
             # Footer
             html.Footer(

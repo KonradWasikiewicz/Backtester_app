@@ -16,11 +16,11 @@ from dash import dash_table # Import dash_table
 from src.services.backtest_service import BacktestService
 from src.ui.components import create_metric_card 
 # Import layout functions needed for the new callback
-from src.visualization.chart_utils import create_empty_chart 
+from src.visualization.chart_utils import create_empty_chart
 # Corrected import: Use BacktestVisualizer instead of Visualizer
-from src.visualization.visualizer import BacktestVisualizer 
-# Import layout functions needed for the new callback
-from src.ui.layouts.results_display import create_full_results_layout, create_no_results_placeholder 
+from src.visualization.visualizer import BacktestVisualizer
+# Import layout functions needed for the new callback - REMOVED UNUSED IMPORTS
+# from src.ui.layouts.results_display import create_full_results_layout, create_no_results_placeholder
 from src.core.exceptions import BacktestError, DataError
 from src.core.constants import CHART_THEME
 
@@ -187,76 +187,139 @@ def register_backtest_callbacks(app: Dash):
 
     # --- Result Update Callbacks (Triggered by Store) ---
 
-    # Update Metrics Card
+    # --- MODIFIED: Update Performance Metrics in Right Panel ---
     @app.callback(
-        Output('metrics-summary-container', 'children'),
+        Output('performance-metrics-container', 'children'), # Target the right panel container
         Input('backtest-results-store', 'data'),
         prevent_initial_call=True
     )
-    def update_metrics_display(store_data):
-        logger.info("--- update_metrics_display callback triggered ---") # ADDED LOG
+    def update_performance_metrics_display(store_data):
+        logger.info("--- update_performance_metrics_display callback triggered ---")
         if not store_data or not store_data.get("success"):
             error = store_data.get("error", "Backtest failed or not run yet.") if store_data else "Run a backtest to see metrics."
-            logger.warning(f"Metrics display update skipped or failed: {error}")
-            logger.info("--- update_metrics_display: Returning empty list ---") # ADDED LOG
-            return [] 
+            logger.warning(f"Performance metrics display update skipped or failed: {error}")
+            return [dbc.Col(dbc.Alert(error, color="warning", className="m-2"), width=12)] # Display warning in the panel
 
         try:
             metrics = store_data.get("metrics")
             if not metrics:
-                 logger.warning("No metrics data found in store for display.")
-                 logger.info("--- update_metrics_display: Returning empty list (no metrics) ---") # ADDED LOG
-                 return [] 
+                 logger.warning("No metrics data found in store for performance display.")
+                 return [dbc.Col(dbc.Alert("No metrics data available.", color="info", className="m-2"), width=12)]
 
-            logger.info(f"Updating metrics display with {len(metrics)} metrics.")
-            # Define the order and labels for metrics
-            metric_order = [
-                ("starting-balance", "Starting Balance", "fas fa-coins"),
-                ("ending-balance", "Ending Balance", "fas fa-wallet"),
-                ("total-return", "Total Return (%)", "fas fa-chart-line"),
-                ("cagr", "CAGR (%)", "fas fa-calendar-alt"),
+            logger.info(f"Updating performance metrics display.")
+            # Define the order and labels for PERFORMANCE metrics
+            performance_metric_order = [
+                ("starting-balance", "Start Balance", "fas fa-coins"),
+                ("ending-balance", "End Balance", "fas fa-wallet"),
+                ("total-return", "Total Return", "fas fa-chart-line"), # Removed (%)
+                ("cagr", "CAGR", "fas fa-calendar-alt"), # Removed (%)
                 ("sharpe", "Sharpe Ratio", "fas fa-chart-pie"),
-                ("max-drawdown", "Max Drawdown (%)", "fas fa-arrow-down"),
+                ("max-drawdown", "Max Drawdown", "fas fa-arrow-down"), # Removed (%)
                 ("calmar-ratio", "Calmar Ratio", "fas fa-balance-scale"),
                 ("recovery-factor", "Recovery Factor", "fas fa-undo"),
-                ("trades-count", "Total Trades", "fas fa-exchange-alt"),
-                ("win-rate", "Win Rate (%)", "fas fa-trophy"),
-                ("profit-factor", "Profit Factor", "fas fa-plus-circle"),
-                ("avg-trade", "Avg Trade (%)", "fas fa-percentage"),
-                ("signals-generated", "Signals Generated", "fas fa-signal"),
-                ("rejected-signals-total", "Rejected Signals", "fas fa-ban")
+                # Add other relevant performance metrics here if needed
             ]
 
             cards = []
-            for key, label, icon in metric_order:
+            for key, label, icon in performance_metric_order:
                 value = metrics.get(key)
                 if value is not None:
                     # Format value based on type (e.g., percentage, currency)
                     if isinstance(value, (int, float)):
                         if "balance" in key:
                             formatted_value = f"${value:,.2f}"
-                        elif "%" in label or key in ["cagr", "max-drawdown", "win-rate", "avg-trade"]:
+                        elif key in ["total-return", "cagr", "max-drawdown"]:
                             formatted_value = f"{value:.2f}%"
-                        elif key in ["sharpe", "calmar-ratio", "profit-factor", "recovery-factor"]:
+                        elif key in ["sharpe", "calmar-ratio", "recovery-factor"]:
                             formatted_value = f"{value:.2f}"
                         else:
                             formatted_value = f"{value:,}" # Integer formatting
                     else:
                         formatted_value = str(value) # Fallback for other types
 
-                    cards.append(create_metric_card(label, formatted_value, icon))
+                    # Use dbc.Col for grid layout within the Row
+                    cards.append(dbc.Col(create_metric_card(label, formatted_value, icon), md=6, lg=12, className="mb-2")) # 2 per row on md, 1 on lg
                 else:
-                    logger.warning(f"Metric '{key}' not found in results.")
-                    cards.append(create_metric_card(label, "N/A", icon)) # Show N/A if metric missing
+                    logger.warning(f"Performance metric '{key}' not found in results.")
+                    cards.append(dbc.Col(create_metric_card(label, "N/A", icon), md=6, lg=12, className="mb-2"))
 
-            logger.info("--- update_metrics_display: Returning metric cards ---") # ADDED LOG
+            logger.info("--- update_performance_metrics_display: Returning performance metric cards ---")
             return cards
         except Exception as e:
-            logger.error(f"Error updating metrics display: {e}", exc_info=True)
-            alert = dbc.Alert(f"Error displaying metrics: {e}", color="danger")
-            logger.info("--- update_metrics_display: Returning error alert ---") # ADDED LOG
-            return [alert]
+            logger.error(f"Error updating performance metrics display: {e}", exc_info=True)
+            alert = dbc.Alert(f"Error displaying performance metrics: {e}", color="danger")
+            logger.info("--- update_performance_metrics_display: Returning error alert ---")
+            return [dbc.Col(alert, width=12)]
 
+    # --- NEW: Update Trade Statistics in Right Panel ---
+    @app.callback(
+        Output('trade-metrics-container', 'children'), # Target the right panel container
+        Input('backtest-results-store', 'data'),
+        prevent_initial_call=True
+    )
+    def update_trade_stats_display(store_data):
+        logger.info("--- update_trade_stats_display callback triggered ---")
+        if not store_data or not store_data.get("success"):
+            error = store_data.get("error", "Backtest failed or not run yet.") if store_data else "Run a backtest to see stats."
+            logger.warning(f"Trade stats display update skipped or failed: {error}")
+            # Return [] or a placeholder message if desired when no data
+            return [dbc.Col(dbc.Alert(error, color="warning", className="m-2"), width=12)]
+
+        try:
+            metrics = store_data.get("metrics")
+            if not metrics:
+                 logger.warning("No metrics data found in store for trade stats display.")
+                 return [dbc.Col(dbc.Alert("No metrics data available.", color="info", className="m-2"), width=12)]
+
+            logger.info(f"Updating trade stats display.")
+            # Define the order and labels for TRADE statistics
+            trade_metric_order = [
+                ("trades-count", "Total Trades", "fas fa-exchange-alt"),
+                ("win-rate", "Win Rate", "fas fa-trophy"), # Removed (%)
+                ("profit-factor", "Profit Factor", "fas fa-plus-circle"),
+                ("avg-trade", "Avg Trade", "fas fa-percentage"), # Removed (%)
+                ("signals-generated", "Signals Gen.", "fas fa-signal"), # Abbreviated
+                ("rejected-signals-total", "Rejected Sig.", "fas fa-ban"), # Abbreviated
+                # Add other relevant trade stats here if needed
+            ]
+
+            cards = []
+            for key, label, icon in trade_metric_order:
+                value = metrics.get(key)
+                if value is not None:
+                    # Format value based on type
+                    if isinstance(value, (int, float)):
+                        if key in ["win-rate", "avg-trade"]:
+                            formatted_value = f"{value:.2f}%"
+                        elif key == "profit-factor":
+                            formatted_value = f"{value:.2f}"
+                        else:
+                            formatted_value = f"{value:,}" # Integer formatting
+                    else:
+                        formatted_value = str(value) # Fallback
+
+                    # Use dbc.Col for grid layout within the Row
+                    cards.append(dbc.Col(create_metric_card(label, formatted_value, icon), md=6, lg=12, className="mb-2")) # 2 per row on md, 1 on lg
+                else:
+                    logger.warning(f"Trade metric '{key}' not found in results.")
+                    cards.append(dbc.Col(create_metric_card(label, "N/A", icon), md=6, lg=12, className="mb-2"))
+
+            logger.info("--- update_trade_stats_display: Returning trade stat cards ---")
+            return cards
+        except Exception as e:
+            logger.error(f"Error updating trade stats display: {e}", exc_info=True)
+            alert = dbc.Alert(f"Error displaying trade stats: {e}", color="danger")
+            logger.info("--- update_trade_stats_display: Returning error alert ---")
+            return [dbc.Col(alert, width=12)]
+
+    # --- REMOVED old update_metrics_display callback ---
+    # @app.callback(
+    #     Output('metrics-summary-container', 'children'),
+    #     Input('backtest-results-store', 'data'),
+    #     prevent_initial_call=True
+    # )
+    # def update_metrics_display(store_data):
+    #    ...
 
     # Update Portfolio Chart
     @app.callback(

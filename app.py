@@ -3,6 +3,11 @@ import logging
 import traceback
 from pathlib import Path
 import os
+import pandas as pd # Import pandas
+
+# --- Set Pandas Option for Future Behavior ---
+pd.set_option('future.no_silent_downcasting', True)
+# --- End Set Option ---
 
 # Ensure src is in the path
 APP_ROOT = Path(__file__).resolve().parent
