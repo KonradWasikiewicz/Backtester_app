@@ -78,7 +78,7 @@ def register_backtest_callbacks(app: Dash):
                      commission, slippage, # Added costs
                      rebalancing_frequency, rebalancing_threshold # Added rebalancing
                      ):
-        logger.info("--- run_backtest callback triggered ---") # ADDED LOG
+        logger.info("--- run_backtest callback triggered ---")
         if not n_clicks:
             logger.warning("run_backtest triggered without click.")
             raise PreventUpdate
@@ -89,31 +89,33 @@ def register_backtest_callbacks(app: Dash):
             logger.warning("run_backtest triggered without context.")
             raise PreventUpdate
 
-        logger.info(f"Received tickers: {tickers} (type: {type(tickers)})") # Log received tickers
+        logger.info(f"Received tickers: {tickers} (type: {type(tickers)})")
 
-        # --- FIX: Handle tickers as a list ---
-        # Check if tickers is a list and not empty
+        # Handle tickers as a list
         if isinstance(tickers, list) and tickers:
-            tickers_list = [str(t).strip() for t in tickers if t] # Ensure elements are strings and stripped
-        elif isinstance(tickers, str) and tickers.strip(): # Handle case where it might still be a string (e.g., single ticker input)
+            tickers_list = [str(t).strip() for t in tickers if t]
+        elif isinstance(tickers, str) and tickers.strip():
              tickers_list = [t.strip() for t in tickers.split(',') if t.strip()]
         else:
-            tickers_list = [] # Default to empty list if None, empty list, or empty string
-        # --- END FIX ---
+            tickers_list = []
 
         # Validate required inputs
         if not all([strategy_type, tickers_list, start_date, end_date, initial_capital]):
             error_msg = "Missing required inputs: Strategy, Tickers, Start/End Dates, or Initial Capital."
             logger.error(f"Input validation failed: {error_msg}")
+            # Return error structure compatible with store expectations
             return {"timestamp": time.time(), "success": False, "error": error_msg}
 
         # --- Parameter Gathering and Cleaning ---
-        # Example: Convert dates
-        start_date_dt = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
-        end_date_dt = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
-        # Example: Map strategy params
+        try:
+            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
+            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
+        except ValueError as e:
+             error_msg = f"Invalid date format: {e}. Please use YYYY-MM-DD."
+             logger.error(error_msg)
+             return {"timestamp": time.time(), "success": False, "error": error_msg}
+
         strategy_params_dict = {pid['index']: val for pid, val in zip(strategy_param_ids, strategy_param_values)}
-        # Example: Build risk params dict
         risk_params_dict = {
             'features': selected_risk_features or [],
             'max_position_size': max_position_size,
@@ -124,65 +126,53 @@ def register_backtest_callbacks(app: Dash):
             'max_drawdown': max_drawdown,
             'max_daily_loss': max_daily_loss
         }
-        # Example: Build trading costs dict
         trading_costs_dict = {
             'commission_per_trade': commission,
             'slippage_per_trade': slippage
         }
-        # Example: Build rebalancing dict
         rebalancing_params_dict = {
             'frequency': rebalancing_frequency,
             'threshold': rebalancing_threshold
         }
 
         try:
-            logger.info("Starting backtest execution...")
+            logger.info("Calling backtest_service.run_backtest...")
             start_time = time.time()
 
-            # Run the backtest using the service
+            # --- MODIFIED: Call service and directly return its output --- 
+            # The service now returns the dictionary ready for the store
             results_package = backtest_service.run_backtest(
                 strategy_type=strategy_type,
-                tickers=tickers_list, # Use the cleaned list
-                start_date=start_date_dt, # Use the datetime object
-                end_date=end_date_dt,   # Use the datetime object
-                initial_capital=initial_capital,
-                strategy_params=strategy_params_dict, # FIX: Use the correct dict variable
-                risk_params=risk_params_dict,         # FIX: Use the correct dict variable
+                tickers=tickers_list,
+                start_date=start_date_dt,
+                end_date=end_date_dt,
+                initial_capital=initial_capital, # Service handles parsing
+                strategy_params=strategy_params_dict,
+                risk_params=risk_params_dict,
                 cost_params=trading_costs_dict,
                 rebalancing_params=rebalancing_params_dict
             )
 
             end_time = time.time()
-            logger.info(f"Backtest execution finished in {end_time - start_time:.2f} seconds.")
+            logger.info(f"Backtest service call finished in {end_time - start_time:.2f} seconds.")
 
-            # --- Store results (success or failure) ---
+            # Add timestamp to the results package before returning
+            results_package["timestamp"] = time.time()
+
             if results_package.get("success"):
-                # Prepare data for the store
-                store_output = {
-                    "timestamp": time.time(),
-                    "success": True,
-                    "metrics": results_package.get("metrics"),
-                    "trades_data": results_package.get("trades_data"),
-                    "portfolio_value_chart_json": results_package.get("portfolio_value_chart_json"),
-                    "portfolio_returns_chart_json": results_package.get("portfolio_returns_chart_json"),
-                    "drawdown_chart_json": results_package.get("drawdown_chart_json"),
-                    "heatmap_json": results_package.get("heatmap_json"),
-                    # Store selected tickers for the selector
-                    "selected_tickers": tickers_list
-                }
-                logger.info("--- run_backtest: Storing SUCCESSFUL results ---") # ADDED LOG
-                return store_output
+                logger.info("--- run_backtest callback: Returning SUCCESSFUL results package from service ---")
             else:
-                error_msg = results_package.get("error", "Unknown error during backtest execution.")
-                logger.error(f"Backtest failed: {error_msg}")
-                logger.info("--- run_backtest: Storing FAILED results ---") # ADDED LOG
-                return {"timestamp": time.time(), "success": False, "error": error_msg}
+                logger.error(f"--- run_backtest callback: Returning FAILED results package from service: {results_package.get('error')} ---")
+
+            return results_package
+            # --- END MODIFICATION ---
 
         except Exception as e:
-            logger.error(f"Exception during backtest execution callback: {e}", exc_info=True)
-            error_msg = f"An unexpected error occurred in the callback: {e}"
+            # Catch errors specifically from the callback logic/service call
+            logger.error(f"Exception during run_backtest callback execution: {e}", exc_info=True)
+            error_msg = f"An unexpected error occurred in the backtest callback: {e}"
             logger.error(traceback.format_exc())
-            logger.info("--- run_backtest: Storing EXCEPTION results ---") # ADDED LOG
+            # Return error structure compatible with store expectations
             return {"timestamp": time.time(), "success": False, "error": error_msg}
 
     # --- Result Update Callbacks (Triggered by Store) ---
@@ -620,21 +610,44 @@ def register_backtest_callbacks(app: Dash):
             logger.info("--- update_trades_table: Returning error alert ---") # ADDED LOG
             return alert
 
+    # --- REMOVE problematic clientside callback ---
+    # app.clientside_callback(
+    #     ClientsideFunction(
+    #         namespace='clientside',
+    #         function_name='updateMainLoader'
+    #     ),
+    #     Output('loading-overlay', 'style'),
+    #     Input('portfolio-chart', 'loading_state'),
+    #     Input('drawdown-chart', 'loading_state'),
+    #     Input('monthly-returns-heatmap', 'loading_state'),
+    #     prevent_initial_call=True
+    # )
 
-    # --- Main Loader Callback ---
-    # Keep this as is for now
-    app.clientside_callback(
-        ClientsideFunction(
-            namespace='clientside',
-            function_name='updateMainLoader'
-        ),
+    # --- NEW Server-Side Callback for Main Loading Overlay ---
+    @app.callback(
         Output('loading-overlay', 'style'),
-        # Use the IDs of the dcc.Loading components defined in results_display.py
-        # Input('metrics-summary-container', 'loading_state'), # metrics-summary-container is a Row, doesn't have loading_state
-        Input('portfolio-chart-loading', 'loading_state'),
-        Input('drawdown-chart-loading', 'loading_state'),
-        Input('heatmap-chart-loading', 'loading_state'),
+        Input('run-backtest-button', 'n_clicks'),
+        Input('backtest-results-store', 'data'), # Listen to store updates
+        State('loading-overlay', 'style'), # Get current style to prevent loops
         prevent_initial_call=True
     )
+    def toggle_main_loader(run_clicks, store_data, current_style):
+        triggered_id = ctx.triggered_id
+        # logger.debug(f"toggle_main_loader triggered by: {triggered_id}") # Optional debug log
+
+        style_block = {'display': 'block'}
+        style_none = {'display': 'none'}
+
+        if triggered_id == 'run-backtest-button':
+            # Show loader only if it's not already shown
+            # logger.debug("Run button clicked, showing loader.")
+            return style_block if current_style != style_block else no_update
+        elif triggered_id == 'backtest-results-store':
+            # Hide loader only if it's currently shown
+            # logger.debug("Store updated, hiding loader.")
+            return style_none if current_style != style_none else no_update
+
+        # If triggered by something else or initial load, don't update
+        return no_update
 
     logger.info("Backtest callbacks registered.")
