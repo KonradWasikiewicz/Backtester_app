@@ -610,20 +610,31 @@ def register_backtest_callbacks(app: Dash):
             logger.info("--- update_trades_table: Returning error alert ---") # ADDED LOG
             return alert
 
-    # --- REMOVE problematic clientside callback ---
-    # app.clientside_callback(
-    #     ClientsideFunction(
-    #         namespace='clientside',
-    #         function_name='updateMainLoader'
-    #     ),
-    #     Output('loading-overlay', 'style'),
-    #     Input('portfolio-chart', 'loading_state'),
-    #     Input('drawdown-chart', 'loading_state'),
-    #     Input('monthly-returns-heatmap', 'loading_state'),
-    #     prevent_initial_call=True
-    # )
+    # --- NEW: Callback to show/hide results panels ---
+    @app.callback(
+        Output('center-panel-col', 'style'),
+        Output('right-panel-col', 'style'),
+        Input('backtest-results-store', 'data'),
+        prevent_initial_call=True
+    )
+    def toggle_results_panels(store_data):
+        logger.info("--- toggle_results_panels callback triggered ---")
+        if store_data and store_data.get("success"):
+            logger.info("Showing results panels.")
+            # Return style dictionaries to make panels visible
+            visible_style = {'display': 'block', 'paddingLeft': '15px', 'paddingRight': '15px'} # Keep padding
+            right_visible_style = {'display': 'block', 'paddingLeft': '15px'} # Keep padding
+            return visible_style, right_visible_style
+        else:
+            # If store is empty or backtest failed, keep panels hidden (or hide them again)
+            logger.info("Keeping results panels hidden.")
+            hidden_style = {'display': 'none', 'paddingLeft': '15px', 'paddingRight': '15px'}
+            right_hidden_style = {'display': 'none', 'paddingLeft': '15px'}
+            # Use no_update if you only want to show them once and never hide again
+            # return no_update, no_update 
+            return hidden_style, right_hidden_style # Hide again if data is invalid/cleared
 
-    # --- NEW Server-Side Callback for Main Loading Overlay ---
+    # --- Main Loader Callback ---
     @app.callback(
         Output('loading-overlay', 'style'),
         Input('run-backtest-button', 'n_clicks'),

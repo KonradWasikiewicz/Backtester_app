@@ -8,6 +8,7 @@ import sys
 from typing import Dict, Any, List
 import traceback
 import pandas as pd
+import time # Add time import for versioning
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -46,11 +47,14 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
         dash.Dash: Configured Dash application instance
     """
     # Initialize the Dash app with Bootstrap components
+    # --- Add version query string to custom CSS --- 
+    css_version = str(int(time.time())) # Use timestamp as version
     app = dash.Dash(
         __name__,
         external_stylesheets=[
             dbc.themes.DARKLY,  # Using dark Bootstrap theme
-            "https://use.fontawesome.com/releases/v6.0.0/css/all.css"  # Font Awesome icons
+            "https://use.fontawesome.com/releases/v6.0.0/css/all.css",  # Font Awesome icons
+            f'/assets/style.css?v={css_version}' # Explicitly add the custom CSS with version
         ],
         suppress_callback_exceptions=suppress_callback_exceptions,
         meta_tags=[
@@ -386,13 +390,15 @@ def create_app_layout() -> html.Div:
                     dbc.Col([
                         # Use the new center panel layout function
                         create_center_panel_layout()
-                    ], width=12, lg=6, className="mb-4", style={'paddingLeft': '15px', 'paddingRight': '15px'}), # Add padding
+                    # --- ADDED ID and initial style --- 
+                    ], id='center-panel-col', width=12, lg=6, className="mb-4", style={'display': 'none', 'paddingLeft': '15px', 'paddingRight': '15px'}), # Add padding, hide initially
 
                     # Right Panel (Stats) - 25% width on large screens
                     dbc.Col([
                         # Use the new right panel layout function
                         create_right_panel_layout()
-                    ], width=12, lg=3, className="mb-4", style={'paddingLeft': '15px'}) # Add padding
+                    # --- ADDED ID and initial style --- 
+                    ], id='right-panel-col', width=12, lg=3, className="mb-4", style={'display': 'none', 'paddingLeft': '15px'}) # Add padding, hide initially
                 ])
             ], fluid=True),
             # --- END UPDATED Three-Panel Main Content ---

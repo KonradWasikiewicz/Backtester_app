@@ -1,42 +1,156 @@
+:root {
+    --bg-color: #121212;
+    --card-bg-color: #1e222d;
+    --input-bg-color: #1e222d;
+    --input-border-color: #2a2e39;
+    --text-color: #ffffff;
+    --text-muted-color: #adb5bd;
+    --primary-color: #375a7f;
+    --primary-hover-color: #4d6f94;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --success-hover-color: #157347;
+    --info-color: #0dcaf0;
+    --danger-color: #dc3545;
+    --border-color: #2a2e39;
+    --font-size-base: 1rem;
+    --font-size-sm: 0.85rem; /* Adjusted base small size */
+    --font-size-xs: 0.7rem;  /* Extra small for labels/inputs */
+    --font-family-base: 'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --font-family-monospace: 'Courier New', monospace;
+}
+
+/* Global dark theme styles */
+body {
+    background-color: var(--bg-color) !important;
+    color: var(--text-color) !important;
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+}
+
+.container-fluid {
+    background-color: var(--bg-color) !important;
+}
+
+/* Card styles */
+.card {
+    background-color: var(--card-bg-color) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-color) !important;
+}
+
+/* Input styles - Increased Specificity */
+.card-body input[type="text"],
+.card-body input[type="number"],
+.card-body input[type="password"],
+.card-body input[type="email"],
+.card-body input[type="search"],
+.card-body input[type="tel"],
+.card-body input[type="url"],
+.card-body select,
+.card-body textarea,
+.card-body .form-control, /* Catch Bootstrap inputs within cards */
+.card-body .form-select /* Catch Bootstrap selects within cards */
+{
+    background-color: var(--input-bg-color) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--input-border-color) !important;
+    font-size: var(--font-size-xs) !important;
+}
+
+/* Ensure placeholder text is also visible */
+input::placeholder,
+textarea::placeholder,
+.form-control::placeholder {
+    color: var(--text-muted-color) !important;
+    opacity: 1; /* Override default opacity */
+}
+
+/* Style for disabled inputs */
+input:disabled,
+select:disabled,
+textarea:disabled,
+.form-control:disabled,
+.form-select:disabled {
+    background-color: var(--border-color) !important;
+    color: var(--secondary-color) !important;
+    border-color: var(--border-color) !important;
+    opacity: 0.7; /* Indicate disabled state */
+}
+
+/* Apply smaller font to labels */
+label {
+    font-size: var(--font-size-xs) !important;
+}
+
+/* Button styles */
+.btn-primary {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--text-color) !important;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover-color) !important;
+    border-color: var(--primary-hover-color) !important;
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color) !important;
+    border-color: var(--secondary-color) !important;
+    color: var(--text-color) !important;
+}
+
+.btn-success {
+    background-color: var(--success-color) !important;
+    border-color: var(--success-color) !important;
+    color: var(--text-color) !important;
+}
+
+.btn-success:hover {
+    background-color: var(--success-hover-color) !important;
+    border-color: var(--success-hover-color) !important;
+}
+
 /* Dropdown styling */
-.Select-control {
-    background-color: #1e222d !important;
-    border-color: #2a2e39 !important;
+.Select-control, .Select.is-focused>.Select-control, .Select.is-open > .Select-control {
+    background-color: var(--input-bg-color) !important;
+    border-color: var(--border-color) !important;
+    font-size: var(--font-size-xs) !important;
 }
 
 .Select-menu-outer {
-    background-color: #1e222d !important;
-    border: 1px solid #2a2e39 !important;
+    background-color: var(--card-bg-color) !important;
+    border: 1px solid var(--border-color) !important;
 }
 
 .Select-option {
-    background-color: #1e222d !important;
-    color: #ffffff !important;
+    background-color: var(--card-bg-color) !important;
+    color: var(--text-color) !important;
 }
 
-.Select-option:hover {
-    background-color: #2a2e39 !important;
+.Select-option:hover, .Select-option.is-focused {
+    background-color: var(--primary-hover-color) !important;
 }
 
-.Select-value-label {
-    color: #ffffff !important;
+.Select-value-label, .Select-placeholder {
+    color: var(--text-color) !important;
+    font-size: var(--font-size-xs) !important;
 }
 
-.Select-placeholder {
-    color: #ffffff !important;
+.form-select {
+    background-color: var(--input-bg-color) !important;
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+    font-size: var(--font-size-xs) !important;
 }
 
-.Select.is-focused > .Select-control {
-    background-color: #1e222d !important;
-    border-color: #2a2e39 !important;
+.form-select option {
+    background-color: var(--card-bg-color) !important;
+    color: var(--text-color) !important;
 }
 
-.Select.is-open > .Select-control {
-    background-color: #1e222d !important;
-    border-color: #2a2e39 !important;
-}
-
-
+/* Tooltip styling */
 .tooltip-icon {
     cursor: help;
     opacity: 0.7;
@@ -47,12 +161,13 @@
     opacity: 1;
 }
 
+/* Metric Card styling */
 .metric-card {
     transition: transform 0.2s;
     height: 100%;
-    background-color: #1e222d;
-    padding: 15px;
-    margin-bottom: 20px;
+    background-color: var(--card-bg-color);
+    padding: 10px; /* Further reduced from 12px */
+    margin-bottom: 12px; /* Further reduced from 16px */
     border-radius: 8px;
 }
 
@@ -61,16 +176,13 @@
 }
 
 .metric-value {
-    font-size: 1.1rem;
-    font-weight: 500;
-    margin-top: 0.25rem;
-    font-family: 'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    color: #f8f9fa;
+    font-size: var(--font-size-sm) !important; /* Use sm size for metrics */
+    color: var(--text-color);
 }
 
 /* Add this specifically for numeric values */
 .metric-card .metric-value {
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-family-monospace);
     letter-spacing: -0.05em;
 }
 
@@ -86,7 +198,7 @@
 
 /* Reset fonts for the trade table */
 .dash-table-container {
-    font-family: 'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-family: var(--font-family-base);
 }
 
 /* Ensure the metric wrapper takes full height */
@@ -107,25 +219,25 @@
 
 /* Style the date picker calendar components to match dark theme */
 .DateInput, .DateInput_input {
-    background-color: #1e222d !important;
-    color: white !important;
-    font-size: 0.9em !important;
+    background-color: var(--input-bg-color) !important;
+    color: var(--text-color) !important;
+    font-size: var(--font-size-xs) !important;
     border: none !important;
 }
 
 .CalendarMonth_caption {
-    color: white !important;
+    color: var(--text-color) !important;
 }
 
 .CalendarDay {
-    background-color: #2a2e39 !important;
-    border: 1px solid #1e222d !important;
-    color: #e0e0e0 !important;
+    background-color: var(--border-color) !important;
+    border: 1px solid var(--input-bg-color) !important;
+    color: var(--text-color) !important;
 }
 
 .CalendarDay__selected {
-    background-color: #0d6efd !important;
-    border: 1px solid #0d6efd !important;
+    background-color: var(--primary-color) !important;
+    border: 1px solid var(--primary-color) !important;
 }
 
 .CalendarDay__selected_span {
@@ -141,16 +253,16 @@
 
 .CalendarDay__today {
     font-weight: bold;
-    color: #0dcaf0 !important;
+    color: var(--info-color) !important;
 }
 
 .CalendarMonth, .CalendarMonthGrid {
-    background-color: #2a2e39 !important;
+    background-color: var(--border-color) !important;
 }
 
 .DayPickerNavigation_button {
-    background-color: #1e222d !important;
-    border: 1px solid #0d6efd !important;
+    background-color: var(--input-bg-color) !important;
+    border: 1px solid var(--primary-color) !important;
 }
 
 .DayPickerNavigation_button svg {
@@ -158,11 +270,11 @@
 }
 
 .DayPickerKeyboardShortcuts_show__bottomRight::before {
-    border-right-color: #0d6efd !important;
+    border-right-color: var(--primary-color) !important;
 }
 
 .DateRangePicker_picker, .SingleDatePicker_picker {
-    background-color: #2a2e39 !important;
+    background-color: var(--border-color) !important;
 }
 
 .DateInput_fang {
@@ -244,139 +356,6 @@
     padding: 6px 12px;
 }
 
-/* Global dark theme styles */
-body {
-    background-color: #121212 !important;
-    color: #ffffff !important;
-}
-
-.container-fluid {
-    background-color: #121212 !important;
-}
-
-/* Card styles */
-.card {
-    background-color: #1e222d !important;
-    border-color: #2a2e39 !important;
-    color: #ffffff !important;
-}
-
-/* Table styles */
-.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table {
-    background-color: #1e222d !important;
-    color: #ffffff !important;
-}
-
-.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td,
-.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner th {
-    background-color: #1e222d !important;
-    color: #ffffff !important;
-    border-color: #2a2e39 !important;
-}
-
-.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td:hover,
-.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner th:hover {
-    background-color: #2a2e39 !important;
-}
-
-/* Input styles */
-input, select, textarea {
-    background-color: #1e222d !important;
-    color: #ffffff !important;
-    border-color: #2a2e39 !important;
-}
-
-/* Button styles */
-.btn-primary {
-    background-color: #375a7f !important;
-    border-color: #375a7f !important;
-}
-
-.btn-primary:hover {
-    background-color: #4d6f94 !important;
-    border-color: #4d6f94 !important;
-}
-
-/* Step header styling - Consolidated and updated */
-.step-header {
-    padding: 12px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    background-color: #2a2e39 !important; /* Grey rectangle background - Added !important */
-    /* border-left: 4px solid #375a7f; Removed border */
-    margin-bottom: 15px; /* Increased margin for better separation */
-    cursor: pointer; /* Indicate it's clickable/expandable */
-}
-
-.step-header:hover {
-    background-color: #343a40 !important; /* Slightly lighter grey on hover - Added !important */
-    /* border-left-color: #4d6f94; Removed border */
-}
-
-.wizard-step {
-    transition: all 0.3s ease;
-    margin-bottom: 10px; /* Add some space between steps */
-}
-
-/* Step status indicator - Consolidated */
-.step-status {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background-color: #375a7f;
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
-    margin-right: 12px;
-    line-height: 1; /* Ensure text/icon is centered vertically */
-}
-
-.step-status.completed {
-    background-color: #198754;
-}
-
-/* Add checkmark icon for completed steps */
-.step-status.completed::after {
-    content: "✓";
-    font-size: 14px;
-    font-weight: bold;
-}
-
-.step-status.current {
-    background-color: #0d6efd;
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
-}
-
-.step-status.pending {
-    background-color: #6c757d;
-}
-
-/* Make the Run Backtest button stand out */
-#run-backtest-button {
-    background-color: #198754 !important;
-    border-color: #198754 !important;
-    font-weight: bold;
-    font-size: 16px;
-    padding: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-}
-
-#run-backtest-button:hover {
-    background-color: #157347 !important;
-    border-color: #157347 !important;
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-    transform: translateY(-1px);
-}
-
-#run-backtest-button:active {
-    transform: translateY(1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
 /* Improve progress bar styling */
 #wizard-progress {
     height: 4px !important;
@@ -443,4 +422,9 @@ input, select, textarea {
 /* Ensure the placeholder is hidden when loading is finished and results are shown */
 .main-loader-fullscreen.loading-finished #no-results-placeholder {
     display: none !important;
+}
+
+/* Adjust Footer font size */
+footer p {
+    font-size: var(--font-size-xs) !important;
 }
