@@ -39,23 +39,14 @@ body {
     color: var(--text-color) !important;
 }
 
-/* Input styles - Increased Specificity */
-.card-body input[type="text"],
-.card-body input[type="number"],
-.card-body input[type="password"],
-.card-body input[type="email"],
-.card-body input[type="search"],
-.card-body input[type="tel"],
-.card-body input[type="url"],
-.card-body select,
-.card-body textarea,
-.card-body .form-control, /* Catch Bootstrap inputs within cards */
-.card-body .form-select /* Catch Bootstrap selects within cards */
+/* Highly specific rule for inputs within wizard steps - Using hardcoded colors */
+div.wizard-step div.card-body input.form-control,
+div.wizard-step div.card-body textarea.form-control /* Also target textareas if needed */
 {
-    background-color: var(--input-bg-color) !important;
-    color: var(--text-color) !important;
-    border: 1px solid var(--input-border-color) !important;
-    font-size: var(--font-size-xs) !important;
+    background-color: #1e222d !important; /* Hardcoded value */
+    color: #ffffff !important; /* Hardcoded value */
+    border: 1px solid #2a2e39 !important; /* Hardcoded value */
+    font-size: var(--font-size-xs) !important; /* Keep font-size variable for now */
 }
 
 /* Ensure placeholder text is also visible */
@@ -422,6 +413,20 @@ label {
 /* Ensure the placeholder is hidden when loading is finished and results are shown */
 .main-loader-fullscreen.loading-finished #no-results-placeholder {
     display: none !important;
+}
+
+/* Specific widths for numeric inputs previously styled inline */
+#max-position-size,
+#stop-loss-value,
+#take-profit-value,
+#max-risk-per-trade,
+#market-trend-lookback,
+#max-drawdown,
+#max-daily-loss,
+#commission-input,
+#slippage-input,
+#rebalancing-threshold {
+    width: 100px !important; /* Restore width previously set inline */
 }
 
 /* Adjust Footer font size */

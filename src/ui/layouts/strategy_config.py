@@ -226,7 +226,7 @@ def create_strategy_config_section(tickers=None):
                         dbc.Row([
                             dbc.Col([
                                 html.Label("Max Position Size (%):", className="mb-1"),
-                                dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1, size="sm", style={"width": "100px"}) # Added class for JS
+                                dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="position_sizing-panel", style={"display": "none"}),
@@ -239,7 +239,7 @@ def create_strategy_config_section(tickers=None):
                             ], width=5),
                             dbc.Col([
                                 html.Label("Value (%):", className="mb-1"),
-                                dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1, size="sm", style={"width":"100px"}) # Added class for JS
+                                dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="stop_loss-panel", style={"display": "none"}),
@@ -252,7 +252,7 @@ def create_strategy_config_section(tickers=None):
                             ], width=5),
                             dbc.Col([
                                 html.Label("Value (%):", className="mb-1"),
-                                dbc.Input(id="take-profit-value", type="number", min=0, step=0.1, size="sm", style={"width":"100px"}) # Added class for JS
+                                dbc.Input(id="take-profit-value", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="take_profit-panel", style={"display": "none"}),
@@ -261,7 +261,7 @@ def create_strategy_config_section(tickers=None):
                         dbc.Row([
                             dbc.Col([
                                 html.Label("Max Risk per Trade (%):", className="mb-1"),
-                                dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1, size="sm", style={"width":"100px"}) # Added class for JS
+                                dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="risk_per_trade-panel", style={"display": "none"}),
@@ -270,7 +270,7 @@ def create_strategy_config_section(tickers=None):
                         dbc.Row([
                             dbc.Col([
                                 html.Label("Trend Lookback (days):", className="mb-1"),
-                                dbc.Input(id="market-trend-lookback", type="number", min=1, step=1, size="sm", style={"width":"100px"}) # Added class for JS
+                                dbc.Input(id="market-trend-lookback", type="number", min=1, step=1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="market_filter-panel", style={"display": "none"}),
@@ -279,14 +279,14 @@ def create_strategy_config_section(tickers=None):
                         dbc.Row([
                             dbc.Col([
                                 html.Label("Max Drawdown (%):", className="mb-1"),
-                                dbc.Input(id="max-drawdown", type="number", min=0, step=0.1, size="sm", style={"width":"100px"}) # Added class for JS
+                                dbc.Input(id="max-drawdown", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto", className="me-4"),
                             dbc.Col([
                                 html.Label("Max Daily Loss (%):", className="mb-1"),
-                                dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1, size="sm", style={"width":"100px"}) # Added class for JS
+                                dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
-                    ], id="drawdown_protection-panel", style={"display": "none"}),
+                    ], id="drawdown_protection-panel", style={"display": "none"},),
 
                     dbc.Button(
                         "Continue without additional risk measures",
@@ -308,14 +308,14 @@ def create_strategy_config_section(tickers=None):
                             html.Label("Commission (%):", className="mb-1"),
                             dbc.Input(
                                 id="commission-input", type="number", min=0, step=0.01, value=0.1,
-                                size="sm", style={"width": "100px"} # Added class for JS
+                                size="sm" # Removed style
                             )
                         ], width="auto", className="d-flex flex-column align-items-start me-4"),
                         dbc.Col([
                             html.Label("Slippage (%):", className="mb-1"),
                             dbc.Input(
                                 id="slippage-input", type="number", min=0, step=0.01, value=0.05,
-                                size="sm", style={"width": "100px"} # Added class for JS
+                                size="sm" # Removed style
                             )
                         ], width="auto", className="d-flex flex-column align-items-start")
                     ], className="align-items-center mb-3"),
@@ -348,7 +348,7 @@ def create_strategy_config_section(tickers=None):
                         ], width=5),
                         dbc.Col([
                             html.Label("Threshold (%):", className="mb-1"),
-                            dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, size="sm", style={"width":"100px"}) # Added class for JS
+                            dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, size="sm") # Removed style
                         ], width="auto")
                     ], className="align-items-center ms-3 mb-3"),
                     dbc.Button(
