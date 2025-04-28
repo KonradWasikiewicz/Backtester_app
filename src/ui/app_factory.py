@@ -35,13 +35,15 @@ from src.ui.layouts.results_display import create_center_panel_layout, create_ri
 # --- END Import ---
 from src.version import get_version, get_version_info, RELEASE_DATE, get_changelog  # Import version info
 
-def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -> dash.Dash:
+# Update function signature to accept assets_dir
+def create_app(debug: bool = False, suppress_callback_exceptions: bool = True, assets_dir: str = None) -> dash.Dash:
     """
     Creates and configures the Dash application.
 
     Args:
         debug: Whether to run the app in debug mode
         suppress_callback_exceptions: Whether to suppress callback exceptions
+        assets_dir: The absolute path to the assets directory.
 
     Returns:
         dash.Dash: Configured Dash application instance
@@ -49,18 +51,26 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True) -
     # Initialize the Dash app with Bootstrap components
     # --- Add version query string to custom CSS --- 
     css_version = str(int(time.time())) # Use timestamp as version
+
+    # --- Pass assets_folder to Dash constructor --- 
     app = dash.Dash(
         __name__,
         external_stylesheets=[
             dbc.themes.DARKLY,  # Using dark Bootstrap theme
             "https://use.fontawesome.com/releases/v6.0.0/css/all.css",  # Font Awesome icons
-            f'/assets/style.css?v={css_version}' # Explicitly add the custom CSS with version
+            # No need to specify /assets/ here if assets_folder is set correctly
+            # Dash will automatically serve files from the root of assets_folder
+            # at the /assets/ URL path. Let's simplify the path.
+            f'style.css?v={css_version}' # Simplified path to custom CSS
         ],
         suppress_callback_exceptions=suppress_callback_exceptions,
         meta_tags=[
             {"name": "viewport", "content": "width=device-width, initial-scale=1"}
-        ]
+        ],
+        assets_folder=assets_dir # Explicitly set the assets folder path
     )
+    logger.info(f"Dash assets_folder set to: {assets_dir}") # Log the path being used
+    # --- End Pass assets_folder ---
 
     # Add custom CSS for dark mode
     app.index_string = '''

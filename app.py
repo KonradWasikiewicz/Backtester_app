@@ -3,7 +3,8 @@ import logging
 import traceback
 from pathlib import Path
 import os
-import pandas as pd # Import pandas
+import pandas as pd
+from flask import request, jsonify
 
 # --- Set Pandas Option for Future Behavior ---
 pd.set_option('future.no_silent_downcasting', True)
@@ -11,6 +12,7 @@ pd.set_option('future.no_silent_downcasting', True)
 
 # Ensure src is in the path
 APP_ROOT = Path(__file__).resolve().parent
+ASSETS_DIR = APP_ROOT / "assets" # Define assets directory path
 sys.path.append(str(APP_ROOT))
 
 # Import factory functions and Dash components
@@ -42,19 +44,60 @@ try:
     # 4. Registering all necessary callbacks (via register_callbacks)
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         logger.info("Creating Dash application via create_app...")
-    app = create_app(suppress_callback_exceptions=True) 
+    # Pass ASSETS_DIR to create_app
+    app = create_app(suppress_callback_exceptions=True, assets_dir=str(ASSETS_DIR))
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         logger.info("Dash application created successfully.")
 
-    # Callback registration is handled within create_app
-    # Layout is set within create_app
+    # --- Explicitly Configure Flask Static Files ---
+    # This might be redundant now, but let's keep it for safety
+    app.server.static_folder = str(ASSETS_DIR)
+    app.server.static_url_path = '/assets'
+    logger.info(f"Flask static_folder explicitly set to: {app.server.static_folder}")
+    logger.info(f"Flask static_url_path explicitly set to: {app.server.static_url_path}")
+    # --- End Explicit Configuration ---
+
+
+    # --- Endpoint for Client-Side Errors ---
+    @app.server.route('/log-client-errors', methods=['POST'])
+    def log_client_errors():
+        """Logs errors/warnings received from the client-side JavaScript."""
+        data = request.get_json()
+        if not data:
+            logger.warning("Received empty request to /log-client-errors")
+            return jsonify(status="bad request"), 400
+
+        errors = data.get('errors', [])
+        warnings = data.get('warnings', [])
+        logs = data.get('logs', []) # Optional: capture console.log if needed
+
+        log_prefix = "[Client-Side]"
+        if errors:
+            for error in errors:
+                logger.error(f"{log_prefix} Error: {error}")
+        if warnings:
+            for warning in warnings:
+                logger.warning(f"{log_prefix} Warning: {warning}")
+        if logs:
+            for log_msg in logs:
+                logger.info(f"{log_prefix} Log: {log_msg}") # Log client logs as info
+
+        return jsonify(status="received"), 200
+    # --- END Endpoint ---
+
+    # --- NEW: Log confirmation of endpoint registration ---
+    # This log will appear when the app starts IF the route is successfully registered.
+    logger.info("Successfully registered /log-client-errors endpoint.")
+    # --- END NEW Log ---
+
 
     # --- Run Server ---
     if __name__ == '__main__':
         if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-            logger.info("Starting Dash development server...")
-        # Disable reloader to avoid duplicate runs
-        app.run(debug=True, dev_tools_hot_reload=False, use_reloader=False)
+            logger.info("Starting Dash server (Debug Mode OFF, Explicit Assets Path)...") # Updated log
+        # Keep debug=False
+        app.run(debug=False,
+                use_reloader=False)
 
 except Exception as e:
     # Catch any exceptions during the app setup process

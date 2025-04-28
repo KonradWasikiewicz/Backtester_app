@@ -1,58 +1,48 @@
-// --- DASH ERROR LOGGER: START ---
-(function() {
-    const originalError = console.error;
-    const originalWarn = console.warn;
-    const dashPatterns = [
-        'nonexistent object',
-        'object was used',
-        'circular depend',
-        'callback',
-        'Input',
-        'Output',
-        'dash',
-        'Dash',
-        'has no prop',
-        'TypeError'
-    ];
-    function isDashError(msg) {
-        return dashPatterns.some(pattern => msg.includes(pattern));
-    }
-    function sendToServer(type, msg) {
-        fetch('/log-client-errors', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                errors: type === 'error' ? [msg] : [],
-                warnings: type === 'warning' ? [msg] : [],
-                logs: []
-            }),
-            credentials: 'same-origin'
-        }).catch(() => {});
-    }
-    console.error = function(...args) {
-        originalError.apply(console, args);
-        const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-        if (isDashError(msg)) sendToServer('error', msg);
+// --- General Error Handler (with enhanced logging) ---
+window.onerror = function (message, source, lineno, colno, error) {
+  console.log("[window.onerror] Caught error:", message, "at", source, lineno, colno); // Enhanced log
+  try {
+    const errorData = {
+      type: 'window.onerror',
+      message: message,
+      source: source,
+      lineno: lineno,
+      colno: colno,
+      error: error ? error.stack : 'No error object available',
+      url: window.location.href
     };
-    console.warn = function(...args) {
-        originalWarn.apply(console, args);
-        const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-        if (isDashError(msg)) sendToServer('warning', msg);
-    };
-    setInterval(() => {
-        document.querySelectorAll('.dash-error, ._dash-error').forEach(el => {
-            const txt = el.textContent || el.innerText;
-            if (txt && txt.trim() !== '') sendToServer('error', '[DOM] ' + txt.trim());
-        });
-    }, 2000);
-    window.addEventListener('error', e => {
-        if (e && e.message && isDashError(e.message)) sendToServer('error', '[window.onerror] ' + e.message);
+
+    console.log("[window.onerror] Preparing to send data:", errorData); // Enhanced log
+
+    fetch('/log-client-errors', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+          errors: [JSON.stringify(errorData)],
+          warnings: [],
+          logs: []
+      }),
+      credentials: 'same-origin'
+    })
+    .then(response => {
+      if (!response.ok) {
+        console.error('[window.onerror] Failed to send log to server. Status:', response.status, response.statusText); // Enhanced log
+      } else {
+        console.log('[window.onerror] Log sent successfully.'); // Enhanced log
+      }
+    })
+    .catch(networkError => {
+      console.error('[window.onerror] Network error sending log:', networkError); // Enhanced log
     });
-    window.addEventListener('unhandledrejection', e => {
-        if (e && e.reason) sendToServer('error', '[unhandledrejection] ' + (e.reason.message || String(e.reason)));
-    });
-})();
-// --- DASH ERROR LOGGER: END ---
+
+  } catch (e) {
+    console.error("[window.onerror] Error within the handler itself:", e); // Enhanced log
+  }
+  return false; // Allow default handling
+};
+// --- END General Error Handler ---
 
 // Function to format number with spaces as thousand separators
 function formatNumberWithSpaces(number) {
