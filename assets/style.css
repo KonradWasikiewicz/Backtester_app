@@ -1,452 +1,62 @@
+/*
+Style sheet for the Backtester Dash application.
+Organized by sections:
+1.  Font Size Variables
+2.  General Element Styling (body, labels, inputs, buttons)
+3.  Layout Specific Styles (header, sidebar, content, footer)
+4.  Component Specific Styles (cards, tables, dropdowns, etc.)
+5.  Wizard Specific Styles
+6.  Results Section Styles
+7.  Utility Classes
+*/
+
+/* --- Font Size Variables --- */
 :root {
-    --bg-color: #121212;
-    --card-bg-color: #1e222d;
-    --input-bg-color: #1e222d;
-    --input-border-color: #2a2e39;
-    --text-color: #ffffff;
-    --text-muted-color: #adb5bd;
-    --primary-color: #375a7f;
-    --primary-hover-color: #4d6f94;
-    --secondary-color: #6c757d;
-    --success-color: #198754;
-    --success-hover-color: #157347;
-    --info-color: #0dcaf0;
-    --danger-color: #dc3545;
-    --border-color: #2a2e39;
-    --font-size-base: 1rem; /* 16px default */
-    --font-size-sm: 0.9rem;  /* Increased from 0.85rem */
-    --font-size-xs: 0.8rem;  /* Increased from 0.7rem */
-    --font-family-base: 'system-ui', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    --font-family-monospace: 'Courier New', monospace;
+  --font-size-base: 1rem;    /* 16px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-xs: 0.75rem;  /* 12px */
 }
 
-/* Global dark theme styles */
+/* --- General Element Styling --- */
 body {
-    background-color: var(--bg-color) !important;
-    color: var(--text-color) !important;
-    font-family: var(--font-family-base);
-    font-size: var(--font-size-base);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f8f9fa; /* Light gray background */
+  color: #212529; /* Dark text color */
+  /* font-size reverted */
 }
 
-.container-fluid {
-    background-color: var(--bg-color) !important;
+/* --- Layout Specific Styles --- */
+.header {
+  background-color: #343a40; /* Dark header */
+  color: white;
+  padding: 1rem;
+  text-align: center;
 }
 
-/* Card styles */
+.content {
+  padding: 1rem;
+}
+
+/* --- Component Specific Styles --- */
 .card {
-    background-color: var(--card-bg-color) !important;
-    border-color: var(--border-color) !important;
-    color: var(--text-color) !important;
+  margin-bottom: 1rem;
 }
 
-/* Highly specific rule for inputs within wizard steps - Using hardcoded colors */
-div.wizard-step div.card-body input.form-control,
-div.wizard-step div.card-body textarea.form-control,
-div.wizard-step div.card-body .form-select /* Target select too */
-{
-    background-color: #1e222d !important; /* Hardcoded value */
-    color: #ffffff !important; /* Hardcoded value */
-    border: 1px solid #2a2e39 !important; /* Hardcoded value */
-    font-size: var(--font-size-xs) !important; /* Keep xs size for inputs */
+.card-title {
+    margin-bottom: 0.75rem;
 }
 
-/* Ensure placeholder text is also visible */
-input::placeholder,
-textarea::placeholder,
-.form-control::placeholder {
-    color: var(--text-muted-color) !important;
-    opacity: 1; /* Override default opacity */
+/* --- Wizard Specific Styles --- */
+.wizard-step {
+  margin-bottom: 1.5rem;
 }
 
-/* Style for disabled inputs */
-input:disabled,
-select:disabled,
-textarea:disabled,
-.form-control:disabled,
-.form-select:disabled {
-    background-color: var(--border-color) !important;
-    color: var(--secondary-color) !important;
-    border-color: var(--border-color) !important;
-    opacity: 0.7; /* Indicate disabled state */
-}
+/* --- Utility Classes --- */
+.mb-2 { margin-bottom: 0.5rem !important; }
+.mt-2 { margin-top: 0.5rem !important; }
+.mb-3 { margin-bottom: 1rem !important; }
+.mt-3 { margin-top: 1rem !important; }
 
-/* Apply smaller font to labels, remove !important */
-label {
-    font-size: var(--font-size-xs); /* Removed !important */
-    margin-bottom: 0.3rem; /* Add a little space below labels */
-}
-
-/* Add style for wizard step titles */
-.wizard-step .card-title {
-    font-size: 1.1rem; /* Slightly larger than base */
-    margin-bottom: 1rem; /* Add space below title */
-    font-weight: 500;
-}
-
-/* Button styles - ensure base font size unless overridden by size classes like btn-sm */
-.btn {
-    font-size: var(--font-size-sm); /* Use sm size for standard buttons */
-}
-.btn-sm {
-     font-size: var(--font-size-xs); /* Use xs for small buttons */
-}
-
-.btn-primary {
-    background-color: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-    color: var(--text-color) !important;
-}
-
-.btn-primary:hover {
-    background-color: var(--primary-hover-color) !important;
-    border-color: var(--primary-hover-color) !important;
-}
-
-.btn-secondary {
-    background-color: var(--secondary-color) !important;
-    border-color: var(--secondary-color) !important;
-    color: var(--text-color) !important;
-}
-
-.btn-success {
-    background-color: var(--success-color) !important;
-    border-color: var(--success-color) !important;
-    color: var(--text-color) !important;
-}
-
-.btn-success:hover {
-    background-color: var(--success-hover-color) !important;
-    border-color: var(--success-hover-color) !important;
-}
-
-/* Dropdown styling - keep xs font size */
-.Select-control, .Select.is-focused>.Select-control, .Select.is-open > .Select-control {
-    background-color: var(--input-bg-color) !important;
-    border-color: var(--border-color) !important;
-    font-size: var(--font-size-xs) !important;
-}
-
-.Select-menu-outer {
-    background-color: var(--card-bg-color) !important;
-    border: 1px solid var(--border-color) !important;
-}
-
-.Select-option {
-    background-color: var(--card-bg-color) !important;
-    color: var(--text-color) !important;
-}
-
-.Select-option:hover, .Select-option.is-focused {
-    background-color: var(--primary-hover-color) !important;
-}
-
-.Select-value-label, .Select-placeholder {
-    color: var(--text-color) !important;
-    font-size: var(--font-size-xs) !important;
-}
-
-.form-select {
-    background-color: var(--input-bg-color) !important;
-    color: var(--text-color) !important;
-    border-color: var(--border-color) !important;
-    font-size: var(--font-size-xs) !important;
-}
-
-.form-select option {
-    background-color: var(--card-bg-color) !important;
-    color: var(--text-color) !important;
-}
-
-/* Tooltip styling */
-.tooltip-icon {
-    cursor: help;
-    opacity: 0.7;
-    transition: opacity 0.2s;
-}
-
-.tooltip-icon:hover {
-    opacity: 1;
-}
-
-/* Metric Card styling */
-.metric-card {
-    transition: transform 0.2s;
-    height: 100%;
-    background-color: var(--card-bg-color);
-    padding: 10px;
-    margin-bottom: 12px;
-    border-radius: 8px;
-}
-
-.metric-card:hover {
-    transform: translateY(-2px);
-}
-
-/* Metric value - use sm size, remove !important */
-.metric-value {
-    font-size: var(--font-size-sm); /* Use sm size, removed !important */
-    color: var(--text-color);
-}
-
-/* Add this specifically for numeric values */
-.metric-card .metric-value {
-    font-family: var(--font-family-monospace);
-    letter-spacing: -0.05em;
-}
-
-/* Fix for tooltip components */
-.tooltip-inner {
-    background-color: #343a40;
-    color: #ffffff;
-    max-width: 450px;  /* Increased from 300px for wider tooltips */
-    border-radius: 6px;
-    font-size: 14px;
-    padding: 8px 12px;
-}
-
-/* Reset fonts for the trade table */
-.dash-table-container {
-    font-family: var(--font-family-base);
-}
-
-/* Ensure the metric wrapper takes full height */
-.metric-wrapper {
-    height: 100%;
-}
-
-/* Make the date spans show the pointer cursor to indicate they're clickable */
-#selected-start-date, #selected-end-date {
-    cursor: pointer;
-    position: relative;
-    z-index: 1;
-    pointer-events: none;
-    min-width: 100px;
-    display: inline-block;
-    text-align: center;
-}
-
-/* Style the date picker calendar components to match dark theme */
-.DateInput, .DateInput_input {
-    background-color: var(--input-bg-color) !important;
-    color: var(--text-color) !important;
-    font-size: var(--font-size-xs) !important;
-    border: none !important;
-}
-
-.CalendarMonth_caption {
-    color: var(--text-color) !important;
-}
-
-.CalendarDay {
-    background-color: var(--border-color) !important;
-    border: 1px solid var(--input-bg-color) !important;
-    color: var(--text-color) !important;
-}
-
-.CalendarDay__selected {
-    background-color: var(--primary-color) !important;
-    border: 1px solid var(--primary-color) !important;
-}
-
-.CalendarDay__selected_span {
-    background-color: rgba(13, 110, 253, 0.5) !important;
-    border: 1px solid rgba(13, 110, 253, 0.5) !important;
-}
-
-.CalendarDay__hovered_span, .CalendarDay__hovered_span:hover {
-    background-color: rgba(13, 110, 253, 0.3) !important;
-    border: 1px solid rgba(13, 110, 253, 0.3) !important;
-    color: white !important;
-}
-
-.CalendarDay__today {
-    font-weight: bold;
-    color: var(--info-color) !important;
-}
-
-.CalendarMonth, .CalendarMonthGrid {
-    background-color: var(--border-color) !important;
-}
-
-.DayPickerNavigation_button {
-    background-color: var(--input-bg-color) !important;
-    border: 1px solid var(--primary-color) !important;
-}
-
-.DayPickerNavigation_button svg {
-    fill: #e0e0e0 !important;
-}
-
-.DayPickerKeyboardShortcuts_show__bottomRight::before {
-    border-right-color: var(--primary-color) !important;
-}
-
-.DateRangePicker_picker, .SingleDatePicker_picker {
-    background-color: var(--border-color) !important;
-}
-
-.DateInput_fang {
-    display: none !important;
-}
-
-/* Style for the main loading overlay */
-#loading-overlay {
-    position: absolute; /* Cover the results area */
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(30, 34, 45, 0.85); /* Semi-transparent dark background */
-    z-index: 1050; /* High z-index to cover content */
-    display: flex; /* Use flexbox to center spinner */
-    justify-content: center;
-    align-items: center;
-    /* Initially hidden, controlled by clientside callback */
-    /* display: none; */ 
-}
-
-/* Style for the spinner inside the overlay */
-#loading-overlay ._dash-loading {
-    /* Spinner styling */
-    width: 60px !important; 
-    height: 60px !important; 
-    border-width: 5px !important; 
-    /* Center the spinner within the flex container */
-    position: static !important; /* Override default fixed positioning */
-    transform: none !important; /* Override default transform */
-    margin: 0 !important; /* Remove default margins */
-}
-
-/* Style for the date display picker (transparent overlay) */
-.date-display-picker {
-    cursor: pointer;
-    z-index: 100;
-    background-color: #0d6efd !important;
-    border-radius: 0.25rem;
-    padding: 0.25rem 0.5rem !important;
-    color: white !important;
-    min-width: 120px !important;
-    font-weight: normal !important;
-    text-align: center !important;
-}
-
-.date-display-picker .SingleDatePickerInput {
-    border: none !important;
-    background: transparent !important;
-}
-
-.date-display-picker .DateInput {
-    width: 100% !important;
-}
-
-.date-display-picker .DateInput_input {
-    padding: 0 !important;
-    border: none !important;
-    font-weight: normal !important;
-    text-align: center !important;
-}
-
-/* Date display and picker styling */
-.date-display {
-    min-width: 100px;
-    display: inline-block;
-    text-align: center;
-    padding: 6px 12px;
-    position: relative;
-    z-index: 1;
-}
-
-/* Updated date badge styling */
-.date-badge {
-    background-color: #007bff;
-    color: #ffffff;
-    border-radius: 5px;
-    padding: 6px 12px;
-}
-
-/* Improve progress bar styling */
-#wizard-progress {
-    height: 4px !important;
-    border-radius: 2px;
-    background-color: #2a2e39;
-    margin-bottom: 20px; /* Add space below progress bar */
-}
-
-/* Style the main fullscreen loader */
-.main-loader-fullscreen {
-    /* Ensure it covers the content area */
-    position: relative; /* Changed from absolute/fixed */
-    min-height: 400px; /* Ensure it has some height */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: rgba(30, 34, 45, 0.8); /* Semi-transparent dark background */
-    z-index: 1050; /* High z-index */
-    transition: opacity 0.3s ease-out; /* Smooth fade-out */
-    opacity: 1;
-}
-
-.main-loader-fullscreen ._dash-loading {
-    /* Spinner styling */
-    width: 80px !important; /* Adjusted size */
-    height: 80px !important; /* Adjusted size */
-    border-width: 6px !important; /* Make spinner thicker */
-    /* Center the spinner within the flex container */
-    position: static !important; /* Override default fixed */
-    transform: none !important; /* Override default transform */
-    margin: 0 !important; /* Remove default margins */
-}
-
-/* Hide the loader container smoothly when loading is finished */
-.main-loader-fullscreen.loading-finished {
-    opacity: 0;
-    pointer-events: none; /* Prevent interaction when hidden */
-    /* Optionally, set height to 0 after transition if needed */
-    /* height: 0; */
-    /* transition: opacity 0.3s ease-out, height 0s linear 0.3s; */
-}
-
-/* Hide the spinner itself immediately when finished class is added */
-/* This prevents the spinner showing during the fade-out */
-.main-loader-fullscreen.loading-finished ._dash-loading {
-    display: none !important;
-}
-
-/* Ensure the placeholder is hidden when the loader is active but not finished */
-.main-loader-fullscreen:not(.loading-finished) #no-results-placeholder {
-    display: none !important;
-}
-
-/* Ensure the results section is hidden when the loader is active but not finished */
-.main-loader-fullscreen:not(.loading-finished) #results-section {
-    display: none !important;
-}
-
-/* Ensure the results section is visible when loading is finished */
-.main-loader-fullscreen.loading-finished #results-section {
-    display: block !important; /* Or flex, grid, etc., depending on layout */
-}
-
-/* Ensure the placeholder is hidden when loading is finished and results are shown */
-.main-loader-fullscreen.loading-finished #no-results-placeholder {
-    display: none !important;
-}
-
-/* Specific widths for numeric inputs previously styled inline */
-#max-position-size,
-#stop-loss-value,
-#take-profit-value,
-#max-risk-per-trade,
-#market-trend-lookback,
-#max-drawdown,
-#max-daily-loss,
-#commission-input,
-#slippage-input,
-#rebalancing-threshold {
-    width: 100px !important; /* Restore width previously set inline */
-}
-
-/* Adjust Footer font size */
-footer p {
-    font-size: var(--font-size-xs); /* Keep footer small, removed !important */
-}
+/* Add more specific styles as needed */
