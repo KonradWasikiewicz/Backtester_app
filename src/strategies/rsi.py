@@ -107,10 +107,29 @@ class RSIStrategy(BaseStrategy):
 
         except Exception as e:
             logger.error(f"Error during RSI signal generation for {ticker}: {e}", exc_info=True) # Added ticker
+            # Ensure essential columns exist even on error, fill with defaults
             signals['Signal'] = 0
             signals['Positions'] = 0
-            signals['Reason'] = '' # Reset reason in case of error
+            signals['Reason'] = 'Error generating signals'
+            # Add Close column if missing, using original data if possible
+            if 'Close' not in signals.columns and 'Close' in data.columns:
+                 signals['Close'] = data['Close']
+            elif 'Close' not in signals.columns:
+                 signals['Close'] = pd.NA # Or some other placeholder
+
             # raise e # Optional
 
-        # Return signals, positions, and reasons
-        return signals[['Signal', 'Positions', 'Reason']]
+        # Return signals, positions, reasons, and the Close price
+        required_cols = ['Signal', 'Positions', 'Reason', 'Close']
+        # Add RSI column if it exists
+        if rsi_col in df.columns:
+            signals[rsi_col] = df[rsi_col]
+            required_cols.append(rsi_col)
+            
+        # Ensure all required columns are present before returning
+        for col in required_cols:
+            if col not in signals.columns:
+                logger.warning(f"Column '{col}' missing in final signals DataFrame for {ticker}. Adding with NAs.")
+                signals[col] = pd.NA # Add missing columns with NAs
+
+        return signals[required_cols]
