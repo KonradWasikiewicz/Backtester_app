@@ -67,7 +67,12 @@ def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
             display_label = ' '.join([strategy_value] + [p.title() for p in parts[1:]])
         else:
             display_label = param_name.replace('_', ' ').title()
-        label_text = html.Label(display_label, htmlFor=json.dumps(input_id), className="ms-1 me-2 text-white")
+        
+        # Use a custom div for the label with fixed width for alignment
+        label_container = html.Div(
+            [tooltip_icon, html.Label(display_label, htmlFor=json.dumps(input_id), className="ms-1")],
+            className="param-label"  # Apply our new CSS class for fixed-width labels
+        )
 
         # Input component styled like dropdown
         input_component = dbc.Input(
@@ -78,28 +83,23 @@ def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
             min=0,
             size="sm",
             style={"width": "100px"}, # Fixed width
-            className="Select-control"  # Match dropdown color scheme
+            className="Select-control param-input"  # Added our new CSS class
         )
 
         # Tooltip for parameter description
         tooltip = dbc.Tooltip(
             descriptions.get(param_name, ""),
             target=tooltip_id,
-            placement="left" # Changed placement to left
+            placement="left"
         )
 
-        # Arrange components in a row using Bootstrap grid
-        param_row = dbc.Row(
-            [
-                dbc.Col(tooltip_icon, width="auto", className="d-flex align-items-center"),
-                dbc.Col(label_text, width="auto", className="d-flex align-items-center"),
-                dbc.Col(input_component, width="auto"),
-                dbc.Col(tooltip) # Tooltip doesn't need a column definition, it attaches to target
-            ],
-            className="mb-3 align-items-center" # Added vertical alignment for items in the row
+        # Use our custom CSS classes for consistent alignment
+        param_row = html.Div(
+            [label_container, input_component, tooltip],
+            className="param-row"  # Use our custom CSS class for rows
         )
 
-        inputs.append(param_row) # Append the whole row
+        inputs.append(param_row)
 
     return inputs
 

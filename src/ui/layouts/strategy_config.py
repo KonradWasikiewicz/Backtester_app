@@ -88,12 +88,20 @@ def create_ticker_checklist(ticker_options: List[Dict[str, str]]):
 def create_backtest_parameters():
     """Creates date pickers for backtest start and end dates."""
     logger.debug("Creating date range pickers.")
-    # ... (logic for fetching dates) ...
     try:
         data_loader = DataLoader()
         min_date, max_date = data_loader.get_date_range()
-        default_start = pd.Timestamp('2020-01-01')
+        
+        # Ensure minimum date is not earlier than Jan 1, 2020
+        min_date_hardcoded = pd.Timestamp('2020-01-01')
+        if min_date is None or min_date < min_date_hardcoded:
+            min_date = min_date_hardcoded
+            
+        # Use latest data date or today as max
         default_end = pd.Timestamp.today() if max_date is None else max_date
+        default_start = min_date
+        
+        logger.debug(f"Date range set: Min={min_date.strftime('%Y-%m-%d')}, Max={max_date.strftime('%Y-%m-%d') if max_date else 'today'}")
     except Exception as e:
         logger.error(f"Error getting date range from DataLoader: {e}")
         min_date = pd.Timestamp('2020-01-01')
@@ -101,31 +109,45 @@ def create_backtest_parameters():
         default_start = min_date
         default_end = max_date
 
+    # Common date picker styling to center text
+    date_picker_style = {
+        "textAlign": "center",
+        "width": "150px"  # Fixed width for consistent layout
+    }
+
     return html.Div([
         dbc.Row([
             dbc.Col(html.Div([
-                html.Label('From:', className='mb-1'),
-                dcc.DatePickerSingle(
-                    id='backtest-start-date',
-                    date=default_start.strftime('%Y-%m-%d'),
-                    min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else None,
-                    max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
-                    placeholder='Start Date',
-                    display_format='YYYY-MM-DD',
-                    className='mb-2'
-                )
+                html.Div([
+                    html.Label('From:', className='mb-1'),
+                    html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div to push the date picker to the right
+                    dcc.DatePickerSingle(
+                        id='backtest-start-date',
+                        date=default_start.strftime('%Y-%m-%d'),
+                        min_date_allowed=min_date.strftime('%Y-%m-%d'),
+                        max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
+                        placeholder='Start Date',
+                        display_format='YYYY-MM-DD',
+                        className='mb-2',
+                        style=date_picker_style
+                    )
+                ], style={"display": "flex", "alignItems": "center"})
             ]), width=6),
             dbc.Col(html.Div([
-                html.Label('To:', className='mb-1'),
-                dcc.DatePickerSingle(
-                    id='backtest-end-date',
-                    date=default_end.strftime('%Y-%m-%d'),
-                    min_date_allowed=min_date.strftime('%Y-%m-%d') if min_date else None,
-                    max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
-                    placeholder='End Date',
-                    display_format='YYYY-MM-DD',
-                    className='mb-2'
-                )
+                html.Div([
+                    html.Label('To:', className='mb-1'),
+                    html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div to push the date picker to the right
+                    dcc.DatePickerSingle(
+                        id='backtest-end-date',
+                        date=default_end.strftime('%Y-%m-%d'),
+                        min_date_allowed=min_date.strftime('%Y-%m-%d'),
+                        max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
+                        placeholder='End Date',
+                        display_format='YYYY-MM-DD',
+                        className='mb-2',
+                        style=date_picker_style
+                    )
+                ], style={"display": "flex", "alignItems": "center"})
             ]), width=6)
         ])
     ])

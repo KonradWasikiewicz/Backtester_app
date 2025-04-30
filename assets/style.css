@@ -27,6 +27,24 @@ body {
   /* font-size reverted */
 }
 
+/* --- Form Input Styling --- */
+input, .form-control, .form-select, .dbc-input, .Select-control, .Select-menu-outer {
+  background-color: #1e222d !important; /* Dark background as per guidelines */
+  color: #ffffff !important; /* White text as per guidelines */
+  border-color: #444 !important;
+}
+
+/* Ensure text remains white while typing and on focus */
+input::placeholder, .form-control::placeholder {
+  color: #adb5bd !important;
+}
+
+input:focus, .form-control:focus {
+  background-color: #1e222d !important;
+  color: #ffffff !important;
+  border-color: #0d6efd !important;
+}
+
 /* --- Layout Specific Styles --- */
 .header {
   background-color: #343a40; /* Dark header */
@@ -53,6 +71,24 @@ body {
   margin-bottom: 1.5rem;
 }
 
+/* --- Strategy Parameter Inputs Styling --- */
+.param-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.param-label {
+  width: 180px; /* Fixed width for labels */
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.param-input {
+  flex-grow: 0;
+}
+
 /* --- Utility Classes --- */
 .mb-2 { margin-bottom: 0.5rem !important; }
 .mt-2 { margin-top: 0.5rem !important; }
@@ -60,3 +96,18 @@ body {
 .mt-3 { margin-top: 1rem !important; }
 
 /* Add more specific styles as needed */
+
+/* --- Custom Button Group Styling --- */
+/* Make inactive outline buttons in button groups more visible */
+.btn-group > .btn.btn-outline-primary:not(.active) {
+  background-color: #2a2e39; /* Slightly lighter dark shade */
+  color: #adb5bd;           /* Lighter gray text */
+  border-color: #444;       /* Subtle border */
+}
+
+/* Optional: Style for hover state */
+.btn-group > .btn.btn-outline-primary:not(.active):hover {
+  background-color: #343a40; /* Darken slightly on hover */
+  color: #f8f9fa;           /* Lighter text on hover */
+  border-color: #555;
+}

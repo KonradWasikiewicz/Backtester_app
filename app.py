@@ -93,11 +93,19 @@ try:
 
     # --- Run Server ---
     if __name__ == '__main__':
+        # Only log server start in the reloaded process, not in the initial checker process
         if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-            logger.info("Starting Dash server (Debug Mode OFF, Explicit Assets Path)...") # Updated log
-        # Keep debug=False
-        app.run(debug=False,
-                use_reloader=False)
+            logger.info("Starting Dash server (Debug Mode ON, Explicit Assets Path)...")  # Fixed: Debug Mode ON
+        else:
+            # Silence logs in the initial process - using correct logger name for Werkzeug
+            logging.getLogger('werkzeug').setLevel(logging.ERROR)
+            # Also silence other loggers during initial load
+            logging.getLogger('dash').setLevel(logging.ERROR)
+            logging.getLogger('flask').setLevel(logging.ERROR)
+        
+        # Keep debug=True
+        app.run(debug=True,
+                use_reloader=True)
 
 except Exception as e:
     # Catch any exceptions during the app setup process

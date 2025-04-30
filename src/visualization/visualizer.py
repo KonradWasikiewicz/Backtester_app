@@ -218,7 +218,7 @@ class BacktestVisualizer:
                 yaxis=dict(
                     title="Portfolio Value ($)", 
                     tickprefix="$",
-                    tickformat=",.2f" # Format as currency
+                    tickformat=",.0f" # Corrected format without space
                 )
             )
             fig.update_layout(layout)
@@ -597,20 +597,22 @@ class BacktestVisualizer:
             layout = _create_base_layout(
                 title=f"{ticker} Price and Signals",
                 height=500,
+                margin=dict(t=80, l=60, r=60, b=60), # Increased top margin (t=80)
                 xaxis_title="Date",
                 yaxis_title="Price ($)",
                 yaxis=dict(tickprefix="$")
             )
             fig.update_layout(layout)
+            # Adjust legend position slightly lower and ensure horizontal orientation
             fig.update_layout(legend=dict(
                 orientation="h",
                 yanchor="bottom",
-                y=1.02,
+                y=1.01, # Adjusted y slightly lower than default 1.02
                 xanchor="right",
                 x=1
             ))
             return fig
-            
+
         except Exception as e:
             logger.error(f"Error creating signals chart for {ticker}: {e}", exc_info=True)
             fig = go.Figure()

@@ -139,12 +139,18 @@ class MovingAverageStrategy(BaseStrategy):
             logger.debug(f"Generated {signals['Signal'].ne(0).sum()} signals for MA strategy on {ticker}.")
             logger.debug(f"Buy signals: {signals['Signal'].eq(1).sum()}, Sell signals: {signals['Signal'].eq(-1).sum()} for {ticker}.")
 
+            # Ensure 'Close' column is present in the signals DataFrame before returning
+            if 'Close' not in signals.columns and 'Close' in data.columns:
+                 signals['Close'] = data['Close'] # Add Close from original data
+            elif 'Close' not in signals.columns:
+                 signals['Close'] = pd.NA # Fallback
+
         except Exception as e:
             logger.error(f"Error during MA signal generation for {ticker}: {e}", exc_info=True)
             signals['Signal'] = 0
             signals['Positions'] = 0
             signals['Reason'] = 'Error generating signals'
-            # Add Close column if missing
+            # Ensure 'Close' column exists even on error
             if 'Close' not in signals.columns and 'Close' in data.columns:
                  signals['Close'] = data['Close']
             elif 'Close' not in signals.columns:
@@ -160,10 +166,21 @@ class MovingAverageStrategy(BaseStrategy):
             signals[long_ma_col] = df[long_ma_col]
             required_cols.append(long_ma_col)
 
-        # Ensure all required columns are present
+        # Ensure all required columns are present before returning
         for col in required_cols:
             if col not in signals.columns:
-                logger.warning(f"Column '{col}' missing in final MA signals DataFrame for {ticker}. Adding with NAs.")
-                signals[col] = pd.NA
+                # If 'Close' was missing even after trying to add it, add NA
+                if col == 'Close' and 'Close' not in signals.columns:
+                     signals['Close'] = pd.NA
+                elif col != 'Close': # Log warning for other missing columns
+                    logger.warning(f"Column '{col}' missing in final MA signals DataFrame for {ticker}. Adding with NAs.")
+                    signals[col] = pd.NA # Add missing columns with NAs
 
-        return signals[required_cols]
+        # Ensure columns exist before subsetting
+        final_cols = [col for col in required_cols if col in signals.columns]
+        if len(final_cols) != len(required_cols):
+             missing = set(required_cols) - set(final_cols)
+             logger.error(f"Critical: Columns {missing} could not be added to MA signals DataFrame for {ticker}.")
+             # Decide how to handle this - return empty or partial? For now, return what we have.
+
+        return signals[final_cols] # Return only existing required columns
