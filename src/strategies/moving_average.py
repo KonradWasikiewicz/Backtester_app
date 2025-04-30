@@ -83,6 +83,10 @@ class MovingAverageStrategy(BaseStrategy):
             logger.error(f"Required column '{required_column}' not found in input data.")
             raise ValueError(f"DataFrame must contain '{required_column}' column.")
 
+        # Define column names upfront
+        short_ma_col = f'SMA_{self.short_window}'
+        long_ma_col = f'SMA_{self.long_window}'
+
         # Check if there is enough data
         if len(data) < self.long_window:
             logger.warning(f"Not enough data ({len(data)} rows) to calculate the long SMA ({self.long_window}). Returning no signals for {ticker}.") # Added ticker to log
@@ -98,24 +102,21 @@ class MovingAverageStrategy(BaseStrategy):
         signals['Signal'] = 0  # Default to no signal
         signals['Reason'] = '' # New column for signal reason
 
-        short_sma_col = f'SMA_{self.short_window}'
-        long_sma_col = f'SMA_{self.long_window}'
-
         try:
             # Calculate moving averages using pandas_ta
-            df.ta.sma(length=self.short_window, append=True, col_names=(short_sma_col,))
-            df.ta.sma(length=self.long_window, append=True, col_names=(long_sma_col,))
+            df.ta.sma(length=self.short_window, append=True, col_names=(short_ma_col,))
+            df.ta.sma(length=self.long_window, append=True, col_names=(long_ma_col,))
 
             # Check if columns were added correctly
-            if short_sma_col not in df.columns or long_sma_col not in df.columns:
-                 logger.error(f"SMA columns ({short_sma_col}, {long_sma_col}) not found after pandas_ta calculation for {ticker}.") # Added ticker
+            if short_ma_col not in df.columns or long_ma_col not in df.columns:
+                 logger.error(f"SMA columns ({short_ma_col}, {long_ma_col}) not found after pandas_ta calculation for {ticker}.") # Added ticker
                  raise KeyError(f"SMA columns not found after calculation for {ticker}.")
 
             # --- Signal Generation Logic ---
             # Buy condition: short SMA crosses above long SMA from below
-            buy_condition = (df[short_sma_col] > df[long_sma_col]) & (df[short_sma_col].shift(1) <= df[long_sma_col].shift(1))
+            buy_condition = (df[short_ma_col] > df[long_ma_col]) & (df[short_ma_col].shift(1) <= df[long_ma_col].shift(1))
             # Sell condition: short SMA crosses below long SMA from above
-            sell_condition = (df[short_sma_col] < df[long_sma_col]) & (df[short_sma_col].shift(1) >= df[long_sma_col].shift(1))
+            sell_condition = (df[short_ma_col] < df[long_ma_col]) & (df[short_ma_col].shift(1) >= df[long_ma_col].shift(1))
 
             # Assign signals and reasons
             signals.loc[buy_condition, 'Signal'] = 1
@@ -133,19 +134,36 @@ class MovingAverageStrategy(BaseStrategy):
             positions_series = positions_series.infer_objects(copy=False)
             # Ensure the final type is integer
             signals['Positions'] = positions_series.astype(int)
-            signals['Positions'] = signals['Positions'].replace(-1, 0)  # No short positions
+            signals['Positions'] = signals['Positions'].replace(-1, 0) # No short positions
 
-            # --- Updated log to match strategy name ---
-            logger.debug(f"Generated {signals['Signal'].ne(0).sum()} signals for Moving Average strategy on {ticker}.") # Added ticker
-            logger.debug(f"Buy signals: {signals['Signal'].eq(1).sum()}, Sell signals: {signals['Signal'].eq(-1).sum()} for {ticker}.") # Added ticker
+            logger.debug(f"Generated {signals['Signal'].ne(0).sum()} signals for MA strategy on {ticker}.")
+            logger.debug(f"Buy signals: {signals['Signal'].eq(1).sum()}, Sell signals: {signals['Signal'].eq(-1).sum()} for {ticker}.")
 
         except Exception as e:
-            # --- Updated log to match strategy name ---
-            logger.error(f"Error during Moving Average signal generation for {ticker}: {e}", exc_info=True) # Added ticker
+            logger.error(f"Error during MA signal generation for {ticker}: {e}", exc_info=True)
             signals['Signal'] = 0
             signals['Positions'] = 0
-            signals['Reason'] = '' # Reset reason in case of error
-            # raise e # Optionally re-raise
+            signals['Reason'] = 'Error generating signals'
+            # Add Close column if missing
+            if 'Close' not in signals.columns and 'Close' in data.columns:
+                 signals['Close'] = data['Close']
+            elif 'Close' not in signals.columns:
+                 signals['Close'] = pd.NA
 
-        # Return signals, positions, and reasons
-        return signals[['Signal', 'Positions', 'Reason']]
+        # Return signals, positions, reasons, Close price, and MAs
+        required_cols = ['Signal', 'Positions', 'Reason', 'Close']
+        # Add MA columns if they exist
+        if short_ma_col in df.columns:
+            signals[short_ma_col] = df[short_ma_col]
+            required_cols.append(short_ma_col)
+        if long_ma_col in df.columns:
+            signals[long_ma_col] = df[long_ma_col]
+            required_cols.append(long_ma_col)
+
+        # Ensure all required columns are present
+        for col in required_cols:
+            if col not in signals.columns:
+                logger.warning(f"Column '{col}' missing in final MA signals DataFrame for {ticker}. Adding with NAs.")
+                signals[col] = pd.NA
+
+        return signals[required_cols]
