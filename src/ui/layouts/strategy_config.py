@@ -119,7 +119,7 @@ def create_backtest_parameters():
         dbc.Row([
             dbc.Col(html.Div([
                 html.Div([
-                    html.Label('From:', className='mb-1'),
+                    html.Label('From:', className='mb-1', htmlFor='backtest-start-date'), # Added htmlFor
                     html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div 
                     dcc.DatePickerSingle(
                         id='backtest-start-date',
@@ -135,7 +135,7 @@ def create_backtest_parameters():
             ]), width=6),
             dbc.Col(html.Div([
                 html.Div([
-                    html.Label('To:', className='mb-1'),
+                    html.Label('To:', className='mb-1', htmlFor='backtest-end-date'), # Added htmlFor
                     html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div
                     dcc.DatePickerSingle(
                         id='backtest-end-date',
@@ -170,14 +170,14 @@ def create_strategy_config_section(tickers=None):
                 "strategy-selection",
                 "Step 1: Initial Capital and Strategy Selection",
                 html.Div([
-                    html.Label("Initial Capital (USD):", className="mb-2"),
+                    html.Label("Initial Capital (USD):", className="mb-2", htmlFor='initial-capital-input'), # Added htmlFor
                     dbc.Input(
                         id='initial-capital-input',
                         type='text',  # Changed to text for formatting
                         value="100 000",  # Default value formatted
                         className="mb-3 numeric-input-formatted", # Added class for JS
                     ),
-                    html.Label("Select a strategy:", className="mb-2"), # Added mt-3 for spacing
+                    html.Label("Select a strategy:", className="mb-2", htmlFor='strategy-dropdown'), # Added htmlFor
                     get_strategy_dropdown(AVAILABLE_STRATEGIES),
                     html.Div(id="strategy-description-output", className="mb-3 mt-3"),
                     html.Div(id='strategy-param-section', className="mt-4 mb-3"),
@@ -189,8 +189,8 @@ def create_strategy_config_section(tickers=None):
                 "date-range-selection",
                 "Step 2: Date Range Selection",
                 html.Div([
-                    html.Label("Select date range:", className="mb-2"),
-                    create_backtest_parameters(), # Use helper function
+                    html.Label("Select date range:", className="mb-2"), # No input directly associated, label for the section
+                    create_backtest_parameters(), # Contains inputs with labels handled inside
                     dbc.Button(
                         "Confirm",
                         id="confirm-dates", # ID consistent with callbacks
@@ -206,7 +206,7 @@ def create_strategy_config_section(tickers=None):
                 "tickers-selection",
                 "Step 3: Tickers Selection",
                 html.Div([
-                    html.Label("Select tickers to trade:", className="mb-2"),
+                    html.Label("Select tickers to trade:", className="mb-2", htmlFor='ticker-input'), # Added htmlFor
                     html.Div([
                         dbc.Button("Select All", id="select-all-tickers", color="secondary", size="sm", className="me-2"),
                         dbc.Button("Deselect All", id="deselect-all-tickers", color="secondary", size="sm")
@@ -227,7 +227,7 @@ def create_strategy_config_section(tickers=None):
                 "risk-management",
                 "Step 4: Risk Management",
                 html.Div([
-                    html.Label("Configure risk parameters:", className="mb-2"),
+                    html.Label("Configure risk parameters:", className="mb-2", htmlFor='risk-features-checklist'), # Added htmlFor
                     # Checklist of risk features
                     dcc.Checklist(
                         id="risk-features-checklist",
@@ -247,7 +247,7 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Position Sizing Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Max Position Size (%):", className="mb-1"),
+                                html.Label("Max Position Size (%):", className="mb-1", htmlFor='max-position-size'), # Added htmlFor
                                 dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
@@ -256,11 +256,11 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Stop Loss Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Type:", className="mb-1"),
+                                html.Label("Type:", className="mb-1", htmlFor='stop-loss-type'), # Added htmlFor
                                 dcc.Dropdown(id="stop-loss-type", options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
                             ], width=5),
                             dbc.Col([
-                                html.Label("Value (%):", className="mb-1"),
+                                html.Label("Value (%):", className="mb-1", htmlFor='stop-loss-value'), # Added htmlFor
                                 dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
@@ -269,11 +269,11 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Take Profit Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Type:", className="mb-1"),
+                                html.Label("Type:", className="mb-1", htmlFor='take-profit-type'), # Added htmlFor
                                 dcc.Dropdown(id="take-profit-type", options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
                             ], width=5),
                             dbc.Col([
-                                html.Label("Value (%):", className="mb-1"),
+                                html.Label("Value (%):", className="mb-1", htmlFor='take-profit-value'), # Added htmlFor
                                 dbc.Input(id="take-profit-value", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
@@ -282,7 +282,7 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Risk per Trade Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Max Risk per Trade (%):", className="mb-1"),
+                                html.Label("Max Risk per Trade (%):", className="mb-1", htmlFor='max-risk-per-trade'), # Added htmlFor
                                 dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
@@ -291,7 +291,7 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Market Filter Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Trend Lookback (days):", className="mb-1"),
+                                html.Label("Trend Lookback (days):", className="mb-1", htmlFor='market-trend-lookback'), # Added htmlFor
                                 dbc.Input(id="market-trend-lookback", type="number", min=1, step=1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
@@ -300,11 +300,11 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Drawdown Protection Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Max Drawdown (%):", className="mb-1"),
+                                html.Label("Max Drawdown (%):", className="mb-1", htmlFor='max-drawdown'), # Added htmlFor
                                 dbc.Input(id="max-drawdown", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto", className="me-4"),
                             dbc.Col([
-                                html.Label("Max Daily Loss (%):", className="mb-1"),
+                                html.Label("Max Daily Loss (%):", className="mb-1", htmlFor='max-daily-loss'), # Added htmlFor
                                 dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1, size="sm") # Removed style
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
@@ -324,17 +324,17 @@ def create_strategy_config_section(tickers=None):
                 "trading-costs",
                 "Step 5: Trading Costs",
                 html.Div([
-                    html.Label("Configure trading costs:", className="mb-2"),
+                    html.Label("Configure trading costs:", className="mb-2"), # Section label
                     dbc.Row([
                         dbc.Col([
-                            html.Label("Commission (%):", className="mb-1"),
+                            html.Label("Commission (%):", className="mb-1", htmlFor='commission-input'), # Added htmlFor
                             dbc.Input(
                                 id="commission-input", type="number", min=0, step=0.01, value=0.1,
                                 size="sm" # Removed style
                             )
                         ], width="auto", className="d-flex flex-column align-items-start me-4"),
                         dbc.Col([
-                            html.Label("Slippage (%):", className="mb-1"),
+                            html.Label("Slippage (%):", className="mb-1", htmlFor='slippage-input'), # Added htmlFor
                             dbc.Input(
                                 id="slippage-input", type="number", min=0, step=0.01, value=0.05,
                                 size="sm" # Removed style
@@ -355,10 +355,10 @@ def create_strategy_config_section(tickers=None):
                 "rebalancing-rules",
                 "Step 6: Rebalancing Rules",
                 html.Div([
-                    html.Label("Configure rebalancing rules:", className="mb-2"),
+                    html.Label("Configure rebalancing rules:", className="mb-2"), # Section label
                     dbc.Row([
                         dbc.Col([
-                            html.Label("Frequency:", className="mb-1"),
+                            html.Label("Frequency:", className="mb-1", htmlFor='rebalancing-frequency'), # Added htmlFor
                             dcc.Dropdown(id="rebalancing-frequency", options=[
                                 {'label': 'Daily', 'value': 'D'},
                                 {'label': 'Weekly', 'value': 'W'},
@@ -369,7 +369,7 @@ def create_strategy_config_section(tickers=None):
                             ], value='M', clearable=False, className="mb-2 w-100")
                         ], width=5),
                         dbc.Col([
-                            html.Label("Threshold (%):", className="mb-1"),
+                            html.Label("Threshold (%):", className="mb-1", htmlFor='rebalancing-threshold'), # Added htmlFor
                             dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, size="sm") # Removed style
                         ], width="auto")
                     ], className="align-items-center ms-3 mb-3"),
