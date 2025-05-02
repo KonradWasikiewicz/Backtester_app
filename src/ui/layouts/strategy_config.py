@@ -93,12 +93,12 @@ def create_backtest_parameters():
         min_date, max_date = data_loader.get_date_range()
         
         # Ensure minimum date is not earlier than Jan 1, 2020
-        min_date_hardcoded = pd.Timestamp('2020-01-01')
-        if min_date is None or min_date < min_date_hardcoded:
-            min_date = min_date_hardcoded
+        absolute_min_date = pd.Timestamp('2020-01-01')
+        if min_date is None or min_date < absolute_min_date:
+            min_date = absolute_min_date
             
-        # Use latest data date or today as max
-        default_end = pd.Timestamp.today() if max_date is None else max_date
+        # Use latest data date as max
+        default_end = max_date if max_date is not None else pd.Timestamp.today()
         default_start = min_date
         
         logger.debug(f"Date range set: Min={min_date.strftime('%Y-%m-%d')}, Max={max_date.strftime('%Y-%m-%d') if max_date else 'today'}")
@@ -111,8 +111,8 @@ def create_backtest_parameters():
 
     # Common date picker styling to center text
     date_picker_style = {
-        "textAlign": "center",
-        "width": "150px"  # Fixed width for consistent layout
+        "textAlign": "center",  # Center the date text
+        "width": "150px"       # Fixed width for consistent layout
     }
 
     return html.Div([
@@ -120,7 +120,7 @@ def create_backtest_parameters():
             dbc.Col(html.Div([
                 html.Div([
                     html.Label('From:', className='mb-1'),
-                    html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div to push the date picker to the right
+                    html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div 
                     dcc.DatePickerSingle(
                         id='backtest-start-date',
                         date=default_start.strftime('%Y-%m-%d'),
@@ -136,7 +136,7 @@ def create_backtest_parameters():
             dbc.Col(html.Div([
                 html.Div([
                     html.Label('To:', className='mb-1'),
-                    html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div to push the date picker to the right
+                    html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div
                     dcc.DatePickerSingle(
                         id='backtest-end-date',
                         date=default_end.strftime('%Y-%m-%d'),

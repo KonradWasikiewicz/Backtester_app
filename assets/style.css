@@ -45,6 +45,48 @@ input:focus, .form-control:focus {
   border-color: #0d6efd !important;
 }
 
+/* --- Date Picker Styling --- */
+.SingleDatePickerInput {
+  background-color: #1e222d !important;
+  border-color: #444 !important;
+}
+
+.DateInput_input {
+  text-align: center !important;
+  font-weight: 400 !important;
+  background-color: #1e222d !important;
+  color: #ffffff !important;
+  border-color: #444 !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+}
+
+/* Fix for the question mark triangle icon */
+.DateInput_fangShape, .DateInput_fang {
+  display: none !important;
+}
+
+/* Remove extra arrows and indicators */
+.DateInput_fangStroke {
+  display: none !important;
+}
+
+/* Ensure the date picker calendar has proper contrast */
+.CalendarDay {
+  background-color: #2a2e39 !important;
+  color: #ffffff !important;
+}
+
+.CalendarDay__selected {
+  background-color: #0d6efd !important;
+  color: white !important;
+}
+
+.CalendarDay__today {
+  background-color: #343a40 !important;
+  color: #ffffff !important;
+  border: 1px solid #0d6efd !important;
+}
+
 /* --- Layout Specific Styles --- */
 .header {
   background-color: #343a40; /* Dark header */
