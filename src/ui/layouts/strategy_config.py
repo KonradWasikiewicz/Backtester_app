@@ -128,7 +128,7 @@ def create_backtest_parameters():
                         max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
                         placeholder='Start Date',
                         display_format='YYYY-MM-DD',
-                        className='mb-2',
+                        className='mb-1', # Reduced margin
                         style=date_picker_style
                     )
                 ], style={"display": "flex", "alignItems": "center"})
@@ -144,7 +144,7 @@ def create_backtest_parameters():
                         max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
                         placeholder='End Date',
                         display_format='YYYY-MM-DD',
-                        className='mb-2',
+                        className='mb-1', # Reduced margin
                         style=date_picker_style
                     )
                 ], style={"display": "flex", "alignItems": "center"})
@@ -170,18 +170,18 @@ def create_strategy_config_section(tickers=None):
                 "strategy-selection",
                 "Step 1: Initial Capital and Strategy Selection",
                 html.Div([
-                    html.Label("Initial Capital (USD):", className="mb-2", htmlFor='initial-capital-input'), # Added htmlFor
+                    html.Label("Initial Capital (USD):", className="mb-1", htmlFor='initial-capital-input'), # Reduced margin
                     dbc.Input(
                         id='initial-capital-input',
                         type='text',  # Changed to text for formatting
                         value="100 000",  # Default value formatted
-                        className="mb-3 numeric-input-formatted", # Added class for JS
+                        className="mb-2 numeric-input-formatted", # Reduced margin
                     ),
-                    html.Label("Select a strategy:", className="mb-2", htmlFor='strategy-dropdown'), # Added htmlFor
+                    html.Label("Select a strategy:", className="mb-1", htmlFor='strategy-dropdown'), # Reduced margin
                     get_strategy_dropdown(AVAILABLE_STRATEGIES),
-                    html.Div(id="strategy-description-output", className="mb-3 mt-3"),
-                    html.Div(id='strategy-param-section', className="mt-4 mb-3"),
-                    dbc.Button("Confirm", id="confirm-strategy", color="primary", className="mt-3", disabled=True)
+                    html.Div(id="strategy-description-output", className="mb-2 mt-2"), # Reduced margins
+                    html.Div(id='strategy-param-section', className="mt-3 mb-2"), # Adjusted margins
+                    dbc.Button("Confirm", id="confirm-strategy", color="primary", className="mt-2", disabled=True) # Reduced margin
                 ]),
                 step_number=1
             ),
@@ -189,13 +189,13 @@ def create_strategy_config_section(tickers=None):
                 "date-range-selection",
                 "Step 2: Date Range Selection",
                 html.Div([
-                    html.Label("Select date range:", className="mb-2"), # No input directly associated, label for the section
+                    html.Label("Select date range:", className="mb-1"), # Reduced margin
                     create_backtest_parameters(), # Contains inputs with labels handled inside
                     dbc.Button(
                         "Confirm",
                         id="confirm-dates", # ID consistent with callbacks
                         color="primary",
-                        className="mt-3",
+                        className="mt-2", # Reduced margin
                         disabled=True # Initially disabled
                     )
                 ]),
@@ -206,17 +206,17 @@ def create_strategy_config_section(tickers=None):
                 "tickers-selection",
                 "Step 3: Tickers Selection",
                 html.Div([
-                    html.Label("Select tickers to trade:", className="mb-2", htmlFor='ticker-input'), # Added htmlFor
+                    html.Label("Select tickers to trade:", className="mb-1", htmlFor='ticker-input'), # Reduced margin
                     html.Div([
                         dbc.Button("Select All", id="select-all-tickers", color="secondary", size="sm", className="me-2"),
                         dbc.Button("Deselect All", id="deselect-all-tickers", color="secondary", size="sm")
-                    ], className="mb-2"),
+                    ], className="mb-1"), # Reduced margin
                     create_ticker_checklist(tickers if tickers else []),
                     dbc.Button(
                         "Confirm",
                         id="confirm-tickers",
                         color="primary",
-                        className="mt-3",
+                        className="mt-2", # Reduced margin
                         disabled=True
                     )
                 ]),
@@ -227,7 +227,7 @@ def create_strategy_config_section(tickers=None):
                 "risk-management",
                 "Step 4: Risk Management",
                 html.Div([
-                    html.Label("Configure risk parameters:", className="mb-2", htmlFor='risk-features-checklist'), # Added htmlFor
+                    html.Label("Configure risk parameters:", className="mb-1", htmlFor='risk-features-checklist'), # Reduced margin
                     # Checklist of risk features
                     dcc.Checklist(
                         id="risk-features-checklist",
@@ -241,7 +241,7 @@ def create_strategy_config_section(tickers=None):
                         ],
                         value=[],
                         labelStyle={'display': 'block'},
-                        className="mb-3"
+                        className="mb-2" # Reduced margin
                     ),
                     # Panels for each risk feature, hidden by default
                     html.Div([  # Position Sizing Panel
@@ -314,7 +314,7 @@ def create_strategy_config_section(tickers=None):
                         "Continue without additional risk measures",
                         id="confirm-risk",
                         color="primary",
-                        className="mt-3",
+                        className="mt-2", # Reduced margin
                         disabled=True
                     )
                 ]),
@@ -324,7 +324,7 @@ def create_strategy_config_section(tickers=None):
                 "trading-costs",
                 "Step 5: Trading Costs",
                 html.Div([
-                    html.Label("Configure trading costs:", className="mb-2"), # Section label
+                    html.Label("Configure trading costs:", className="mb-1"), # Reduced margin
                     dbc.Row([
                         dbc.Col([
                             html.Label("Commission (%):", className="mb-1", htmlFor='commission-input'), # Added htmlFor
@@ -340,12 +340,12 @@ def create_strategy_config_section(tickers=None):
                                 size="sm" # Removed style
                             )
                         ], width="auto", className="d-flex flex-column align-items-start")
-                    ], className="align-items-center mb-3"),
+                    ], className="align-items-center mb-2"), # Reduced margin
                     dbc.Button(
                         "Confirm",
                         id="confirm-costs", # ID consistent with callbacks
                         color="primary",
-                        className="mt-3",
+                        className="mt-2", # Reduced margin
                         disabled=True # Initially disabled
                     )
                 ]),
@@ -355,7 +355,7 @@ def create_strategy_config_section(tickers=None):
                 "rebalancing-rules",
                 "Step 6: Rebalancing Rules",
                 html.Div([
-                    html.Label("Configure rebalancing rules:", className="mb-2"), # Section label
+                    html.Label("Configure rebalancing rules:", className="mb-1"), # Reduced margin
                     dbc.Row([
                         dbc.Col([
                             html.Label("Frequency:", className="mb-1", htmlFor='rebalancing-frequency'), # Added htmlFor
@@ -372,12 +372,12 @@ def create_strategy_config_section(tickers=None):
                             html.Label("Threshold (%):", className="mb-1", htmlFor='rebalancing-threshold'), # Added htmlFor
                             dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, size="sm") # Removed style
                         ], width="auto")
-                    ], className="align-items-center ms-3 mb-3"),
+                    ], className="align-items-center ms-3 mb-2"), # Reduced margin
                     dbc.Button(
                         "Confirm",
                         id="confirm-rebalancing",  # Consistent with callback Input
                         color="primary",
-                        className="mt-3",
+                        className="mt-2",  # Reduced margin
                         disabled=True  # Initially disabled
                     )
                 ]),
@@ -387,7 +387,7 @@ def create_strategy_config_section(tickers=None):
                 "wizard-summary",
                 "Step 7: Summary and Run Backtest",
                 html.Div([
-                    html.H5("Review Configuration Summary", className="mb-3"),
+                    html.H5("Review Configuration Summary", className="mb-2"), # Reduced margin
                     html.Div([
                         html.Div([
                             html.Strong("Strategy:"),
@@ -398,12 +398,12 @@ def create_strategy_config_section(tickers=None):
                             html.Span(id="summary-initial-capital", className="ms-2")
                         ], className="mb-2"),
                         # Add other summary items here if needed
-                    ], id="wizard-summary-output", className="mb-3"),
+                    ], id="wizard-summary-output", className="mb-2"), # Reduced margin
                     dbc.Button(
                         "Run Backtest",
                         id="run-backtest-button",
                         color="success",
-                        className="w-100 mt-3",
+                        className="w-100 mt-2", # Reduced margin
                         disabled=True
                     )
                 ]),
