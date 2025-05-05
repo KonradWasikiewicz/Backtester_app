@@ -58,8 +58,8 @@ This document defines aesthetic standards for the Backtester App, ensuring a con
   - Highlights the most important interface elements
 
 ### 3.2 Backtester App Color Palette
-- **Neutral**: #F8F9FA (background), #FFFFFF (components)
-- **Complementary**: #212529 (text), #495057 (helper text)
+- **Neutral**: #121212 (main background), #1e222d (component background/inputs)
+- **Complementary**: #FFFFFF (main text), #adb5bd (helper text/placeholders)
 - **Accent**: #0D6EFD (main actions), #0B5ED7 (hover)
 
 ### 3.3 Chart and Visualization Colors
@@ -67,7 +67,7 @@ This document defines aesthetic standards for the Backtester App, ensuring a con
 - **Decreases/Negative**: #DC3545
 - **Neutral**: #6C757D
 - **Trend lines**: #0D6EFD, #6610F2, #FD7E14, #6F42C1, #20C997
-- **Chart background**: #F8F9FA or #FFFFFF
+- **Chart background**: #1e222d (matching component background)
 
 ### 3.4 Usage Rules
 - Avoid overusing accent colors
@@ -105,10 +105,10 @@ This document defines aesthetic standards for the Backtester App, ensuring a con
   - Input height: 38px
   - Internal padding: 8px 12px
   - Margin between fields: 16px
-  - **Input Style**: Dark background (`#1e222d`), white text (`#ffffff`) for consistency with dropdowns.
+  - **Input Style**: Dark background (`#1e222d`), white text (`#ffffff`) - Consistent with palette.
 - **Labels**: Above fields, semi-bold font
 - **Error messages**: Below fields, red color, small font
-- **Numeric Input Formatting**: Large numbers (e.g., Initial Capital) should use spaces as thousand separators (e.g., `100 000`). This is handled client-side via JavaScript for inputs with the `.numeric-input-formatted` class.
+- **Numeric Input Formatting**: Large numbers (e.g., Initial Capital) should use spaces as thousand separators (e.g., `100 000`). This is handled client-side via JavaScript for inputs with the `.numeric-input-formatted` class. (Verified implementation in `assets/clientside.js` and usage in `src/ui/layouts/strategy_config.py` for initial capital).
 
 ### 5.3 Cards and Containers
 - **Internal padding**: 16px or 24px

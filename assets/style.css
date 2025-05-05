@@ -48,7 +48,7 @@ input:focus, .form-control:focus {
 
 /* --- Button Styling --- */
 .btn, .dbc-button {
-  font-size: inherit !important; /* Make button font size match surrounding text */
+  font-size: inherit; /* Removed !important */
 }
 
 /* --- Date Picker Styling --- */

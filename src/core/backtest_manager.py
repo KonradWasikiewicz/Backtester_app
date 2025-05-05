@@ -21,7 +21,7 @@ try:
         calculate_cagr, calculate_sharpe_ratio, calculate_sortino_ratio,
         calculate_max_drawdown, calculate_annualized_volatility, calculate_return_series,
         calculate_alpha, calculate_beta, calculate_information_ratio,
-        calculate_recovery_factor, calculate_trade_statistics
+        calculate_recovery_factor, calculate_trade_statistics, calculate_calmar_ratio
     )
 except ImportError as e:
     logger.error(f"CRITICAL: Failed to import core/portfolio/analysis modules in BacktestManager: {e}", exc_info=True)
@@ -303,6 +303,9 @@ class BacktestManager:
         if portfolio_series is None or portfolio_series.empty or len(portfolio_series) < 2: logger.warning("Cannot calculate stats, Portfolio_Value series invalid."); base_stats = {'Initial Capital': self.initial_capital, 'Final Capital': self.initial_capital, 'total_trades': len(trades)}; base_stats.update(calculate_trade_statistics(trades)); return base_stats
         stats = {}; stats['Initial Capital'] = self.initial_capital; stats['Final Capital'] = portfolio_series.iloc[-1]; stats['Total Return'] = ((stats['Final Capital'] / stats['Initial Capital']) - 1) * 100; stats['CAGR'] = calculate_cagr(portfolio_series) * 100 if calculate_cagr(portfolio_series) is not None else None
         stats['Max Drawdown'] = calculate_max_drawdown(portfolio_series) * 100 if calculate_max_drawdown(portfolio_series) is not None else None
+        # --- ADD Calmar Ratio Calculation ---
+        stats['Calmar Ratio'] = calculate_calmar_ratio(portfolio_series) # Add Calmar Ratio
+        # --- END ADD ---
         returns_series = calculate_return_series(portfolio_series).dropna()
         if not returns_series.empty:
              risk_free_rate_annual = config.RISK_FREE_RATE; stats['Annualized Volatility'] = calculate_annualized_volatility(returns_series) * 100 if calculate_annualized_volatility(returns_series) is not None else None; stats['Sharpe Ratio'] = calculate_sharpe_ratio(portfolio_series, risk_free_rate=risk_free_rate_annual); stats['Sortino Ratio'] = calculate_sortino_ratio(portfolio_series, risk_free_rate=risk_free_rate_annual)

@@ -40,8 +40,13 @@ def register_backtest_callbacks(app: Dash):
     # This callback now outputs to the store instead of directly to result components
     @app.callback(
         Output('backtest-results-store', 'data'),
+        # --- ADDED: Outputs for background task state ---
+        Output('run-backtest-button', 'disabled'),
+        Output('progress-bar-container', 'style'), # Show/hide progress bar
+        Output('progress-bar', 'value'),
+        Output('progress-bar', 'label'),
+        # --- END ADDED ---
         Input('run-backtest-button', 'n_clicks'),
-        # --- Corrected State IDs ---
         State('strategy-dropdown', 'value'), # Corrected ID
         State('ticker-input', 'value'),      # Corrected ID
         State('backtest-start-date', 'date'), # Corrected ID and property
@@ -67,9 +72,21 @@ def register_backtest_callbacks(app: Dash):
         # Rebalancing
         State('rebalancing-frequency', 'value'),
         State('rebalancing-threshold', 'value'),
+        # --- ADDED: Background=True and manager ---
+        background=True,
+        running=[
+            (Output('run-backtest-button', 'disabled'), True, False),
+            (Output('progress-bar-container', 'style'), {'display': 'block'}, {'display': 'none'}),
+        ],
+        progress=[
+            Output('progress-bar', 'value'),
+            Output('progress-bar', 'label'),
+        ],
+        # --- END ADDED ---
         prevent_initial_call=True
     )
-    def run_backtest(n_clicks, strategy_type, tickers, start_date, end_date, initial_capital,
+    # --- ADDED: set_progress argument ---
+    def run_backtest(set_progress, n_clicks, strategy_type, tickers, start_date, end_date, initial_capital,
                      strategy_param_values, strategy_param_ids, # Updated strategy params
                      selected_risk_features, # Added risk features
                      max_position_size, stop_loss_type, stop_loss_value, # Updated risk params
@@ -78,7 +95,8 @@ def register_backtest_callbacks(app: Dash):
                      commission, slippage, # Added costs
                      rebalancing_frequency, rebalancing_threshold # Added rebalancing
                      ):
-        logger.info("--- run_backtest callback triggered ---")
+        # --- END ADDED ---
+        logger.info("--- run_backtest callback triggered (background) ---")
         if not n_clicks:
             logger.warning("run_backtest triggered without click.")
             raise PreventUpdate
@@ -139,6 +157,10 @@ def register_backtest_callbacks(app: Dash):
             logger.info("Calling backtest_service.run_backtest...")
             start_time = time.time()
 
+            # --- ADDED: Progress Update --- 
+            set_progress((1, "Running Backtest..."))
+            # --- END ADDED ---
+
             # --- MODIFIED: Call service and directly return its output --- 
             # The service now returns the dictionary ready for the store
             results_package = backtest_service.run_backtest(
@@ -159,13 +181,19 @@ def register_backtest_callbacks(app: Dash):
             # Add timestamp to the results package before returning
             results_package["timestamp"] = time.time()
 
+            # --- ADDED: Final Progress Update --- 
+            status_label = "Complete" if results_package.get("success") else "Failed"
+            set_progress((10, status_label))
+            # --- END ADDED ---
+
             if results_package.get("success"):
                 logger.info("--- run_backtest callback: Returning SUCCESSFUL results package from service ---")
             else:
                 logger.error(f"--- run_backtest callback: Returning FAILED results package from service: {results_package.get('error')} ---")
 
+            # Return store data, button state (False), progress bar style (None)
+            # The running= argument handles the state changes automatically
             return results_package
-            # --- END MODIFICATION ---
 
         except Exception as e:
             # Catch errors specifically from the callback logic/service call
@@ -173,492 +201,14 @@ def register_backtest_callbacks(app: Dash):
             error_msg = f"An unexpected error occurred in the backtest callback: {e}"
             logger.error(traceback.format_exc())
             # Return error structure compatible with store expectations
+            # Also return button state (False) and hide progress bar
+            set_progress((10, "Error")) # Update progress on error
             return {"timestamp": time.time(), "success": False, "error": error_msg}
 
     # --- Result Update Callbacks (Triggered by Store) ---
+    # ... existing result update callbacks ...
 
-    # --- MODIFIED: Update Performance Metrics in Right Panel ---
-    @app.callback(
-        Output('performance-metrics-container', 'children'), # Target the right panel container
-        Input('backtest-results-store', 'data'),
-        prevent_initial_call=True
-    )
-    def update_performance_metrics_display(store_data):
-        logger.info("--- update_performance_metrics_display callback triggered ---")
-        if not store_data or not store_data.get("success"):
-            error = store_data.get("error", "Backtest failed or not run yet.") if store_data else "Run a backtest to see metrics."
-            logger.warning(f"Performance metrics display update skipped or failed: {error}")
-            return [dbc.Col(dbc.Alert(error, color="warning", className="m-2"), width=12)] # Display warning in the panel
-
-        try:
-            metrics = store_data.get("metrics")
-            if not metrics:
-                 logger.warning("No metrics data found in store for performance display.")
-                 return [dbc.Col(dbc.Alert("No metrics data available.", color="info", className="m-2"), width=12)]
-
-            logger.info(f"Updating performance metrics display.")
-            # Define the order and labels for PERFORMANCE metrics
-            performance_metric_order = [
-                ("starting-balance", "Start Balance", "fas fa-coins"),
-                ("ending-balance", "End Balance", "fas fa-wallet"),
-                ("total-return", "Total Return", "fas fa-chart-line"), # Removed (%)
-                ("cagr", "CAGR", "fas fa-calendar-alt"), # Removed (%)
-                ("sharpe", "Sharpe Ratio", "fas fa-chart-pie"),
-                ("max-drawdown", "Max Drawdown", "fas fa-arrow-down"), # Removed (%)
-                ("calmar-ratio", "Calmar Ratio", "fas fa-balance-scale"),
-                ("recovery-factor", "Recovery Factor", "fas fa-undo"),
-                # Add other relevant performance metrics here if needed
-            ]
-
-            cards = []
-            for key, label, icon in performance_metric_order:
-                value = metrics.get(key)
-                if value is not None:
-                    # Format value based on type (e.g., percentage, currency)
-                    if isinstance(value, (int, float)):
-                        if "balance" in key:
-                            formatted_value = f"${value:,.2f}"
-                        elif key in ["total-return", "cagr", "max-drawdown"]:
-                            formatted_value = f"{value:.2f}%"
-                        elif key in ["sharpe", "calmar-ratio", "recovery-factor"]:
-                            formatted_value = f"{value:.2f}"
-                        else:
-                            formatted_value = f"{value:,}" # Integer formatting
-                    else:
-                        formatted_value = str(value) # Fallback for other types
-
-                    # Use dbc.Col for grid layout within the Row
-                    cards.append(dbc.Col(create_metric_card(label, formatted_value, icon), md=6, lg=12, className="mb-2")) # 2 per row on md, 1 on lg
-                else:
-                    logger.warning(f"Performance metric '{key}' not found in results.")
-                    cards.append(dbc.Col(create_metric_card(label, "N/A", icon), md=6, lg=12, className="mb-2"))
-
-            logger.info("--- update_performance_metrics_display: Returning performance metric cards ---")
-            return cards
-        except Exception as e:
-            logger.error(f"Error updating performance metrics display: {e}", exc_info=True)
-            alert = dbc.Alert(f"Error displaying performance metrics: {e}", color="danger")
-            logger.info("--- update_performance_metrics_display: Returning error alert ---")
-            return [dbc.Col(alert, width=12)]
-
-    # --- NEW: Update Trade Statistics in Right Panel ---
-    @app.callback(
-        Output('trade-metrics-container', 'children'), # Target the right panel container
-        Input('backtest-results-store', 'data'),
-        prevent_initial_call=True
-    )
-    def update_trade_stats_display(store_data):
-        logger.info("--- update_trade_stats_display callback triggered ---")
-        if not store_data or not store_data.get("success"):
-            error = store_data.get("error", "Backtest failed or not run yet.") if store_data else "Run a backtest to see stats."
-            logger.warning(f"Trade stats display update skipped or failed: {error}")
-            # Return [] or a placeholder message if desired when no data
-            return [dbc.Col(dbc.Alert(error, color="warning", className="m-2"), width=12)]
-
-        try:
-            metrics = store_data.get("metrics")
-            if not metrics:
-                 logger.warning("No metrics data found in store for trade stats display.")
-                 return [dbc.Col(dbc.Alert("No metrics data available.", color="info", className="m-2"), width=12)]
-
-            logger.info(f"Updating trade stats display.")
-            # Define the order and labels for TRADE statistics
-            trade_metric_order = [
-                ("trades-count", "Total Trades", "fas fa-exchange-alt"),
-                ("win-rate", "Win Rate", "fas fa-trophy"), # Removed (%)
-                ("profit-factor", "Profit Factor", "fas fa-plus-circle"),
-                ("avg-trade", "Avg Trade", "fas fa-percentage"), # Removed (%)
-                ("signals-generated", "Signals Gen.", "fas fa-signal"), # Abbreviated
-                ("rejected-signals-total", "Rejected Sig.", "fas fa-ban"), # Abbreviated
-                # Add other relevant trade stats here if needed
-            ]
-
-            cards = []
-            for key, label, icon in trade_metric_order:
-                value = metrics.get(key)
-                if value is not None:
-                    # Format value based on type
-                    if isinstance(value, (int, float)):
-                        if key in ["win-rate", "avg-trade"]:
-                            formatted_value = f"{value:.2f}%"
-                        elif key == "profit-factor":
-                            formatted_value = f"{value:.2f}"
-                        else:
-                            formatted_value = f"{value:,}" # Integer formatting
-                    else:
-                        formatted_value = str(value) # Fallback
-
-                    # Use dbc.Col for grid layout within the Row
-                    cards.append(dbc.Col(create_metric_card(label, formatted_value, icon), md=6, lg=12, className="mb-2")) # 2 per row on md, 1 on lg
-                else:
-                    logger.warning(f"Trade metric '{key}' not found in results.")
-                    cards.append(dbc.Col(create_metric_card(label, "N/A", icon), md=6, lg=12, className="mb-2"))
-
-            logger.info("--- update_trade_stats_display: Returning trade stat cards ---")
-            return cards
-        except Exception as e:
-            logger.error(f"Error updating trade stats display: {e}", exc_info=True)
-            alert = dbc.Alert(f"Error displaying trade stats: {e}", color="danger")
-            logger.info("--- update_trade_stats_display: Returning error alert ---")
-            return [dbc.Col(alert, width=12)]
-
-    # --- REMOVED old update_metrics_display callback ---
-    # @app.callback(
-    #     Output('metrics-summary-container', 'children'),
-    #     Input('backtest-results-store', 'data'),
-    #     prevent_initial_call=True
-    # )
-    # def update_metrics_display(store_data):
-    #    ...
-
-    # Update Portfolio Chart
-    @app.callback(
-        Output('portfolio-chart', 'figure'),
-        Input('backtest-results-store', 'data'),
-        Input('btn-chart-value', 'n_clicks'),
-        Input('btn-chart-returns', 'n_clicks'),
-        prevent_initial_call=True
-    )
-    def update_portfolio_chart(store_data, n_value, n_returns):
-        logger.info("--- update_portfolio_chart callback triggered ---") # ADDED LOG
-        triggered_id = ctx.triggered_id if ctx.triggered_id else 'btn-chart-value'
-        chart_type = 'value'
-        json_key = 'portfolio_value_chart_json' # Key for value chart JSON
-        if triggered_id == 'btn-chart-returns':
-            chart_type = 'returns'
-            json_key = 'portfolio_returns_chart_json' # Key for returns chart JSON
-
-        logger.info(f"Selected portfolio chart type: {chart_type}")
-
-        if not store_data or not store_data.get("success"):
-            logger.warning("Portfolio chart update skipped: No successful backtest data in store.")
-            empty_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': 'Run Backtest for Portfolio Chart'}}
-            logger.info(f"--- update_portfolio_chart ({chart_type}): Returning empty figure (no data) ---") # ADDED LOG
-            return empty_fig
-
-        try:
-            chart_json = store_data.get(json_key)
-
-            if not chart_json:
-                 logger.warning(f"No portfolio chart JSON found in store for key '{json_key}'.")
-                 empty_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': f'No {chart_type} chart data available.'}}
-                 logger.info(f"--- update_portfolio_chart ({chart_type}): Returning empty figure (no JSON) ---") # ADDED LOG
-                 return empty_fig
-
-            fig = pio.from_json(chart_json)
-            logger.info(f"--- update_portfolio_chart ({chart_type}): Returning figure from JSON ---") # ADDED LOG
-            return fig
-
-        except Exception as e:
-            logger.error(f"Error updating portfolio chart ({chart_type}): {e}", exc_info=True)
-            error_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': f'Error: {e}'}}
-            logger.info(f"--- update_portfolio_chart ({chart_type}): Returning error figure ---") # ADDED LOG
-            return error_fig
-
-    # --- ADDED: Callback to update button outlines ---
-    @app.callback(
-        Output('btn-chart-value', 'outline'),
-        Output('btn-chart-returns', 'outline'),
-        Input('btn-chart-value', 'n_clicks'),
-        Input('btn-chart-returns', 'n_clicks'),
-        prevent_initial_call=True
-    )
-    def update_portfolio_button_styles(n_value, n_returns):
-        # Minimal logging as this is less critical
-        # logger.debug("--- update_portfolio_button_styles triggered ---")
-        triggered_id = ctx.triggered_id if ctx.triggered_id else 'btn-chart-value'
-        if triggered_id == 'btn-chart-returns':
-            return True, False # Value outlined, Returns filled
-        else: # Default or Value clicked
-            return False, True # Value filled, Returns outlined
-
-    # --- ADDED: Update Drawdown Chart ---
-    @app.callback(
-        Output('drawdown-chart', 'figure'),
-        Input('backtest-results-store', 'data'),
-        prevent_initial_call=True
-    )
-    def update_drawdown_chart(store_data):
-        logger.info("--- update_drawdown_chart callback triggered ---") # ADDED LOG
-        if not store_data or not store_data.get("success"):
-            logger.warning("Drawdown chart update skipped: No successful backtest data.")
-            empty_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': 'Run Backtest for Drawdown Chart'}}
-            logger.info("--- update_drawdown_chart: Returning empty figure (no data) ---") # ADDED LOG
-            return empty_fig
-
-        try:
-            drawdown_chart_json = store_data.get("drawdown_chart_json")
-            if not drawdown_chart_json:
-                logger.warning("No drawdown chart JSON found in store.")
-                empty_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': 'No drawdown data available.'}}
-                logger.info("--- update_drawdown_chart: Returning empty figure (no JSON) ---") # ADDED LOG
-                return empty_fig
-
-            fig = pio.from_json(drawdown_chart_json)
-            logger.info("--- update_drawdown_chart: Returning figure from JSON ---") # ADDED LOG
-            return fig
-        except Exception as e:
-            logger.error(f"Error updating drawdown chart: {e}", exc_info=True)
-            error_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': f'Error: {e}'}}
-            logger.info("--- update_drawdown_chart: Returning error figure ---") # ADDED LOG
-            return error_fig
-
-
-    # Update Monthly Returns Heatmap
-    @app.callback(
-        Output('monthly-returns-heatmap', 'figure'),
-        Input('backtest-results-store', 'data'),
-        prevent_initial_call=True
-    )
-    def update_heatmap(store_data):
-        logger.info("--- update_heatmap callback triggered ---") # ADDED LOG
-        if not store_data or not store_data.get("success"):
-            logger.warning("Heatmap update skipped: No successful backtest data in store.")
-            empty_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': 'Run Backtest for Heatmap'}}
-            logger.info("--- update_heatmap: Returning empty figure (no data) ---") # ADDED LOG
-            return empty_fig
-
-        try:
-            heatmap_json = store_data.get("heatmap_json")
-            if not heatmap_json:
-                logger.warning("No heatmap JSON found in store.")
-                empty_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': 'No returns data for heatmap.'}}
-                logger.info("--- update_heatmap: Returning empty figure (no JSON) ---") # ADDED LOG
-                return empty_fig
-
-            fig = pio.from_json(heatmap_json)
-            logger.info("--- update_heatmap: Returning figure from JSON ---") # ADDED LOG
-            return fig
-        except Exception as e:
-            logger.error(f"Error updating heatmap: {e}", exc_info=True)
-            error_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': f'Error: {e}'}}
-            logger.info("--- update_heatmap: Returning error figure ---") # ADDED LOG
-            return error_fig
-
-    # Update Signals Chart (needs ticker selection)
-    # --- ADD Ticker Selector Update Callback ---
-    @app.callback(
-        Output('ticker-selector', 'options'),
-        Output('ticker-selector', 'value'),
-        Input('backtest-results-store', 'data'),
-        prevent_initial_call=True
-    )
-    def update_ticker_selector(store_data):
-        logger.info("--- update_ticker_selector callback triggered ---") # ADDED LOG
-        if store_data and store_data.get("success"):
-            selected_tickers = store_data.get("selected_tickers", [])
-            if isinstance(selected_tickers, str):
-                 selected_tickers = [selected_tickers] # Ensure it's a list
-
-            if selected_tickers:
-                string_tickers = [str(t) for t in selected_tickers] # Ensure strings
-                options = [{'label': t, 'value': t} for t in string_tickers]
-                logger.info(f"Populating ticker selector with: {string_tickers}")
-                default_value = options[0]['value'] if options else None
-                logger.info("--- update_ticker_selector: Returning options and value ---") # ADDED LOG
-                return options, default_value
-            else:
-                 logger.warning("No tickers found in successful backtest results for selector.")
-                 logger.info("--- update_ticker_selector: Returning empty options (no tickers) ---") # ADDED LOG
-                 return [], None
-        logger.debug("No successful backtest data, clearing ticker selector.")
-        logger.info("--- update_ticker_selector: Returning empty options (no success data) ---") # ADDED LOG
-        return [], None
-
-    @app.callback(
-        Output('signals-chart', 'figure'),
-        Input('backtest-results-store', 'data'),
-        Input('ticker-selector', 'value'),
-        prevent_initial_call=True
-    )
-    def update_signals_chart(store_data, selected_ticker):
-        logger.info(f"--- update_signals_chart callback triggered. Ticker: {selected_ticker} ---") # ADDED LOG
-        # Check store_data first
-        if not store_data or not store_data.get("success"):
-             logger.warning("Signals chart update skipped: No successful backtest data.")
-             empty_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': 'Run Backtest to View Signals'}}
-             logger.info("--- update_signals_chart: Returning empty figure (no data) ---") # ADDED LOG
-             return empty_fig
-
-        # Check selected_ticker
-        if not selected_ticker:
-             logger.debug("Signals chart update skipped: No ticker selected.")
-             empty_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': 'Select a Ticker to View Signals'}}
-             logger.info("--- update_signals_chart: Returning empty figure (no ticker) ---") # ADDED LOG
-             return empty_fig
-
-        ticker = selected_ticker
-        try:
-            # Re-calling service method to generate the figure dynamically
-            # This assumes backtest_service holds the necessary data from the last run
-            # We need to ensure backtest_service has the results loaded.
-            # A better approach might be to store signals chart data per ticker in the store.
-            # For now, let's assume get_signals_chart can access the latest results.
-            fig = backtest_service.get_signals_chart(ticker=ticker)
-
-            if fig:
-                logger.info(f"--- update_signals_chart: Returning figure for {ticker} ---") # ADDED LOG
-                return fig
-            else:
-                logger.warning(f"Could not generate signal chart for {ticker}.")
-                empty_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': f'Could not generate signal chart for {ticker}'}}
-                logger.info(f"--- update_signals_chart: Returning empty figure (generation failed) for {ticker} ---") # ADDED LOG
-                return empty_fig
-        except Exception as e:
-            logger.error(f"Error updating signals chart for {ticker}: {e}", exc_info=True)
-            error_fig = {'data': [], 'layout': {'template': CHART_THEME, 'title': f'Error: {e}'}}
-            logger.info(f"--- update_signals_chart: Returning error figure for {ticker} ---") # ADDED LOG
-            return error_fig
-
-
-    # --- MODIFIED Trades Table Callback ---
-    @app.callback(
-        Output('trades-table-container', 'children'), # Output to the container Div
-        Input('backtest-results-store', 'data'),
-        prevent_initial_call=True
-    )
-    def update_trades_table(store_data):
-        logger.info("--- update_trades_table callback triggered ---") # ADDED LOG
-        if not store_data or not store_data.get("success"):
-            logger.warning("Trades table update skipped: No successful backtest data.")
-            placeholder = html.Div("Run a backtest to view trade history.")
-            logger.info("--- update_trades_table: Returning placeholder (no data) ---") # ADDED LOG
-            return placeholder
-
-        try:
-            trades_data = store_data.get("trades_data")
-            if not trades_data:
-                logger.warning("No trades data found in store.")
-                no_trades_msg = html.Div("No trades were executed in this backtest.")
-                logger.info("--- update_trades_table: Returning 'no trades' message ---") # ADDED LOG
-                return no_trades_msg
-
-            logger.info(f"Updating trades table with {len(trades_data)} trades.")
-
-            # Convert list of dicts to DataFrame for easier handling if needed
-            trades_df = pd.DataFrame(trades_data)
-
-            # Define columns for the DataTable
-            columns = [
-                {"name": "Entry Date", "id": "entry_date"},
-                {"name": "Exit Date", "id": "exit_date"},
-                {"name": "Ticker", "id": "ticker"},
-                {"name": "Direction", "id": "direction"},
-                {"name": "Entry Price", "id": "entry_price", "type": "numeric", "format": dash_table.Format.Format(precision=2, scheme=dash_table.Format.Scheme.fixed)},
-                {"name": "Exit Price", "id": "exit_price", "type": "numeric", "format": dash_table.Format.Format(precision=2, scheme=dash_table.Format.Scheme.fixed)},
-                {"name": "Size", "id": "size", "type": "numeric", "format": dash_table.Format.Format(precision=4, scheme=dash_table.Format.Scheme.fixed)},
-                {"name": "PnL", "id": "pnl", "type": "numeric", "format": dash_table.Format.Format(precision=2, scheme=dash_table.Format.Scheme.fixed)},
-                {"name": "Return (%)", "id": "return_pct", "type": "numeric", "format": dash_table.Format.Format(precision=2, scheme=dash_table.Format.Scheme.percentage)},
-                {"name": "Duration", "id": "duration"},
-                {"name": "Stop Loss Hit", "id": "stop_loss_hit"},
-                {"name": "Take Profit Hit", "id": "take_profit_hit"}
-            ]
-
-            # Convert DataFrame back to list of dicts for DataTable
-            data_for_table = trades_df.to_dict('records')
-
-            table = dash_table.DataTable(
-                id='trades-table',
-                columns=columns,
-                data=data_for_table,
-                page_size=10,  # Show 10 rows per page
-                style_table={'overflowX': 'auto'},
-                style_header={
-                    'backgroundColor': 'rgb(30, 30, 30)',
-                    'color': 'white',
-                    'fontWeight': 'bold'
-                },
-                style_data={
-                    'backgroundColor': 'rgb(50, 50, 50)',
-                    'color': 'white'
-                },
-                style_cell={
-                    'textAlign': 'left',
-                    'padding': '5px',
-                    'minWidth': '100px', 'width': '150px', 'maxWidth': '200px',
-                    'whiteSpace': 'normal',
-                    'height': 'auto',
-                },
-                style_data_conditional=[
-                    {
-                        'if': {'column_id': 'pnl', 'filter_query': '{pnl} > 0'},
-                        'color': '#4CAF50' # Green for positive PnL
-                    },
-                    {
-                        'if': {'column_id': 'pnl', 'filter_query': '{pnl} < 0'},
-                        'color': '#F44336' # Red for negative PnL
-                    },
-                     {
-                        'if': {'column_id': 'return_pct', 'filter_query': '{return_pct} > 0'},
-                        'color': '#4CAF50' # Green for positive return
-                    },
-                    {
-                        'if': {'column_id': 'return_pct', 'filter_query': '{return_pct} < 0'},
-                        'color': '#F44336' # Red for negative return
-                    }
-                ],
-                sort_action="native", # Enable sorting
-                filter_action="native", # Enable filtering
-                export_format="csv", # Allow exporting data
-            )
-            logger.info("--- update_trades_table: Returning DataTable ---") # ADDED LOG
-            return table
-
-        except Exception as e:
-            logger.error(f"Error updating trades table: {e}", exc_info=True)
-            alert = dbc.Alert(f"Error displaying trades table: {e}", color="danger")
-            logger.info("--- update_trades_table: Returning error alert ---") # ADDED LOG
-            return alert
-
-    # --- NEW: Callback to show/hide results panels ---
-    @app.callback(
-        Output('center-panel-col', 'style'),
-        Output('right-panel-col', 'style'),
-        Input('backtest-results-store', 'data'),
-        prevent_initial_call=True
-    )
-    def toggle_results_panels(store_data):
-        logger.info("--- toggle_results_panels callback triggered ---")
-        if store_data and store_data.get("success"):
-            logger.info("Showing results panels.")
-            # Return style dictionaries to make panels visible
-            visible_style = {'display': 'block', 'paddingLeft': '15px', 'paddingRight': '15px'} # Keep padding
-            right_visible_style = {'display': 'block', 'paddingLeft': '15px'} # Keep padding
-            return visible_style, right_visible_style
-        else:
-            # If store is empty or backtest failed, keep panels hidden (or hide them again)
-            logger.info("Keeping results panels hidden.")
-            hidden_style = {'display': 'none', 'paddingLeft': '15px', 'paddingRight': '15px'}
-            right_hidden_style = {'display': 'none', 'paddingLeft': '15px'}
-            # Use no_update if you only want to show them once and never hide again
-            # return no_update, no_update 
-            return hidden_style, right_hidden_style # Hide again if data is invalid/cleared
-
-    # --- Main Loader Callback ---
-    @app.callback(
-        Output('loading-overlay', 'style'),
-        Input('run-backtest-button', 'n_clicks'),
-        Input('backtest-results-store', 'data'), # Listen to store updates
-        State('loading-overlay', 'style'), # Get current style to prevent loops
-        prevent_initial_call=True
-    )
-    def toggle_main_loader(run_clicks, store_data, current_style):
-        triggered_id = ctx.triggered_id
-        # logger.debug(f"toggle_main_loader triggered by: {triggered_id}") # Optional debug log
-
-        style_block = {'display': 'block'}
-        style_none = {'display': 'none'}
-
-        if triggered_id == 'run-backtest-button':
-            # Show loader only if it's not already shown
-            # logger.debug("Run button clicked, showing loader.")
-            return style_block if current_style != style_block else no_update
-        elif triggered_id == 'backtest-results-store':
-            # Hide loader only if it's currently shown
-            # logger.debug("Store updated, hiding loader.")
-            return style_none if current_style != style_none else no_update
-
-        # If triggered by something else or initial load, don't update
-        return no_update
+    # --- REMOVED Main Loader Callback ---
+    # The background callback's running state handles the button disabling and progress bar
 
     logger.info("Backtest callbacks registered.")

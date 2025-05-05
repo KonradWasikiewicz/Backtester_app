@@ -227,7 +227,8 @@ def register_wizard_callbacks(app):
 
     # --- Summary Generation and Run Button Activation ---
     @app.callback(
-        [Output('wizard-summary-output', 'children'), Output('run-backtest-button', 'disabled')],
+        [Output('wizard-summary-output', 'children'), 
+         Output('run-backtest-button', 'disabled', allow_duplicate=True)], # ADDED allow_duplicate=True
         Input('wizard-summary-content', 'style'),
         [
             State('strategy-dropdown', 'value'),

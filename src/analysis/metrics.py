@@ -229,6 +229,28 @@ def calculate_sortino_ratio(price_series: pd.Series, risk_free_rate: float = 0.0
     return (cagr - risk_free_rate) / annualized_downside_deviation
 
 
+def calculate_calmar_ratio(price_series: pd.Series) -> Optional[float]:
+    """Calculates the Calmar ratio (CAGR / Max Drawdown)."""
+    cagr = calculate_cagr(price_series)
+    if cagr is None:
+        logger.warning("Cannot calculate Calmar Ratio: CAGR calculation failed.")
+        return None
+
+    max_drawdown = calculate_max_drawdown(price_series) # Returns negative value or zero
+    if max_drawdown is None:
+        logger.warning("Cannot calculate Calmar Ratio: Max Drawdown calculation failed.")
+        return None
+
+    if max_drawdown == 0:
+        # Handle zero drawdown: Infinite if CAGR > 0, 0 if CAGR <= 0
+        logger.warning("Max Drawdown is zero, Calmar Ratio is undefined or infinite.")
+        return np.inf if cagr > 0 else 0.0
+
+    # Use absolute value of max drawdown for the ratio
+    calmar_ratio = cagr / abs(max_drawdown)
+    return calmar_ratio
+
+
 # --- Drawdown Metrics ---
 
 def calculate_drawdown_series(series: pd.Series) -> Optional[pd.Series]:

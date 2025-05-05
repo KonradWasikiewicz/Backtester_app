@@ -11,5 +11,8 @@ dash-table>=5.0.0
 plotly>=5.18.0
 typing-extensions>=4.5.0
 
+# Background Callback Manager
+diskcache>=5.6.1 # Added for background callbacks
+
 # Technical Analysis Library
 pandas-ta>=0.3.14b # Added for strategies like RSI, MACD

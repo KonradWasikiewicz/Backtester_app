@@ -11,27 +11,30 @@ import json
 import sys
 import os
 
-# --- PRZENIESIONA INICJALIZACJA LOGGERA ---
+# --- MOVED LOGGER INITIALIZATION ---
 # Configure logging EARLY, before any potential logging calls
 logger = logging.getLogger(__name__)
 
 # Import strategy logic and constants
 try:
-    # --- POPRAWIONE IMPORTY ---
-    from src.core.constants import DEFAULT_STRATEGY_PARAMS, STRATEGY_DESCRIPTIONS, PARAM_DESCRIPTIONS # Importuj domyślne parametry i opisy
-    from src.core.data import DataLoader
-    # --- USUNIĘTO BŁĘDNY IMPORT 'generate_strategy_parameters' ---
+    # --- CORRECTED IMPORTS ---
+    from src.core.constants import DEFAULT_STRATEGY_PARAMS, STRATEGY_DESCRIPTIONS, PARAM_DESCRIPTIONS # Import default parameters and descriptions
+    # --- REMOVED DIRECT CORE IMPORT ---
+    # from src.core.data import DataLoader 
+    # --- ADDED SERVICE LAYER IMPORT ---
+    from src.services.data_service import DataService 
+    # --- REMOVED INCORRECT IMPORT 'generate_strategy_parameters' ---
 except ImportError:
     # Handle potential import errors if running script directly or structure changes
-    # Teraz logger jest już zdefiniowany
+    # Logger is now defined here
     logger.error("Critical import error in strategy_callbacks.py", exc_info=True)
-    # Definiuj puste stałe jako fallback
+    # Define empty constants as fallback
     DEFAULT_STRATEGY_PARAMS = {}
     STRATEGY_DESCRIPTIONS = {}
     PARAM_DESCRIPTIONS = {}
-    # Możesz też rzucić wyjątek lub zakończyć działanie
+    # You might also raise an exception or exit
 
-# --- Funkcja pomocnicza do generowania inputów parametrów ---
+# --- Helper function to generate parameter inputs ---
 def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
     """Generates input components based on the selected strategy."""
     if not strategy_value or strategy_value not in DEFAULT_STRATEGY_PARAMS:
@@ -103,7 +106,7 @@ def _generate_parameter_inputs(strategy_value: str) -> List[Any]:
 
     return inputs
 
-# --- Rejestracja callbacków ---
+# --- Register callbacks ---
 def register_strategy_callbacks(app: dash.Dash) -> None:
     """
     Register callbacks related to strategy selection and configuration.
@@ -112,6 +115,10 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
         app: The Dash application instance
     """
     logger.info("Registering strategy callbacks...")
+    
+    # --- Instantiate DataService (assuming it's lightweight or managed elsewhere if heavy) ---
+    # If DataService requires complex setup, this might need to be passed in or accessed differently.
+    data_service = DataService()
 
     @app.callback(
         Output('strategy-description-output', 'children'),

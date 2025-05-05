@@ -15,7 +15,10 @@ logger = logging.getLogger(__name__)
 # Add project root to sys.path for imports
 try:
     # Try import from src for full application
-    from src.core.data import DataLoader
+    # --- REMOVED DIRECT CORE IMPORT ---
+    # from src.core.data import DataLoader
+    # --- ADDED SERVICE LAYER IMPORT ---
+    from src.services.data_service import DataService
     from src.core.constants import AVAILABLE_STRATEGIES
 except ModuleNotFoundError:
     # On import failure, append project root to sys.path and retry imports
@@ -25,7 +28,10 @@ except ModuleNotFoundError:
         sys.path.append(project_root)
 
     # Retry import after path adjustment
-    from src.core.data import DataLoader
+    # --- REMOVED DIRECT CORE IMPORT ---
+    # from src.core.data import DataLoader
+    # --- ADDED SERVICE LAYER IMPORT ---
+    from src.services.data_service import DataService
     from src.core.constants import AVAILABLE_STRATEGIES
 
 # --- Strategy dropdown creation function ---
@@ -89,8 +95,9 @@ def create_backtest_parameters():
     """Creates date pickers for backtest start and end dates."""
     logger.debug("Creating date range pickers.")
     try:
-        data_loader = DataLoader()
-        min_date, max_date = data_loader.get_date_range()
+        # --- USE DATASERVICE --- 
+        data_service = DataService()
+        min_date, max_date = data_service.get_date_range()
         
         # Ensure minimum date is not earlier than Jan 1, 2020
         absolute_min_date = pd.Timestamp('2020-01-01')
@@ -103,7 +110,7 @@ def create_backtest_parameters():
         
         logger.debug(f"Date range set: Min={min_date.strftime('%Y-%m-%d')}, Max={max_date.strftime('%Y-%m-%d') if max_date else 'today'}")
     except Exception as e:
-        logger.error(f"Error getting date range from DataLoader: {e}")
+        logger.error(f"Error getting date range from DataService: {e}")
         min_date = pd.Timestamp('2020-01-01')
         max_date = pd.Timestamp.today()
         default_start = min_date
@@ -161,6 +168,17 @@ def create_strategy_config_section(tickers=None):
     """
     logger.info("Creating strategy configuration section layout...")
     try:
+        # --- Fetch tickers using DataService if not provided ---
+        if tickers is None:
+            try:
+                data_service = DataService()
+                tickers = data_service.get_available_tickers()
+                # Format tickers for checklist: [{'label': 'TICKER', 'value': 'TICKER'}, ...]
+                tickers = [{'label': t, 'value': t} for t in tickers]
+            except Exception as e:
+                logger.error(f"Error fetching tickers via DataService: {e}")
+                tickers = [] # Fallback to empty list
+
         # --- Progress bar ---
         progress = dbc.Progress(id="wizard-progress", value=0, striped=True, animated=True, className="mb-4")
 
@@ -399,6 +417,13 @@ def create_strategy_config_section(tickers=None):
                         ], className="mb-2"),
                         # Add other summary items here if needed
                     ], id="wizard-summary-output", className="mb-2"), # Reduced margin
+                    
+                    # --- ADDED Progress Bar Container ---
+                    html.Div([
+                        dbc.Progress(id="progress-bar", value=0, striped=True, animated=True, className="mb-2")
+                    ], id="progress-bar-container", style={"display": "none"}), # Initially hidden
+                    # --- END ADDED ---
+                    
                     dbc.Button(
                         "Run Backtest",
                         id="run-backtest-button",

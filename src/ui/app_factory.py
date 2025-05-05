@@ -10,6 +10,11 @@ import traceback
 import pandas as pd
 import time # Add time import for versioning
 
+# --- ADDED: Import DiskcacheManager ---
+import diskcache
+from dash.long_callback import DiskcacheManager
+# --- END ADDED ---
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -48,11 +53,16 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True, a
     Returns:
         dash.Dash: Configured Dash application instance
     """
+    # --- ADDED: Initialize DiskcacheManager ---
+    cache = diskcache.Cache("./cache") # Creates a cache directory
+    background_callback_manager = DiskcacheManager(cache)
+    # --- END ADDED ---
+
     # Initialize the Dash app with Bootstrap components
     # --- Add version query string to custom CSS --- 
     css_version = str(int(time.time())) # Use timestamp as version
 
-    # --- Pass assets_folder to Dash constructor --- 
+    # --- Pass assets_folder and background_callback_manager to Dash constructor --- 
     app = dash.Dash(
         __name__,
         external_stylesheets=[
@@ -67,7 +77,8 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True, a
         meta_tags=[
             {"name": "viewport", "content": "width=device-width, initial-scale=1"}
         ],
-        assets_folder=assets_dir # Explicitly set the assets folder path
+        assets_folder=assets_dir, # Explicitly set the assets folder path
+        background_callback_manager=background_callback_manager # ADDED
     )
     logger.info(f"Dash assets_folder set to: {assets_dir}") # Log the path being used
     # --- End Pass assets_folder ---

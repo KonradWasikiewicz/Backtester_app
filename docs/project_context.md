@@ -54,10 +54,10 @@ Backtester App is an application for testing investment strategies on historical
 4. **No File Handlers**: Removed file handlers to simplify maintenance
 
 ## Documentation References
-- [Architecture Guide](architecture.md)
 - [Product Design Specification](product_design_specification.md)
-- [Technical Specification](technical_specification.md)
+- [Technical Specification](technical_specification.md) # Updated: Includes Architecture
 - [Aesthetics Guidelines](aesthetics_guidelines.md)
+- [Workflow Guide](workflow_guide.md)
 
 ---
 
