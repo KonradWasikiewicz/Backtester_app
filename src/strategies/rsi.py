@@ -95,11 +95,15 @@ class RSIStrategy(BaseStrategy):
 
             # --- Position holding logic ---
             # Replace 0 with NA, forward fill, fill remaining NA with 0
-            positions_series = signals['Signal'].replace(0, pd.NA)
+            # FIXED: Use .where instead of .replace to avoid RecursionError with pandas 1.5.3
+            positions_series = signals['Signal'].where(signals['Signal'] != 0, pd.NA)
+            # --- END FIXED ---
             positions_series = positions_series.ffill()
             positions_series = positions_series.fillna(0)
             # Infer the best possible dtype after filling NAs, as suggested by the warning
-            positions_series = positions_series.infer_objects(copy=False)
+            # FIXED: Removed copy=False argument for pandas 1.5.3 compatibility
+            positions_series = positions_series.infer_objects()
+            # --- END FIXED ---
             # Ensure the final type is integer
             signals['Positions'] = positions_series.astype(int)
             signals['Positions'] = signals['Positions'].replace(-1, 0) # No short positions

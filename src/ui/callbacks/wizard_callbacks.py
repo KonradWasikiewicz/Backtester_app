@@ -1,5 +1,6 @@
 import dash
 from dash import html, dcc, Input, Output, State, ALL, MATCH, ctx, no_update
+from dash.exceptions import PreventUpdate # Added import
 import logging
 # Make sure logging is configured appropriately elsewhere (e.g., in app_factory or main app.py)
 # from ...config.logging_config import setup_logging
@@ -363,6 +364,42 @@ def register_wizard_callbacks(app):
 
         # Enable Run Backtest button
         return summary_elements, False
+
+    @app.callback(
+        [
+            Output("progress-bar", "value"),
+            Output("progress-bar", "label")
+        ],
+        [
+            Input("confirm-strategy", "n_clicks"),
+            Input("confirm-dates", "n_clicks"),
+            Input("confirm-tickers", "n_clicks"),
+            Input("confirm-risk", "n_clicks"),
+            Input("confirm-costs", "n_clicks"),
+            Input("confirm-rebalancing", "n_clicks"),
+            Input("wizard-summary-header", "n_clicks")
+        ],
+        prevent_initial_call=True
+    )
+    def update_progress_bar(*args):
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            raise PreventUpdate
+
+        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        step_map = {
+            "confirm-strategy": 1,
+            "confirm-dates": 2,
+            "confirm-tickers": 3,
+            "confirm-risk": 4,
+            "confirm-costs": 5,
+            "confirm-rebalancing": 6,
+            "wizard-summary-header": 7
+        }
+
+        current_step = step_map.get(trigger_id, 0)
+        progress_value = (current_step / 7) * 100
+        return progress_value, f"Step {current_step} of 7"
 
     logger.info("Wizard callbacks registered successfully.")
 

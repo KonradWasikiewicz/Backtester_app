@@ -187,7 +187,48 @@ def register_backtest_callbacks(app: Dash):
             return {"timestamp": time.time(), "success": False, "error": error_msg}, False, {'display': 'none'}, 0, "Callback Error"
 
     # --- Result Update Callbacks (Triggered by Store) ---
-    # ... existing result update callbacks ...
+    @app.callback(
+        [
+            Output('results-metrics', 'children'),
+            Output('results-charts', 'children'),
+            Output('results-tables', 'children')
+        ],
+        Input('backtest-results-store', 'data'),
+        prevent_initial_call=True
+    )
+    def update_results_display(results_data):
+        if not results_data or not results_data.get('success'):
+            raise PreventUpdate
+
+        # Extract metrics, charts, and tables from results_data
+        metrics = results_data.get('metrics', {})
+        charts = {
+            'portfolio_value': results_data.get('portfolio_value_chart_json'),
+            'returns': results_data.get('portfolio_returns_chart_json'),
+            'drawdown': results_data.get('drawdown_chart_json'),
+            'heatmap': results_data.get('heatmap_json')
+        }
+        trades_table = results_data.get('trades_data', [])
+
+        # Create metric cards
+        metrics_children = [
+            create_metric_card(metric_name, metric_value)
+            for metric_name, metric_value in metrics.items()
+        ]
+
+        # Create charts
+        charts_children = [
+            dcc.Graph(figure=pio.from_json(chart_json))
+            for chart_json in charts.values() if chart_json
+        ]
+
+        # Create trades table
+        table_children = dash_table.DataTable(
+            data=trades_table,
+            columns=[{"name": col, "id": col} for col in trades_table[0].keys()] if trades_table else []
+        )
+
+        return metrics_children, charts_children, table_children
 
     # --- REMOVED Main Loader Callback ---
     # The background callback's running state handles the button disabling and progress bar

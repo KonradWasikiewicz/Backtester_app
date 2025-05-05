@@ -418,12 +418,6 @@ def create_strategy_config_section(tickers=None):
                         # Add other summary items here if needed
                     ], id="wizard-summary-output", className="mb-2"), # Reduced margin
                     
-                    # --- ADDED Progress Bar Container ---
-                    html.Div([
-                        dbc.Progress(id="progress-bar", value=0, striped=True, animated=True, className="mb-2")
-                    ], id="progress-bar-container", style={"display": "none"}), # Initially hidden
-                    # --- END ADDED ---
-                    
                     dbc.Button(
                         "Run Backtest",
                         id="run-backtest-button",
@@ -440,6 +434,9 @@ def create_strategy_config_section(tickers=None):
         # Wrap all steps in a single container
         return html.Div([
             progress,
+            html.Div([
+                dbc.Progress(id="progress-bar", value=0, striped=True, animated=True, className="mb-2")
+            ], id="progress-bar-container", style={"margin": "0 auto", "width": "50%"}),
             html.Div(steps, id="wizard-steps-container", className="wizard-steps")
         ], id="strategy-config-container", className="strategy-wizard")
 

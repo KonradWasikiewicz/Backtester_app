@@ -7,7 +7,7 @@ import pandas as pd
 from flask import request, jsonify
 
 # --- Set Pandas Option for Future Behavior ---
-pd.set_option('future.no_silent_downcasting', True)
+# pd.set_option('future.no_silent_downcasting', True) # Removed: Option not available in pandas 1.5.3
 # --- End Set Option ---
 
 # Ensure src is in the path

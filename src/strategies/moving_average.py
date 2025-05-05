@@ -122,8 +122,8 @@ class MovingAverageStrategy(BaseStrategy):
             signals.loc[sell_condition, 'Reason'] = f'SMA{self.short_window} Cross Below SMA{self.long_window}'
 
             # --- Position Holding Logic ---
-            # Replace 0 with NA, forward fill, fill remaining NA with 0
-            positions_series = signals['Signal'].replace(0, pd.NA)
+            # Replace 0 with NA using .where() to avoid potential recursion issues
+            positions_series = signals['Signal'].where(signals['Signal'] != 0, pd.NA)
             positions_series = positions_series.ffill()
             positions_series = positions_series.fillna(0)
             # Infer the best possible dtype after filling NAs, as suggested by the warning
