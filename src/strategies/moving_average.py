@@ -127,7 +127,8 @@ class MovingAverageStrategy(BaseStrategy):
             positions_series = positions_series.ffill()
             positions_series = positions_series.fillna(0)
             # Infer the best possible dtype after filling NAs, as suggested by the warning
-            positions_series = positions_series.infer_objects(copy=False)
+            # REMOVED copy=False argument as it's not supported in older pandas versions
+            positions_series = positions_series.infer_objects()
             # Ensure the final type is integer
             signals['Positions'] = positions_series.astype(int)
             signals['Positions'] = signals['Positions'].replace(-1, 0) # No short positions

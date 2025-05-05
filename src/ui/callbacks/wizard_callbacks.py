@@ -37,8 +37,10 @@ def register_wizard_callbacks(app):
             Output("trading-costs-header", "className"),
             Output("rebalancing-rules-header", "className"),
             Output("wizard-summary-header", "className"),
-            # Progress Bar
-            Output("wizard-progress", "value")
+            # --- UPDATED Progress Bar Output ID ---
+            Output("strategy_progress_bar", "value"),
+            # --- ADDED Progress Bar Style Output ---
+            Output("strategy_progress_bar", "style")
         ],
         [
             # Confirm Buttons (Inputs) - Verify these IDs
@@ -75,6 +77,9 @@ def register_wizard_callbacks(app):
         ]
         num_steps = len(steps)
         target_step_index = 0 # Default to the first step
+
+        # --- Determine if trigger is a header click ---
+        is_header_click = "-header" in trigger_id
 
         try:
             if "confirm-" in trigger_id:
@@ -123,15 +128,21 @@ def register_wizard_callbacks(app):
 
             progress = ((target_step_index + 1) / num_steps) * 100
 
-            # logger.debug(f"Returning styles: {step_styles}") # Removed this log
+            # --- Determine strategy progress bar style ---
+            # Show if a header was clicked, otherwise no_update (run_backtest callback will hide it)
+            progress_bar_style = {'display': 'block'} if is_header_click else no_update
+
             logger.debug(f"Returning statuses: {status_classes}")
             logger.debug(f"Returning progress: {progress}")
+            logger.debug(f"Returning progress bar style: {progress_bar_style}")
 
-            return step_styles + status_classes + [progress]
+            # Return styles, classes, progress value, and progress bar style
+            return step_styles + status_classes + [progress, progress_bar_style]
 
         except Exception as e:
             logger.error(f"Error in handle_step_transition callback: {e}", exc_info=True)
-            return no_update # Prevent app crash
+            # Ensure the number of no_update matches the number of outputs
+            return [no_update] * (num_steps * 2 + 2) # 7 styles + 7 classes + value + style
 
     # --- Validation Callbacks (Crucial for enabling Confirm buttons) ---
 
@@ -364,42 +375,6 @@ def register_wizard_callbacks(app):
 
         # Enable Run Backtest button
         return summary_elements, False
-
-    @app.callback(
-        [
-            Output("progress-bar", "value"),
-            Output("progress-bar", "label")
-        ],
-        [
-            Input("confirm-strategy", "n_clicks"),
-            Input("confirm-dates", "n_clicks"),
-            Input("confirm-tickers", "n_clicks"),
-            Input("confirm-risk", "n_clicks"),
-            Input("confirm-costs", "n_clicks"),
-            Input("confirm-rebalancing", "n_clicks"),
-            Input("wizard-summary-header", "n_clicks")
-        ],
-        prevent_initial_call=True
-    )
-    def update_progress_bar(*args):
-        ctx = dash.callback_context
-        if not ctx.triggered:
-            raise PreventUpdate
-
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        step_map = {
-            "confirm-strategy": 1,
-            "confirm-dates": 2,
-            "confirm-tickers": 3,
-            "confirm-risk": 4,
-            "confirm-costs": 5,
-            "confirm-rebalancing": 6,
-            "wizard-summary-header": 7
-        }
-
-        current_step = step_map.get(trigger_id, 0)
-        progress_value = (current_step / 7) * 100
-        return progress_value, f"Step {current_step} of 7"
 
     logger.info("Wizard callbacks registered successfully.")
 

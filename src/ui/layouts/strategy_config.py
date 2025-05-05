@@ -180,7 +180,7 @@ def create_strategy_config_section(tickers=None):
                 tickers = [] # Fallback to empty list
 
         # --- Progress bar ---
-        progress = dbc.Progress(id="wizard-progress", value=0, striped=True, animated=True, className="mb-4")
+        progress = dbc.Progress(id="strategy_progress_bar", value=0, striped=True, animated=True, className="mb-4")
 
         # --- Definition of wizard steps ---
         steps = [
@@ -433,10 +433,7 @@ def create_strategy_config_section(tickers=None):
 
         # Wrap all steps in a single container
         return html.Div([
-            progress,
-            html.Div([
-                dbc.Progress(id="progress-bar", value=0, striped=True, animated=True, className="mb-2")
-            ], id="progress-bar-container", style={"margin": "0 auto", "width": "50%"}),
+            progress, # Keep wizard progress
             html.Div(steps, id="wizard-steps-container", className="wizard-steps")
         ], id="strategy-config-container", className="strategy-wizard")
 
