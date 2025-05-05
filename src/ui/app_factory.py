@@ -10,10 +10,10 @@ import traceback
 import pandas as pd
 import time # Add time import for versioning
 
-# --- ADDED: Import DiskcacheManager ---
+# --- CORRECTED: Import DiskcacheManager from background_callback ---
 import diskcache
-from dash.long_callback import DiskcacheManager
-# --- END ADDED ---
+from dash.background_callback import DiskcacheManager
+# --- END CORRECTED ---
 
 # Configure logging
 logger = logging.getLogger(__name__)

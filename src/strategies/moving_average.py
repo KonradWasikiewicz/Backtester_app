@@ -1,15 +1,11 @@
 import pandas as pd
-# pandas_ta - a technical analysis library built on Pandas
-# Install with: pip install pandas_ta
 try:
     import pandas_ta as ta
 except ImportError:
-    # Provide a clear error message if pandas_ta is not installed
     raise ImportError(
         "The 'pandas_ta' library is required for this strategy but is not installed. "
         "Please install it using: pip install pandas_ta"
     )
-# Adjust the import path to match the actual location of BaseStrategy
 from src.strategies.base import BaseStrategy
 import logging
 

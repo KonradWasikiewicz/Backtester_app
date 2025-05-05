@@ -400,3 +400,39 @@ class DataService:
                 }
                 
         return summary
+
+    def get_date_range(self) -> Tuple[Optional[pd.Timestamp], Optional[pd.Timestamp]]:
+        """
+        Get the minimum and maximum date range across all available data.
+
+        Returns:
+            Tuple containing the minimum and maximum timestamps, or (None, None) if no data.
+        """
+        all_tickers = self.get_available_tickers()
+        if not all_tickers:
+            logger.warning("No tickers found to determine date range.")
+            return None, None
+
+        min_date_overall = None
+        max_date_overall = None
+
+        for ticker in all_tickers:
+            # Use cache=True for efficiency
+            data = self.load_data(ticker, use_cache=True) 
+            if data is not None and not data.empty:
+                min_date_ticker = data.index.min()
+                max_date_ticker = data.index.max()
+
+                if min_date_overall is None or min_date_ticker < min_date_overall:
+                    min_date_overall = min_date_ticker
+                if max_date_overall is None or max_date_ticker > max_date_overall:
+                    max_date_overall = max_date_ticker
+            else:
+                logger.debug(f"Skipping empty or unloadable data for {ticker} in date range calculation.")
+
+        if min_date_overall is not None and max_date_overall is not None:
+            logger.info(f"Overall data range: {min_date_overall.strftime('%Y-%m-%d')} to {max_date_overall.strftime('%Y-%m-%d')}")
+        else:
+             logger.warning("Could not determine overall date range. No valid data found.")
+             
+        return min_date_overall, max_date_overall

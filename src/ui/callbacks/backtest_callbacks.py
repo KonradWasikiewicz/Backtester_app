@@ -40,12 +40,10 @@ def register_backtest_callbacks(app: Dash):
     # This callback now outputs to the store instead of directly to result components
     @app.callback(
         Output('backtest-results-store', 'data'),
-        # --- ADDED: Outputs for background task state ---
         Output('run-backtest-button', 'disabled'),
         Output('progress-bar-container', 'style'), # Show/hide progress bar
         Output('progress-bar', 'value'),
         Output('progress-bar', 'label'),
-        # --- END ADDED ---
         Input('run-backtest-button', 'n_clicks'),
         State('strategy-dropdown', 'value'), # Corrected ID
         State('ticker-input', 'value'),      # Corrected ID
@@ -82,10 +80,8 @@ def register_backtest_callbacks(app: Dash):
             Output('progress-bar', 'value'),
             Output('progress-bar', 'label'),
         ],
-        # --- END ADDED ---
         prevent_initial_call=True
     )
-    # --- ADDED: set_progress argument ---
     def run_backtest(set_progress, n_clicks, strategy_type, tickers, start_date, end_date, initial_capital,
                      strategy_param_values, strategy_param_ids, # Updated strategy params
                      selected_risk_features, # Added risk features
@@ -95,13 +91,11 @@ def register_backtest_callbacks(app: Dash):
                      commission, slippage, # Added costs
                      rebalancing_frequency, rebalancing_threshold # Added rebalancing
                      ):
-        # --- END ADDED ---
         logger.info("--- run_backtest callback triggered (background) ---")
         if not n_clicks:
             logger.warning("run_backtest triggered without click.")
             raise PreventUpdate
 
-        # --- Input Validation and Preparation ---
         ctx = dash.callback_context
         if not ctx.triggered:
             logger.warning("run_backtest triggered without context.")
@@ -109,7 +103,6 @@ def register_backtest_callbacks(app: Dash):
 
         logger.info(f"Received tickers: {tickers} (type: {type(tickers)})")
 
-        # Handle tickers as a list
         if isinstance(tickers, list) and tickers:
             tickers_list = [str(t).strip() for t in tickers if t]
         elif isinstance(tickers, str) and tickers.strip():
@@ -117,21 +110,20 @@ def register_backtest_callbacks(app: Dash):
         else:
             tickers_list = []
 
-        # Validate required inputs
         if not all([strategy_type, tickers_list, start_date, end_date, initial_capital]):
             error_msg = "Missing required inputs: Strategy, Tickers, Start/End Dates, or Initial Capital."
             logger.error(f"Input validation failed: {error_msg}")
-            # Return error structure compatible with store expectations
-            return {"timestamp": time.time(), "success": False, "error": error_msg}
+            # Return 5-element tuple on validation error
+            return {"timestamp": time.time(), "success": False, "error": error_msg}, False, {'display': 'none'}, 0, "Input Error"
 
-        # --- Parameter Gathering and Cleaning ---
         try:
             start_date_dt = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
             end_date_dt = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
         except ValueError as e:
              error_msg = f"Invalid date format: {e}. Please use YYYY-MM-DD."
              logger.error(error_msg)
-             return {"timestamp": time.time(), "success": False, "error": error_msg}
+             # Return 5-element tuple on date format error
+             return {"timestamp": time.time(), "success": False, "error": error_msg}, False, {'display': 'none'}, 0, "Date Error"
 
         strategy_params_dict = {pid['index']: val for pid, val in zip(strategy_param_ids, strategy_param_values)}
         risk_params_dict = {
@@ -156,19 +148,14 @@ def register_backtest_callbacks(app: Dash):
         try:
             logger.info("Calling backtest_service.run_backtest...")
             start_time = time.time()
-
-            # --- ADDED: Progress Update --- 
             set_progress((1, "Running Backtest..."))
-            # --- END ADDED ---
 
-            # --- MODIFIED: Call service and directly return its output --- 
-            # The service now returns the dictionary ready for the store
             results_package = backtest_service.run_backtest(
                 strategy_type=strategy_type,
                 tickers=tickers_list,
                 start_date=start_date_dt,
                 end_date=end_date_dt,
-                initial_capital=initial_capital, # Service handles parsing
+                initial_capital=initial_capital,
                 strategy_params=strategy_params_dict,
                 risk_params=risk_params_dict,
                 cost_params=trading_costs_dict,
@@ -177,33 +164,27 @@ def register_backtest_callbacks(app: Dash):
 
             end_time = time.time()
             logger.info(f"Backtest service call finished in {end_time - start_time:.2f} seconds.")
-
-            # Add timestamp to the results package before returning
             results_package["timestamp"] = time.time()
-
-            # --- ADDED: Final Progress Update --- 
-            status_label = "Complete" if results_package.get("success") else "Failed"
-            set_progress((10, status_label))
-            # --- END ADDED ---
 
             if results_package.get("success"):
                 logger.info("--- run_backtest callback: Returning SUCCESSFUL results package from service ---")
+                set_progress((10, "Complete"))
+                # Return only store data; running state handles others
+                return results_package, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             else:
-                logger.error(f"--- run_backtest callback: Returning FAILED results package from service: {results_package.get('error')} ---")
-
-            # Return store data, button state (False), progress bar style (None)
-            # The running= argument handles the state changes automatically
-            return results_package
+                error_msg = results_package.get('error', 'Unknown backtest failure')
+                logger.error(f"--- run_backtest callback: Returning FAILED results package from service: {error_msg} ---")
+                set_progress((10, "Failed"))
+                # Return 5-element tuple on service failure
+                return results_package, False, {'display': 'none'}, 0, "Failed"
 
         except Exception as e:
-            # Catch errors specifically from the callback logic/service call
             logger.error(f"Exception during run_backtest callback execution: {e}", exc_info=True)
             error_msg = f"An unexpected error occurred in the backtest callback: {e}"
             logger.error(traceback.format_exc())
-            # Return error structure compatible with store expectations
-            # Also return button state (False) and hide progress bar
-            set_progress((10, "Error")) # Update progress on error
-            return {"timestamp": time.time(), "success": False, "error": error_msg}
+            set_progress((10, "Error"))
+            # Return 5-element tuple on callback exception
+            return {"timestamp": time.time(), "success": False, "error": error_msg}, False, {'display': 'none'}, 0, "Callback Error"
 
     # --- Result Update Callbacks (Triggered by Store) ---
     # ... existing result update callbacks ...

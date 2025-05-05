@@ -1,7 +1,9 @@
 import pandas as pd
 import pandas_ta as ta # type: ignore
 import logging
-from .base import BaseStrategy
+# --- MODIFIED: Use absolute import ---
+from src.strategies.base import BaseStrategy
+# --- END MODIFIED ---
 
 logger = logging.getLogger(__name__)
 
