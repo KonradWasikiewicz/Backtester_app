@@ -7,6 +7,7 @@ import logging
 from src.core.constants import STRATEGY_DESCRIPTIONS # Poprawna ścieżka do stałych
 from src.core.constants import DEFAULT_STRATEGY_PARAMS  # added import for default params
 from src.core.constants import AVAILABLE_STRATEGIES # Ensure this is imported
+from src.ui.ids import WizardIDs  # Import the centralized IDs
 
 logger = logging.getLogger(__name__)
 
@@ -22,42 +23,42 @@ def register_wizard_callbacks(app):
     @app.callback(
         [
             # Step Content Visibility
-            Output("strategy-selection-content", "style"),
-            Output("date-range-selection-content", "style"),
-            Output("tickers-selection-content", "style"),
-            Output("risk-management-content", "style"),
-            Output("trading-costs-content", "style"),
-            Output("rebalancing-rules-content", "style"),
-            Output("wizard-summary-content", "style"),
+            Output(WizardIDs.step_content("strategy-selection"), "style"),
+            Output(WizardIDs.step_content("date-range-selection"), "style"),
+            Output(WizardIDs.step_content("tickers-selection"), "style"),
+            Output(WizardIDs.step_content("risk-management"), "style"),
+            Output(WizardIDs.step_content("trading-costs"), "style"),
+            Output(WizardIDs.step_content("rebalancing-rules"), "style"),
+            Output(WizardIDs.step_content("wizard-summary"), "style"),
             # Header class toggles for each step
-            Output("strategy-selection-header", "className"),
-            Output("date-range-selection-header", "className"),
-            Output("tickers-selection-header", "className"),
-            Output("risk-management-header", "className"),
-            Output("trading-costs-header", "className"),
-            Output("rebalancing-rules-header", "className"),
-            Output("wizard-summary-header", "className"),
+            Output(WizardIDs.step_header("strategy-selection"), "className"),
+            Output(WizardIDs.step_header("date-range-selection"), "className"),
+            Output(WizardIDs.step_header("tickers-selection"), "className"),
+            Output(WizardIDs.step_header("risk-management"), "className"),
+            Output(WizardIDs.step_header("trading-costs"), "className"),
+            Output(WizardIDs.step_header("rebalancing-rules"), "className"),
+            Output(WizardIDs.step_header("wizard-summary"), "className"),
             # --- UPDATED Progress Bar Output ID ---
-            Output("strategy_progress_bar", "value"),
+            Output(WizardIDs.PROGRESS_BAR, "value"),
             # --- ADDED Progress Bar Style Output ---
-            Output("strategy_progress_bar", "style")
+            Output(WizardIDs.PROGRESS_BAR, "style")
         ],
         [
-            # Confirm Buttons (Inputs) - Verify these IDs
-            Input("confirm-strategy", "n_clicks"),
-            Input("confirm-dates", "n_clicks"),
-            Input("confirm-tickers", "n_clicks"),
-            Input("confirm-risk", "n_clicks"),
-            Input("confirm-costs", "n_clicks"),
-            Input("confirm-rebalancing", "n_clicks"),
-            # Step Headers (Inputs) - Verify these IDs
-            Input("strategy-selection-header", "n_clicks"),
-            Input("date-range-selection-header", "n_clicks"),
-            Input("tickers-selection-header", "n_clicks"),
-            Input("risk-management-header", "n_clicks"),
-            Input("trading-costs-header", "n_clicks"),
-            Input("rebalancing-rules-header", "n_clicks"),
-            Input("wizard-summary-header", "n_clicks")
+            # Confirm Buttons (Inputs) - Using centralized IDs for all wizard confirm buttons
+            Input(WizardIDs.CONFIRM_STRATEGY_BUTTON, "n_clicks"),
+            Input(WizardIDs.CONFIRM_DATES_BUTTON, "n_clicks"),
+            Input(WizardIDs.CONFIRM_TICKERS_BUTTON, "n_clicks"),
+            Input(WizardIDs.CONFIRM_RISK_BUTTON, "n_clicks"),
+            Input(WizardIDs.CONFIRM_COSTS_BUTTON, "n_clicks"),
+            Input(WizardIDs.CONFIRM_REBALANCING_BUTTON, "n_clicks"),
+            # Step Headers (Inputs) - Using WizardID helper methods
+            Input(WizardIDs.step_header("strategy-selection"), "n_clicks"),
+            Input(WizardIDs.step_header("date-range-selection"), "n_clicks"),
+            Input(WizardIDs.step_header("tickers-selection"), "n_clicks"),
+            Input(WizardIDs.step_header("risk-management"), "n_clicks"),
+            Input(WizardIDs.step_header("trading-costs"), "n_clicks"),
+            Input(WizardIDs.step_header("rebalancing-rules"), "n_clicks"),
+            Input(WizardIDs.step_header("wizard-summary"), "n_clicks")
         ],
         prevent_initial_call=True
     )
@@ -82,22 +83,34 @@ def register_wizard_callbacks(app):
         is_header_click = "-header" in trigger_id
 
         try:
-            if "confirm-" in trigger_id:
-                confirm_map = {
-                    "confirm-strategy": 1, "confirm-dates": 2, "confirm-tickers": 3,
-                    "confirm-risk": 4, "confirm-costs": 5, "confirm-rebalancing": 6
-                }
-                target_step_index = confirm_map.get(trigger_id)
-                if target_step_index is None:
-                    logger.error(f"Unknown confirm button ID: {trigger_id}")
-                    return no_update
-                logger.info(f"Confirm button '{trigger_id}' clicked. Target step index: {target_step_index}")
-
+            # Check if trigger is one of the centralized confirm buttons
+            if trigger_id == WizardIDs.CONFIRM_STRATEGY_BUTTON:
+                target_step_index = 1  # Move to date selection
+                logger.info(f"Confirm strategy button clicked. Target step index: {target_step_index}")
+            elif trigger_id == WizardIDs.CONFIRM_DATES_BUTTON:
+                target_step_index = 2  # Move to ticker selection
+                logger.info(f"Confirm dates button clicked. Target step index: {target_step_index}")
+            elif trigger_id == WizardIDs.CONFIRM_TICKERS_BUTTON:
+                target_step_index = 3  # Move to risk management
+                logger.info(f"Confirm tickers button clicked. Target step index: {target_step_index}")
+            elif trigger_id == WizardIDs.CONFIRM_RISK_BUTTON:
+                target_step_index = 4  # Move to trading costs
+                logger.info(f"Confirm risk button clicked. Target step index: {target_step_index}")
+            elif trigger_id == WizardIDs.CONFIRM_COSTS_BUTTON:
+                target_step_index = 5  # Move to rebalancing
+                logger.info(f"Confirm costs button clicked. Target step index: {target_step_index}")
+            elif trigger_id == WizardIDs.CONFIRM_REBALANCING_BUTTON:
+                target_step_index = 6  # Move to summary
+                logger.info(f"Confirm rebalancing button clicked. Target step index: {target_step_index}")
             elif "-header" in trigger_id:
                 header_map = {
-                    "strategy-selection-header": 0, "date-range-selection-header": 1,
-                    "tickers-selection-header": 2, "risk-management-header": 3,
-                    "trading-costs-header": 4, "rebalancing-rules-header": 5, "wizard-summary-header": 6
+                    WizardIDs.step_header("strategy-selection"): 0, 
+                    WizardIDs.step_header("date-range-selection"): 1,
+                    WizardIDs.step_header("tickers-selection"): 2, 
+                    WizardIDs.step_header("risk-management"): 3,
+                    WizardIDs.step_header("trading-costs"): 4, 
+                    WizardIDs.step_header("rebalancing-rules"): 5, 
+                    WizardIDs.step_header("wizard-summary"): 6
                 }
                 target_step_index = header_map.get(trigger_id)
                 if target_step_index is None:
@@ -145,11 +158,12 @@ def register_wizard_callbacks(app):
             return [no_update] * (num_steps * 2 + 2) # 7 styles + 7 classes + value + style
 
     # --- Validation Callbacks (Crucial for enabling Confirm buttons) ---
+    # These should be updated with centralized IDs in Phase 3 when those sections are also refactored
 
     @app.callback(
-        Output("confirm-dates", "disabled"),
-        [Input("backtest-start-date", "date"), # Verify these IDs
-         Input("backtest-end-date", "date")]
+        Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled"),
+        [Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
+         Input(WizardIDs.DATE_RANGE_END_PICKER, "date")]
     )
     def validate_date_range(start_date, end_date):
         is_disabled = not (start_date and end_date)
@@ -157,8 +171,8 @@ def register_wizard_callbacks(app):
         return is_disabled
 
     @app.callback(
-        Output("confirm-tickers", "disabled"),
-        Input("ticker-input", "value") # Verify this ID (or the correct component for ticker selection)
+        Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled"),
+        Input(WizardIDs.TICKER_DROPDOWN, "value") 
     )
     def validate_ticker_selection(tickers):
         # Add more robust validation if needed (e.g., check format)
@@ -167,8 +181,8 @@ def register_wizard_callbacks(app):
         return is_disabled
 
     @app.callback(
-        Output("confirm-costs", "disabled"),
-        [Input("commission-input", "value"), Input("slippage-input", "value")]
+        Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled"),
+        [Input(WizardIDs.COMMISSION_INPUT, "value"), Input(WizardIDs.SLIPPAGE_INPUT, "value")]
     )
     def validate_costs(commission, slippage):
         ok = commission is not None and slippage is not None
@@ -176,8 +190,9 @@ def register_wizard_callbacks(app):
         return not ok
 
     @app.callback(
-        Output("confirm-rebalancing", "disabled"),
-        [Input("rebalancing-frequency", "value"), Input("rebalancing-threshold", "value")]
+        Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled"),
+        [Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"), 
+         Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")]
     )
     def validate_rebalancing(frequency, threshold):
         ok = bool(frequency) and threshold is not None
@@ -185,7 +200,7 @@ def register_wizard_callbacks(app):
         return not ok
 
     @app.callback(
-        [Output("confirm-risk", "disabled"), Output("confirm-risk", "children")],
+        [Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled"), Output(WizardIDs.CONFIRM_RISK_BUTTON, "children")],
         [Input('risk-features-checklist', 'value'),
          Input('max-position-size', 'value'),
          Input('stop-loss-type', 'value'),
@@ -222,9 +237,9 @@ def register_wizard_callbacks(app):
 
     # --- Select/Deselect All Tickers Callbacks ---
     @app.callback(
-        Output('ticker-input', 'value'),
+        Output(WizardIDs.TICKER_DROPDOWN, 'value'),
         [Input('select-all-tickers', 'n_clicks'), Input('deselect-all-tickers', 'n_clicks')],
-        [State('ticker-input', 'options')],
+        [State(WizardIDs.TICKER_DROPDOWN, 'options')],
         prevent_initial_call=True
     )
     def update_ticker_selection(n_select_all, n_deselect_all, options):
@@ -239,18 +254,18 @@ def register_wizard_callbacks(app):
 
     # --- Summary Generation and Run Button Activation ---
     @app.callback(
-        [Output('wizard-summary-output', 'children'), 
-         Output('run-backtest-button', 'disabled', allow_duplicate=True)], # ADDED allow_duplicate=True
-        Input('wizard-summary-content', 'style'),
+        [Output(WizardIDs.SUMMARY_OUTPUT_CONTAINER, 'children'), 
+         Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'disabled', allow_duplicate=True)], 
+        Input(WizardIDs.step_content("wizard-summary"), 'style'),
         [
-            State('strategy-dropdown', 'value'),
+            State(WizardIDs.STRATEGY_DROPDOWN, 'value'),
             # ADDED: State for initial capital
-            State('initial-capital-input', 'value'),
+            State(WizardIDs.INITIAL_CAPITAL_INPUT, 'value'),
             State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'value'),
             State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'id'),
-            State('backtest-start-date', 'date'),
-            State('backtest-end-date', 'date'),
-            State('ticker-input', 'value'),
+            State(WizardIDs.DATE_RANGE_START_PICKER, 'date'),
+            State(WizardIDs.DATE_RANGE_END_PICKER, 'date'),
+            State(WizardIDs.TICKER_DROPDOWN, 'value'),
             State('risk-features-checklist', 'value'),
             State('max-position-size', 'value'),
             State('stop-loss-type', 'value'),
@@ -261,10 +276,10 @@ def register_wizard_callbacks(app):
             State('market-trend-lookback', 'value'),
             State('max-drawdown', 'value'),
             State('max-daily-loss', 'value'),
-            State('commission-input', 'value'),
-            State('slippage-input', 'value'),
-            State('rebalancing-frequency', 'value'),
-            State('rebalancing-threshold', 'value')
+            State(WizardIDs.COMMISSION_INPUT, 'value'),
+            State(WizardIDs.SLIPPAGE_INPUT, 'value'),
+            State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, 'value'),
+            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, 'value')
         ],
         prevent_initial_call=True
     )
@@ -377,5 +392,3 @@ def register_wizard_callbacks(app):
         return summary_elements, False
 
     logger.info("Wizard callbacks registered successfully.")
-
-# Remember to ensure this function is called during app setup, e.g., in create_app()

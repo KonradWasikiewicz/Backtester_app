@@ -11,6 +11,9 @@ import json
 import sys
 import os
 
+# Import centralized IDs
+from src.ui.ids import WizardIDs
+
 # --- MOVED LOGGER INITIALIZATION ---
 # Configure logging EARLY, before any potential logging calls
 logger = logging.getLogger(__name__)
@@ -121,8 +124,8 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
     data_service = DataService()
 
     @app.callback(
-        Output('strategy-description-output', 'children'),
-        Input('strategy-dropdown', 'value')
+        Output(WizardIDs.STRATEGY_DESCRIPTION_OUTPUT, 'children'),
+        Input(WizardIDs.STRATEGY_DROPDOWN, 'value')
     )
     def update_strategy_description(selected_strategy: Optional[str]) -> html.P:
         """Update the strategy description text when a strategy is selected."""
@@ -132,14 +135,17 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
         return html.P(description)
 
     @app.callback(
-        [Output('strategy-param-section', 'children'), Output('confirm-strategy', 'disabled')],
-        Input('strategy-dropdown', 'value')
+        [Output(WizardIDs.STRATEGY_PARAM_INPUTS_CONTAINER, 'children'), Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, 'disabled')],
+        Input(WizardIDs.STRATEGY_DROPDOWN, 'value')
     )
     def update_strategy_parameters(selected_strategy: Optional[str]):
-        logger.info(f"Strategy selected: {selected_strategy}. Updating parameter inputs.")
+        logger.info(f"WIZARD: update_strategy_parameters triggered. Selected strategy: '{selected_strategy}' (Type: {type(selected_strategy)})")
         if not selected_strategy:
+            logger.warning("WIZARD: No strategy selected or empty value. Disabling confirm button and clearing params.")
             # Clear section and disable confirm
             return [], True
+        
+        logger.info(f"WIZARD: Strategy '{selected_strategy}' is selected. Generating inputs and ENABLING confirm button.")
         # Build section: header + generated inputs
         inputs = []
         try:
@@ -148,6 +154,7 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
             logger.error(f"Error generating parameters for strategy {selected_strategy}: {e}", exc_info=True)
             inputs = [dbc.Alert(f"Error loading parameters: {e}", color="danger")]
         # Enable confirm when strategy selected (defaults assumed valid)
+        logger.debug(f"WIZARD: Returning {len(inputs)} input components and disabled=False for confirm button.")
         return inputs, False
 
     @app.callback(
@@ -161,7 +168,7 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
         ],
         [
             State("strategy-config-store", "data"),
-            State('strategy-dropdown', 'value')
+            State(WizardIDs.STRATEGY_DROPDOWN, 'value')
         ],
         prevent_initial_call=True
     )

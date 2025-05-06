@@ -40,25 +40,20 @@ def register_backtest_callbacks(app: Dash):
     # This callback now outputs to the store instead of directly to result components
     @app.callback(
         Output('backtest-results-store', 'data'),
-        # --- UPDATED Backtest Progress Bar IDs ---
-        Output('backtesting_progress_bar_container', 'style', allow_duplicate=True), # Show/hide progress bar
+        Output('backtesting_progress_bar_container', 'style', allow_duplicate=True), 
         Output('backtesting_progress_bar', 'value', allow_duplicate=True),
         Output('backtesting_progress_bar', 'label', allow_duplicate=True),
-        # --- ADDED Output to hide Strategy Progress Bar ---
         Output("strategy_progress_bar", "style", allow_duplicate=True),
-        # --- ADDED Output for actual results area visibility ---
         Output('actual-results-area', 'style', allow_duplicate=True),
         Input('run-backtest-button', 'n_clicks'),
-        State('strategy-dropdown', 'value'), # Corrected ID
-        State('ticker-input', 'value'),      # Corrected ID
-        State('backtest-start-date', 'date'), # Corrected ID and property
-        State('backtest-end-date', 'date'),   # Corrected ID and property
+        State('strategy-dropdown', 'value'), 
+        State('ticker-input', 'value'),      
+        State('backtest-start-date', 'date'), 
+        State('backtest-end-date', 'date'),   
         State('initial-capital-input', 'value'),
-        # Strategy parameters (assuming pattern matching is correct)
-        State({'type': 'strategy-param-input', 'index': ALL}, 'value'), # Use ALL to capture all dynamic params
-        State({'type': 'strategy-param-input', 'index': ALL}, 'id'),    # Get IDs to map values
-        # Risk parameters (using IDs from the layout)
-        State('risk-features-checklist', 'value'), # Get selected risk features
+        State({'type': 'strategy-param-input', 'index': ALL}, 'value'), 
+        State({'type': 'strategy-param-input', 'index': ALL}, 'id'),    
+        State('risk-features-checklist', 'value'), 
         State('max-position-size', 'value'),
         State('stop-loss-type', 'value'),
         State('stop-loss-value', 'value'),
@@ -66,42 +61,38 @@ def register_backtest_callbacks(app: Dash):
         State('take-profit-value', 'value'),
         State('max-risk-per-trade', 'value'),
         State('market-trend-lookback', 'value'),
-        State('max-drawdown', 'value'), # Corrected ID
+        State('max-drawdown', 'value'), 
         State('max-daily-loss', 'value'),
-        # Trading Costs
         State('commission-input', 'value'),
         State('slippage-input', 'value'),
-        # Rebalancing
         State('rebalancing-frequency', 'value'),
         State('rebalancing-threshold', 'value'),
         background=True,
         running=[
             (Output('run-backtest-button', 'disabled'), True, False),
-            # --- UPDATED Backtest Progress Bar Container ID ---
             (Output('backtesting_progress_bar_container', 'style'), {'display': 'block'}, {'display': 'none'}),
             (Output('backtest-status', 'children'), "Running backtest...", ""),
-            # --- ADDED Running state to hide Strategy Progress Bar ---
-            (Output("strategy_progress_bar", "style"), {'display': 'none'}, no_update), # Hide when running starts
-            # --- ADDED: Hide actual results area when running, with allow_duplicate=True ---
-            (Output('actual-results-area', 'style', allow_duplicate=True), {'display': 'none'}, {'display': 'none'}),
+            (Output("strategy_progress_bar", "style"), {'display': 'none'}, no_update),
+            (Output('right-panel-col', 'style', allow_duplicate=True),
+             {'display': 'none', 'paddingLeft': '15px'}, 
+             {'display': 'block', 'paddingLeft': '15px'})
         ],
         progress=[
-            # --- UPDATED Backtest Progress Bar IDs ---
             Output('backtesting_progress_bar', 'value'),
             Output('backtesting_progress_bar', 'label'),
         ],
         prevent_initial_call=True
     )
     def run_backtest(set_progress, n_clicks, strategy_type, tickers, start_date, end_date, initial_capital,
-                     strategy_param_values, strategy_param_ids, # Updated strategy params
-                     selected_risk_features, # Added risk features
-                     max_position_size, stop_loss_type, stop_loss_value, # Updated risk params
+                     strategy_param_values, strategy_param_ids, 
+                     selected_risk_features, 
+                     max_position_size, stop_loss_type, stop_loss_value, 
                      take_profit_type, take_profit_value, max_risk_per_trade,
                      market_trend_lookback, max_drawdown, max_daily_loss,
-                     commission, slippage, # Added costs
-                     rebalancing_frequency, rebalancing_threshold # Added rebalancing
+                     commission, slippage, 
+                     rebalancing_frequency, rebalancing_threshold 
                      ):
-        logger.info("--- run_backtest callback triggered (background) ---")
+        logger.info("--- run_backtest callback: Entered. 'running' state should hide right-panel-col.") # ADDED LOG
         if not n_clicks:
             logger.warning("run_backtest triggered without click.")
             raise PreventUpdate
@@ -111,7 +102,7 @@ def register_backtest_callbacks(app: Dash):
             logger.warning("run_backtest triggered without context.")
             raise PreventUpdate
 
-        logger.info(f"Received tickers: {tickers} (type: {type(tickers)})")
+        logger.info(f"run_backtest: Received tickers: {tickers} (type: {type(tickers)})") # ADDED LOG CONTEXT
 
         if isinstance(tickers, list) and tickers:
             tickers_list = [str(t).strip() for t in tickers if t]
@@ -122,9 +113,7 @@ def register_backtest_callbacks(app: Dash):
 
         if not all([strategy_type, tickers_list, start_date, end_date, initial_capital]):
             error_msg = "Missing required inputs: Strategy, Tickers, Start/End Dates, or Initial Capital."
-            logger.error(f"Input validation failed: {error_msg}")
-            # Return values must match Outputs (excluding running/progress)
-            # Output order: store, backtest_container style, backtest_bar value, backtest_bar label, strategy_bar style, actual-results-area style
+            logger.error(f"run_backtest: Input validation failed: {error_msg}") # ADDED LOG CONTEXT
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                    {'display': 'none'}, 0, "Input Error", {'display': 'none'}, {'display': 'none'}
 
@@ -133,8 +122,7 @@ def register_backtest_callbacks(app: Dash):
             end_date_dt = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
         except ValueError as e:
              error_msg = f"Invalid date format: {e}. Please use YYYY-MM-DD."
-             logger.error(error_msg)
-             # Return values must match Outputs
+             logger.error(f"run_backtest: {error_msg}") # ADDED LOG CONTEXT
              return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                     {'display': 'none'}, 0, "Date Error", {'display': 'none'}, {'display': 'none'}
 
@@ -159,11 +147,12 @@ def register_backtest_callbacks(app: Dash):
         }
 
         try:
-            logger.info("Calling backtest_service.run_backtest...")
-            start_time = time.time()
-            # --- RE-ADD set_progress call ---
-            set_progress((1, "Running Backtest...")) # Use tuple for progress
+            logger.info("run_backtest: Setting initial progress (1%).") # ADDED LOG
+            set_progress((1, "Initializing Backtest...")) 
 
+            logger.info("run_backtest: Calling backtest_service.run_backtest. This might be a long operation.") # ADDED LOG
+            start_time = time.time()
+            
             results_package = backtest_service.run_backtest(
                 strategy_type=strategy_type,
                 tickers=tickers_list,
@@ -177,139 +166,112 @@ def register_backtest_callbacks(app: Dash):
             )
 
             end_time = time.time()
-            logger.info(f"Backtest service call finished in {end_time - start_time:.2f} seconds.")
+            logger.info(f"run_backtest: backtest_service.run_backtest finished in {end_time - start_time:.2f} seconds.") # ADDED LOG
             results_package["timestamp"] = time.time()
 
-            # --- ADDED LOGGING: Log the structure before returning ---
             if results_package.get("success"):
-                logger.info(f"--- run_backtest callback: Preparing SUCCESSFUL results package for store. Keys: {list(results_package.keys())}")
-                # Log metrics keys specifically
-                if 'metrics' in results_package:
-                    logger.debug(f"--- run_backtest callback: Metrics keys: {list(results_package['metrics'].keys())}")
-                # Log trades count
-                if 'trades_data' in results_package:
-                    logger.debug(f"--- run_backtest callback: Trades count: {len(results_package['trades_data'])}")
-            else:
-                logger.warning(f"--- run_backtest callback: Preparing FAILED results package for store. Error: {results_package.get('error')}")
-            # --- END ADDED LOGGING ---
-
-            if results_package.get("success"):
-                logger.info("--- run_backtest callback: Returning SUCCESSFUL results package from service ---")
-                # --- RE-ADD set_progress call ---
-                set_progress((100, "Complete")) # Use tuple for progress
-                # Return values must match Outputs
-                # Hide strategy bar on success
-                # Show actual results area on success
+                logger.info(f"run_backtest: Preparing SUCCESSFUL results. Keys: {list(results_package.keys())}") # ADDED LOG
+                logger.info("run_backtest: Setting final progress (100% - Complete).") # ADDED LOG
+                set_progress((100, "Complete")) 
+                logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.") # ADDED LOG
                 return results_package, {'display': 'none'}, no_update, no_update, {'display': 'none'}, {'display': 'block'}
             else:
                 error_msg = results_package.get('error', 'Unknown backtest failure')
-                logger.error(f"--- run_backtest callback: Returning FAILED results package from service: {error_msg} ---")
-                # --- RE-ADD set_progress call ---
-                set_progress((100, "Failed")) # Use tuple for progress
-                # Return values must match Outputs
-                # Hide strategy bar on failure, keep results area hidden
+                logger.error(f"run_backtest: Returning FAILED results: {error_msg}") # ADDED LOG CONTEXT
+                logger.info("run_backtest: Setting final progress (100% - Failed).") # ADDED LOG
+                set_progress((100, "Failed")) 
+                logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.") # ADDED LOG
                 return results_package, {'display': 'none'}, 0, "Failed", {'display': 'none'}, {'display': 'none'}
 
         except Exception as e:
-            logger.error(f"Exception during run_backtest callback execution: {e}", exc_info=True)
-            error_msg = f"An unexpected error occurred in the backtest callback: {e}"
-            logger.error(traceback.format_exc())
-            # --- RE-ADD set_progress call ---
-            set_progress((100, "Error")) # Use tuple for progress
-            # Return values must match Outputs
-            # Hide strategy bar on error, keep results area hidden
+            logger.error(f"run_backtest: Exception during execution: {e}", exc_info=True) # ADDED LOG CONTEXT
+            error_msg = f"An unexpected error occurred: {e}"
+            logger.info("run_backtest: Setting final progress (100% - Error).") # ADDED LOG
+            set_progress((100, "Error")) 
+            logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.") # ADDED LOG
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                    {'display': 'none'}, 0, "Callback Error", {'display': 'none'}, {'display': 'none'}
 
     # --- Result Update Callbacks (Triggered by Store) ---
     @app.callback(
         [
-            Output('results-metrics', 'children'),
-            Output('results-charts', 'children'),
-            Output('results-tables', 'children')
+            Output('performance-metrics-container', 'children'),
+            Output('trade-metrics-container', 'children'),
+            Output('trades-table-container', 'children'),
+            Output('portfolio-chart', 'figure'),
+            Output('drawdown-chart', 'figure'),
+            Output('monthly-returns-heatmap', 'figure'),
+            # Output('signals-chart', 'figure'), # Deferred for now
+            Output('ticker-selector', 'options'),
+            Output('ticker-selector', 'value')
         ],
         Input('backtest-results-store', 'data'),
         prevent_initial_call=True
     )
     def update_results_display(results_data):
-        # --- ADDED LOGGING: Log received data --- 
         logger.info("--- update_results_display callback triggered ---")
-        if not results_data:
-            logger.warning("--- update_results_display: Received empty results_data. Preventing update.")
-            raise PreventUpdate
-        
-        logger.debug(f"--- update_results_display: Received data keys: {list(results_data.keys())}")
-        logger.debug(f"--- update_results_display: Success flag: {results_data.get('success')}")
-        # --- END ADDED LOGGING ---
-
         if not results_data or not results_data.get('success'):
-            logger.warning("--- update_results_display: results_data indicates failure or is invalid. Preventing update.")
-            # Optionally return empty components or a message
-            no_results_message = html.Div("Backtest failed or produced no results.", className="text-danger p-4")
-            return no_results_message, no_results_message, no_results_message # Return message for all 3 outputs
+            logger.warning("--- update_results_display: results_data indicates failure or is invalid. Returning empty/default components.")
+            empty_fig = create_empty_chart("No data available")
+            return ([], [], html.Div("Backtest failed or no data."), 
+                    empty_fig, empty_fig, empty_fig, 
+                    [], None)
 
-        # Extract metrics, charts, and tables from results_data
         metrics = results_data.get('metrics', {})
-        charts = {
-            'portfolio_value': results_data.get('portfolio_value_chart_json'),
-            'returns': results_data.get('portfolio_returns_chart_json'),
-            'drawdown': results_data.get('drawdown_chart_json'),
-            'heatmap': results_data.get('heatmap_json')
-        }
-        trades_table = results_data.get('trades_data', [])
+        trades_list = results_data.get('trades_data', [])
+        
+        # Simple split for metrics:
+        perf_metrics = {k: v for k, v in metrics.items() if "Trade" not in k and "Win" not in k and "Loss" not in k and "Ratio" not in k and "Avg" not in k and "Profit Factor" not in k and "Trades" not in k}
+        trade_stats = {k: v for k, v in metrics.items() if k not in perf_metrics}
 
-        # --- ADDED LOGGING: Log extracted data --- 
-        logger.debug(f"--- update_results_display: Extracted metrics keys: {list(metrics.keys())}")
-        logger.debug(f"--- update_results_display: Extracted chart keys: {list(charts.keys())}")
-        logger.debug(f"--- update_results_display: Extracted trades count: {len(trades_table)}")
-        # --- END ADDED LOGGING ---
+        performance_metrics_children = [
+            dbc.Col(create_metric_card(title, f"{value:.2f}" if isinstance(value, (int, float)) else str(value)), width=6, md=4, lg=3) 
+            for title, value in perf_metrics.items()
+        ] if perf_metrics else [dbc.Col(html.P("No performance metrics available."))]
+        
+        trade_metrics_children = [
+            dbc.Col(create_metric_card(title, f"{value:.2f}" if isinstance(value, (int, float)) else str(value)), width=6, md=4, lg=3)
+            for title, value in trade_stats.items()
+        ] if trade_stats else [dbc.Col(html.P("No trade statistics available."))]
 
-        # Create metric cards
-        metrics_children = [
-            create_metric_card(metric_name, metric_value)
-            for metric_name, metric_value in metrics.items()
-        ]
+        trades_table_component = dash_table.DataTable(
+            data=trades_list,
+            columns=[{'name': i, 'id': i} for i in trades_list[0].keys()] if trades_list else [],
+            style_as_list_view=True,
+            style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white', 'fontWeight': 'bold'},
+            style_cell={'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white', 'textAlign': 'left', 'padding': '5px'},
+            page_size=10,
+        ) if trades_list else html.Div("No trades executed.")
 
-        # Create charts
-        charts_children = [
-            dcc.Graph(figure=pio.from_json(chart_json))
-            for chart_json in charts.values() if chart_json
-        ]
-
-        # Create trades table
-        table_children = dash_table.DataTable(
-            data=trades_table,
-            columns=[{"name": col, "id": col} for col in trades_table[0].keys()] if trades_table else []
-        )
-
-        # --- ADDED LOGGING: Log generated children --- 
-        logger.debug(f"--- update_results_display: Generated {len(metrics_children)} metric cards.")
-        logger.debug(f"--- update_results_display: Generated {len(charts_children)} chart components.")
-        logger.debug(f"--- update_results_display: Generated trades table component: {'Yes' if table_children else 'No'}")
-        logger.info("--- update_results_display callback finished successfully ---")
-        # --- END ADDED LOGGING ---
-
-        return metrics_children, charts_children, table_children
+        portfolio_chart_fig = pio.from_json(results_data.get('portfolio_value_chart_json')) if results_data.get('portfolio_value_chart_json') else create_empty_chart("Portfolio Value")
+        drawdown_chart_fig = pio.from_json(results_data.get('drawdown_chart_json')) if results_data.get('drawdown_chart_json') else create_empty_chart("Drawdown")
+        heatmap_fig = pio.from_json(results_data.get('heatmap_json')) if results_data.get('heatmap_json') else create_empty_chart("Monthly Returns")
+        
+        tickers = results_data.get('selected_tickers', [])
+        ticker_options = [{'label': t, 'value': t} for t in tickers]
+        ticker_value = tickers[0] if tickers else None
+        
+        logger.info("--- update_results_display callback successfully processed data and is returning updates. ---")
+        return (performance_metrics_children, trade_metrics_children, trades_table_component,
+                portfolio_chart_fig, drawdown_chart_fig, heatmap_fig,
+                ticker_options, ticker_value)
 
     logger.info("Backtest callbacks registered.")
-
 
     # --- Callback to make results panels visible ---
     @app.callback(
         [Output('center-panel-col', 'style'),
-         Output('right-panel-col', 'style'),
-         # --- ADDED: Output to hide actual-results-area when main panels are first shown ---
-         Output('actual-results-area', 'style', allow_duplicate=True)],
+         Output('right-panel-col', 'style', allow_duplicate=True)], 
         Input('run-backtest-button', 'n_clicks'),
         prevent_initial_call=True
     )
     def toggle_results_panels_visibility(n_clicks):
+        triggered_id = ctx.triggered_id
+        logger.info(f"toggle_results_panels_visibility: Triggered by {triggered_id}. n_clicks: {n_clicks}") # ADDED LOG
         if n_clicks and n_clicks > 0:
-            logger.info("Showing results panels, hiding actual results area initially.")
-            # Main panels become visible, but the actual results content within center panel remains hidden
-            # until the run_backtest callback completes and explicitly shows it.
-            return {'display': 'block', 'paddingLeft': '15px', 'paddingRight': '15px'}, \
-                   {'display': 'block', 'paddingLeft': '15px'}, \
-                   {'display': 'none'} # Keep actual-results-area hidden
-        logger.warning("toggle_results_panels_visibility called without n_clicks, preventing update.")
+            center_style = {'display': 'block', 'paddingLeft': '15px', 'paddingRight': '15px'}
+            right_style = {'display': 'block', 'paddingLeft': '15px'}
+            logger.info(f"toggle_results_panels_visibility: Applying styles - Center: {center_style}, Right: {right_style}") # ADDED LOG
+            return center_style, right_style
+        logger.warning("toggle_results_panels_visibility: Condition not met or no n_clicks, preventing update.") # ADDED LOG
         raise PreventUpdate

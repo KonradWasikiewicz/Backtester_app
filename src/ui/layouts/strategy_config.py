@@ -63,7 +63,7 @@ def get_strategy_dropdown(available_strategies: List[Dict[str, str]]) -> dcc.Dro
              logger.warning("Generated empty options for strategy dropdown. Check AVAILABLE_STRATEGIES structure in constants.py.")
 
     return dcc.Dropdown(
-        id='strategy-dropdown',
+        id='strategy-config-dropdown',
         options=options,
         placeholder="Click here...",
         className="mb-3 w-100",
@@ -188,14 +188,14 @@ def create_strategy_config_section(tickers=None):
                 "strategy-selection",
                 "Step 1: Initial Capital and Strategy Selection",
                 html.Div([
-                    html.Label("Initial Capital (USD):", className="mb-1", htmlFor='initial-capital-input'), # Reduced margin
+                    html.Label("Initial Capital (USD):", className="mb-1", htmlFor='strategy-config-initial-capital-input'), # Reduced margin
                     dbc.Input(
-                        id='initial-capital-input',
+                        id='strategy-config-initial-capital-input',
                         type='text',  # Changed to text for formatting
                         value="100 000",  # Default value formatted
                         className="mb-2 numeric-input-formatted", # Reduced margin
                     ),
-                    html.Label("Select a strategy:", className="mb-1", htmlFor='strategy-dropdown'), # Reduced margin
+                    html.Label("Select a strategy:", className="mb-1", htmlFor='strategy-config-dropdown'), # Reduced margin
                     get_strategy_dropdown(AVAILABLE_STRATEGIES),
                     html.Div(id="strategy-description-output", className="mb-2 mt-2"), # Reduced margins
                     html.Div(id='strategy-param-section', className="mt-3 mb-2"), # Adjusted margins
