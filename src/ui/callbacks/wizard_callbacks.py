@@ -1,5 +1,5 @@
 import dash
-from dash import html, dcc, Input, Output, State, ALL, MATCH, ctx, no_update
+from dash import Dash, html, dcc, Input, Output, State, ALL, MATCH, ctx, no_update
 from dash.exceptions import PreventUpdate # Added import
 import logging
 # Make sure logging is configured appropriately elsewhere (e.g., in app_factory or main app.py)
@@ -11,13 +11,11 @@ from src.ui.ids import WizardIDs, StrategyConfigIDs  # Import the centralized ID
 
 logger = logging.getLogger(__name__)
 
-def register_wizard_callbacks(app):
+def register_wizard_callbacks(app: Dash):
     """
     Register callbacks for the wizard interface, including step transitions and validation.
     """
-    logger.info("Registering wizard callbacks...")
-
-    # Removed duplicate strategy description callback (registered in strategy_callbacks)
+    logger.info("Registering wizard and main page run button callbacks...")
 
     # --- Consolidated Step Transition Callback ---
     @app.callback(
@@ -194,7 +192,7 @@ def register_wizard_callbacks(app):
         [Input(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
          Input(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),
          Input(WizardIDs.STOP_LOSS_TYPE_SELECT, 'value'),
-         Input(WizardIDs.STOP_LOSS_INPUT, 'value'),
+         Input(WizardIDs.STOP_LOSS_INPUT, 'value'), # MODIFIED: Corrected ID
          Input(WizardIDs.TAKE_PROFIT_TYPE_SELECT, 'value'),
          Input(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
          Input(WizardIDs.MAX_RISK_PER_TRADE_INPUT, 'value'),
@@ -259,7 +257,7 @@ def register_wizard_callbacks(app):
             State(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
             State(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),
             State(WizardIDs.STOP_LOSS_TYPE_SELECT, 'value'),
-            State(WizardIDs.STOP_LOSS_INPUT, 'value'),
+            State(WizardIDs.STOP_LOSS_INPUT, 'value'), # MODIFIED: Corrected ID
             State(WizardIDs.TAKE_PROFIT_TYPE_SELECT, 'value'),
             State(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
             State(WizardIDs.MAX_RISK_PER_TRADE_INPUT, 'value'),
@@ -384,12 +382,8 @@ def register_wizard_callbacks(app):
     # --- Connect Wizard Run Backtest Button to Backtest Execution ---
     @app.callback(
         [
-            Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks', allow_duplicate=True),
-            Output(StrategyConfigIDs.STRATEGY_SELECTOR, 'value', allow_duplicate=True),
-            Output(StrategyConfigIDs.TICKER_INPUT_MAIN, 'value', allow_duplicate=True),
-            Output(StrategyConfigIDs.START_DATE_PICKER_MAIN, 'date', allow_duplicate=True),
-            Output(StrategyConfigIDs.END_DATE_PICKER_MAIN, 'date', allow_duplicate=True),
-            Output(StrategyConfigIDs.INITIAL_CAPITAL_INPUT_MAIN, 'value', allow_duplicate=True)
+            Output(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data', allow_duplicate=True),
+            Output('run-backtest-trigger-store', 'data', allow_duplicate=True) # MODIFIED: Output to the new trigger store
         ],
         Input(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'n_clicks'),
         [
@@ -400,16 +394,7 @@ def register_wizard_callbacks(app):
             State(WizardIDs.TICKER_DROPDOWN, 'value'),
             State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'value'),
             State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'id'),
-            State(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
-            State(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),
-            State(WizardIDs.STOP_LOSS_TYPE_SELECT, 'value'),
-            State(WizardIDs.STOP_LOSS_INPUT, 'value'),
-            State(WizardIDs.TAKE_PROFIT_TYPE_SELECT, 'value'),
-            State(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
-            State(WizardIDs.MAX_RISK_PER_TRADE_INPUT, 'value'),
-            State(WizardIDs.MARKET_TREND_LOOKBACK_INPUT, 'value'),
-            State(WizardIDs.MAX_DRAWDOWN_INPUT, 'value'),
-            State(WizardIDs.MAX_DAILY_LOSS_INPUT, 'value'),
+            State(WizardIDs.RISK_MANAGEMENT_STORE_WIZARD, 'data'),
             State(WizardIDs.COMMISSION_INPUT, 'value'),
             State(WizardIDs.SLIPPAGE_INPUT, 'value'),
             State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, 'value'),
@@ -417,52 +402,151 @@ def register_wizard_callbacks(app):
         ],
         prevent_initial_call=True
     )
-    def trigger_backtest_from_wizard(n_clicks, strategy_type, initial_capital, 
+    def trigger_backtest_from_wizard(n_clicks, strategy_type, initial_capital_str,
                                      start_date, end_date, tickers,
                                      strategy_param_values, strategy_param_ids,
-                                     risk_feats, max_ps, sl_type, sl_val,
-                                     tp_type, tp_val, rpt, mtl, mdd, mdl,
+                                     risk_management_data,
                                      comm, slip, reb_freq, reb_thresh):
         """
-        When the wizard's Run Backtest button is clicked, this callback transfers wizard 
-        configuration data to the main backtest form components and triggers the main backtest execution.
+        When the wizard's Run Backtest button is clicked, this callback populates the
+        main strategy config store and updates the run-backtest-trigger-store to signal execution.
         """
         if not n_clicks or n_clicks <= 0:
             raise PreventUpdate
-            
-        logger.info(f"Wizard Run Backtest button clicked. Transferring wizard config to main form and triggering backtest with strategy: {strategy_type}")
-        
-        # Match the expected form of ticker input for the main backtest component
-        # The main backtest expects a string for ticker-input
-        tickers_str = ', '.join(tickers) if isinstance(tickers, list) else str(tickers)
-        
-        # Return values to update the main backtest form components and trigger the backtest
-        return (
-            1,  # Increment n_clicks for main run button
-            strategy_type, 
-            tickers_str, 
-            start_date, 
-            end_date, 
-            initial_capital
-        )
 
-    # --- Callback to trigger main backtest button from wizard --- 
+        logger.info(f"Wizard Run Backtest button clicked. Populating config store and triggering backtest execution via store update.")
+
+        # Clean initial capital (string "100 000" to float 100000.0)
+        cleaned_initial_capital = None
+        if initial_capital_str:
+            try:
+                cleaned_initial_capital = float(str(initial_capital_str).replace(" ", "").replace(",", "."))
+            except ValueError:
+                logger.warning(f"Could not parse initial capital string: {initial_capital_str}")
+                cleaned_initial_capital = None 
+
+        # Prepare strategy parameters
+        params_dict = {}
+        if strategy_param_ids and strategy_param_values:
+            for i, param_id_dict in enumerate(strategy_param_ids):
+                if isinstance(param_id_dict, dict) and 'param' in param_id_dict:
+                    param_name = param_id_dict['param']
+                    try:
+                        params_dict[param_name] = float(strategy_param_values[i])
+                    except (ValueError, TypeError):
+                        params_dict[param_name] = strategy_param_values[i]
+
+        # Consolidate all config data
+        config_data = {
+            "strategy_type": strategy_type,
+            "initial_capital": cleaned_initial_capital,
+            "start_date": start_date,
+            "end_date": end_date,
+            "tickers": tickers,
+            "strategy_params": params_dict,
+            "risk_management": risk_management_data if risk_management_data else {},
+            "trading_costs": {
+                "commission_bps": comm,
+                "slippage_bps": slip
+            },
+            "rebalancing": {
+                "frequency": reb_freq,
+                "threshold_pct": reb_thresh
+            }
+        }
+        logger.debug(f"Consolidated config data from wizard for store: {config_data}")
+
+        # Update the main config store and the trigger store (e.g., with current timestamp or n_clicks)
+        # Using n_clicks for the trigger store to ensure it changes on each click.
+        return config_data, n_clicks
+
+    # --- NEW CALLBACK: Main Page Run Backtest Button --- 
     @app.callback(
-        Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks', allow_duplicate=True), # Use StrategyConfigID for the main button
-        Input(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'n_clicks'),
-        State(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks'), # Read current n_clicks of the main button
+        [
+            Output(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data', allow_duplicate=True),
+            Output('run-backtest-trigger-store', 'data', allow_duplicate=True)
+        ],
+        [Input(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks')],
+        [
+            State(WizardIDs.STRATEGY_DROPDOWN, 'value'),
+            State(WizardIDs.INITIAL_CAPITAL_INPUT, 'value'),
+            State(WizardIDs.DATE_RANGE_START_PICKER, 'date'),
+            State(WizardIDs.DATE_RANGE_END_PICKER, 'date'),
+            State(WizardIDs.TICKER_DROPDOWN, 'value'),
+            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'value'),
+            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'id'),
+            State(WizardIDs.STOP_LOSS_INPUT, 'value'),
+            State(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
+            State(WizardIDs.MAX_DRAWDOWN_INPUT, 'value'), # MODIFIED: Corrected ID
+            State(WizardIDs.MAX_CONSECUTIVE_LOSSES_INPUT, 'value'),
+            State(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'), # CORRECTED TO PLURAL
+            State(WizardIDs.COMMISSION_INPUT, 'value'),
+            State(WizardIDs.SLIPPAGE_INPUT, 'value'),
+            State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, 'value'),
+            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, 'value')
+        ],
         prevent_initial_call=True
     )
-    def run_backtest_from_wizard_button(wizard_n_clicks, main_n_clicks):
+    def trigger_backtest_from_main_page(n_clicks, strategy_type, initial_capital_str,
+                                        start_date, end_date, tickers,
+                                        strategy_param_values, strategy_param_ids,
+                                        stop_loss_pct, take_profit_pct, max_drawdown_pct, max_consecutive_losses, risk_features,
+                                        comm, slip, reb_freq, reb_thresh):
         """
-        When the wizard's run button is clicked, this callback increments the n_clicks
-        of the main application's run backtest button, effectively triggering it.
+        When the main page's Run Backtest button is clicked, this callback collects all config data,
+        populates the main strategy config store, and updates the run-backtest-trigger-store.
         """
-        if wizard_n_clicks and wizard_n_clicks > 0:
-            logger.info(f"Wizard's run button clicked. Triggering main run backtest button.")
-            # Increment n_clicks of the main button
-            current_main_n_clicks = main_n_clicks or 0
-            return current_main_n_clicks + 1
-        raise PreventUpdate
+        if not n_clicks or n_clicks <= 0:
+            raise PreventUpdate
+
+        logger.info(f"Main Page Run Backtest button clicked (n_clicks: {n_clicks}). Populating config store and triggering backtest execution.")
+
+        cleaned_initial_capital = None
+        if initial_capital_str:
+            try:
+                cleaned_initial_capital = float(str(initial_capital_str).replace(" ", "").replace(",", "."))
+            except ValueError:
+                logger.warning(f"Could not parse initial capital string from main page: {initial_capital_str}")
+                cleaned_initial_capital = None
+
+        params_dict = {}
+        if strategy_param_ids and strategy_param_values:
+            for i, param_id_dict in enumerate(strategy_param_ids):
+                if isinstance(param_id_dict, dict) and 'param' in param_id_dict and param_id_dict.get('strategy') == strategy_type:
+                    param_name = param_id_dict['param']
+                    try:
+                        params_dict[param_name] = float(strategy_param_values[i])
+                    except (ValueError, TypeError):
+                        params_dict[param_name] = strategy_param_values[i]
+
+        # Construct risk_management dictionary from individual State inputs
+        risk_management_data = {
+            "stop_loss_pct": stop_loss_pct,
+            "take_profit_pct": take_profit_pct,
+            "max_drawdown_pct": max_drawdown_pct,
+            "max_consecutive_losses": max_consecutive_losses,
+            "enabled_features": risk_features if risk_features else []  # Ensure it's a list
+        }
+
+        config_data = {
+            "strategy_type": strategy_type,
+            "initial_capital": cleaned_initial_capital,
+            "start_date": start_date,
+            "end_date": end_date,
+            "tickers": tickers,
+            "strategy_params": params_dict,
+            "risk_management": risk_management_data,
+            "trading_costs": {
+                "commission_bps": comm,
+                "slippage_bps": slip
+            },
+            "rebalancing": {
+                "frequency": reb_freq,
+                "threshold_pct": reb_thresh
+            }
+        }
+        logger.debug(f"Consolidated config data from main page for store: {config_data}")
+
+        return config_data, n_clicks
 
     logger.info("Wizard callbacks registered successfully.")

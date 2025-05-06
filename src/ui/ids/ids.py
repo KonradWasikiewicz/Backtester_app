@@ -55,6 +55,7 @@ class WizardIDs:
     MARKET_TREND_LOOKBACK_INPUT = "wizard-market-trend-lookback-input"
     MAX_DRAWDOWN_INPUT = "wizard-max-drawdown-input" # Existing
     MAX_DAILY_LOSS_INPUT = "wizard-max-daily-loss-input"
+    MAX_CONSECUTIVE_LOSSES_INPUT = "wizard-max-consecutive-losses-input" # ADDED
     CONFIRM_RISK_BUTTON = "wizard-confirm-risk-button"
 
     # Risk Management Panels (NEW)

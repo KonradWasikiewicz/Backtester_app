@@ -8,6 +8,8 @@ import logging
 # Configure logging
 logger = logging.getLogger(__name__)
 
+from src.ui.ids.ids import WizardIDs # ADDED IMPORT
+
 def register_risk_management_callbacks(app: dash.Dash) -> None:
     """
     Register all risk management callbacks with the application
@@ -20,14 +22,14 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
     # Panel visibility callback (Depends only on the checklist - should be fine)
     @app.callback(
         [
-            Output("position_sizing-panel", "style"),
-            Output("stop_loss-panel", "style"),
-            Output("take_profit-panel", "style"),
-            Output("risk_per_trade-panel", "style"),
-            Output("market_filter-panel", "style"),
-            Output("drawdown_protection-panel", "style")
+            Output(WizardIDs.RISK_PANEL_POSITION_SIZING, "style"),
+            Output(WizardIDs.RISK_PANEL_STOP_LOSS, "style"),
+            Output(WizardIDs.RISK_PANEL_TAKE_PROFIT, "style"),
+            Output(WizardIDs.RISK_PANEL_RISK_PER_TRADE, "style"),
+            Output(WizardIDs.RISK_PANEL_MARKET_FILTER, "style"),
+            Output(WizardIDs.RISK_PANEL_DRAWDOWN_PROTECTION, "style")
         ],
-        Input("risk-features-checklist", "value"),
+        Input(WizardIDs.RISK_FEATURES_CHECKLIST, "value"),
          prevent_initial_call=True
     )
     def update_panel_visibility(enabled_features: List[str]):
@@ -67,8 +69,14 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
 
     # Server-side callback to update the checklist FROM the checkboxes (Keep this)
     @app.callback(
-        Output("risk-features-checklist", "value"),
+        Output(WizardIDs.RISK_FEATURES_CHECKLIST, "value"),
         [
+            # These inputs might be from a previous design. 
+            # The current wizard layout (strategy_config.py) uses a single checklist (RISK_FEATURES_CHECKLIST)
+            # and then specific input fields for each selected feature. 
+            # These individual checkboxes (e.g., "position_sizing-checkbox") are not defined with WizardIDs.
+            # This callback might need to be re-evaluated or removed if these checkboxes no longer exist.
+            # For now, I will leave them as string literals as they don't have WizardID counterparts.
             Input("position_sizing-checkbox", "value"),
             Input("stop_loss-checkbox", "value"),
             Input("take_profit-checkbox", "value"),
@@ -77,7 +85,7 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
             Input("drawdown_protection-checkbox", "value"),
             Input("continue-iterate-checkbox", "value") # Assuming this exists
         ],
-        State("risk-features-checklist", "value"),
+        State(WizardIDs.RISK_FEATURES_CHECKLIST, "value"),
         prevent_initial_call=True
     )
     def update_features_list_from_checkboxes(*args):
@@ -112,37 +120,39 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
 
     # Store the risk management configuration data (Keep this)
     @app.callback(
-        Output('risk-management-store', 'data'),
+        Output(WizardIDs.RISK_MANAGEMENT_STORE_WIZARD, 'data'), # UPDATED to Wizard Store ID
         [
-            Input('risk-features-checklist', 'value'),
-            Input('max-position-size', 'value'),
-            Input('max-portfolio-risk', 'value'),
-            Input('stop-loss-type', 'value'),
-            Input('stop-loss-value', 'value'),
-            Input('take-profit-type', 'value'),
-            Input('take-profit-value', 'value'),
-            Input('max-risk-per-trade', 'value'),
-            Input('risk-reward-ratio', 'value'),
-            Input('market-trend-lookback', 'value'),
-            Input('max-drawdown', 'value'),
-            Input('max-daily-loss', 'value')
+            Input(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
+            Input(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),
+            # 'max-portfolio-risk' is not in WizardIDs or strategy_config.py layout for the wizard
+            # Input('max-portfolio-risk', 'value'), # Placeholder, needs to be added to WizardIDs and layout if used
+            Input(WizardIDs.STOP_LOSS_TYPE_SELECT, 'value'),
+            Input(WizardIDs.STOP_LOSS_INPUT, 'value'),
+            Input(WizardIDs.TAKE_PROFIT_TYPE_SELECT, 'value'),
+            Input(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
+            Input(WizardIDs.MAX_RISK_PER_TRADE_INPUT, 'value'),
+            # 'risk-reward-ratio' is not in WizardIDs or strategy_config.py layout for the wizard
+            # Input('risk-reward-ratio', 'value'), # Placeholder, needs to be added to WizardIDs and layout if used
+            Input(WizardIDs.MARKET_TREND_LOOKBACK_INPUT, 'value'),
+            Input(WizardIDs.MAX_DRAWDOWN_INPUT, 'value'),
+            Input(WizardIDs.MAX_DAILY_LOSS_INPUT, 'value')
         ],
          prevent_initial_call=True
     )
     def update_risk_management_store(
-        enabled_features, max_position_size, max_portfolio_risk,
+        enabled_features, max_position_size, # max_portfolio_risk, # Commented out as per above
         stop_loss_type, stop_loss_value, take_profit_type, take_profit_value,
-        max_risk_per_trade, risk_reward_ratio, market_trend_lookback,
-        max_drawdown, max_daily_loss
+        max_risk_per_trade, # risk_reward_ratio, # Commented out as per above
+        market_trend_lookback, max_drawdown, max_daily_loss
     ):
         """Store all risk management configuration in the risk-management-store"""
         logger.debug("Updating risk-management-store")
         risk_config = {
             "enabled_features": enabled_features or [],
-            "position_sizing": {"max_position_size": max_position_size, "max_portfolio_risk": max_portfolio_risk},
+            "position_sizing": {"max_position_size": max_position_size, "max_portfolio_risk": None}, # Set max_portfolio_risk to None
             "stop_loss": {"type": stop_loss_type, "value": stop_loss_value},
             "take_profit": {"type": take_profit_type, "value": take_profit_value},
-            "risk_per_trade": {"max_risk_per_trade": max_risk_per_trade, "risk_reward_ratio": risk_reward_ratio},
+            "risk_per_trade": {"max_risk_per_trade": max_risk_per_trade, "risk_reward_ratio": None}, # Set risk_reward_ratio to None
             "market_filter": {"trend_lookback": market_trend_lookback},
             "drawdown_protection": {"max_drawdown": max_drawdown, "max_daily_loss": max_daily_loss}
         }

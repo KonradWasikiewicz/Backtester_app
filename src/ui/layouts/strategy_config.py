@@ -481,7 +481,8 @@ def create_strategy_config_section(tickers=None):
         # Wrap all steps in a single container
         return html.Div([
             progress, # Keep wizard progress
-            html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps")
+            html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps"),
+            dcc.Store(id=WizardIDs.RISK_MANAGEMENT_STORE_WIZARD) # ADDED WIZARD RISK STORE
         ], id=WizardIDs.STRATEGY_CONFIG_CONTAINER, className="strategy-wizard")
 
     except Exception as e:

@@ -46,34 +46,12 @@ def register_backtest_callbacks(app: Dash):
         Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'label', allow_duplicate=True),
         Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True), # Wizard progress bar
         Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
-        Input(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks'), # Main run button
-        State(StrategyConfigIDs.STRATEGY_SELECTOR, 'value'), 
-        State(StrategyConfigIDs.TICKER_INPUT_MAIN, 'value'),      
-        State(StrategyConfigIDs.START_DATE_PICKER_MAIN, 'date'), 
-        State(StrategyConfigIDs.END_DATE_PICKER_MAIN, 'date'),   
-        State(StrategyConfigIDs.INITIAL_CAPITAL_INPUT_MAIN, 'value'),
-        # Assuming strategy params are from the main config area, not wizard, for this callback
-        # If pattern matching IDs are also on main page, they might need distinct 'type' or full IDs.
-        State({'type': 'strategy-param-input-main', 'index': ALL}, 'value'), 
-        State({'type': 'strategy-param-input-main', 'index': ALL}, 'id'),    
-        # Assuming these risk inputs are from the MAIN config page now
-        State(StrategyConfigIDs.RISK_FEATURES_CHECKLIST_MAIN, 'value'), 
-        State(StrategyConfigIDs.MAX_POSITION_SIZE_INPUT_MAIN, 'value'),
-        State(StrategyConfigIDs.STOP_LOSS_TYPE_SELECT_MAIN, 'value'),
-        State(StrategyConfigIDs.STOP_LOSS_INPUT_MAIN, 'value'),
-        State(StrategyConfigIDs.TAKE_PROFIT_TYPE_SELECT_MAIN, 'value'),
-        State(StrategyConfigIDs.TAKE_PROFIT_INPUT_MAIN, 'value'),
-        State(StrategyConfigIDs.MAX_RISK_PER_TRADE_INPUT_MAIN, 'value'),
-        State(StrategyConfigIDs.MARKET_TREND_LOOKBACK_INPUT_MAIN, 'value'),
-        State(StrategyConfigIDs.MAX_DRAWDOWN_INPUT_MAIN, 'value'), 
-        State(StrategyConfigIDs.MAX_DAILY_LOSS_INPUT_MAIN, 'value'),
-        State(StrategyConfigIDs.COMMISSION_INPUT_MAIN, 'value'),
-        State(StrategyConfigIDs.SLIPPAGE_INPUT_MAIN, 'value'),
-        State(StrategyConfigIDs.REBALANCING_FREQUENCY_DROPDOWN_MAIN, 'value'),
-        State(StrategyConfigIDs.REBALANCING_THRESHOLD_INPUT_MAIN, 'value'),
+        Input('run-backtest-trigger-store', 'data'), # MODIFIED: Triggered by the new store
+        State(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data'),
         background=True,
         running=[
-            (Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'disabled'), True, False), # Main run button
+            (Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'disabled'), True, False), # Main run button still disabled
+            (Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'disabled'), True, False), # ADDED: Disable wizard run button too
             (Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'style'), {'display': 'block'}, {'display': 'none'}),
             (Output(ResultsIDs.BACKTEST_STATUS_MESSAGE, 'children'), "Running backtest...", ""),
             (Output(WizardIDs.PROGRESS_BAR, "style"), {'display': 'none'}, no_update), # Wizard progress bar hidden
@@ -87,74 +65,78 @@ def register_backtest_callbacks(app: Dash):
         ],
         prevent_initial_call=True
     )
-    def run_backtest(set_progress, n_clicks, strategy_type, tickers, start_date, end_date, initial_capital,
-                     strategy_param_values, strategy_param_ids, 
-                     selected_risk_features, 
-                     max_position_size, stop_loss_type, stop_loss_value, 
-                     take_profit_type, take_profit_value, max_risk_per_trade,
-                     market_trend_lookback, max_drawdown, max_daily_loss,
-                     commission, slippage, 
-                     rebalancing_frequency, rebalancing_threshold 
-                     ):
-        logger.info("--- run_backtest callback: Entered. 'running' state should hide right-panel-col.") # ADDED LOG
-        if not n_clicks:
-            logger.warning("run_backtest triggered without click.")
+    def run_backtest(set_progress, trigger_data, config_data): # MODIFIED: n_clicks -> trigger_data
+        logger.info("--- run_backtest callback: Entered. 'running' state should hide right-panel-col.")
+        if not trigger_data: # MODIFIED: Check trigger_data
+            logger.warning("run_backtest triggered without trigger_data.")
             raise PreventUpdate
 
-        ctx = dash.callback_context
-        if not ctx.triggered:
-            logger.warning("run_backtest triggered without context.")
-            raise PreventUpdate
+        if not config_data:
+            logger.warning("run_backtest triggered without config_data.")
+            # Return structure needs to match all outputs of the main callback
+            return {"timestamp": time.time(), "success": False, "error": "Configuration data is missing."}, \
+                   {'display': 'none'}, 0, "Config Error", {'display': 'none'}, {'display': 'none'}
 
-        logger.info(f"run_backtest: Received tickers: {tickers} (type: {type(tickers)})") # ADDED LOG CONTEXT
+        logger.info(f"run_backtest: Received config_data: {config_data}")
+
+        # Extract parameters from config_data
+        strategy_type = config_data.get("strategy_type")
+        tickers = config_data.get("tickers") # This is expected to be a list from the wizard
+        start_date_str = config_data.get("start_date")
+        end_date_str = config_data.get("end_date")
+        initial_capital = config_data.get("initial_capital") # This is expected to be cleaned float
+        strategy_params_dict = config_data.get("strategy_params", {})
+        risk_params_dict = config_data.get("risk_management", {})
+        trading_costs_config = config_data.get("trading_costs", {})
+        rebalancing_params_config = config_data.get("rebalancing", {})
+
+        # Convert trading_costs and rebalancing from the structure defined in wizard_callbacks
+        # to the structure expected by backtest_service
+        cost_params_dict = {
+            'commission_per_trade': trading_costs_config.get('commission_bps'),
+            'slippage_per_trade': trading_costs_config.get('slippage_bps')
+        }
+        rebalancing_params_dict = {
+            'frequency': rebalancing_params_config.get('frequency'),
+            'threshold': rebalancing_params_config.get('threshold_pct')
+        }
+
 
         if isinstance(tickers, list) and tickers:
             tickers_list = [str(t).strip() for t in tickers if t]
-        elif isinstance(tickers, str) and tickers.strip():
+        elif isinstance(tickers, str) and tickers.strip(): # Fallback if it's a string
              tickers_list = [t.strip() for t in tickers.split(',') if t.strip()]
         else:
             tickers_list = []
 
-        if not all([strategy_type, tickers_list, start_date, end_date, initial_capital]):
-            error_msg = "Missing required inputs: Strategy, Tickers, Start/End Dates, or Initial Capital."
-            logger.error(f"run_backtest: Input validation failed: {error_msg}") # ADDED LOG CONTEXT
+        if not all([strategy_type, tickers_list, start_date_str, end_date_str, initial_capital is not None]):
+            error_msg = "Missing required inputs from config_data: Strategy, Tickers, Start/End Dates, or Initial Capital."
+            logger.error(f"run_backtest: Input validation failed: {error_msg}")
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                    {'display': 'none'}, 0, "Input Error", {'display': 'none'}, {'display': 'none'}
 
         try:
-            start_date_dt = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
-            end_date_dt = datetime.strptime(end_date, '%Y-%m-%d').date() if end_date else None
+            start_date_dt = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+            end_date_dt = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
         except ValueError as e:
-             error_msg = f"Invalid date format: {e}. Please use YYYY-MM-DD."
-             logger.error(f"run_backtest: {error_msg}") # ADDED LOG CONTEXT
+             error_msg = f"Invalid date format in config_data: {e}. Please use YYYY-MM-DD."
+             logger.error(f"run_backtest: {error_msg}")
              return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                     {'display': 'none'}, 0, "Date Error", {'display': 'none'}, {'display': 'none'}
+        
+        # Risk params might need restructuring if the store format differs from service expectation
+        # Assuming risk_params_dict from the store is already in the correct format for the service
+        # or needs minimal adjustment.
+        # Example: if 'features' key exists and service expects 'enabled_features'
+        if 'features' in risk_params_dict and 'enabled_features' not in risk_params_dict:
+            risk_params_dict['enabled_features'] = risk_params_dict.pop('features')
 
-        strategy_params_dict = {pid['index']: val for pid, val in zip(strategy_param_ids, strategy_param_values)}
-        risk_params_dict = {
-            'features': selected_risk_features or [],
-            'max_position_size': max_position_size,
-            'stop_loss': {'type': stop_loss_type, 'value': stop_loss_value} if stop_loss_type != 'none' else None,
-            'take_profit': {'type': take_profit_type, 'value': take_profit_value} if take_profit_type != 'none' else None,
-            'max_risk_per_trade': max_risk_per_trade,
-            'market_trend_lookback': market_trend_lookback,
-            'max_drawdown': max_drawdown,
-            'max_daily_loss': max_daily_loss
-        }
-        trading_costs_dict = {
-            'commission_per_trade': commission,
-            'slippage_per_trade': slippage
-        }
-        rebalancing_params_dict = {
-            'frequency': rebalancing_frequency,
-            'threshold': rebalancing_threshold
-        }
 
         try:
-            logger.info("run_backtest: Setting initial progress (1%).") # ADDED LOG
+            logger.info("run_backtest: Setting initial progress (1%).")
             set_progress((1, "Initializing Backtest...")) 
 
-            logger.info("run_backtest: Calling backtest_service.run_backtest. This might be a long operation.") # ADDED LOG
+            logger.info("run_backtest: Calling backtest_service.run_backtest. This might be a long operation.")
             start_time = time.time()
             
             results_package = backtest_service.run_backtest(
@@ -162,37 +144,37 @@ def register_backtest_callbacks(app: Dash):
                 tickers=tickers_list,
                 start_date=start_date_dt,
                 end_date=end_date_dt,
-                initial_capital=initial_capital,
+                initial_capital=initial_capital, # Already a float
                 strategy_params=strategy_params_dict,
-                risk_params=risk_params_dict,
-                cost_params=trading_costs_dict,
-                rebalancing_params=rebalancing_params_dict
+                risk_params=risk_params_dict, # Pass directly from store
+                cost_params=cost_params_dict, # Use mapped dict
+                rebalancing_params=rebalancing_params_dict # Use mapped dict
             )
 
             end_time = time.time()
-            logger.info(f"run_backtest: backtest_service.run_backtest finished in {end_time - start_time:.2f} seconds.") # ADDED LOG
+            logger.info(f"run_backtest: backtest_service.run_backtest finished in {end_time - start_time:.2f} seconds.")
             results_package["timestamp"] = time.time()
 
             if results_package.get("success"):
-                logger.info(f"run_backtest: Preparing SUCCESSFUL results. Keys: {list(results_package.keys())}") # ADDED LOG
-                logger.info("run_backtest: Setting final progress (100% - Complete).") # ADDED LOG
+                logger.info(f"run_backtest: Preparing SUCCESSFUL results. Keys: {list(results_package.keys())}")
+                logger.info("run_backtest: Setting final progress (100% - Complete).")
                 set_progress((100, "Complete")) 
-                logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.") # ADDED LOG
+                logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
                 return results_package, {'display': 'none'}, no_update, no_update, {'display': 'none'}, {'display': 'block'}
             else:
                 error_msg = results_package.get('error', 'Unknown backtest failure')
-                logger.error(f"run_backtest: Returning FAILED results: {error_msg}") # ADDED LOG CONTEXT
-                logger.info("run_backtest: Setting final progress (100% - Failed).") # ADDED LOG
+                logger.error(f"run_backtest: Returning FAILED results: {error_msg}")
+                logger.info("run_backtest: Setting final progress (100% - Failed).")
                 set_progress((100, "Failed")) 
-                logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.") # ADDED LOG
+                logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
                 return results_package, {'display': 'none'}, 0, "Failed", {'display': 'none'}, {'display': 'none'}
 
         except Exception as e:
-            logger.error(f"run_backtest: Exception during execution: {e}", exc_info=True) # ADDED LOG CONTEXT
+            logger.error(f"run_backtest: Exception during execution: {e}", exc_info=True)
             error_msg = f"An unexpected error occurred: {e}"
-            logger.info("run_backtest: Setting final progress (100% - Error).") # ADDED LOG
+            logger.info("run_backtest: Setting final progress (100% - Error).")
             set_progress((100, "Error")) 
-            logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.") # ADDED LOG
+            logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                    {'display': 'none'}, 0, "Callback Error", {'display': 'none'}, {'display': 'none'}
 
@@ -250,13 +232,17 @@ def register_backtest_callbacks(app: Dash):
         portfolio_chart_fig = pio.from_json(results_data.get('portfolio_value_chart_json')) if results_data.get('portfolio_value_chart_json') else create_empty_chart("Portfolio Value")
         drawdown_chart_fig = pio.from_json(results_data.get('drawdown_chart_json')) if results_data.get('drawdown_chart_json') else create_empty_chart("Drawdown")
         
+        # --- CORRECTED: Properly assign monthly_returns_heatmap_fig ---
+        monthly_returns_heatmap_fig = pio.from_json(results_data.get('monthly_returns_heatmap_json')) if results_data.get('monthly_returns_heatmap_json') else create_empty_chart("Monthly Returns Heatmap")
+        # --- END CORRECTION ---
+
         tickers = results_data.get('selected_tickers', [])
         ticker_options = [{'label': t, 'value': t} for t in tickers]
         ticker_value = tickers[0] if tickers else None
         
         logger.info("--- update_results_display callback successfully processed data and is returning updates. ---")
         return (performance_metrics_children, trade_metrics_children, trades_table_component,
-                portfolio_chart_fig, drawdown_chart_fig, empty_fig,
+                portfolio_chart_fig, drawdown_chart_fig, monthly_returns_heatmap_fig, # Use corrected variable
                 ticker_options, ticker_value)
 
     logger.info("Backtest callbacks registered.")
@@ -265,16 +251,16 @@ def register_backtest_callbacks(app: Dash):
     @app.callback(
         [Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style'),
          Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True)], 
-        Input(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks'), # Main run button
+        Input('run-backtest-trigger-store', 'data'), # MODIFIED: Triggered by the new store
         prevent_initial_call=True
     )
-    def toggle_results_panels_visibility(n_clicks):
+    def toggle_results_panels_visibility(trigger_data): # MODIFIED: n_clicks -> trigger_data
         triggered_id = ctx.triggered_id
-        logger.info(f"toggle_results_panels_visibility: Triggered by {triggered_id}. n_clicks: {n_clicks}") # ADDED LOG
-        if n_clicks and n_clicks > 0:
-            center_style = {'display': 'block', 'paddingLeft': '15px', 'paddingRight': '15px'}
+        logger.info(f"toggle_results_panels_visibility: Triggered by {triggered_id}. trigger_data: {trigger_data}")
+        if trigger_data: # MODIFIED: Check trigger_data
+            center_style = {'display': 'block', 'paddingLeft': '15px', 'paddingRight': '15px'} # Corrected typo here
             right_style = {'display': 'block', 'paddingLeft': '15px'}
-            logger.info(f"toggle_results_panels_visibility: Applying styles - Center: {center_style}, Right: {right_style}") # ADDED LOG
+            logger.info(f"toggle_results_panels_visibility: Applying styles - Center: {center_style}, Right: {right_style}")
             return center_style, right_style
-        logger.warning("toggle_results_panels_visibility: Condition not met or no n_clicks, preventing update.") # ADDED LOG
+        logger.warning("toggle_results_panels_visibility: Condition not met or no trigger_data, preventing update.")
         raise PreventUpdate

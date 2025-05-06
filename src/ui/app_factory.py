@@ -38,6 +38,7 @@ from src.ui.layouts.strategy_config import create_strategy_config_section
 # --- Import the new panel layout functions ---
 from src.ui.layouts.results_display import create_center_panel_layout, create_right_panel_layout
 # --- END Import ---
+from src.ui.ids.ids import ResultsIDs, StrategyConfigIDs # ADDED IMPORT
 from src.version import get_version, get_version_info, RELEASE_DATE, get_changelog  # Import version info
 
 # Update function signature to accept assets_dir
@@ -351,6 +352,7 @@ def create_app_layout() -> html.Div:
             dcc.Store(id="app-state", data={}),
             dcc.Store(id=ResultsIDs.BACKTEST_RESULTS_STORE), # Use ResultsID
             dcc.Store(id=StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN), # Add main config store
+            dcc.Store(id='run-backtest-trigger-store'), # ADDED: Store to trigger backtest execution
 
             # Changelog modal
             dbc.Modal(

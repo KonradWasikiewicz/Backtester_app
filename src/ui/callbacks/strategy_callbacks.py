@@ -12,7 +12,7 @@ import sys
 import os
 
 # Import centralized IDs
-from src.ui.ids import WizardIDs
+from src.ui.ids import WizardIDs, StrategyConfigIDs # MODIFIED: Added StrategyConfigIDs
 
 # --- MOVED LOGGER INITIALIZATION ---
 # Configure logging EARLY, before any potential logging calls
@@ -156,85 +156,5 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
         # Enable confirm when strategy selected (defaults assumed valid)
         logger.debug(f"WIZARD: Returning {len(inputs)} input components and disabled=False for confirm button.")
         return inputs, False
-
-    @app.callback(
-        Output("strategy-config-store", "data"),
-        [
-            Input({"type": "strategy-param", "strategy": ALL, "param": ALL}, "value"),
-            Input(WizardIDs.COMMISSION_INPUT, "value"),
-            Input(WizardIDs.SLIPPAGE_INPUT, "value"),
-            Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
-            Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")
-        ],
-        [
-            State("strategy-config-store", "data"),
-            State(WizardIDs.STRATEGY_DROPDOWN, 'value')
-        ],
-        prevent_initial_call=True
-    )
-    def update_config_store_from_inputs(*args):
-        ctx = callback_context
-        if not ctx.triggered or not ctx.inputs_list:
-            logger.debug("Config store update: No trigger.")
-            return no_update
-
-        current_config = args[5] or {}
-        selected_strategy = args[6]
-        updated_config = json.loads(json.dumps(current_config))
-        triggered_prop_id_str = ctx.triggered[0]['prop_id']
-        triggered_value = ctx.triggered[0]['value']
-        logger.debug(f"Config store update triggered by: {triggered_prop_id_str} = {triggered_value}")
-
-        if "parameters" not in updated_config: updated_config["parameters"] = {}
-        if "trading_costs" not in updated_config: updated_config["trading_costs"] = {}
-        if "rebalancing" not in updated_config: updated_config["rebalancing"] = {}
-        if "strategy_name" not in updated_config or updated_config.get("strategy_name") != selected_strategy:
-             updated_config["strategy_name"] = selected_strategy
-
-        try:
-            prop_id_dict_str = triggered_prop_id_str.split(".")[0]
-            is_pattern_match = prop_id_dict_str.startswith('{') and prop_id_dict_str.endswith('}')
-
-            if is_pattern_match:
-                prop_id_dict = json.loads(prop_id_dict_str)
-                if prop_id_dict.get("type") == "strategy-param":
-                    param_name = prop_id_dict.get("param")
-                    trigger_strategy = prop_id_dict.get("strategy")
-                    if param_name and trigger_strategy == selected_strategy:
-                        updated_config["parameters"][param_name] = triggered_value
-                        logger.debug(f"Updated param '{param_name}' for strategy '{selected_strategy}' to {triggered_value}")
-                    else:
-                        logger.warning(f"Ignoring param update trigger for mismatched strategy. Trigger ID: {prop_id_dict}, Selected: {selected_strategy}")
-                else:
-                     logger.warning(f"Unhandled pattern-matching trigger ID type: {prop_id_dict.get('type')}")
-
-            elif prop_id_dict_str == "commission-input":
-                 try: updated_config["trading_costs"]["commission_value"] = float(triggered_value) if triggered_value is not None else None
-                 except (ValueError, TypeError): logger.warning(f"Invalid commission value: {triggered_value}")
-                 logger.debug(f"Updated commission_value to {updated_config['trading_costs'].get('commission_value')}")
-            elif prop_id_dict_str == "slippage-input":
-                 try: updated_config["trading_costs"]["slippage_value"] = float(triggered_value) if triggered_value is not None else None
-                 except (ValueError, TypeError): logger.warning(f"Invalid slippage value: {triggered_value}")
-                 logger.debug(f"Updated slippage_value to {updated_config['trading_costs'].get('slippage_value')}")
-            elif prop_id_dict_str == "rebalancing-frequency":
-                 updated_config["rebalancing"]["frequency"] = triggered_value
-                 logger.debug(f"Updated rebalancing frequency to {triggered_value}")
-            elif prop_id_dict_str == "rebalancing-threshold":
-                 try: updated_config["rebalancing"]["threshold"] = float(triggered_value) if triggered_value is not None else None
-                 except (ValueError, TypeError): logger.warning(f"Invalid rebalancing threshold: {triggered_value}")
-                 logger.debug(f"Updated rebalancing threshold to {updated_config['rebalancing'].get('threshold')}")
-            else:
-                logger.warning(f"Unhandled simple trigger ID in config store update: {prop_id_dict_str}")
-
-        except (json.JSONDecodeError, AttributeError, KeyError, IndexError) as e:
-            logger.error(f"Error processing triggered ID or updating config: {e} | ID: {triggered_prop_id_str}", exc_info=True)
-            return no_update
-
-        if updated_config != current_config:
-            logger.info(f"Updated strategy-config-store: {json.dumps(updated_config)}")
-            return updated_config
-        else:
-            logger.debug("Config store update: No change detected.")
-            return no_update
 
     logger.info("Strategy callbacks registered.")
