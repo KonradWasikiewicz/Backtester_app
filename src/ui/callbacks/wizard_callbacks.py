@@ -7,7 +7,7 @@ import logging
 from src.core.constants import STRATEGY_DESCRIPTIONS # Poprawna ścieżka do stałych
 from src.core.constants import DEFAULT_STRATEGY_PARAMS  # added import for default params
 from src.core.constants import AVAILABLE_STRATEGIES # Ensure this is imported
-from src.ui.ids import WizardIDs  # Import the centralized IDs
+from src.ui.ids import WizardIDs, StrategyConfigIDs  # Import the centralized IDs and StrategyConfigIDs
 
 logger = logging.getLogger(__name__)
 
@@ -384,12 +384,12 @@ def register_wizard_callbacks(app):
     # --- Connect Wizard Run Backtest Button to Backtest Execution ---
     @app.callback(
         [
-            Output('run-backtest-button', 'n_clicks'),
-            Output('strategy-dropdown', 'value'),
-            Output('ticker-input', 'value'),
-            Output('backtest-start-date', 'date'),
-            Output('backtest-end-date', 'date'),
-            Output('initial-capital-input', 'value')
+            Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks', allow_duplicate=True),
+            Output(StrategyConfigIDs.STRATEGY_SELECTOR, 'value', allow_duplicate=True),
+            Output(StrategyConfigIDs.TICKER_INPUT_MAIN, 'value', allow_duplicate=True),
+            Output(StrategyConfigIDs.START_DATE_PICKER_MAIN, 'date', allow_duplicate=True),
+            Output(StrategyConfigIDs.END_DATE_PICKER_MAIN, 'date', allow_duplicate=True),
+            Output(StrategyConfigIDs.INITIAL_CAPITAL_INPUT_MAIN, 'value', allow_duplicate=True)
         ],
         Input(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'n_clicks'),
         [
@@ -437,6 +437,32 @@ def register_wizard_callbacks(app):
         tickers_str = ', '.join(tickers) if isinstance(tickers, list) else str(tickers)
         
         # Return values to update the main backtest form components and trigger the backtest
-        return 1, strategy_type, tickers_str, start_date, end_date, initial_capital
+        return (
+            1,  # Increment n_clicks for main run button
+            strategy_type, 
+            tickers_str, 
+            start_date, 
+            end_date, 
+            initial_capital
+        )
+
+    # --- Callback to trigger main backtest button from wizard --- 
+    @app.callback(
+        Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks', allow_duplicate=True), # Use StrategyConfigID for the main button
+        Input(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'n_clicks'),
+        State(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks'), # Read current n_clicks of the main button
+        prevent_initial_call=True
+    )
+    def run_backtest_from_wizard_button(wizard_n_clicks, main_n_clicks):
+        """
+        When the wizard's run button is clicked, this callback increments the n_clicks
+        of the main application's run backtest button, effectively triggering it.
+        """
+        if wizard_n_clicks and wizard_n_clicks > 0:
+            logger.info(f"Wizard's run button clicked. Triggering main run backtest button.")
+            # Increment n_clicks of the main button
+            current_main_n_clicks = main_n_clicks or 0
+            return current_main_n_clicks + 1
+        raise PreventUpdate
 
     logger.info("Wizard callbacks registered successfully.")

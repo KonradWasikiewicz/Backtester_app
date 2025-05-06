@@ -56,6 +56,14 @@ class WizardIDs:
     MAX_DRAWDOWN_INPUT = "wizard-max-drawdown-input" # Existing
     MAX_DAILY_LOSS_INPUT = "wizard-max-daily-loss-input"
     CONFIRM_RISK_BUTTON = "wizard-confirm-risk-button"
+
+    # Risk Management Panels (NEW)
+    RISK_PANEL_POSITION_SIZING = "wizard-risk-panel-position-sizing"
+    RISK_PANEL_STOP_LOSS = "wizard-risk-panel-stop-loss"
+    RISK_PANEL_TAKE_PROFIT = "wizard-risk-panel-take-profit"
+    RISK_PANEL_RISK_PER_TRADE = "wizard-risk-panel-risk-per-trade"
+    RISK_PANEL_MARKET_FILTER = "wizard-risk-panel-market-filter"
+    RISK_PANEL_DRAWDOWN_PROTECTION = "wizard-risk-panel-drawdown-protection"
     
     # Step 5: Trading Costs
     TRADING_COSTS_CONTAINER = "wizard-trading-costs"
@@ -75,6 +83,9 @@ class WizardIDs:
     SUMMARY_INITIAL_CAPITAL = "wizard-summary-initial-capital"
     SUMMARY_OUTPUT_CONTAINER = "wizard-summary-output"
     RUN_BACKTEST_BUTTON_WIZARD = "wizard-run-backtest-button"
+
+    # Wizard-specific data stores
+    RISK_MANAGEMENT_STORE_WIZARD = "wizard-risk-management-store" # NEW
 
 
 class LayoutIDs:
@@ -133,8 +144,40 @@ class ResultsIDs:
 
 
 class StrategyConfigIDs:
-    """IDs for strategy configuration components outside the wizard."""
+    """IDs for strategy configuration components outside the wizard (main page)."""
     
     CONFIG_CONTAINER = "strategy-config-container-main"
-    STRATEGY_SELECTOR = "strategy-selector-main"
-    PARAMS_CONTAINER = "strategy-params-container"
+    STRATEGY_SELECTOR = "strategy-selector-main" # Main strategy dropdown
+    PARAMS_CONTAINER = "strategy-params-container-main" # Main strategy parameters container
+    
+    # Basic Config
+    INITIAL_CAPITAL_INPUT_MAIN = "initial-capital-input-main"
+    TICKER_INPUT_MAIN = "ticker-input-main"
+    START_DATE_PICKER_MAIN = "backtest-start-date-main"
+    END_DATE_PICKER_MAIN = "backtest-end-date-main"
+    
+    # Run Button
+    RUN_BACKTEST_BUTTON_MAIN = "run-backtest-button-main"
+    
+    # Risk Management (Main Page)
+    RISK_FEATURES_CHECKLIST_MAIN = "risk-features-checklist-main"
+    MAX_POSITION_SIZE_INPUT_MAIN = "max-position-size-main"
+    STOP_LOSS_TYPE_SELECT_MAIN = "stop-loss-type-main"
+    STOP_LOSS_INPUT_MAIN = "stop-loss-value-main" # Input for stop loss value
+    TAKE_PROFIT_TYPE_SELECT_MAIN = "take-profit-type-main"
+    TAKE_PROFIT_INPUT_MAIN = "take-profit-value-main" # Input for take profit value
+    MAX_RISK_PER_TRADE_INPUT_MAIN = "max-risk-per-trade-main"
+    MARKET_TREND_LOOKBACK_INPUT_MAIN = "market-trend-lookback-main"
+    MAX_DRAWDOWN_INPUT_MAIN = "max-drawdown-main"
+    MAX_DAILY_LOSS_INPUT_MAIN = "max-daily-loss-main"
+    
+    # Trading Costs (Main Page)
+    COMMISSION_INPUT_MAIN = "commission-input-main"
+    SLIPPAGE_INPUT_MAIN = "slippage-input-main"
+    
+    # Rebalancing (Main Page)
+    REBALANCING_FREQUENCY_DROPDOWN_MAIN = "rebalancing-frequency-main"
+    REBALANCING_THRESHOLD_INPUT_MAIN = "rebalancing-threshold-main"
+
+    # Store for configuration if used by main page components
+    STRATEGY_CONFIG_STORE_MAIN = "strategy-config-store-main" # Distinct from wizard's potential store

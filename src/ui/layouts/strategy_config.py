@@ -258,8 +258,8 @@ def create_strategy_config_section(tickers=None):
                 html.Div([
                     html.Label("Select tickers to trade:", className="mb-1", htmlFor=WizardIDs.TICKER_DROPDOWN), 
                     html.Div([
-                        dbc.Button("Select All", id="select-all-tickers", color="secondary", size="sm", className="me-2"),
-                        dbc.Button("Deselect All", id="deselect-all-tickers", color="secondary", size="sm")
+                        dbc.Button("Select All", id=WizardIDs.SELECT_ALL_TICKERS_BUTTON, color="secondary", size="sm", className="me-2"),
+                        dbc.Button("Deselect All", id=WizardIDs.DESELECT_ALL_TICKERS_BUTTON, color="secondary", size="sm")
                     ], className="mb-1"),
                     dcc.Dropdown(
                         id=WizardIDs.TICKER_DROPDOWN,
@@ -283,9 +283,9 @@ def create_strategy_config_section(tickers=None):
                 "risk-management",
                 "Step 4: Risk Management",
                 html.Div([
-                    html.Label("Configure risk parameters:", className="mb-1", htmlFor='risk-features-checklist'),
+                    html.Label("Configure risk parameters:", className="mb-1", htmlFor=WizardIDs.RISK_FEATURES_CHECKLIST),
                     dcc.Checklist(
-                        id="risk-features-checklist",
+                        id=WizardIDs.RISK_FEATURES_CHECKLIST,
                         options=[
                             {'label': 'Position Sizing', 'value': 'position_sizing'},
                             {'label': 'Stop Loss', 'value': 'stop_loss'},
@@ -302,68 +302,68 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Position Sizing Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Max Position Size (%):", className="mb-1", htmlFor='max-position-size'),
-                                dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1, size="sm")
+                                html.Label("Max Position Size (%):", className="mb-1", htmlFor=WizardIDs.MAX_POSITION_SIZE_INPUT),
+                                dbc.Input(id=WizardIDs.MAX_POSITION_SIZE_INPUT, type="number", min=0, max=100, step=1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
-                    ], id="position_sizing-panel", style={"display": "none"}),
+                    ], id=WizardIDs.RISK_PANEL_POSITION_SIZING, style={"display": "none"}),
 
                     html.Div([  # Stop Loss Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Type:", className="mb-1", htmlFor='stop-loss-type'),
-                                dcc.Dropdown(id="stop-loss-type", options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
+                                html.Label("Type:", className="mb-1", htmlFor=WizardIDs.STOP_LOSS_TYPE_SELECT),
+                                dcc.Dropdown(id=WizardIDs.STOP_LOSS_TYPE_SELECT, options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
                             ], width=5),
                             dbc.Col([
-                                html.Label("Value (%):", className="mb-1", htmlFor='stop-loss-value'),
-                                dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1, size="sm")
+                                html.Label("Value (%):", className="mb-1", htmlFor=WizardIDs.STOP_LOSS_INPUT),
+                                dbc.Input(id=WizardIDs.STOP_LOSS_INPUT, type="number", min=0, step=0.1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
-                    ], id="stop_loss-panel", style={"display": "none"}),
+                    ], id=WizardIDs.RISK_PANEL_STOP_LOSS, style={"display": "none"}),
 
                     html.Div([  # Take Profit Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Type:", className="mb-1", htmlFor='take-profit-type'),
-                                dcc.Dropdown(id="take-profit-type", options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
+                                html.Label("Type:", className="mb-1", htmlFor=WizardIDs.TAKE_PROFIT_TYPE_SELECT),
+                                dcc.Dropdown(id=WizardIDs.TAKE_PROFIT_TYPE_SELECT, options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
                             ], width=5),
                             dbc.Col([
-                                html.Label("Value (%):", className="mb-1", htmlFor='take-profit-value'),
-                                dbc.Input(id="take-profit-value", type="number", min=0, step=0.1, size="sm")
+                                html.Label("Value (%):", className="mb-1", htmlFor=WizardIDs.TAKE_PROFIT_INPUT),
+                                dbc.Input(id=WizardIDs.TAKE_PROFIT_INPUT, type="number", min=0, step=0.1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
-                    ], id="take_profit-panel", style={"display": "none"}),
+                    ], id=WizardIDs.RISK_PANEL_TAKE_PROFIT, style={"display": "none"}),
 
                     html.Div([  # Risk per Trade Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Max Risk per Trade (%):", className="mb-1", htmlFor='max-risk-per-trade'),
-                                dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1, size="sm")
+                                html.Label("Max Risk per Trade (%):", className="mb-1", htmlFor=WizardIDs.MAX_RISK_PER_TRADE_INPUT),
+                                dbc.Input(id=WizardIDs.MAX_RISK_PER_TRADE_INPUT, type="number", min=0, step=0.1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
-                    ], id="risk_per_trade-panel", style={"display": "none"}),
+                    ], id=WizardIDs.RISK_PANEL_RISK_PER_TRADE, style={"display": "none"}),
 
                     html.Div([  # Market Filter Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Trend Lookback (days):", className="mb-1", htmlFor='market-trend-lookback'),
-                                dbc.Input(id="market-trend-lookback", type="number", min=1, step=1, size="sm")
+                                html.Label("Trend Lookback (days):", className="mb-1", htmlFor=WizardIDs.MARKET_TREND_LOOKBACK_INPUT),
+                                dbc.Input(id=WizardIDs.MARKET_TREND_LOOKBACK_INPUT, type="number", min=1, step=1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
-                    ], id="market_filter-panel", style={"display": "none"}),
+                    ], id=WizardIDs.RISK_PANEL_MARKET_FILTER, style={"display": "none"}),
 
                     html.Div([  # Drawdown Protection Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Max Drawdown (%):", className="mb-1", htmlFor='max-drawdown'),
-                                dbc.Input(id="max-drawdown", type="number", min=0, step=0.1, size="sm")
+                                html.Label("Max Drawdown (%):", className="mb-1", htmlFor=WizardIDs.MAX_DRAWDOWN_INPUT),
+                                dbc.Input(id=WizardIDs.MAX_DRAWDOWN_INPUT, type="number", min=0, step=0.1, size="sm")
                             ], width="auto", className="me-4"),
                             dbc.Col([
-                                html.Label("Max Daily Loss (%):", className="mb-1", htmlFor='max-daily-loss'),
-                                dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1, size="sm")
+                                html.Label("Max Daily Loss (%):", className="mb-1", htmlFor=WizardIDs.MAX_DAILY_LOSS_INPUT),
+                                dbc.Input(id=WizardIDs.MAX_DAILY_LOSS_INPUT, type="number", min=0, step=0.1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
-                    ], id="drawdown_protection-panel", style={"display": "none"},),
+                    ], id=WizardIDs.RISK_PANEL_DRAWDOWN_PROTECTION, style={"display": "none"}),
 
                     dbc.Button(
                         "Continue without additional risk measures",
@@ -481,8 +481,8 @@ def create_strategy_config_section(tickers=None):
         # Wrap all steps in a single container
         return html.Div([
             progress, # Keep wizard progress
-            html.Div(steps, id="wizard-steps-container", className="wizard-steps")
-        ], id="strategy-config-container", className="strategy-wizard")
+            html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps")
+        ], id=WizardIDs.STRATEGY_CONFIG_CONTAINER, className="strategy-wizard")
 
     except Exception as e:
         logger.error(f"Error creating strategy config section: {e}", exc_info=True)

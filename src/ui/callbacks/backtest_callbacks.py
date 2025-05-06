@@ -19,10 +19,11 @@ from src.ui.components import create_metric_card
 from src.visualization.chart_utils import create_empty_chart
 # Corrected import: Use BacktestVisualizer instead of Visualizer
 from src.visualization.visualizer import BacktestVisualizer
-# Import layout functions needed for the new callback - REMOVED UNUSED IMPORTS
-# from src.ui.layouts.results_display import create_full_results_layout, create_no_results_placeholder
 from src.core.exceptions import BacktestError, DataError
 from src.core.constants import CHART_THEME
+
+# Import centralized IDs
+from src.ui.ids.ids import ResultsIDs, WizardIDs, StrategyConfigIDs # Added StrategyConfigIDs for main page inputs
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -39,47 +40,50 @@ def register_backtest_callbacks(app: Dash):
     # --- Run Backtest Callback ---
     # This callback now outputs to the store instead of directly to result components
     @app.callback(
-        Output('backtest-results-store', 'data'),
-        Output('backtesting_progress_bar_container', 'style', allow_duplicate=True), 
-        Output('backtesting_progress_bar', 'value', allow_duplicate=True),
-        Output('backtesting_progress_bar', 'label', allow_duplicate=True),
-        Output("strategy_progress_bar", "style", allow_duplicate=True),
-        Output('actual-results-area', 'style', allow_duplicate=True),
-        Input('run-backtest-button', 'n_clicks'),
-        State('strategy-dropdown', 'value'), 
-        State('ticker-input', 'value'),      
-        State('backtest-start-date', 'date'), 
-        State('backtest-end-date', 'date'),   
-        State('initial-capital-input', 'value'),
-        State({'type': 'strategy-param-input', 'index': ALL}, 'value'), 
-        State({'type': 'strategy-param-input', 'index': ALL}, 'id'),    
-        State('risk-features-checklist', 'value'), 
-        State('max-position-size', 'value'),
-        State('stop-loss-type', 'value'),
-        State('stop-loss-value', 'value'),
-        State('take-profit-type', 'value'),
-        State('take-profit-value', 'value'),
-        State('max-risk-per-trade', 'value'),
-        State('market-trend-lookback', 'value'),
-        State('max-drawdown', 'value'), 
-        State('max-daily-loss', 'value'),
-        State('commission-input', 'value'),
-        State('slippage-input', 'value'),
-        State('rebalancing-frequency', 'value'),
-        State('rebalancing-threshold', 'value'),
+        Output(ResultsIDs.BACKTEST_RESULTS_STORE, 'data'),
+        Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'style', allow_duplicate=True), 
+        Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value', allow_duplicate=True),
+        Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'label', allow_duplicate=True),
+        Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True), # Wizard progress bar
+        Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
+        Input(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks'), # Main run button
+        State(StrategyConfigIDs.STRATEGY_SELECTOR, 'value'), 
+        State(StrategyConfigIDs.TICKER_INPUT_MAIN, 'value'),      
+        State(StrategyConfigIDs.START_DATE_PICKER_MAIN, 'date'), 
+        State(StrategyConfigIDs.END_DATE_PICKER_MAIN, 'date'),   
+        State(StrategyConfigIDs.INITIAL_CAPITAL_INPUT_MAIN, 'value'),
+        # Assuming strategy params are from the main config area, not wizard, for this callback
+        # If pattern matching IDs are also on main page, they might need distinct 'type' or full IDs.
+        State({'type': 'strategy-param-input-main', 'index': ALL}, 'value'), 
+        State({'type': 'strategy-param-input-main', 'index': ALL}, 'id'),    
+        # Assuming these risk inputs are from the MAIN config page now
+        State(StrategyConfigIDs.RISK_FEATURES_CHECKLIST_MAIN, 'value'), 
+        State(StrategyConfigIDs.MAX_POSITION_SIZE_INPUT_MAIN, 'value'),
+        State(StrategyConfigIDs.STOP_LOSS_TYPE_SELECT_MAIN, 'value'),
+        State(StrategyConfigIDs.STOP_LOSS_INPUT_MAIN, 'value'),
+        State(StrategyConfigIDs.TAKE_PROFIT_TYPE_SELECT_MAIN, 'value'),
+        State(StrategyConfigIDs.TAKE_PROFIT_INPUT_MAIN, 'value'),
+        State(StrategyConfigIDs.MAX_RISK_PER_TRADE_INPUT_MAIN, 'value'),
+        State(StrategyConfigIDs.MARKET_TREND_LOOKBACK_INPUT_MAIN, 'value'),
+        State(StrategyConfigIDs.MAX_DRAWDOWN_INPUT_MAIN, 'value'), 
+        State(StrategyConfigIDs.MAX_DAILY_LOSS_INPUT_MAIN, 'value'),
+        State(StrategyConfigIDs.COMMISSION_INPUT_MAIN, 'value'),
+        State(StrategyConfigIDs.SLIPPAGE_INPUT_MAIN, 'value'),
+        State(StrategyConfigIDs.REBALANCING_FREQUENCY_DROPDOWN_MAIN, 'value'),
+        State(StrategyConfigIDs.REBALANCING_THRESHOLD_INPUT_MAIN, 'value'),
         background=True,
         running=[
-            (Output('run-backtest-button', 'disabled'), True, False),
-            (Output('backtesting_progress_bar_container', 'style'), {'display': 'block'}, {'display': 'none'}),
-            (Output('backtest-status', 'children'), "Running backtest...", ""),
-            (Output("strategy_progress_bar", "style"), {'display': 'none'}, no_update),
-            (Output('right-panel-col', 'style', allow_duplicate=True),
+            (Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'disabled'), True, False), # Main run button
+            (Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'style'), {'display': 'block'}, {'display': 'none'}),
+            (Output(ResultsIDs.BACKTEST_STATUS_MESSAGE, 'children'), "Running backtest...", ""),
+            (Output(WizardIDs.PROGRESS_BAR, "style"), {'display': 'none'}, no_update), # Wizard progress bar hidden
+            (Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
              {'display': 'none', 'paddingLeft': '15px'}, 
              {'display': 'block', 'paddingLeft': '15px'})
         ],
         progress=[
-            Output('backtesting_progress_bar', 'value'),
-            Output('backtesting_progress_bar', 'label'),
+            Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value'),
+            Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'label'),
         ],
         prevent_initial_call=True
     )
@@ -195,17 +199,17 @@ def register_backtest_callbacks(app: Dash):
     # --- Result Update Callbacks (Triggered by Store) ---
     @app.callback(
         [
-            Output('performance-metrics-container', 'children'),
-            Output('trade-metrics-container', 'children'),
-            Output('trades-table-container', 'children'),
-            Output('portfolio-chart', 'figure'),
-            Output('drawdown-chart', 'figure'),
-            Output('monthly-returns-heatmap', 'figure'),
-            # Output('signals-chart', 'figure'), # Deferred for now
-            Output('ticker-selector', 'options'),
-            Output('ticker-selector', 'value')
+            Output(ResultsIDs.PERFORMANCE_METRICS_CONTAINER, 'children'),
+            Output(ResultsIDs.TRADE_METRICS_CONTAINER, 'children'),
+            Output(ResultsIDs.TRADES_TABLE_CONTAINER, 'children'),
+            Output(ResultsIDs.PORTFOLIO_CHART, 'figure'),
+            Output(ResultsIDs.DRAWDOWN_CHART, 'figure'),
+            Output(ResultsIDs.MONTHLY_RETURNS_HEATMAP, 'figure'),
+            # Output(ResultsIDs.SIGNALS_CHART, 'figure'), # Deferred for now
+            Output(ResultsIDs.SIGNALS_TICKER_SELECTOR, 'options'),
+            Output(ResultsIDs.SIGNALS_TICKER_SELECTOR, 'value')
         ],
-        Input('backtest-results-store', 'data'),
+        Input(ResultsIDs.BACKTEST_RESULTS_STORE, 'data'),
         prevent_initial_call=True
     )
     def update_results_display(results_data):
@@ -245,7 +249,6 @@ def register_backtest_callbacks(app: Dash):
 
         portfolio_chart_fig = pio.from_json(results_data.get('portfolio_value_chart_json')) if results_data.get('portfolio_value_chart_json') else create_empty_chart("Portfolio Value")
         drawdown_chart_fig = pio.from_json(results_data.get('drawdown_chart_json')) if results_data.get('drawdown_chart_json') else create_empty_chart("Drawdown")
-        heatmap_fig = pio.from_json(results_data.get('heatmap_json')) if results_data.get('heatmap_json') else create_empty_chart("Monthly Returns")
         
         tickers = results_data.get('selected_tickers', [])
         ticker_options = [{'label': t, 'value': t} for t in tickers]
@@ -253,16 +256,16 @@ def register_backtest_callbacks(app: Dash):
         
         logger.info("--- update_results_display callback successfully processed data and is returning updates. ---")
         return (performance_metrics_children, trade_metrics_children, trades_table_component,
-                portfolio_chart_fig, drawdown_chart_fig, heatmap_fig,
+                portfolio_chart_fig, drawdown_chart_fig, empty_fig,
                 ticker_options, ticker_value)
 
     logger.info("Backtest callbacks registered.")
 
     # --- Callback to make results panels visible ---
     @app.callback(
-        [Output('center-panel-col', 'style'),
-         Output('right-panel-col', 'style', allow_duplicate=True)], 
-        Input('run-backtest-button', 'n_clicks'),
+        [Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style'),
+         Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True)], 
+        Input(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks'), # Main run button
         prevent_initial_call=True
     )
     def toggle_results_panels_visibility(n_clicks):

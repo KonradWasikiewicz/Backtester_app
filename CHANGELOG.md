@@ -2,6 +2,13 @@
 
 All notable changes to the Backtester App will be documented in this file.
 
+## [v1.0.71] - 2025-05-06
+
+### Bug fixes and minor updates
+
+- IDs reimagined
+
+
 ## [v1.0.70] - 2025-05-06
 
 ### Bug fixes and minor updates

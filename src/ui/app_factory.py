@@ -349,7 +349,8 @@ def create_app_layout() -> html.Div:
         layout = html.Div([
             # Store for app state
             dcc.Store(id="app-state", data={}),
-            dcc.Store(id='backtest-results-store'),
+            dcc.Store(id=ResultsIDs.BACKTEST_RESULTS_STORE), # Use ResultsID
+            dcc.Store(id=StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN), # Add main config store
 
             # Changelog modal
             dbc.Modal(
