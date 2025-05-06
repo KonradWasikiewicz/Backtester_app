@@ -13,7 +13,7 @@ import time # Add time import for versioning
 # --- CORRECTED: Import DiskcacheManager from background_callback ---
 import diskcache
 from dash.background_callback import DiskcacheManager
-# --- END CORRECTED ---
+# --- END CORRECTED --- 
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -404,13 +404,12 @@ def create_app_layout() -> html.Div:
                     # Left Panel (Steps/Config) - 25% width on large screens
                     dbc.Col([
                         create_strategy_config_section(available_tickers),
-                        html.Div(id="backtest-status", className="mb-3 text-center"),
                     ], width=12, lg=3, className="mb-4", style={'paddingRight': '15px'}), # Add padding
 
                     # Center Panel (Charts/Table) - 50% width on large screens
                     dbc.Col([
                         # Use the new center panel layout function
-                        create_center_panel_layout()
+                        create_center_panel_layout(),
                     # --- ADDED ID and initial style --- 
                     ], id='center-panel-col', width=12, lg=6, className="mb-4", style={'display': 'none', 'paddingLeft': '15px', 'paddingRight': '15px'}), # Add padding, hide initially
 

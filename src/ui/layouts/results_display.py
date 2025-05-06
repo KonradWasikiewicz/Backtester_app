@@ -140,16 +140,22 @@ def create_center_panel_layout() -> html.Div:
     """
     logger.debug("Creating center panel layout.")
     return html.Div([
+        # --- ADDED Backtest Status Message ---
+        html.Div(id="backtest-status", className="text-center my-2"), # Centered and with vertical margin
+        # --- END Backtest Status Message ---
         # --- ADDED Backtest Progress Bar Container ---
         html.Div([
             dbc.Progress(id="backtesting_progress_bar", value=0, striped=True, animated=True, className="mb-3", style={"height": "20px"})
         ], id="backtesting_progress_bar_container", style={"display": "none"}), # Initially hidden
         # --- END Backtest Progress Bar ---
-        create_portfolio_value_returns_chart(),
-        create_drawdown_chart(),
-        create_monthly_returns_heatmap(),
-        create_signals_chart(),
-        create_trades_table()
+        # New div to wrap actual results, initially hidden
+        html.Div(id='actual-results-area', children=[
+            create_portfolio_value_returns_chart(),
+            create_drawdown_chart(),
+            create_monthly_returns_heatmap(),
+            create_signals_chart(),
+            create_trades_table()
+        ], style={'display': 'none'}) # Initially hidden
     ])
 
 # --- NEW: Right Panel Layout ---

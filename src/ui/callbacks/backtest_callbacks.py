@@ -46,6 +46,8 @@ def register_backtest_callbacks(app: Dash):
         Output('backtesting_progress_bar', 'label', allow_duplicate=True),
         # --- ADDED Output to hide Strategy Progress Bar ---
         Output("strategy_progress_bar", "style", allow_duplicate=True),
+        # --- ADDED Output for actual results area visibility ---
+        Output('actual-results-area', 'style', allow_duplicate=True),
         Input('run-backtest-button', 'n_clicks'),
         State('strategy-dropdown', 'value'), # Corrected ID
         State('ticker-input', 'value'),      # Corrected ID
@@ -80,6 +82,8 @@ def register_backtest_callbacks(app: Dash):
             (Output('backtest-status', 'children'), "Running backtest...", ""),
             # --- ADDED Running state to hide Strategy Progress Bar ---
             (Output("strategy_progress_bar", "style"), {'display': 'none'}, no_update), # Hide when running starts
+            # --- ADDED: Hide actual results area when running, with allow_duplicate=True ---
+            (Output('actual-results-area', 'style', allow_duplicate=True), {'display': 'none'}, {'display': 'none'}),
         ],
         progress=[
             # --- UPDATED Backtest Progress Bar IDs ---
@@ -120,9 +124,9 @@ def register_backtest_callbacks(app: Dash):
             error_msg = "Missing required inputs: Strategy, Tickers, Start/End Dates, or Initial Capital."
             logger.error(f"Input validation failed: {error_msg}")
             # Return values must match Outputs (excluding running/progress)
-            # Output order: store, backtest_container style, backtest_bar value, backtest_bar label, strategy_bar style
+            # Output order: store, backtest_container style, backtest_bar value, backtest_bar label, strategy_bar style, actual-results-area style
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                   {'display': 'none'}, 0, "Input Error", {'display': 'none'}
+                   {'display': 'none'}, 0, "Input Error", {'display': 'none'}, {'display': 'none'}
 
         try:
             start_date_dt = datetime.strptime(start_date, '%Y-%m-%d').date() if start_date else None
@@ -132,7 +136,7 @@ def register_backtest_callbacks(app: Dash):
              logger.error(error_msg)
              # Return values must match Outputs
              return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                    {'display': 'none'}, 0, "Date Error", {'display': 'none'}
+                    {'display': 'none'}, 0, "Date Error", {'display': 'none'}, {'display': 'none'}
 
         strategy_params_dict = {pid['index']: val for pid, val in zip(strategy_param_ids, strategy_param_values)}
         risk_params_dict = {
@@ -195,15 +199,16 @@ def register_backtest_callbacks(app: Dash):
                 set_progress((100, "Complete")) # Use tuple for progress
                 # Return values must match Outputs
                 # Hide strategy bar on success
-                return results_package, no_update, no_update, no_update, {'display': 'none'}
+                # Show actual results area on success
+                return results_package, {'display': 'none'}, no_update, no_update, {'display': 'none'}, {'display': 'block'}
             else:
                 error_msg = results_package.get('error', 'Unknown backtest failure')
                 logger.error(f"--- run_backtest callback: Returning FAILED results package from service: {error_msg} ---")
                 # --- RE-ADD set_progress call ---
                 set_progress((100, "Failed")) # Use tuple for progress
                 # Return values must match Outputs
-                # Hide strategy bar on failure
-                return results_package, {'display': 'none'}, 0, "Failed", {'display': 'none'}
+                # Hide strategy bar on failure, keep results area hidden
+                return results_package, {'display': 'none'}, 0, "Failed", {'display': 'none'}, {'display': 'none'}
 
         except Exception as e:
             logger.error(f"Exception during run_backtest callback execution: {e}", exc_info=True)
@@ -212,9 +217,9 @@ def register_backtest_callbacks(app: Dash):
             # --- RE-ADD set_progress call ---
             set_progress((100, "Error")) # Use tuple for progress
             # Return values must match Outputs
-            # Hide strategy bar on error
+            # Hide strategy bar on error, keep results area hidden
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                   {'display': 'none'}, 0, "Callback Error", {'display': 'none'}
+                   {'display': 'none'}, 0, "Callback Error", {'display': 'none'}, {'display': 'none'}
 
     # --- Result Update Callbacks (Triggered by Store) ---
     @app.callback(
@@ -287,3 +292,24 @@ def register_backtest_callbacks(app: Dash):
         return metrics_children, charts_children, table_children
 
     logger.info("Backtest callbacks registered.")
+
+
+    # --- Callback to make results panels visible ---
+    @app.callback(
+        [Output('center-panel-col', 'style'),
+         Output('right-panel-col', 'style'),
+         # --- ADDED: Output to hide actual-results-area when main panels are first shown ---
+         Output('actual-results-area', 'style', allow_duplicate=True)],
+        Input('run-backtest-button', 'n_clicks'),
+        prevent_initial_call=True
+    )
+    def toggle_results_panels_visibility(n_clicks):
+        if n_clicks and n_clicks > 0:
+            logger.info("Showing results panels, hiding actual results area initially.")
+            # Main panels become visible, but the actual results content within center panel remains hidden
+            # until the run_backtest callback completes and explicitly shows it.
+            return {'display': 'block', 'paddingLeft': '15px', 'paddingRight': '15px'}, \
+                   {'display': 'block', 'paddingLeft': '15px'}, \
+                   {'display': 'none'} # Keep actual-results-area hidden
+        logger.warning("toggle_results_panels_visibility called without n_clicks, preventing update.")
+        raise PreventUpdate
