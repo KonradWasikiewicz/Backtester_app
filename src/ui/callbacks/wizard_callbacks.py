@@ -190,30 +190,20 @@ def register_wizard_callbacks(app):
         return not ok
 
     @app.callback(
-        Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled"),
-        [Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"), 
-         Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")]
-    )
-    def validate_rebalancing(frequency, threshold):
-        ok = bool(frequency) and threshold is not None
-        logger.debug(f"Rebalancing inputs: freq={frequency}, thresh={threshold}, valid: {ok}")
-        return not ok
-
-    @app.callback(
         [Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled"), Output(WizardIDs.CONFIRM_RISK_BUTTON, "children")],
-        [Input('risk-features-checklist', 'value'),
-         Input('max-position-size', 'value'),
-         Input('stop-loss-type', 'value'),
-         Input('stop-loss-value', 'value'),
-         Input('take-profit-type', 'value'),
-         Input('take-profit-value', 'value'),
-         Input('max-risk-per-trade', 'value'),
-         Input('market-trend-lookback', 'value'),
-         Input('max-drawdown', 'value'),
-         Input('max-daily-loss', 'value')
+        [Input(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
+         Input(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),
+         Input(WizardIDs.STOP_LOSS_TYPE_SELECT, 'value'),
+         Input(WizardIDs.STOP_LOSS_INPUT, 'value'),
+         Input(WizardIDs.TAKE_PROFIT_TYPE_SELECT, 'value'),
+         Input(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
+         Input(WizardIDs.MAX_RISK_PER_TRADE_INPUT, 'value'),
+         Input(WizardIDs.MARKET_TREND_LOOKBACK_INPUT, 'value'),
+         Input(WizardIDs.MAX_DRAWDOWN_INPUT, 'value'),
+         Input(WizardIDs.MAX_DAILY_LOSS_INPUT, 'value')
         ]
     )
-    def validate_risk_tab(selected_features, max_pos, sl_type, sl_val, tp_type, tp_val, rmt, mtl, md, mdl):
+    def validate_risk_tab(selected_features, max_pos, sl_type, sl_val, tp_type, tp_val, rpt, mtl, md, mdl):
         """Enable confirm-risk when no features selected (always enabled) or all selected feature params are filled."""
         # Base label
         if not selected_features:
@@ -224,7 +214,7 @@ def register_wizard_callbacks(app):
             'position_sizing': max_pos is not None,
             'stop_loss': (sl_type is not None and sl_val is not None),
             'take_profit': (tp_type is not None and tp_val is not None),
-            'risk_per_trade': rmt is not None,
+            'risk_per_trade': rpt is not None,
             'market_filter': mtl is not None,
             'drawdown_protection': (md is not None and mdl is not None)
         }
@@ -238,17 +228,17 @@ def register_wizard_callbacks(app):
     # --- Select/Deselect All Tickers Callbacks ---
     @app.callback(
         Output(WizardIDs.TICKER_DROPDOWN, 'value'),
-        [Input('select-all-tickers', 'n_clicks'), Input('deselect-all-tickers', 'n_clicks')],
+        [Input(WizardIDs.SELECT_ALL_TICKERS_BUTTON, 'n_clicks'), Input(WizardIDs.DESELECT_ALL_TICKERS_BUTTON, 'n_clicks')],
         [State(WizardIDs.TICKER_DROPDOWN, 'options')],
         prevent_initial_call=True
     )
     def update_ticker_selection(n_select_all, n_deselect_all, options):
         """Select or deselect all tickers based on which button was clicked."""
         ctx_trigger = ctx.triggered[0]['prop_id'].split('.')[0]
-        if ctx_trigger == 'select-all-tickers':
+        if ctx_trigger == WizardIDs.SELECT_ALL_TICKERS_BUTTON:
             # options is a list of dicts with 'value' key
             return [opt['value'] for opt in options]
-        elif ctx_trigger == 'deselect-all-tickers':
+        elif ctx_trigger == WizardIDs.DESELECT_ALL_TICKERS_BUTTON:
             return []
         return no_update
 
@@ -266,16 +256,16 @@ def register_wizard_callbacks(app):
             State(WizardIDs.DATE_RANGE_START_PICKER, 'date'),
             State(WizardIDs.DATE_RANGE_END_PICKER, 'date'),
             State(WizardIDs.TICKER_DROPDOWN, 'value'),
-            State('risk-features-checklist', 'value'),
-            State('max-position-size', 'value'),
-            State('stop-loss-type', 'value'),
-            State('stop-loss-value', 'value'),
-            State('take-profit-type', 'value'),
-            State('take-profit-value', 'value'),
-            State('max-risk-per-trade', 'value'),
-            State('market-trend-lookback', 'value'),
-            State('max-drawdown', 'value'),
-            State('max-daily-loss', 'value'),
+            State(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
+            State(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),
+            State(WizardIDs.STOP_LOSS_TYPE_SELECT, 'value'),
+            State(WizardIDs.STOP_LOSS_INPUT, 'value'),
+            State(WizardIDs.TAKE_PROFIT_TYPE_SELECT, 'value'),
+            State(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
+            State(WizardIDs.MAX_RISK_PER_TRADE_INPUT, 'value'),
+            State(WizardIDs.MARKET_TREND_LOOKBACK_INPUT, 'value'),
+            State(WizardIDs.MAX_DRAWDOWN_INPUT, 'value'),
+            State(WizardIDs.MAX_DAILY_LOSS_INPUT, 'value'),
             State(WizardIDs.COMMISSION_INPUT, 'value'),
             State(WizardIDs.SLIPPAGE_INPUT, 'value'),
             State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, 'value'),
@@ -390,5 +380,63 @@ def register_wizard_callbacks(app):
 
         # Enable Run Backtest button
         return summary_elements, False
+
+    # --- Connect Wizard Run Backtest Button to Backtest Execution ---
+    @app.callback(
+        [
+            Output('run-backtest-button', 'n_clicks'),
+            Output('strategy-dropdown', 'value'),
+            Output('ticker-input', 'value'),
+            Output('backtest-start-date', 'date'),
+            Output('backtest-end-date', 'date'),
+            Output('initial-capital-input', 'value')
+        ],
+        Input(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'n_clicks'),
+        [
+            State(WizardIDs.STRATEGY_DROPDOWN, 'value'),
+            State(WizardIDs.INITIAL_CAPITAL_INPUT, 'value'),
+            State(WizardIDs.DATE_RANGE_START_PICKER, 'date'),
+            State(WizardIDs.DATE_RANGE_END_PICKER, 'date'),
+            State(WizardIDs.TICKER_DROPDOWN, 'value'),
+            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'value'),
+            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'id'),
+            State(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
+            State(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),
+            State(WizardIDs.STOP_LOSS_TYPE_SELECT, 'value'),
+            State(WizardIDs.STOP_LOSS_INPUT, 'value'),
+            State(WizardIDs.TAKE_PROFIT_TYPE_SELECT, 'value'),
+            State(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
+            State(WizardIDs.MAX_RISK_PER_TRADE_INPUT, 'value'),
+            State(WizardIDs.MARKET_TREND_LOOKBACK_INPUT, 'value'),
+            State(WizardIDs.MAX_DRAWDOWN_INPUT, 'value'),
+            State(WizardIDs.MAX_DAILY_LOSS_INPUT, 'value'),
+            State(WizardIDs.COMMISSION_INPUT, 'value'),
+            State(WizardIDs.SLIPPAGE_INPUT, 'value'),
+            State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, 'value'),
+            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, 'value')
+        ],
+        prevent_initial_call=True
+    )
+    def trigger_backtest_from_wizard(n_clicks, strategy_type, initial_capital, 
+                                     start_date, end_date, tickers,
+                                     strategy_param_values, strategy_param_ids,
+                                     risk_feats, max_ps, sl_type, sl_val,
+                                     tp_type, tp_val, rpt, mtl, mdd, mdl,
+                                     comm, slip, reb_freq, reb_thresh):
+        """
+        When the wizard's Run Backtest button is clicked, this callback transfers wizard 
+        configuration data to the main backtest form components and triggers the main backtest execution.
+        """
+        if not n_clicks or n_clicks <= 0:
+            raise PreventUpdate
+            
+        logger.info(f"Wizard Run Backtest button clicked. Transferring wizard config to main form and triggering backtest with strategy: {strategy_type}")
+        
+        # Match the expected form of ticker input for the main backtest component
+        # The main backtest expects a string for ticker-input
+        tickers_str = ', '.join(tickers) if isinstance(tickers, list) else str(tickers)
+        
+        # Return values to update the main backtest form components and trigger the backtest
+        return 1, strategy_type, tickers_str, start_date, end_date, initial_capital
 
     logger.info("Wizard callbacks registered successfully.")

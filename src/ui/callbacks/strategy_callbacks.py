@@ -161,10 +161,10 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
         Output("strategy-config-store", "data"),
         [
             Input({"type": "strategy-param", "strategy": ALL, "param": ALL}, "value"),
-            Input("commission-input", "value"),
-            Input("slippage-input", "value"),
-            Input("rebalancing-frequency", "value"),
-            Input("rebalancing-threshold", "value")
+            Input(WizardIDs.COMMISSION_INPUT, "value"),
+            Input(WizardIDs.SLIPPAGE_INPUT, "value"),
+            Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
+            Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")
         ],
         [
             State("strategy-config-store", "data"),

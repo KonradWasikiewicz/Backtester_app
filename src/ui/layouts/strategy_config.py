@@ -12,12 +12,12 @@ from datetime import datetime
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Import centralized IDs
+from src.ui.ids.ids import WizardIDs
+
 # Add project root to sys.path for imports
 try:
     # Try import from src for full application
-    # --- REMOVED DIRECT CORE IMPORT ---
-    # from src.core.data import DataLoader
-    # --- ADDED SERVICE LAYER IMPORT ---
     from src.services.data_service import DataService
     from src.core.constants import AVAILABLE_STRATEGIES
 except ModuleNotFoundError:
@@ -28,9 +28,6 @@ except ModuleNotFoundError:
         sys.path.append(project_root)
 
     # Retry import after path adjustment
-    # --- REMOVED DIRECT CORE IMPORT ---
-    # from src.core.data import DataLoader
-    # --- ADDED SERVICE LAYER IMPORT ---
     from src.services.data_service import DataService
     from src.core.constants import AVAILABLE_STRATEGIES
 
@@ -63,7 +60,7 @@ def get_strategy_dropdown(available_strategies: List[Dict[str, str]]) -> dcc.Dro
              logger.warning("Generated empty options for strategy dropdown. Check AVAILABLE_STRATEGIES structure in constants.py.")
 
     return dcc.Dropdown(
-        id='strategy-config-dropdown',
+        id=WizardIDs.STRATEGY_DROPDOWN,  # Updated to use centralized ID
         options=options,
         placeholder="Click here...",
         className="mb-3 w-100",
@@ -180,7 +177,7 @@ def create_strategy_config_section(tickers=None):
                 tickers = [] # Fallback to empty list
 
         # --- Progress bar ---
-        progress = dbc.Progress(id="strategy_progress_bar", value=0, striped=True, animated=True, className="mb-4")
+        progress = dbc.Progress(id=WizardIDs.PROGRESS_BAR, value=0, striped=True, animated=True, className="mb-4")
 
         # --- Definition of wizard steps ---
         steps = [
@@ -188,18 +185,18 @@ def create_strategy_config_section(tickers=None):
                 "strategy-selection",
                 "Step 1: Initial Capital and Strategy Selection",
                 html.Div([
-                    html.Label("Initial Capital (USD):", className="mb-1", htmlFor='strategy-config-initial-capital-input'), # Reduced margin
+                    html.Label("Initial Capital (USD):", className="mb-1", htmlFor=WizardIDs.INITIAL_CAPITAL_INPUT), 
                     dbc.Input(
-                        id='strategy-config-initial-capital-input',
-                        type='text',  # Changed to text for formatting
-                        value="100 000",  # Default value formatted
-                        className="mb-2 numeric-input-formatted", # Reduced margin
+                        id=WizardIDs.INITIAL_CAPITAL_INPUT,
+                        type='text',  
+                        value="100 000",  
+                        className="mb-2 numeric-input-formatted", 
                     ),
-                    html.Label("Select a strategy:", className="mb-1", htmlFor='strategy-config-dropdown'), # Reduced margin
+                    html.Label("Select a strategy:", className="mb-1", htmlFor=WizardIDs.STRATEGY_DROPDOWN), 
                     get_strategy_dropdown(AVAILABLE_STRATEGIES),
-                    html.Div(id="strategy-description-output", className="mb-2 mt-2"), # Reduced margins
-                    html.Div(id='strategy-param-section', className="mt-3 mb-2"), # Adjusted margins
-                    dbc.Button("Confirm", id="confirm-strategy", color="primary", className="mt-2", disabled=True) # Reduced margin
+                    html.Div(id=WizardIDs.STRATEGY_DESCRIPTION_OUTPUT, className="mb-2 mt-2"), 
+                    html.Div(id=WizardIDs.STRATEGY_PARAM_INPUTS_CONTAINER, className="mt-3 mb-2"), 
+                    dbc.Button("Confirm", id=WizardIDs.CONFIRM_STRATEGY_BUTTON, color="primary", className="mt-2", disabled=True) 
                 ]),
                 step_number=1
             ),
@@ -207,14 +204,49 @@ def create_strategy_config_section(tickers=None):
                 "date-range-selection",
                 "Step 2: Date Range Selection",
                 html.Div([
-                    html.Label("Select date range:", className="mb-1"), # Reduced margin
-                    create_backtest_parameters(), # Contains inputs with labels handled inside
+                    html.Label("Select date range:", className="mb-1"), 
+                    html.Div([
+                        dbc.Row([
+                            dbc.Col(html.Div([
+                                html.Div([
+                                    html.Label('From:', className='mb-1', htmlFor=WizardIDs.DATE_RANGE_START_PICKER),
+                                    html.Div(style={"width": "60px", "display": "inline-block"}),
+                                    dcc.DatePickerSingle(
+                                        id=WizardIDs.DATE_RANGE_START_PICKER,
+                                        date=pd.Timestamp('2020-01-01').strftime('%Y-%m-%d'),
+                                        min_date_allowed=pd.Timestamp('2020-01-01').strftime('%Y-%m-%d'),
+                                        max_date_allowed=pd.Timestamp.today().strftime('%Y-%m-%d'),
+                                        placeholder='Start Date',
+                                        display_format='YYYY-MM-DD',
+                                        className='mb-1',
+                                        style={"textAlign": "center", "width": "150px"}
+                                    )
+                                ], style={"display": "flex", "alignItems": "center"})
+                            ]), width=6),
+                            dbc.Col(html.Div([
+                                html.Div([
+                                    html.Label('To:', className='mb-1', htmlFor=WizardIDs.DATE_RANGE_END_PICKER),
+                                    html.Div(style={"width": "60px", "display": "inline-block"}),
+                                    dcc.DatePickerSingle(
+                                        id=WizardIDs.DATE_RANGE_END_PICKER,
+                                        date=pd.Timestamp.today().strftime('%Y-%m-%d'),
+                                        min_date_allowed=pd.Timestamp('2020-01-01').strftime('%Y-%m-%d'),
+                                        max_date_allowed=pd.Timestamp.today().strftime('%Y-%m-%d'),
+                                        placeholder='End Date',
+                                        display_format='YYYY-MM-DD',
+                                        className='mb-1',
+                                        style={"textAlign": "center", "width": "150px"}
+                                    )
+                                ], style={"display": "flex", "alignItems": "center"})
+                            ]), width=6)
+                        ])
+                    ]),
                     dbc.Button(
                         "Confirm",
-                        id="confirm-dates", # ID consistent with callbacks
+                        id=WizardIDs.CONFIRM_DATES_BUTTON,
                         color="primary",
-                        className="mt-2", # Reduced margin
-                        disabled=True # Initially disabled
+                        className="mt-2",
+                        disabled=True
                     )
                 ]),
                 is_hidden=True,
@@ -224,17 +256,23 @@ def create_strategy_config_section(tickers=None):
                 "tickers-selection",
                 "Step 3: Tickers Selection",
                 html.Div([
-                    html.Label("Select tickers to trade:", className="mb-1", htmlFor='ticker-input'), # Reduced margin
+                    html.Label("Select tickers to trade:", className="mb-1", htmlFor=WizardIDs.TICKER_DROPDOWN), 
                     html.Div([
                         dbc.Button("Select All", id="select-all-tickers", color="secondary", size="sm", className="me-2"),
                         dbc.Button("Deselect All", id="deselect-all-tickers", color="secondary", size="sm")
-                    ], className="mb-1"), # Reduced margin
-                    create_ticker_checklist(tickers if tickers else []),
+                    ], className="mb-1"),
+                    dcc.Dropdown(
+                        id=WizardIDs.TICKER_DROPDOWN,
+                        options=tickers if tickers else [],
+                        multi=True,
+                        placeholder="Select tickers...",
+                        className="mb-2 w-100"
+                    ),
                     dbc.Button(
                         "Confirm",
-                        id="confirm-tickers",
+                        id=WizardIDs.CONFIRM_TICKERS_BUTTON,
                         color="primary",
-                        className="mt-2", # Reduced margin
+                        className="mt-2",
                         disabled=True
                     )
                 ]),
@@ -245,8 +283,7 @@ def create_strategy_config_section(tickers=None):
                 "risk-management",
                 "Step 4: Risk Management",
                 html.Div([
-                    html.Label("Configure risk parameters:", className="mb-1", htmlFor='risk-features-checklist'), # Reduced margin
-                    # Checklist of risk features
+                    html.Label("Configure risk parameters:", className="mb-1", htmlFor='risk-features-checklist'),
                     dcc.Checklist(
                         id="risk-features-checklist",
                         options=[
@@ -259,14 +296,14 @@ def create_strategy_config_section(tickers=None):
                         ],
                         value=[],
                         labelStyle={'display': 'block'},
-                        className="mb-2" # Reduced margin
+                        className="mb-2"
                     ),
                     # Panels for each risk feature, hidden by default
                     html.Div([  # Position Sizing Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Max Position Size (%):", className="mb-1", htmlFor='max-position-size'), # Added htmlFor
-                                dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1, size="sm") # Removed style
+                                html.Label("Max Position Size (%):", className="mb-1", htmlFor='max-position-size'),
+                                dbc.Input(id="max-position-size", type="number", min=0, max=100, step=1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="position_sizing-panel", style={"display": "none"}),
@@ -274,12 +311,12 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Stop Loss Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Type:", className="mb-1", htmlFor='stop-loss-type'), # Added htmlFor
+                                html.Label("Type:", className="mb-1", htmlFor='stop-loss-type'),
                                 dcc.Dropdown(id="stop-loss-type", options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
                             ], width=5),
                             dbc.Col([
-                                html.Label("Value (%):", className="mb-1", htmlFor='stop-loss-value'), # Added htmlFor
-                                dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1, size="sm") # Removed style
+                                html.Label("Value (%):", className="mb-1", htmlFor='stop-loss-value'),
+                                dbc.Input(id="stop-loss-value", type="number", min=0, step=0.1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="stop_loss-panel", style={"display": "none"}),
@@ -287,12 +324,12 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Take Profit Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Type:", className="mb-1", htmlFor='take-profit-type'), # Added htmlFor
+                                html.Label("Type:", className="mb-1", htmlFor='take-profit-type'),
                                 dcc.Dropdown(id="take-profit-type", options=[{'label':'Fixed','value':'fixed'},{'label':'Trailing','value':'trailing'}], value='fixed', clearable=False, className="mb-2 w-100")
                             ], width=5),
                             dbc.Col([
-                                html.Label("Value (%):", className="mb-1", htmlFor='take-profit-value'), # Added htmlFor
-                                dbc.Input(id="take-profit-value", type="number", min=0, step=0.1, size="sm") # Removed style
+                                html.Label("Value (%):", className="mb-1", htmlFor='take-profit-value'),
+                                dbc.Input(id="take-profit-value", type="number", min=0, step=0.1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="take_profit-panel", style={"display": "none"}),
@@ -300,8 +337,8 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Risk per Trade Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Max Risk per Trade (%):", className="mb-1", htmlFor='max-risk-per-trade'), # Added htmlFor
-                                dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1, size="sm") # Removed style
+                                html.Label("Max Risk per Trade (%):", className="mb-1", htmlFor='max-risk-per-trade'),
+                                dbc.Input(id="max-risk-per-trade", type="number", min=0, step=0.1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="risk_per_trade-panel", style={"display": "none"}),
@@ -309,8 +346,8 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Market Filter Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Trend Lookback (days):", className="mb-1", htmlFor='market-trend-lookback'), # Added htmlFor
-                                dbc.Input(id="market-trend-lookback", type="number", min=1, step=1, size="sm") # Removed style
+                                html.Label("Trend Lookback (days):", className="mb-1", htmlFor='market-trend-lookback'),
+                                dbc.Input(id="market-trend-lookback", type="number", min=1, step=1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="market_filter-panel", style={"display": "none"}),
@@ -318,21 +355,21 @@ def create_strategy_config_section(tickers=None):
                     html.Div([  # Drawdown Protection Panel
                         dbc.Row([
                             dbc.Col([
-                                html.Label("Max Drawdown (%):", className="mb-1", htmlFor='max-drawdown'), # Added htmlFor
-                                dbc.Input(id="max-drawdown", type="number", min=0, step=0.1, size="sm") # Removed style
+                                html.Label("Max Drawdown (%):", className="mb-1", htmlFor='max-drawdown'),
+                                dbc.Input(id="max-drawdown", type="number", min=0, step=0.1, size="sm")
                             ], width="auto", className="me-4"),
                             dbc.Col([
-                                html.Label("Max Daily Loss (%):", className="mb-1", htmlFor='max-daily-loss'), # Added htmlFor
-                                dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1, size="sm") # Removed style
+                                html.Label("Max Daily Loss (%):", className="mb-1", htmlFor='max-daily-loss'),
+                                dbc.Input(id="max-daily-loss", type="number", min=0, step=0.1, size="sm")
                             ], width="auto")
                         ], className="align-items-center ms-3 mb-3")
                     ], id="drawdown_protection-panel", style={"display": "none"},),
 
                     dbc.Button(
                         "Continue without additional risk measures",
-                        id="confirm-risk",
+                        id=WizardIDs.CONFIRM_RISK_BUTTON,
                         color="primary",
-                        className="mt-2", # Reduced margin
+                        className="mt-2",
                         disabled=True
                     )
                 ]),
@@ -342,29 +379,37 @@ def create_strategy_config_section(tickers=None):
                 "trading-costs",
                 "Step 5: Trading Costs",
                 html.Div([
-                    html.Label("Configure trading costs:", className="mb-1"), # Reduced margin
+                    html.Label("Configure trading costs:", className="mb-1"), 
                     dbc.Row([
                         dbc.Col([
-                            html.Label("Commission (%):", className="mb-1", htmlFor='commission-input'), # Added htmlFor
+                            html.Label("Commission (%):", className="mb-1", htmlFor=WizardIDs.COMMISSION_INPUT),
                             dbc.Input(
-                                id="commission-input", type="number", min=0, step=0.01, value=0.1,
-                                size="sm" # Removed style
+                                id=WizardIDs.COMMISSION_INPUT, 
+                                type="number", 
+                                min=0, 
+                                step=0.01, 
+                                value=0.1,
+                                size="sm"
                             )
                         ], width="auto", className="d-flex flex-column align-items-start me-4"),
                         dbc.Col([
-                            html.Label("Slippage (%):", className="mb-1", htmlFor='slippage-input'), # Added htmlFor
+                            html.Label("Slippage (%):", className="mb-1", htmlFor=WizardIDs.SLIPPAGE_INPUT),
                             dbc.Input(
-                                id="slippage-input", type="number", min=0, step=0.01, value=0.05,
-                                size="sm" # Removed style
+                                id=WizardIDs.SLIPPAGE_INPUT, 
+                                type="number", 
+                                min=0, 
+                                step=0.01, 
+                                value=0.05,
+                                size="sm"
                             )
                         ], width="auto", className="d-flex flex-column align-items-start")
-                    ], className="align-items-center mb-2"), # Reduced margin
+                    ], className="align-items-center mb-2"),
                     dbc.Button(
                         "Confirm",
-                        id="confirm-costs", # ID consistent with callbacks
+                        id=WizardIDs.CONFIRM_COSTS_BUTTON,
                         color="primary",
-                        className="mt-2", # Reduced margin
-                        disabled=True # Initially disabled
+                        className="mt-2",
+                        disabled=True
                     )
                 ]),
                 is_hidden=True, step_number=5
@@ -373,30 +418,43 @@ def create_strategy_config_section(tickers=None):
                 "rebalancing-rules",
                 "Step 6: Rebalancing Rules",
                 html.Div([
-                    html.Label("Configure rebalancing rules:", className="mb-1"), # Reduced margin
+                    html.Label("Configure rebalancing rules:", className="mb-1"), 
                     dbc.Row([
                         dbc.Col([
-                            html.Label("Frequency:", className="mb-1", htmlFor='rebalancing-frequency'), # Added htmlFor
-                            dcc.Dropdown(id="rebalancing-frequency", options=[
-                                {'label': 'Daily', 'value': 'D'},
-                                {'label': 'Weekly', 'value': 'W'},
-                                {'label': 'Monthly', 'value': 'M'},
-                                {'label': 'Quarterly', 'value': 'Q'},
-                                {'label': 'Annually', 'value': 'A'}, # Changed Yearly to Annually for consistency with pandas
-                                {'label': 'None', 'value': 'N'}
-                            ], value='M', clearable=False, className="mb-2 w-100")
+                            html.Label("Frequency:", className="mb-1", htmlFor=WizardIDs.REBALANCING_FREQUENCY_DROPDOWN),
+                            dcc.Dropdown(
+                                id=WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, 
+                                options=[
+                                    {'label': 'Daily', 'value': 'D'},
+                                    {'label': 'Weekly', 'value': 'W'},
+                                    {'label': 'Monthly', 'value': 'M'},
+                                    {'label': 'Quarterly', 'value': 'Q'},
+                                    {'label': 'Annually', 'value': 'A'},
+                                    {'label': 'None', 'value': 'N'}
+                                ], 
+                                value='M', 
+                                clearable=False, 
+                                className="mb-2 w-100"
+                            )
                         ], width=5),
                         dbc.Col([
-                            html.Label("Threshold (%):", className="mb-1", htmlFor='rebalancing-threshold'), # Added htmlFor
-                            dbc.Input(id="rebalancing-threshold", type="number", min=0, step=0.1, value=5.0, size="sm") # Removed style
+                            html.Label("Threshold (%):", className="mb-1", htmlFor=WizardIDs.REBALANCING_THRESHOLD_INPUT),
+                            dbc.Input(
+                                id=WizardIDs.REBALANCING_THRESHOLD_INPUT, 
+                                type="number", 
+                                min=0, 
+                                step=0.1, 
+                                value=5.0, 
+                                size="sm"
+                            )
                         ], width="auto")
-                    ], className="align-items-center ms-3 mb-2"), # Reduced margin
+                    ], className="align-items-center ms-3 mb-2"),
                     dbc.Button(
                         "Confirm",
-                        id="confirm-rebalancing",  # Consistent with callback Input
+                        id=WizardIDs.CONFIRM_REBALANCING_BUTTON,
                         color="primary",
-                        className="mt-2",  # Reduced margin
-                        disabled=True  # Initially disabled
+                        className="mt-2",
+                        disabled=True
                     )
                 ]),
                 is_hidden=True, step_number=6
@@ -405,24 +463,13 @@ def create_strategy_config_section(tickers=None):
                 "wizard-summary",
                 "Step 7: Summary and Run Backtest",
                 html.Div([
-                    html.H5("Review Configuration Summary", className="mb-2"), # Reduced margin
-                    html.Div([
-                        html.Div([
-                            html.Strong("Strategy:"),
-                            html.Span(id="summary-strategy-name", className="ms-2")
-                        ], className="mb-2"),
-                        html.Div([
-                            html.Strong("Initial Capital:"),
-                            html.Span(id="summary-initial-capital", className="ms-2")
-                        ], className="mb-2"),
-                        # Add other summary items here if needed
-                    ], id="wizard-summary-output", className="mb-2"), # Reduced margin
-                    
+                    html.H5("Review Configuration Summary", className="mb-2"),
+                    html.Div([], id=WizardIDs.SUMMARY_OUTPUT_CONTAINER, className="mb-2"),
                     dbc.Button(
                         "Run Backtest",
-                        id="run-backtest-button",
+                        id=WizardIDs.RUN_BACKTEST_BUTTON_WIZARD,
                         color="success",
-                        className="w-100 mt-2", # Reduced margin
+                        className="w-100 mt-2",
                         disabled=True
                     )
                 ]),
@@ -457,7 +504,7 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
                 # Wrap H5 in an html.Div and assign the ID here
                 html.Div(
                     html.H5(title, className="mb-0 fw-bold"), # Keep existing title style
-                    id=f"{step_id}-header", # ID for click events moved to Div
+                    id=WizardIDs.step_header(step_id), # ID for click events moved to Div
                     style={"cursor": "pointer"} # Indicate it's clickable
                 ),
                 className="step-header p-2" # Use step-header class for styling
@@ -466,7 +513,7 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
             # Assign the ID expected by the callback for content visibility control
             dbc.CardBody(
                 content,
-                id=f"{step_id}-content",
+                id=WizardIDs.step_content(step_id),
                 style=content_style # Apply visibility style here
             )
         ],

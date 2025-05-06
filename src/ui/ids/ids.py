@@ -40,12 +40,21 @@ class WizardIDs:
     TICKER_DROPDOWN = "wizard-ticker-dropdown"
     TICKER_LIST_CONTAINER = "wizard-selected-tickers"
     CONFIRM_TICKERS_BUTTON = "wizard-confirm-tickers-button"
+    SELECT_ALL_TICKERS_BUTTON = "wizard-select-all-tickers-button"
+    DESELECT_ALL_TICKERS_BUTTON = "wizard-deselect-all-tickers-button"
     
     # Step 4: Risk Management
     RISK_MANAGEMENT_CONTAINER = "wizard-risk-management"
-    MAX_DRAWDOWN_INPUT = "wizard-max-drawdown-input"
-    STOP_LOSS_INPUT = "wizard-stop-loss-input"
-    TAKE_PROFIT_INPUT = "wizard-take-profit-input"
+    RISK_FEATURES_CHECKLIST = "wizard-risk-features-checklist"
+    MAX_POSITION_SIZE_INPUT = "wizard-max-position-size-input"
+    STOP_LOSS_TYPE_SELECT = "wizard-stop-loss-type-select"
+    STOP_LOSS_INPUT = "wizard-stop-loss-input" # Existing, intended for stop loss value
+    TAKE_PROFIT_TYPE_SELECT = "wizard-take-profit-type-select"
+    TAKE_PROFIT_INPUT = "wizard-take-profit-input" # Existing, intended for take profit value
+    MAX_RISK_PER_TRADE_INPUT = "wizard-max-risk-per-trade-input"
+    MARKET_TREND_LOOKBACK_INPUT = "wizard-market-trend-lookback-input"
+    MAX_DRAWDOWN_INPUT = "wizard-max-drawdown-input" # Existing
+    MAX_DAILY_LOSS_INPUT = "wizard-max-daily-loss-input"
     CONFIRM_RISK_BUTTON = "wizard-confirm-risk-button"
     
     # Step 5: Trading Costs
@@ -79,13 +88,48 @@ class LayoutIDs:
 
 class ResultsIDs:
     """IDs for results display components."""
-    
-    RESULTS_CONTAINER = "results-container"
-    PERFORMANCE_METRICS_TABLE = "performance-metrics-table"
-    EQUITY_CURVE_GRAPH = "equity-curve-graph"
-    DRAWDOWN_GRAPH = "drawdown-graph"
+
+    # Store
+    BACKTEST_RESULTS_STORE = "backtest-results-store"
+
+    # Buttons
+    PORTFOLIO_VALUE_BUTTON = "btn-chart-value"
+    PORTFOLIO_RETURNS_BUTTON = "btn-chart-returns"
+
+    # Charts & Their Loaders
+    PORTFOLIO_CHART = "portfolio-chart"
+    PORTFOLIO_CHART_LOADING = "portfolio-chart-loading"
+
+    DRAWDOWN_CHART = "drawdown-chart"
+    DRAWDOWN_CHART_LOADING = "drawdown-chart-loading"
+
     MONTHLY_RETURNS_HEATMAP = "monthly-returns-heatmap"
-    TRADES_TABLE = "trades-table"
+    MONTHLY_RETURNS_HEATMAP_LOADING = "heatmap-chart-loading" # as per layout
+
+    SIGNALS_CHART = "signals-chart"
+    SIGNALS_CHART_LOADING = "signals-chart-loading"
+    SIGNALS_TICKER_SELECTOR = "ticker-selector" # For signals chart
+
+    # Tables & Their Loaders/Containers
+    TRADES_TABLE_CONTAINER = "trades-table-container"
+    TRADES_TABLE_LOADING = "trades-table-loading"
+
+    # Metrics Containers
+    PERFORMANCE_METRICS_CONTAINER = "performance-metrics-container"
+    TRADE_METRICS_CONTAINER = "trade-metrics-container"
+
+    # Status and Progress
+    BACKTEST_STATUS_MESSAGE = "backtest-status"
+    BACKTEST_PROGRESS_BAR = "backtesting_progress_bar"
+    BACKTEST_PROGRESS_BAR_CONTAINER = "backtesting_progress_bar_container"
+
+    # Layout Wrappers / Areas
+    RESULTS_AREA_WRAPPER = "actual-results-area" # The div that's initially hidden
+
+    # These might be better in LayoutIDs if they define major page structure columns
+    # For now, keeping them here as they are directly related to results visibility in callbacks
+    CENTER_PANEL_COLUMN = "center-panel-col"
+    RIGHT_PANEL_COLUMN = "right-panel-col"
 
 
 class StrategyConfigIDs:

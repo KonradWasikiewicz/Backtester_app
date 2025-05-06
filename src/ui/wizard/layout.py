@@ -114,8 +114,8 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                     className="mb-3"
                 ),
                 html.Div([
-                    dbc.Button("Select All", id="select-all-tickers", color="secondary", className="me-2"),
-                    dbc.Button("Deselect All", id="deselect-all-tickers", color="secondary")
+                    dbc.Button("Select All", id=WizardIDs.SELECT_ALL_TICKERS_BUTTON, color="secondary", className="me-2"),
+                    dbc.Button("Deselect All", id=WizardIDs.DESELECT_ALL_TICKERS_BUTTON, color="secondary")
                 ], className="d-flex justify-content-start mb-3"),
                 dbc.Button("Confirm", id=WizardIDs.CONFIRM_TICKERS_BUTTON, color="primary", className="mt-3", disabled=True)
             ]),
@@ -126,18 +126,114 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
             "risk-management",
             "Step 4: Risk Management",
             html.Div([
-                # Simplified version of your risk management UI
-                html.Div(id='risk-features-checklist', className="mb-3"),
+                html.Label("Configure risk parameters:", className="mb-1", htmlFor=WizardIDs.RISK_FEATURES_CHECKLIST),
+                dcc.Checklist(
+                    id=WizardIDs.RISK_FEATURES_CHECKLIST,
+                    options=[
+                        {'label': 'Position Sizing', 'value': 'position_sizing'},
+                        {'label': 'Stop Loss', 'value': 'stop_loss'},
+                        {'label': 'Take Profit', 'value': 'take_profit'},
+                        {'label': 'Risk per Trade', 'value': 'risk_per_trade'},
+                        {'label': 'Market Filter', 'value': 'market_filter'},
+                        {'label': 'Drawdown Protection', 'value': 'drawdown_protection'}
+                    ],
+                    value=[],
+                    className="mb-3",
+                    labelClassName="me-3", # Added for better spacing
+                    inputClassName="me-1" # Added for better spacing
+                ),
+                # Panel for Position Sizing
                 html.Div([
-                    # Risk management parameters would go here
-                    dbc.Input(id='max-position-size', type='number', placeholder="Max Position Size %", className="mb-2"),
-                    dbc.Input(id='stop-loss-value', type='number', placeholder="Stop Loss %", className="mb-2"),
-                    dbc.Select(id='stop-loss-type', options=[
-                        {"label": "Fixed", "value": "fixed"},
-                        {"label": "Trailing", "value": "trailing"}
-                    ], placeholder="Stop Loss Type", className="mb-2"),
-                    # Additional risk management inputs...
-                ]),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Max Position Size (% of Portfolio):", className="mb-1", htmlFor=WizardIDs.MAX_POSITION_SIZE_INPUT),
+                            dbc.Input(id=WizardIDs.MAX_POSITION_SIZE_INPUT, type="number", min=0, step=1, placeholder="e.g., 20", size="sm")
+                        ], width=6)
+                    ], className="mb-3")
+                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-position_sizing-panel", style={"display": "none"}), # Example conditional panel
+
+                # Panel for Stop Loss
+                html.Div([
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Stop Loss Type:", className="mb-1", htmlFor=WizardIDs.STOP_LOSS_TYPE_SELECT),
+                            dcc.Dropdown(
+                                id=WizardIDs.STOP_LOSS_TYPE_SELECT,
+                                options=[
+                                    {'label': 'Fixed %', 'value': 'fixed'},
+                                    {'label': 'Trailing %', 'value': 'trailing'}
+                                ],
+                                placeholder="Select type",
+                                clearable=False,
+                                searchable=False,
+                                size="sm"
+                            )
+                        ], width=6),
+                        dbc.Col([
+                            html.Label("Stop Loss Value (%):", className="mb-1", htmlFor=WizardIDs.STOP_LOSS_INPUT),
+                            dbc.Input(id=WizardIDs.STOP_LOSS_INPUT, type="number", min=0, step=0.1, placeholder="e.g., 5", size="sm")
+                        ], width=6)
+                    ], className="mb-3")
+                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-stop_loss-panel", style={"display": "none"}),
+
+                # Panel for Take Profit
+                html.Div([
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Take Profit Type:", className="mb-1", htmlFor=WizardIDs.TAKE_PROFIT_TYPE_SELECT),
+                            dcc.Dropdown(
+                                id=WizardIDs.TAKE_PROFIT_TYPE_SELECT,
+                                options=[
+                                    {'label': 'Fixed %', 'value': 'fixed'}
+                                    # Add other types if available
+                                ],
+                                placeholder="Select type",
+                                clearable=False,
+                                searchable=False,
+                                size="sm"
+                            )
+                        ], width=6),
+                        dbc.Col([
+                            html.Label("Take Profit Value (%):", className="mb-1", htmlFor=WizardIDs.TAKE_PROFIT_INPUT),
+                            dbc.Input(id=WizardIDs.TAKE_PROFIT_INPUT, type="number", min=0, step=0.1, placeholder="e.g., 10", size="sm")
+                        ], width=6)
+                    ], className="mb-3")
+                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-take_profit-panel", style={"display": "none"}),
+
+                # Panel for Risk Per Trade
+                html.Div([
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Max Risk Per Trade (% of Capital):", className="mb-1", htmlFor=WizardIDs.MAX_RISK_PER_TRADE_INPUT),
+                            dbc.Input(id=WizardIDs.MAX_RISK_PER_TRADE_INPUT, type="number", min=0, step=0.1, placeholder="e.g., 1", size="sm")
+                        ], width=6)
+                    ], className="mb-3")
+                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-risk_per_trade-panel", style={"display": "none"}),
+
+                # Panel for Market Filter
+                html.Div([
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Market Trend Lookback (days):", className="mb-1", htmlFor=WizardIDs.MARKET_TREND_LOOKBACK_INPUT),
+                            dbc.Input(id=WizardIDs.MARKET_TREND_LOOKBACK_INPUT, type="number", min=1, step=1, placeholder="e.g., 200", size="sm")
+                        ], width=6)
+                    ], className="mb-3")
+                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-market_filter-panel", style={"display": "none"}),
+
+                # Panel for Drawdown Protection
+                html.Div([
+                    dbc.Row([
+                        dbc.Col([
+                            html.Label("Max Portfolio Drawdown (%):", className="mb-1", htmlFor=WizardIDs.MAX_DRAWDOWN_INPUT),
+                            dbc.Input(id=WizardIDs.MAX_DRAWDOWN_INPUT, type="number", min=0, step=1, placeholder="e.g., 15", size="sm")
+                        ], width=6),
+                        dbc.Col([
+                            html.Label("Max Daily Portfolio Loss (%):", className="mb-1", htmlFor=WizardIDs.MAX_DAILY_LOSS_INPUT),
+                            dbc.Input(id=WizardIDs.MAX_DAILY_LOSS_INPUT, type="number", min=0, step=0.1, placeholder="e.g., 2", size="sm")
+                        ], width=6)
+                    ], className="mb-3")
+                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-drawdown_protection-panel", style={"display": "none"}),
+                
                 dbc.Button("Confirm", id=WizardIDs.CONFIRM_RISK_BUTTON, color="primary", className="mt-3")
             ]),
             is_hidden=True
