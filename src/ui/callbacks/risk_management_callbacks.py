@@ -66,57 +66,10 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
     # logger.debug("REMOVED clientside callback syncCheckboxesToList")
     # --- END OF REMOVED/COMMENTED OUT SECTION ---
 
-
-    # Server-side callback to update the checklist FROM the checkboxes (Keep this)
-    @app.callback(
-        Output(WizardIDs.RISK_FEATURES_CHECKLIST, "value"),
-        [
-            # These inputs might be from a previous design. 
-            # The current wizard layout (strategy_config.py) uses a single checklist (RISK_FEATURES_CHECKLIST)
-            # and then specific input fields for each selected feature. 
-            # These individual checkboxes (e.g., "position_sizing-checkbox") are not defined with WizardIDs.
-            # This callback might need to be re-evaluated or removed if these checkboxes no longer exist.
-            # For now, I will leave them as string literals as they don't have WizardID counterparts.
-            Input("position_sizing-checkbox", "value"),
-            Input("stop_loss-checkbox", "value"),
-            Input("take_profit-checkbox", "value"),
-            Input("risk_per_trade-checkbox", "value"),
-            Input("market_filter-checkbox", "value"),
-            Input("drawdown_protection-checkbox", "value"),
-            Input("continue-iterate-checkbox", "value") # Assuming this exists
-        ],
-        State(WizardIDs.RISK_FEATURES_CHECKLIST, "value"),
-        prevent_initial_call=True
-    )
-    def update_features_list_from_checkboxes(*args):
-        """Aktualizuje listę włączonych funkcji na podstawie *zmienionego* checkboxa"""
-        current_checklist_value = args[-1] if args[-1] is not None else []
-        checkbox_values = args[:-1]
-        features_order = [
-            "position_sizing", "stop_loss", "take_profit",
-            "risk_per_trade", "market_filter", "drawdown_protection",
-            "continue_iterate" # Assuming this exists
-        ]
-        ctx = callback_context
-        if not ctx.triggered: return no_update
-        trigger_prop_id = ctx.triggered[0]['prop_id']
-        logger.debug(f"update_features_list_from_checkboxes triggered by: {trigger_prop_id}")
-
-        # Rebuild the list based ONLY on the checkbox states
-        selected_features = []
-        for i, feature in enumerate(features_order):
-             # Checkbox value is truthy (e.g., [feature_name] or True) if checked
-            if i < len(checkbox_values) and checkbox_values[i]:
-                selected_features.append(feature)
-
-        # Only update if the calculated list is different from the current state
-        if set(selected_features) != set(current_checklist_value):
-            logger.debug(f"Updating risk-features-checklist from checkboxes: {selected_features}")
-            return selected_features
-        else:
-            logger.debug("Checkbox change resulted in same feature list, no update needed.")
-            return no_update
-
+    # --- REMOVED update_features_list_from_checkboxes callback ---
+    # This callback appeared to be based on an outdated UI design
+    # where individual checkboxes controlled risk features, which is no longer the case.
+    # The current design uses WizardIDs.RISK_FEATURES_CHECKLIST (a single dcc.Checklist).
 
     # Store the risk management configuration data (Keep this)
     @app.callback(

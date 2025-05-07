@@ -150,7 +150,7 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                             dbc.Input(id=WizardIDs.MAX_POSITION_SIZE_INPUT, type="number", min=0, step=1, placeholder="e.g., 20", size="sm")
                         ], width=6)
                     ], className="mb-3")
-                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-position_sizing-panel", style={"display": "none"}), # Example conditional panel
+                ], id=WizardIDs.RISK_PANEL_POSITION_SIZING, style={"display": "none"}), # Example conditional panel
 
                 # Panel for Stop Loss
                 html.Div([
@@ -174,7 +174,7 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                             dbc.Input(id=WizardIDs.STOP_LOSS_INPUT, type="number", min=0, step=0.1, placeholder="e.g., 5", size="sm")
                         ], width=6)
                     ], className="mb-3")
-                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-stop_loss-panel", style={"display": "none"}),
+                ], id=WizardIDs.RISK_PANEL_STOP_LOSS, style={"display": "none"}),
 
                 # Panel for Take Profit
                 html.Div([
@@ -198,7 +198,7 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                             dbc.Input(id=WizardIDs.TAKE_PROFIT_INPUT, type="number", min=0, step=0.1, placeholder="e.g., 10", size="sm")
                         ], width=6)
                     ], className="mb-3")
-                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-take_profit-panel", style={"display": "none"}),
+                ], id=WizardIDs.RISK_PANEL_TAKE_PROFIT, style={"display": "none"}),
 
                 # Panel for Risk Per Trade
                 html.Div([
@@ -208,7 +208,7 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                             dbc.Input(id=WizardIDs.MAX_RISK_PER_TRADE_INPUT, type="number", min=0, step=0.1, placeholder="e.g., 1", size="sm")
                         ], width=6)
                     ], className="mb-3")
-                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-risk_per_trade-panel", style={"display": "none"}),
+                ], id=WizardIDs.RISK_PANEL_RISK_PER_TRADE, style={"display": "none"}),
 
                 # Panel for Market Filter
                 html.Div([
@@ -218,7 +218,7 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                             dbc.Input(id=WizardIDs.MARKET_TREND_LOOKBACK_INPUT, type="number", min=1, step=1, placeholder="e.g., 200", size="sm")
                         ], width=6)
                     ], className="mb-3")
-                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-market_filter-panel", style={"display": "none"}),
+                ], id=WizardIDs.RISK_PANEL_MARKET_FILTER, style={"display": "none"}),
 
                 # Panel for Drawdown Protection
                 html.Div([
@@ -232,7 +232,7 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                             dbc.Input(id=WizardIDs.MAX_DAILY_LOSS_INPUT, type="number", min=0, step=0.1, placeholder="e.g., 2", size="sm")
                         ], width=6)
                     ], className="mb-3")
-                ], id=WizardIDs.RISK_FEATURES_CHECKLIST + "-drawdown_protection-panel", style={"display": "none"}),
+                ], id=WizardIDs.RISK_PANEL_DRAWDOWN_PROTECTION, style={"display": "none"}),
                 
                 dbc.Button("Confirm", id=WizardIDs.CONFIRM_RISK_BUTTON, color="primary", className="mt-3")
             ]),

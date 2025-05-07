@@ -188,6 +188,16 @@ def register_wizard_callbacks(app: Dash):
         return not ok
 
     @app.callback(
+        Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled"),
+        [Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
+         Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")]
+    )
+    def validate_rebalancing_rules(frequency, threshold):
+        is_disabled = not (frequency and threshold is not None)
+        logger.debug(f"Rebalancing inputs: frequency={frequency}, threshold={threshold}. Confirm Rebalancing button disabled: {is_disabled}")
+        return is_disabled
+
+    @app.callback(
         [Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled"), Output(WizardIDs.CONFIRM_RISK_BUTTON, "children")],
         [Input(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
          Input(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),

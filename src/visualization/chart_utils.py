@@ -152,8 +152,8 @@ def format_currency(value: Union[float, int]) -> str:
 
 # --- Funkcje tworzące komponenty Dash ---
 
-def create_empty_chart(title: str = "No Data Available", height: int = DEFAULT_HEIGHT) -> dcc.Graph:
-    """Creates a Dash Graph component displaying a 'No Data' message."""
+def create_empty_chart(title: str = "No Data Available", height: int = DEFAULT_HEIGHT) -> go.Figure:
+    """Creates a Plotly Figure object displaying a 'No Data' message."""
     layout = _create_base_layout(title="", height=height) # Tytuł w adnotacji
     layout.xaxis.showticklabels = False
     layout.xaxis.showgrid = False
@@ -170,18 +170,14 @@ def create_empty_chart(title: str = "No Data Available", height: int = DEFAULT_H
     ]
     figure = go.Figure(data=[], layout=layout)
 
-    return dcc.Graph(
-        figure=figure,
-        config={'displayModeBar': False}, # Ukryj pasek narzędzi dla pustego wykresu
-        style={'height': f'{height}px', 'width': '100%'}
-    )
+    return figure
 
 
 def create_styled_chart(figure_data: Dict[str, pd.Series],
                         layout_title: str,
                         yaxis_title: str = "Value",
                         yaxis_format: Optional[str] = None, # np. '.2%' dla procentów, '$' dla tickprefix
-                        height: int = DEFAULT_HEIGHT) -> dcc.Graph:
+                        height: int = DEFAULT_HEIGHT) -> go.Figure:
     """
     Creates a styled line chart for comparing time series (e.g., Portfolio vs Benchmark).
 
@@ -193,7 +189,7 @@ def create_styled_chart(figure_data: Dict[str, pd.Series],
         height (int): Height of the chart in pixels.
 
     Returns:
-        dcc.Graph: Dash Graph component.
+        go.Figure: Plotly Figure object.
     """
     if not figure_data or all(v is None or v.empty for v in figure_data.values()):
         return create_empty_chart(f"{layout_title} - No Data", height=height)
@@ -245,11 +241,7 @@ def create_styled_chart(figure_data: Dict[str, pd.Series],
 
     figure = go.Figure(data=traces, layout=layout)
 
-    return dcc.Graph(
-        figure=figure,
-        config={'displayModeBar': True, 'responsive': True, 'scrollZoom': True, 'modeBarButtonsToRemove': ['lasso2d', 'select2d']},
-        style={'height': f'{height}px', 'width': '100%'}
-    )
+    return figure
 
 
 def create_trade_histogram_figure(trades: List[Dict], stats: Dict) -> go.Figure | html.Div:
@@ -470,4 +462,4 @@ def create_allocation_chart(results: Dict) -> go.Figure | html.Div:
     # value_fig.update_layout(layout_value)
 
     # Return only the percentage chart for now
-    return dcc.Graph(figure=pct_fig, config={'displayModeBar': False})
+    return pct_fig
