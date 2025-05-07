@@ -142,14 +142,28 @@ def create_center_panel_layout() -> html.Div:
     """
     logger.debug("Creating center panel layout.")
     return html.Div([
-        # --- ADDED Backtest Status Message ---
-        html.Div(id=ResultsIDs.BACKTEST_STATUS_MESSAGE, className="text-center my-2"), # Centered and with vertical margin
-        # --- END Backtest Status Message ---
-        # --- ADDED Backtest Progress Bar Container ---
-        html.Div([
-            dbc.Progress(id=ResultsIDs.BACKTEST_PROGRESS_BAR, value=0, striped=True, animated=True, className="mb-3", style={"height": "20px"})
-        ], id=ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, style={"display": "none", "width": "75%", "margin": "0 auto"}), # Initially hidden, centered with 75% width
-        # --- END Backtest Progress Bar ---
+        # --- MODIFIED: Loading Overlay ---
+        html.Div(
+            id="loading-overlay", # New ID for the overlay
+            children=[
+                html.Div(id=ResultsIDs.BACKTEST_STATUS_MESSAGE, className="text-center my-2", style={"color": "white"}), # Ensure text is visible
+                html.Div([
+                    dbc.Progress(id=ResultsIDs.BACKTEST_PROGRESS_BAR, value=0, striped=True, animated=True, className="mb-3", style={"height": "20px"})
+                ], id=ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, style={"width": "75%", "textAlign": "center"}) # Centering handled by parent flex
+            ],
+            style={ # Style for the overlay
+                "display": "none", # Initially hidden
+                "position": "absolute",
+                "top": "0", "left": "0", "right": "0", "bottom": "0",
+                "backgroundColor": "rgba(18, 18, 18, 0.85)", # Dark, slightly transparent background
+                "zIndex": "1050", # High z-index to be on top of other content
+                "display": "flex", # Using flex to center children
+                "flexDirection": "column",
+                "alignItems": "center",
+                "justifyContent": "center"
+            }
+        ),
+        # --- END MODIFIED: Loading Overlay ---
         # New div to wrap actual results, initially hidden
         html.Div(id=ResultsIDs.RESULTS_AREA_WRAPPER, children=[
             create_portfolio_value_returns_chart(),
