@@ -47,7 +47,8 @@ class BacktestManager:
                      strategy_params: Optional[dict[str, Any]] = None, 
                      risk_params: Optional[dict[str, Any]] = None,
                      cost_params: Optional[Dict[str, Any]] = None,      # Added cost_params
-                     rebalancing_params: Optional[Dict[str, Any]] = None # Added rebalancing_params
+                     rebalancing_params: Optional[Dict[str, Any]] = None, # Added rebalancing_params
+                     progress_callback: Optional[callable] = None
                      ):
         """Runs a backtest for the specified strategy, tickers, and parameters."""
         logger.info(f"--- Starting New Backtest ---")
@@ -60,73 +61,98 @@ class BacktestManager:
             strategy_key = next((k for k in STRATEGY_CLASS_MAP.keys() if k.lower() == strategy_type.lower()), None)
             if not strategy_key:
                 logger.error(f"Strategy '{strategy_type}' not found in STRATEGY_CLASS_MAP.")
+                if progress_callback: progress_callback((7, f"Error: Strategy '{strategy_type}' not found"))
                 return None, None, None
             strategy_class: type[BaseStrategy] = STRATEGY_CLASS_MAP[strategy_key]
-            if not tickers: logger.error("No tickers provided."); return None, None, None
+            if not tickers: 
+                logger.error("No tickers provided.")
+                if progress_callback: progress_callback((7, "Error: No tickers provided"))
+                return None, None, None
+            if progress_callback: progress_callback((8, "Strategy Resolved. Loading Data..."))
 
             # --- 2. Data Loading and Preparation (Moved Before Strategy Init) ---
             all_ticker_data = self.data_loader.load_all_data()
-            if not all_ticker_data: logger.error("Failed to load any ticker data."); return None, None, None
+            if not all_ticker_data: 
+                logger.error("Failed to load any ticker data.")
+                if progress_callback: progress_callback((10, "Error: Failed to load ticker data"))
+                return None, None, None
 
             valid_tickers = [t for t in tickers if t in all_ticker_data and not all_ticker_data[t].empty]
-            if not valid_tickers: logger.error(f"None of selected tickers {tickers} have valid data."); return None, None, None
+            if not valid_tickers: 
+                logger.error(f"None of selected tickers {tickers} have valid data.")
+                if progress_callback: progress_callback((12, f"Error: No valid data for tickers"))
+                return None, None, None
             logger.info(f"Using data for {len(valid_tickers)} tickers: {', '.join(valid_tickers)}")
+            if progress_callback: progress_callback((15, f"Data Loaded for {len(valid_tickers)} tickers. Preparing Panel..."))
 
             try:
                 panel_data = {ticker: all_ticker_data[ticker][['Open', 'High', 'Low', 'Close', 'Volume']] for ticker in valid_tickers if all(col in all_ticker_data[ticker].columns for col in ['Open', 'High', 'Low', 'Close', 'Volume'])}
-                if not panel_data: logger.error("No valid data panels created."); return None, None, None
+                if not panel_data: 
+                    logger.error("No valid data panels created.")
+                    if progress_callback: progress_callback((17, "Error: No valid data panels"))
+                    return None, None, None
                 combined_df = pd.concat(panel_data, axis=1, keys=panel_data.keys()); combined_df.index = pd.to_datetime(combined_df.index).tz_localize(None); combined_df = combined_df.sort_index()
                 start_date = pd.to_datetime(config.START_DATE).tz_localize(None); end_date = pd.to_datetime(config.END_DATE).tz_localize(None)
                 combined_df_filtered = combined_df.loc[start_date:end_date]; backtest_range = combined_df_filtered.index.unique()
-                if backtest_range.empty: logger.error(f"No data in date range: {start_date} to {end_date}"); return None, None, None
+                if backtest_range.empty: 
+                    logger.error(f"No data in date range: {start_date} to {end_date}")
+                    if progress_callback: progress_callback((18, "Error: No data in date range"))
+                    return None, None, None
                 logger.info(f"Combined data prepared. Shape: {combined_df_filtered.shape}. Date range: {backtest_range.min()} to {backtest_range.max()}")
-            except Exception as e: logger.error(f"Error creating combined data panel: {e}", exc_info=True); return None, None, None
+            except Exception as e: 
+                logger.error(f"Error creating combined data panel: {e}", exc_info=True)
+                if progress_callback: progress_callback((19, "Error: Data panel creation failed"))
+                return None, None, None
+            if progress_callback: progress_callback((20, "Data Prepared. Initializing Components..."))
 
             # --- 3. Strategy and Risk Manager Initialization ---
             strategy_params = strategy_params or {}
             try:
-                # Instantiate the strategy
-                # CORRECTED: Access the class directly from the map
                 strategy_class = STRATEGY_CLASS_MAP[strategy_type]
-                # Unpack strategy_params dictionary into keyword arguments
                 strategy = strategy_class(tickers=valid_tickers, **strategy_params) 
                 logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
-            except Exception as e: logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True); return None, None, None
+            except Exception as e: 
+                logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True)
+                if progress_callback: progress_callback((22, f"Error: Strategy init failed"))
+                return None, None, None
 
-            # Initialize RiskManager with configuration dict
             try:
                 risk_manager = RiskManager(risk_params or {})
                 logger.info("Initialized RiskManager with provided risk_params configuration.")
             except Exception as e:
                 logger.error(f"Error initializing RiskManager with provided config: {e}. Using default RiskManager.", exc_info=True)
-                risk_manager = RiskManager()
+                risk_manager = RiskManager() # Fallback to default
             
-            # Initialize PortfolioManager with initial capital, risk manager, cost params, and rebalancing params
             portfolio_manager = PortfolioManager(
                 initial_capital=self.initial_capital, 
                 risk_manager=risk_manager,
-                cost_params=cost_params or {},          # Pass cost_params
-                rebalancing_params=rebalancing_params or {} # Pass rebalancing_params
+                cost_params=cost_params or {},
+                rebalancing_params=rebalancing_params or {}
             )
+            if progress_callback: progress_callback((30, "Components Initialized. Generating Signals..."))
 
             # --- 4. Signal Generation (Pre-computation) ---
             all_signals = {}
             logger.info("Generating signals for all tickers...")
-            for ticker in valid_tickers:
+            num_valid_tickers = len(valid_tickers)
+            for i, ticker in enumerate(valid_tickers):
                 try:
                     ticker_data_full = all_ticker_data[ticker]
-                    # Pass both ticker and data to generate_signals
                     signals_df = strategy.generate_signals(ticker, ticker_data_full)
                     if signals_df is not None and not signals_df.empty:
                          signals_df.index = pd.to_datetime(signals_df.index).tz_localize(None)
                          all_signals[ticker] = signals_df.reindex(combined_df.index).fillna(0)
                 except Exception as e: logger.error(f"Error generating signals for {ticker}: {e}", exc_info=True)
+                if progress_callback and num_valid_tickers > 0:
+                    current_progress = 30 + int(((i + 1) / num_valid_tickers) * 20) # 30% to 50%
+                    progress_callback((current_progress, f"Signals: {ticker} ({i+1}/{num_valid_tickers})..."))
+            
             logger.info(f"Signal generation complete for {len(all_signals)} tickers.")
+            if progress_callback: progress_callback((50, "Signals Generated. Starting Simulation..."))
 
             # --- 5. Backtest Execution Loop ---
             logger.info("Starting backtest simulation loop...")
             portfolio_history = []
-            # Initialize rejection counters
             rejected_signal_counts = {
                 'insufficient_cash': 0,
                 'risk_rejected_size': 0,
@@ -139,7 +165,6 @@ class BacktestManager:
             }
             total_signals_considered = 0 # Count entry signals encountered
 
-            # Market Filter Data Preparation
             market_filter_data = None
             apply_market_filter = bool(risk_params.get('use_market_filter', False))
             if apply_market_filter:
@@ -152,12 +177,14 @@ class BacktestManager:
                       else: logger.warning("Benchmark data for market filter not found. Disabling filter."); apply_market_filter = False
                  except Exception as e: logger.warning(f"Error preparing market filter data: {e}. Disabling filter.", exc_info=True); apply_market_filter = False
 
-            # Main Loop
-            for current_date in backtest_range:
+            num_days = len(backtest_range)
+            loop_progress_updates = 10
+            update_interval = max(1, num_days // loop_progress_updates) 
+
+            for i, current_date in enumerate(backtest_range):
                 try:
                     current_market_slice = combined_df_filtered.loc[[current_date]]
 
-                    # Market Regime Check
                     is_market_favorable = True
                     if apply_market_filter and market_filter_data is not None:
                          try:
@@ -166,25 +193,22 @@ class BacktestManager:
                               if pd.notna(current_spy_close) and pd.notna(current_spy_ma): is_market_favorable = current_spy_close >= current_spy_ma
                          except KeyError: is_market_favorable = True
 
-                    # Process Exits and Update Stops
                     current_prices_dict = {ticker: current_market_slice.loc[current_date, (ticker, 'Close')] for ticker in portfolio_manager.positions.keys() if (ticker, 'Close') in current_market_slice.columns and pd.notna(current_market_slice.loc[current_date, (ticker, 'Close')])}
-                    # Dodaj fallback jeśli cena jest NaN dla otwartej pozycji
                     for ticker in portfolio_manager.positions.keys():
                          if ticker not in current_prices_dict:
-                              last_known_price = portfolio_manager.positions[ticker].entry_price # Użyj ceny wejścia jako fallback
+                              last_known_price = portfolio_manager.positions[ticker].entry_price
                               logger.warning(f"Using last known price (${last_known_price:.2f}) for stop/exit check for {ticker} on {current_date}")
                               current_prices_dict[ticker] = last_known_price
 
                     if current_prices_dict: portfolio_manager.update_positions_and_stops(current_prices_dict, current_date)
 
-                    # Generate and Process Entry Signals
                     if is_market_favorable:
                         for ticker in valid_tickers:
                             if ticker in all_signals:
                                 try: signal_value = all_signals[ticker].loc[current_date, 'Signal']
                                 except (KeyError, IndexError): signal_value = 0
 
-                                if signal_value > 0: # Consider only entry signals here
+                                if signal_value > 0: 
                                     total_signals_considered += 1
                                     if ticker not in portfolio_manager.positions:
                                         try:
@@ -193,20 +217,18 @@ class BacktestManager:
                                                 rejected_signal_counts['invalid_price'] += 1
                                                 continue
 
-                                            calculated_volatility = None # Keep it simple for now
+                                            calculated_volatility = None
 
                                             signal_data = {
                                                 'ticker': ticker, 'date': current_date, 'price': entry_price,
                                                 'direction': 1, 'volatility': calculated_volatility
                                             }
-                                            # Attempt to open position and capture reason if failed
                                             rejection_reason = portfolio_manager.open_position(signal_data)
                                             if rejection_reason:
-                                                # Increment the specific counter
                                                 if rejection_reason in rejected_signal_counts:
                                                     rejected_signal_counts[rejection_reason] += 1
                                                 else:
-                                                    rejected_signal_counts['other'] += 1 # Track unexpected reasons
+                                                    rejected_signal_counts['other'] += 1
 
                                         except KeyError: 
                                             logger.warning(f"Could not get price for {ticker} on {current_date} for buy signal.")
@@ -217,10 +239,8 @@ class BacktestManager:
                                             rejected_signal_counts['other'] += 1
                                             continue
                                     else:
-                                        # Signal to buy, but position already exists
                                         rejected_signal_counts['position_exists'] += 1
 
-                                # Process Exit Signals (signal_value < 0)
                                 elif signal_value < 0 and ticker in portfolio_manager.positions:
                                     try:
                                         exit_price = combined_df_filtered.loc[current_date, (ticker, 'Close')]
@@ -228,18 +248,15 @@ class BacktestManager:
                                         portfolio_manager.close_position(ticker, exit_price, current_date, reason="signal")
                                     except KeyError: logger.warning(f"Could not get price for {ticker} on {current_date} for sell signal."); continue
                                     except Exception as sig_proc_e: logger.error(f"Error processing sell signal for {ticker} on {current_date}: {sig_proc_e}", exc_info=True); continue
-                    else: # Market filter is active and market is unfavorable
-                        # Count signals skipped due to market filter
+                    else:
                         for ticker in valid_tickers:
                             if ticker in all_signals:
                                 try: signal_value = all_signals[ticker].loc[current_date, 'Signal']
                                 except (KeyError, IndexError): signal_value = 0
-                                if signal_value > 0: # Count only potential entry signals skipped
+                                if signal_value > 0: 
                                     rejected_signal_counts['market_filter'] += 1
 
-                    # Update & Record Portfolio Value
                     eod_prices_dict = {ticker: current_market_slice.loc[current_date, (ticker, 'Close')] for ticker in valid_tickers if (ticker, 'Close') in current_market_slice.columns and pd.notna(current_market_slice.loc[current_date, (ticker, 'Close')])}
-                    # Dodaj fallback dla otwartych pozycji bez ceny EOD
                     for ticker in portfolio_manager.positions.keys():
                         if ticker not in eod_prices_dict:
                             last_known_price = portfolio_manager.positions[ticker].entry_price
@@ -249,11 +266,14 @@ class BacktestManager:
 
                 except KeyError as date_err: logger.warning(f"Market data potentially missing for date {current_date}. Error: {date_err}. Carrying forward value."); last_value = portfolio_manager.portfolio_value_history[-1][1] if portfolio_manager.portfolio_value_history else self.initial_capital; portfolio_manager.portfolio_value_history.append((current_date, last_value)); continue
                 except Exception as loop_err: logger.error(f"Error in backtest loop for date {current_date}: {loop_err}", exc_info=True); continue
+                
+                if progress_callback and num_days > 0 and (i + 1) % update_interval == 0 :
+                    current_progress = 50 + int(((i + 1) / num_days) * 15) # 50% to 65%
+                    progress_callback((current_progress, f"Simulating: Day {i+1}/{num_days}..."))
 
-            # --- End of Backtest Loop ---
             logger.info("Backtest simulation loop finished.")
+            if progress_callback: progress_callback((65, "Simulation Finished. Aggregating Results..."))
 
-            # Final position closure (bez zmian)
             final_date = backtest_range[-1]
             try:
                  final_market_data_slice = combined_df_filtered.loc[[final_date]]
@@ -261,8 +281,10 @@ class BacktestManager:
                  portfolio_manager.close_all_positions(final_prices_dict, final_date, reason="end_of_backtest")
             except Exception as final_close_err: logger.error(f"Error during final position closure: {final_close_err}", exc_info=True)
 
-            # --- 5. Result Aggregation and Statistics ---
-            if not portfolio_manager.portfolio_value_history: logger.error("Portfolio history empty."); return None, None, None
+            if not portfolio_manager.portfolio_value_history: 
+                logger.error("Portfolio history empty.")
+                if progress_callback: progress_callback((67, "Error: Portfolio history empty"))
+                return None, None, None
 
             portfolio_df = pd.DataFrame(portfolio_manager.portfolio_value_history, columns=['date', 'value']).set_index('date')
             portfolio_value_series = portfolio_df['value'].sort_index(); portfolio_value_series.name = "Portfolio"
@@ -273,20 +295,21 @@ class BacktestManager:
             stats = self._calculate_portfolio_stats(combined_results, rejected_signal_counts, total_signals_considered)
             final_pv_str = f"${stats.get('Final Capital', 0):,.2f}" if isinstance(stats.get('Final Capital'), (int, float)) else 'N/A'
             logger.info(f"Backtest analysis complete. Final Portfolio Value: {final_pv_str}, Total Trades: {stats.get('total_trades', 0)}")
+            if progress_callback: progress_callback((70, "Backtest Analysis Complete. Returning to Service..."))
 
             return all_signals, combined_results, stats
 
         except Exception as e:
             logger.error(f"CRITICAL error during backtest execution: {str(e)}", exc_info=True)
-            return None, None, None
+            if progress_callback: progress_callback((69, f"Manager Error: {type(e).__name__}"))
+            return None, None, {"error": f"Manager critical error: {str(e)}"}
 
     def _get_benchmark_data(self, target_index: pd.DatetimeIndex) -> Optional[pd.Series]:
         """Get benchmark data aligned with the target portfolio index."""
-        # (Bez zmian - jak w poprzedniej odpowiedzi)
         if target_index.empty: logger.warning("Cannot get benchmark data for empty target index."); return None
         try:
             benchmark_ticker = config.BENCHMARK_TICKER
-            benchmark_data_df = self.data_loader.load_benchmark_data_df() # Używamy metody z DataLoader
+            benchmark_data_df = self.data_loader.load_benchmark_data_df()
             if benchmark_data_df is None or benchmark_data_df.empty: logger.warning(f"Benchmark ticker '{benchmark_ticker}' data not found."); return None
             benchmark_series = benchmark_data_df['Close']; benchmark_series.index = pd.to_datetime(benchmark_series.index).tz_localize(None); benchmark_series = benchmark_series.sort_index()
             aligned_benchmark = benchmark_series.reindex(target_index).ffill().bfill()
@@ -303,9 +326,7 @@ class BacktestManager:
         if portfolio_series is None or portfolio_series.empty or len(portfolio_series) < 2: logger.warning("Cannot calculate stats, Portfolio_Value series invalid."); base_stats = {'Initial Capital': self.initial_capital, 'Final Capital': self.initial_capital, 'total_trades': len(trades)}; base_stats.update(calculate_trade_statistics(trades)); return base_stats
         stats = {}; stats['Initial Capital'] = self.initial_capital; stats['Final Capital'] = portfolio_series.iloc[-1]; stats['Total Return'] = ((stats['Final Capital'] / stats['Initial Capital']) - 1) * 100; stats['CAGR'] = calculate_cagr(portfolio_series) * 100 if calculate_cagr(portfolio_series) is not None else None
         stats['Max Drawdown'] = calculate_max_drawdown(portfolio_series) * 100 if calculate_max_drawdown(portfolio_series) is not None else None
-        # --- ADD Calmar Ratio Calculation ---
-        stats['Calmar Ratio'] = calculate_calmar_ratio(portfolio_series) # Add Calmar Ratio
-        # --- END ADD ---
+        stats['Calmar Ratio'] = calculate_calmar_ratio(portfolio_series)
         returns_series = calculate_return_series(portfolio_series).dropna()
         if not returns_series.empty:
              risk_free_rate_annual = config.RISK_FREE_RATE; stats['Annualized Volatility'] = calculate_annualized_volatility(returns_series) * 100 if calculate_annualized_volatility(returns_series) is not None else None; stats['Sharpe Ratio'] = calculate_sharpe_ratio(portfolio_series, risk_free_rate=risk_free_rate_annual); stats['Sortino Ratio'] = calculate_sortino_ratio(portfolio_series, risk_free_rate=risk_free_rate_annual)
@@ -317,7 +338,6 @@ class BacktestManager:
         else: stats['Annualized Volatility'], stats['Sharpe Ratio'], stats['Sortino Ratio'], stats['Alpha'], stats['Beta'], stats['Information Ratio'] = 0.0, 0.0, 0.0, None, None, None
         trade_stats = calculate_trade_statistics(trades); stats.update(trade_stats)
         
-        # Add signal and rejection stats
         stats['total_entry_signals'] = total_signals
         stats['rejected_signals_cash'] = rejected_counts.get('insufficient_cash', 0)
         stats['rejected_signals_risk_size'] = rejected_counts.get('risk_rejected_size', 0)
@@ -326,12 +346,9 @@ class BacktestManager:
         stats['rejected_signals_market_filter'] = rejected_counts.get('market_filter', 0)
         stats['rejected_signals_other'] = rejected_counts.get('invalid_price', 0) + rejected_counts.get('missing_data', 0) + rejected_counts.get('other', 0)
         
-        # Calculate total rejected and executed
         total_rejected = sum(rejected_counts.values())
         stats['total_rejected_signals'] = total_rejected
-        stats['total_executed_trades'] = stats.get('total_trades', 0) # From trade_stats
-        # Sanity check: total signals should ideally be close to executed + rejected
-        # Note: This might not perfectly match if exit signals are counted differently or errors occur
+        stats['total_executed_trades'] = stats.get('total_trades', 0)
         logger.info(f"Signal Execution Summary: Total Entry Signals={total_signals}, Executed={stats['total_executed_trades']}, Rejected={total_rejected}")
         logger.info(f"Rejection Breakdown: Cash={stats['rejected_signals_cash']}, Risk/Size={stats['rejected_signals_risk_size']}, MaxPos={stats['rejected_signals_max_pos']}, Exists={stats['rejected_signals_exists']}, Filter={stats['rejected_signals_market_filter']}, Other={stats['rejected_signals_other']}")
 

@@ -142,13 +142,14 @@ def register_backtest_callbacks(app: Dash):
             results_package = backtest_service.run_backtest(
                 strategy_type=strategy_type,
                 tickers=tickers_list,
-                start_date=start_date_dt,
-                end_date=end_date_dt,
-                initial_capital=initial_capital, # Already a float
+                start_date=start_date_dt, # Pass parsed date objects
+                end_date=end_date_dt,     # Pass parsed date objects
+                initial_capital=initial_capital, 
                 strategy_params=strategy_params_dict,
-                risk_params=risk_params_dict, # Pass directly from store
-                cost_params=cost_params_dict, # Use mapped dict
-                rebalancing_params=rebalancing_params_dict # Use mapped dict
+                risk_params=risk_params_dict, 
+                cost_params=cost_params_dict, 
+                rebalancing_params=rebalancing_params_dict,
+                progress_callback=set_progress # Pass set_progress to the service
             )
 
             end_time = time.time()
@@ -160,23 +161,26 @@ def register_backtest_callbacks(app: Dash):
                 logger.info("run_backtest: Setting final progress (100% - Complete).")
                 set_progress((100, "Complete")) 
                 logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
-                return results_package, {'display': 'none'}, no_update, no_update, {'display': 'none'}, {'display': 'block'}
+                return results_package, {'display': 'none', 'width': '75%', 'margin': '0 auto'}, no_update, no_update, {'display': 'none'}, {'display': 'block'}
             else:
                 error_msg = results_package.get('error', 'Unknown backtest failure')
                 logger.error(f"run_backtest: Returning FAILED results: {error_msg}")
-                logger.info("run_backtest: Setting final progress (100% - Failed).")
-                set_progress((100, "Failed")) 
+                # Truncate error message for display in progress bar label
+                display_error_msg = (error_msg[:47] + '...') if len(error_msg) > 50 else error_msg
+                logger.info(f"run_backtest: Setting final progress (100% - Failed: {display_error_msg}).")
+                set_progress((100, f"Failed: {display_error_msg}")) 
                 logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
-                return results_package, {'display': 'none'}, 0, "Failed", {'display': 'none'}, {'display': 'none'}
+                return results_package, {'display': 'none', 'width': '75%', 'margin': '0 auto'}, 100, f"Failed: {display_error_msg}", {'display': 'none'}, {'display': 'none'}
 
         except Exception as e:
             logger.error(f"run_backtest: Exception during execution: {e}", exc_info=True)
-            error_msg = f"An unexpected error occurred: {e}"
-            logger.info("run_backtest: Setting final progress (100% - Error).")
-            set_progress((100, "Error")) 
+            error_msg = f"An unexpected error occurred: {type(e).__name__}"
+            display_error_msg = (error_msg[:47] + '...') if len(error_msg) > 50 else error_msg
+            logger.info(f"run_backtest: Setting final progress (100% - Error: {display_error_msg}).")
+            set_progress((100, f"Error: {display_error_msg}")) 
             logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                   {'display': 'none'}, 0, "Callback Error", {'display': 'none'}, {'display': 'none'}
+                   {'display': 'none', 'width': '75%', 'margin': '0 auto'}, 100, f"Callback Error: {display_error_msg}", {'display': 'none'}, {'display': 'none'}
 
     # --- Result Update Callbacks (Triggered by Store) ---
     @app.callback(

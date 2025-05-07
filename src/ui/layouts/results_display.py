@@ -148,7 +148,7 @@ def create_center_panel_layout() -> html.Div:
         # --- ADDED Backtest Progress Bar Container ---
         html.Div([
             dbc.Progress(id=ResultsIDs.BACKTEST_PROGRESS_BAR, value=0, striped=True, animated=True, className="mb-3", style={"height": "20px"})
-        ], id=ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, style={"display": "none"}), # Initially hidden
+        ], id=ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, style={"display": "none", "width": "75%", "margin": "0 auto"}), # Initially hidden, centered with 75% width
         # --- END Backtest Progress Bar ---
         # New div to wrap actual results, initially hidden
         html.Div(id=ResultsIDs.RESULTS_AREA_WRAPPER, children=[

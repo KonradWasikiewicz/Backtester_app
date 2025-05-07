@@ -52,8 +52,9 @@ class BacktestService:
                      initial_capital: float = 100000.0,
                      strategy_params: Optional[Dict[str, Any]] = None,
                      risk_params: Optional[Dict[str, Any]] = None,
-                     cost_params: Optional[Dict[str, Any]] = None,      # Added cost_params
-                     rebalancing_params: Optional[Dict[str, Any]] = None # Added rebalancing_params
+                     cost_params: Optional[Dict[str, Any]] = None,
+                     rebalancing_params: Optional[Dict[str, Any]] = None,
+                     progress_callback: Optional[callable] = None
                      ) -> Dict[str, Any]:
         """
         Run a backtest with the specified parameters and return results formatted for the store.
@@ -66,13 +67,15 @@ class BacktestService:
             initial_capital: The starting capital for the backtest.
             strategy_params: Dictionary of strategy-specific parameters.
             risk_params: Dictionary of risk management parameters.
-            cost_params: Dictionary of trading cost parameters (commission, slippage). # Added docstring
-            rebalancing_params: Dictionary of portfolio rebalancing parameters.       # Added docstring
+            cost_params: Dictionary of trading cost parameters (commission, slippage).
+            rebalancing_params: Dictionary of portfolio rebalancing parameters.
+            progress_callback: Optional function to report progress updates.
             
         Returns:
             Dictionary containing backtest results formatted for the backtest-results-store.
         """
         try:
+            if progress_callback: progress_callback((2, "Service Started. Initializing Manager..."))
             logger.info(f"Running backtest: Strategy={strategy_type}, Tickers={tickers}, Start={start_date}, End={end_date}, Capital={initial_capital}, Costs={cost_params}, Rebalancing={rebalancing_params}")
 
             # Update configuration with date range
@@ -88,6 +91,7 @@ class BacktestService:
 
             # Re-initialize BacktestManager
             self.backtest_manager = BacktestManager(initial_capital=parsed_capital)
+            if progress_callback: progress_callback((5, "Manager Initialized. Starting Core Engine..."))
 
             # Run the core backtest
             signals, results, stats = self.backtest_manager.run_backtest(
@@ -96,7 +100,8 @@ class BacktestService:
                 strategy_params=strategy_params,
                 risk_params=risk_params,
                 cost_params=cost_params,
-                rebalancing_params=rebalancing_params
+                rebalancing_params=rebalancing_params,
+                progress_callback=progress_callback # Pass down
             )
 
             # Store raw results
@@ -108,18 +113,26 @@ class BacktestService:
             success = signals is not None and results is not None and stats is not None
 
             if not success:
-                logger.error("Core backtest execution failed. Returning failure state.")
-                # Attempt to get error message from stats if available
-                error_msg = stats.get("error", "Core backtest failed.") if stats else "Core backtest failed."
-                return {"success": False, "error": error_msg}
+                error_msg_detail = "Core backtest failed."
+                if stats and "error" in stats:
+                    error_msg_detail = stats["error"]
+                elif results and "error" in results:
+                    error_msg_detail = results["error"]
 
+                logger.error(f"Core backtest execution failed. Details: {error_msg_detail}")
+                if progress_callback: progress_callback((70, f"Core Engine Failed: {error_msg_detail[:30]}..."))
+                return {"success": False, "error": error_msg_detail}
+
+            if progress_callback: progress_callback((71, "Core Engine Finished. Processing Results..."))
+            
             # --- Generate outputs for the store --- 
-            metrics_dict = self.get_performance_metrics() # Get raw metrics dict
-            trades_list = self.get_trades_table_data() # Get formatted trades list
+            metrics_dict = self.get_performance_metrics()
+            trades_list = self.get_trades_table_data()
+            if progress_callback: progress_callback((80, "Metrics Processed. Generating Visualizations..."))
 
             # Initialize visualizer
             visualizer = BacktestVisualizer()
-            visualizer.theme = CHART_THEME # Ensure theme is set
+            visualizer.theme = CHART_THEME
 
             # Generate chart figures
             portfolio_values = results.get("Portfolio_Value")
@@ -135,6 +148,7 @@ class BacktestService:
             returns_json = pio.to_json(returns_fig) if returns_fig else None
             drawdown_json = pio.to_json(drawdown_fig) if drawdown_fig else None
             heatmap_json = pio.to_json(heatmap_fig) if heatmap_fig else None
+            if progress_callback: progress_callback((95, "Visualizations Generated. Finalizing..."))
 
             # Prepare the final dictionary for the store
             store_output = {
@@ -145,13 +159,14 @@ class BacktestService:
                 "portfolio_returns_chart_json": returns_json,
                 "drawdown_chart_json": drawdown_json,
                 "heatmap_json": heatmap_json,
-                "selected_tickers": tickers # Pass the list of tickers used
+                "selected_tickers": tickers
             }
             logger.info("Successfully generated backtest results package for store.")
             return store_output
 
         except Exception as e:
             logger.error(f"Error running backtest service method: {e}", exc_info=True)
+            if progress_callback: progress_callback((99, f"Service Error: {type(e).__name__}"))
             return {"success": False, "error": f"Service error: {e}"}
 
     def get_performance_metrics(self) -> Dict[str, Any]:
@@ -189,13 +204,6 @@ class BacktestService:
                 "avg-trade": self.current_stats.get('Avg Trade Pct', 0), # Use Avg Trade Pct
                 "signals-generated": self.current_stats.get('total_entry_signals', 0),
                 "rejected-signals-total": self.current_stats.get('total_rejected_signals', 0),
-                # Add other raw metrics if needed by callbacks
-                # "rejected-signals-cash": self.current_stats.get('rejected_signals_cash', 0),
-                # "rejected-signals-risk": self.current_stats.get('rejected_signals_risk_size', 0),
-                # "rejected-signals-maxpos": self.current_stats.get('rejected_signals_max_pos', 0),
-                # "rejected-signals-exists": self.current_stats.get('rejected_signals_exists', 0),
-                # "rejected-signals-filter": self.current_stats.get('rejected_signals_market_filter', 0),
-                # "rejected-signals-other": self.current_stats.get('rejected_signals_other', 0),
             }
             # Handle potential NaN for profit factor
             if pd.isna(metrics["profit-factor"]):
@@ -280,7 +288,6 @@ class BacktestService:
                     'duration': duration_str, # Use formatted duration string
                     'stop_loss_hit': t.get('stop_loss_hit', False),
                     'take_profit_hit': t.get('take_profit_hit', False),
-                    # 'exit_reason': t.get('exit_reason', '') # Keep if needed elsewhere
                 })
             return formatted_trades
         except Exception as e:
