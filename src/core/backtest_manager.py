@@ -51,77 +51,85 @@ class BacktestManager:
                      progress_callback: Optional[callable] = None
                      ):
         """Runs a backtest for the specified strategy, tickers, and parameters."""
-        logger.info(f"--- Starting New Backtest ---")
+        logger.info(f"--- BacktestManager: Starting run_backtest ---")
         logger.info(f"Strategy: {strategy_type}, Tickers: {tickers}")
-        logger.info(f"Strategy Params: {strategy_params}, Risk Params: {risk_params}, Cost Params: {cost_params}, Rebalancing Params: {rebalancing_params}") # Log new params
+        logger.info(f"Strategy Params: {strategy_params}, Risk Params: {risk_params}, Cost Params: {cost_params}, Rebalancing Params: {rebalancing_params}")
+
+        # Base progress for manager, assuming service part took up to 7%
+        MANAGER_PROGRESS_START = 8
+        MANAGER_PROGRESS_END_BEFORE_SERVICE_RESUMES = 80
 
         try:
-            # --- 1. Initialization ---
-            # Find matching key in STRATEGY_CLASS_MAP (case-insensitive)
+            # --- 1. Initialization & Strategy Resolution (8% - 10%) ---
+            if progress_callback: progress_callback((MANAGER_PROGRESS_START, "Manager: Resolving strategy..."))
             strategy_key = next((k for k in STRATEGY_CLASS_MAP.keys() if k.lower() == strategy_type.lower()), None)
             if not strategy_key:
-                logger.error(f"Strategy '{strategy_type}' not found in STRATEGY_CLASS_MAP.")
-                if progress_callback: progress_callback((7, f"Error: Strategy '{strategy_type}' not found"))
-                return None, None, None
+                logger.error(f"Strategy '{strategy_type}' not found.")
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 1, f"Error: Strategy '{strategy_type}' not found"))
+                return None, None, {"error": f"Strategy '{strategy_type}' not found"}
             strategy_class: type[BaseStrategy] = STRATEGY_CLASS_MAP[strategy_key]
             if not tickers: 
                 logger.error("No tickers provided.")
-                if progress_callback: progress_callback((7, "Error: No tickers provided"))
-                return None, None, None
-            if progress_callback: progress_callback((8, "Strategy Resolved. Loading Data..."))
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 1, "Error: No tickers provided"))
+                return None, None, {"error": "No tickers provided"}
+            if progress_callback: progress_callback((MANAGER_PROGRESS_START + 2, "Manager: Strategy Resolved. Loading All Ticker Data...")) # Now 10%
 
-            # --- 2. Data Loading and Preparation (Moved Before Strategy Init) ---
+            # --- 2. Data Loading and Preparation (11% - 20%) ---
             all_ticker_data = self.data_loader.load_all_data()
             if not all_ticker_data: 
                 logger.error("Failed to load any ticker data.")
-                if progress_callback: progress_callback((10, "Error: Failed to load ticker data"))
-                return None, None, None
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 3, "Error: Failed to load any ticker data")) # 11%
+                return None, None, {"error": "Failed to load any ticker data"}
+            if progress_callback: progress_callback((MANAGER_PROGRESS_START + 4, "Manager: All Ticker Data Loaded. Validating Tickers...")) # 12%
 
             valid_tickers = [t for t in tickers if t in all_ticker_data and not all_ticker_data[t].empty]
             if not valid_tickers: 
                 logger.error(f"None of selected tickers {tickers} have valid data.")
-                if progress_callback: progress_callback((12, f"Error: No valid data for tickers"))
-                return None, None, None
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 5, f"Error: No valid data for selected tickers")) # 13%
+                return None, None, {"error": f"None of selected tickers {tickers} have valid data."}
             logger.info(f"Using data for {len(valid_tickers)} tickers: {', '.join(valid_tickers)}")
-            if progress_callback: progress_callback((15, f"Data Loaded for {len(valid_tickers)} tickers. Preparing Panel..."))
+            if progress_callback: progress_callback((MANAGER_PROGRESS_START + 6, f"Manager: Tickers Validated ({len(valid_tickers)}). Preparing Data Panel...")) # 14%
 
             try:
                 panel_data = {ticker: all_ticker_data[ticker][['Open', 'High', 'Low', 'Close', 'Volume']] for ticker in valid_tickers if all(col in all_ticker_data[ticker].columns for col in ['Open', 'High', 'Low', 'Close', 'Volume'])}
                 if not panel_data: 
                     logger.error("No valid data panels created.")
-                    if progress_callback: progress_callback((17, "Error: No valid data panels"))
-                    return None, None, None
+                    if progress_callback: progress_callback((MANAGER_PROGRESS_START + 7, "Error: No valid data panels created")) # 15%
+                    return None, None, {"error": "No valid data panels created."}
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 8, "Manager: Panel Data Created. Combining and Filtering...")) # 16%
                 combined_df = pd.concat(panel_data, axis=1, keys=panel_data.keys()); combined_df.index = pd.to_datetime(combined_df.index).tz_localize(None); combined_df = combined_df.sort_index()
                 start_date = pd.to_datetime(config.START_DATE).tz_localize(None); end_date = pd.to_datetime(config.END_DATE).tz_localize(None)
                 combined_df_filtered = combined_df.loc[start_date:end_date]; backtest_range = combined_df_filtered.index.unique()
                 if backtest_range.empty: 
                     logger.error(f"No data in date range: {start_date} to {end_date}")
-                    if progress_callback: progress_callback((18, "Error: No data in date range"))
-                    return None, None, None
+                    if progress_callback: progress_callback((MANAGER_PROGRESS_START + 9, "Error: No data in date range")) # 17%
+                    return None, None, {"error": f"No data in date range: {start_date} to {end_date}"}
                 logger.info(f"Combined data prepared. Shape: {combined_df_filtered.shape}. Date range: {backtest_range.min()} to {backtest_range.max()}")
             except Exception as e: 
                 logger.error(f"Error creating combined data panel: {e}", exc_info=True)
-                if progress_callback: progress_callback((19, "Error: Data panel creation failed"))
-                return None, None, None
-            if progress_callback: progress_callback((20, "Data Prepared. Initializing Components..."))
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 10, "Error: Data panel creation failed")) # 18%
+                return None, None, {"error": f"Error creating combined data panel: {e}"}
+            if progress_callback: progress_callback((MANAGER_PROGRESS_START + 12, "Manager: Data Prepared. Initializing Strategy...")) # 20%
 
-            # --- 3. Strategy and Risk Manager Initialization ---
+            # --- 3. Strategy and Component Initialization (21% - 25%) ---
             strategy_params = strategy_params or {}
             try:
-                strategy_class = STRATEGY_CLASS_MAP[strategy_type]
                 strategy = strategy_class(tickers=valid_tickers, **strategy_params) 
                 logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 14, "Manager: Strategy Initialized. Initializing Risk Manager...")) # 22%
             except Exception as e: 
                 logger.error(f"Error initializing strategy '{strategy_type}': {e}", exc_info=True)
-                if progress_callback: progress_callback((22, f"Error: Strategy init failed"))
-                return None, None, None
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 13, f"Error: Strategy '{strategy_type}' init failed")) # 21%
+                return None, None, {"error": f"Error initializing strategy '{strategy_type}': {e}"}
 
             try:
                 risk_manager = RiskManager(risk_params or {})
                 logger.info("Initialized RiskManager with provided risk_params configuration.")
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 16, "Manager: Risk Manager Initialized. Initializing Portfolio Manager...")) # 24%
             except Exception as e:
                 logger.error(f"Error initializing RiskManager with provided config: {e}. Using default RiskManager.", exc_info=True)
                 risk_manager = RiskManager() # Fallback to default
+                if progress_callback: progress_callback((MANAGER_PROGRESS_START + 16, "Manager: Risk Manager (Default) Initialized. Initializing Portfolio Manager...")) # 24%
             
             portfolio_manager = PortfolioManager(
                 initial_capital=self.initial_capital, 
@@ -129,9 +137,11 @@ class BacktestManager:
                 cost_params=cost_params or {},
                 rebalancing_params=rebalancing_params or {}
             )
-            if progress_callback: progress_callback((30, "Components Initialized. Generating Signals..."))
+            if progress_callback: progress_callback((MANAGER_PROGRESS_START + 17, "Manager: Components Initialized. Generating Signals...")) # 25%
 
-            # --- 4. Signal Generation (Pre-computation) ---
+            # --- 4. Signal Generation (26% - 45%) --- Range: 20%
+            SIGNAL_GEN_START_PROGRESS = MANAGER_PROGRESS_START + 18 # 26%
+            SIGNAL_GEN_RANGE = 19 # Ends at 45%
             all_signals = {}
             logger.info("Generating signals for all tickers...")
             num_valid_tickers = len(valid_tickers)
@@ -144,13 +154,37 @@ class BacktestManager:
                          all_signals[ticker] = signals_df.reindex(combined_df.index).fillna(0)
                 except Exception as e: logger.error(f"Error generating signals for {ticker}: {e}", exc_info=True)
                 if progress_callback and num_valid_tickers > 0:
-                    current_progress = 30 + int(((i + 1) / num_valid_tickers) * 20) # 30% to 50%
+                    current_progress = SIGNAL_GEN_START_PROGRESS + int(((i + 1) / num_valid_tickers) * SIGNAL_GEN_RANGE)
                     progress_callback((current_progress, f"Signals: {ticker} ({i+1}/{num_valid_tickers})..."))
             
-            logger.info(f"Signal generation complete for {len(all_signals)} tickers.")
-            if progress_callback: progress_callback((50, "Signals Generated. Starting Simulation..."))
+            if not all_signals:
+                logger.warning("No signals generated for any ticker.")
 
-            # --- 5. Backtest Execution Loop ---
+            logger.info(f"Signal generation complete for {len(all_signals)} tickers.")
+            if progress_callback: progress_callback((SIGNAL_GEN_START_PROGRESS + SIGNAL_GEN_RANGE + 1, "Manager: Signals Generated. Preparing Market Filter...")) # 46%
+
+            # --- 5. Market Filter Prep (47% - 48%) --- Range: 2%
+            market_filter_data = None
+            spy_close = None 
+            apply_market_filter = bool(risk_params.get('use_market_filter', False))
+            if apply_market_filter:
+                 try:
+                      spy_data_df = self.data_loader.load_benchmark_data_df() 
+                      if spy_data_df is not None and not spy_data_df.empty:
+                            spy_data_df.index = pd.to_datetime(spy_data_df.index).tz_localize(None); spy_close = spy_data_df['Close']
+                            market_filter_data_series = spy_close.rolling(window=risk_manager.market_trend_lookback).mean()
+                            market_filter_data = market_filter_data_series.reindex(combined_df.index).ffill(); logger.info(f"Market filter data (MA {risk_manager.market_trend_lookback}) prepared.")
+                      else: 
+                          logger.warning("Benchmark data for market filter not found. Disabling filter.")
+                          apply_market_filter = False
+                 except Exception as e: 
+                     logger.warning(f"Error preparing market filter data: {e}. Disabling filter.", exc_info=True)
+                     apply_market_filter = False            
+            if progress_callback: progress_callback((SIGNAL_GEN_START_PROGRESS + SIGNAL_GEN_RANGE + 2, "Manager: Starting Simulation Loop...")) # 48%
+
+            # --- 6. Backtest Execution Loop (49% - 78%) --- Range: 30%
+            SIMULATION_START_PROGRESS = SIGNAL_GEN_START_PROGRESS + SIGNAL_GEN_RANGE + 3 # 49%
+            SIMULATION_RANGE = 29 # Ends at 78%
             logger.info("Starting backtest simulation loop...")
             portfolio_history = []
             rejected_signal_counts = {
@@ -165,20 +199,8 @@ class BacktestManager:
             }
             total_signals_considered = 0 # Count entry signals encountered
 
-            market_filter_data = None
-            apply_market_filter = bool(risk_params.get('use_market_filter', False))
-            if apply_market_filter:
-                 try:
-                      spy_data_df = self.data_loader.load_benchmark_data_df() # Użyj nowej metody z DataLoader
-                      if spy_data_df is not None and not spy_data_df.empty:
-                            spy_data_df.index = pd.to_datetime(spy_data_df.index).tz_localize(None); spy_close = spy_data_df['Close']
-                            market_filter_data_series = spy_close.rolling(window=risk_manager.market_trend_lookback).mean()
-                            market_filter_data = market_filter_data_series.reindex(combined_df.index).ffill(); logger.info(f"Market filter data (MA {risk_manager.market_trend_lookback}) prepared.")
-                      else: logger.warning("Benchmark data for market filter not found. Disabling filter."); apply_market_filter = False
-                 except Exception as e: logger.warning(f"Error preparing market filter data: {e}. Disabling filter.", exc_info=True); apply_market_filter = False
-
             num_days = len(backtest_range)
-            loop_progress_updates = 10
+            loop_progress_updates = 20 
             update_interval = max(1, num_days // loop_progress_updates) 
 
             for i, current_date in enumerate(backtest_range):
@@ -186,12 +208,14 @@ class BacktestManager:
                     current_market_slice = combined_df_filtered.loc[[current_date]]
 
                     is_market_favorable = True
-                    if apply_market_filter and market_filter_data is not None:
+                    if apply_market_filter and market_filter_data is not None and spy_close is not None: 
                          try:
                               current_spy_ma = market_filter_data.loc[current_date]
-                              current_spy_close = spy_close.loc[current_date]
-                              if pd.notna(current_spy_close) and pd.notna(current_spy_ma): is_market_favorable = current_spy_close >= current_spy_ma
-                         except KeyError: is_market_favorable = True
+                              current_spy_price = spy_close.loc[current_date] 
+                              if pd.notna(current_spy_price) and pd.notna(current_spy_ma): 
+                                  is_market_favorable = current_spy_price >= current_spy_ma
+                         except KeyError: 
+                             is_market_favorable = True 
 
                     current_prices_dict = {ticker: current_market_slice.loc[current_date, (ticker, 'Close')] for ticker in portfolio_manager.positions.keys() if (ticker, 'Close') in current_market_slice.columns and pd.notna(current_market_slice.loc[current_date, (ticker, 'Close')])}
                     for ticker in portfolio_manager.positions.keys():
@@ -268,40 +292,56 @@ class BacktestManager:
                 except Exception as loop_err: logger.error(f"Error in backtest loop for date {current_date}: {loop_err}", exc_info=True); continue
                 
                 if progress_callback and num_days > 0 and (i + 1) % update_interval == 0 :
-                    current_progress = 50 + int(((i + 1) / num_days) * 15) # 50% to 65%
+                    current_progress = SIMULATION_START_PROGRESS + int(((i + 1) / num_days) * SIMULATION_RANGE)
                     progress_callback((current_progress, f"Simulating: Day {i+1}/{num_days}..."))
 
             logger.info("Backtest simulation loop finished.")
-            if progress_callback: progress_callback((65, "Simulation Finished. Aggregating Results..."))
+            # --- 7. Finalization (79% - 80%) --- Range: 2%
+            FINALIZATION_PROGRESS_START = SIMULATION_START_PROGRESS + SIMULATION_RANGE + 1 # 79%
+            if progress_callback: progress_callback((FINALIZATION_PROGRESS_START, "Manager: Simulation Finished. Closing Final Positions..."))
 
             final_date = backtest_range[-1]
             try:
                  final_market_data_slice = combined_df_filtered.loc[[final_date]]
-                 final_prices_dict = {ticker: final_market_data_slice.loc[final_date, (ticker, 'Close')] if (ticker, 'Close') in final_market_data_slice.columns and pd.notna(final_market_data_slice.loc[final_date, (ticker, 'Close')]) else portfolio_manager.positions[ticker].entry_price for ticker in portfolio_manager.positions.keys()}
-                 portfolio_manager.close_all_positions(final_prices_dict, final_date, reason="end_of_backtest")
-            except Exception as final_close_err: logger.error(f"Error during final position closure: {final_close_err}", exc_info=True)
+                 final_prices_dict = {
+                    ticker: final_market_data_slice.loc[final_date, (ticker, 'Close')] 
+                    if (ticker, 'Close') in final_market_data_slice.columns and pd.notna(final_market_data_slice.loc[final_date, (ticker, 'Close')]) 
+                    else (portfolio_manager.positions[ticker].entry_price if ticker in portfolio_manager.positions else np.nan) 
+                    for ticker in valid_tickers 
+                 }
+                 final_prices_dict_valid = {k: v for k, v in final_prices_dict.items() if pd.notna(v)}
+                 portfolio_manager.close_all_positions(final_prices_dict_valid, final_date, reason="end_of_backtest")
+            except Exception as final_close_err: 
+                logger.error(f"Error during final position closure: {final_close_err}", exc_info=True)
 
             if not portfolio_manager.portfolio_value_history: 
                 logger.error("Portfolio history empty.")
-                if progress_callback: progress_callback((67, "Error: Portfolio history empty"))
-                return None, None, None
+                portfolio_manager.portfolio_value_history.append((backtest_range[0] if not backtest_range.empty else pd.Timestamp.now().normalize(), self.initial_capital))
+                if backtest_range.empty: 
+                    portfolio_manager.portfolio_value_history.append((pd.Timestamp.now().normalize() + pd.Timedelta(days=1), self.initial_capital))
 
             portfolio_df = pd.DataFrame(portfolio_manager.portfolio_value_history, columns=['date', 'value']).set_index('date')
             portfolio_value_series = portfolio_df['value'].sort_index(); portfolio_value_series.name = "Portfolio"
-            if portfolio_value_series.empty: logger.error("Portfolio value series empty."); return all_signals, {'trades': portfolio_manager.closed_trades}, {}
+            
+            if portfolio_value_series.empty: 
+                logger.error("Portfolio value series is unexpectedly empty after history check.")
+                if progress_callback: progress_callback((FINALIZATION_PROGRESS_START, "Error: Portfolio value series empty"))
+                return all_signals, {'trades': portfolio_manager.closed_trades, 'Portfolio_Value': pd.Series([self.initial_capital], index=[pd.Timestamp.now().normalize()])}, {'Initial Capital': self.initial_capital, 'Final Capital': self.initial_capital, 'total_trades': 0, "error": "Portfolio value series empty"}
 
             benchmark_value_series = self._get_benchmark_data(portfolio_value_series.index)
             combined_results = {'Portfolio_Value': portfolio_value_series, 'Benchmark': benchmark_value_series, 'trades': portfolio_manager.closed_trades}
             stats = self._calculate_portfolio_stats(combined_results, rejected_signal_counts, total_signals_considered)
             final_pv_str = f"${stats.get('Final Capital', 0):,.2f}" if isinstance(stats.get('Final Capital'), (int, float)) else 'N/A'
             logger.info(f"Backtest analysis complete. Final Portfolio Value: {final_pv_str}, Total Trades: {stats.get('total_trades', 0)}")
-            if progress_callback: progress_callback((70, "Backtest Analysis Complete. Returning to Service..."))
+            if progress_callback: progress_callback((MANAGER_PROGRESS_END_BEFORE_SERVICE_RESUMES, "Manager: Analysis Complete. Returning to Service...")) # 80%
 
             return all_signals, combined_results, stats
 
         except Exception as e:
             logger.error(f"CRITICAL error during backtest execution: {str(e)}", exc_info=True)
-            if progress_callback: progress_callback((69, f"Manager Error: {type(e).__name__}"))
+            # Use a progress value within the manager's range for critical errors
+            error_progress_value = MANAGER_PROGRESS_END_BEFORE_SERVICE_RESUMES -1 # e.g. 79%
+            if progress_callback: progress_callback((error_progress_value, f"Manager Error: {type(e).__name__}"))
             return None, None, {"error": f"Manager critical error: {str(e)}"}
 
     def _get_benchmark_data(self, target_index: pd.DatetimeIndex) -> Optional[pd.Series]:

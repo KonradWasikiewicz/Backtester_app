@@ -17,6 +17,7 @@ from src.services.data_service import DataService
 from src.services.visualization_service import VisualizationService
 from src.visualization.visualizer import BacktestVisualizer
 from src.core.constants import CHART_THEME
+from src.core.exceptions import DataError, StrategyError, BacktestError # Added
 
 class BacktestService:
     """
@@ -57,117 +58,128 @@ class BacktestService:
                      progress_callback: Optional[callable] = None
                      ) -> Dict[str, Any]:
         """
-        Run a backtest with the specified parameters and return results formatted for the store.
-        
-        Args:
-            strategy_type: The type of strategy to run.
-            tickers: List of ticker symbols.
-            start_date: Backtest start date.
-            end_date: Backtest end date.
-            initial_capital: The starting capital for the backtest.
-            strategy_params: Dictionary of strategy-specific parameters.
-            risk_params: Dictionary of risk management parameters.
-            cost_params: Dictionary of trading cost parameters (commission, slippage).
-            rebalancing_params: Dictionary of portfolio rebalancing parameters.
-            progress_callback: Optional function to report progress updates.
-            
-        Returns:
-            Dictionary containing backtest results formatted for the backtest-results-store.
+        Runs a backtest for the specified strategy, tickers, and parameters.
+        Returns a dictionary containing the results and any errors.
         """
         try:
-            if progress_callback: progress_callback((2, "Service Started. Initializing Manager..."))
-            logger.info(f"Running backtest: Strategy={strategy_type}, Tickers={tickers}, Start={start_date}, End={end_date}, Capital={initial_capital}, Costs={cost_params}, Rebalancing={rebalancing_params}")
+            logger.info(f"--- BacktestService: Starting run_backtest ---")
+            if progress_callback: progress_callback((1, "Service: Initializing..."))
 
-            # Update configuration with date range
-            config.START_DATE = start_date
-            config.END_DATE = end_date
+            # --- 1. Input Validation and Preparation ---
+            if not all([strategy_type, tickers, start_date, end_date, initial_capital is not None]):
+                logger.error("Missing required inputs for backtest.")
+                return {"success": False, "error": "Missing required inputs."}
+            
+            if not isinstance(initial_capital, (int, float)) or initial_capital <= 0:
+                logger.error(f"Invalid initial capital: {initial_capital}. Must be a positive number.")
+                return {"success": False, "error": f"Invalid initial capital: {initial_capital}. Must be a positive number."}
 
-            # Convert initial_capital string to float
-            try:
-                parsed_capital = float(str(initial_capital).replace(' ', '').replace(',', ''))
-            except (ValueError, TypeError):
-                logger.error(f"Invalid format for initial_capital: {initial_capital}. Using default 100000.0")
-                parsed_capital = 100000.0
+            logger.info(f"Inputs: Strategy={strategy_type}, Tickers={tickers}, Start={start_date}, End={end_date}, Capital=${initial_capital:,.2f}")
+            if progress_callback: progress_callback((2, "Service: Inputs Validated. Initializing Backtest Manager..."))
 
-            # Re-initialize BacktestManager
-            self.backtest_manager = BacktestManager(initial_capital=parsed_capital)
-            if progress_callback: progress_callback((5, "Manager Initialized. Starting Core Engine..."))
+            # --- 2. Initialize Backtest Manager ---
+            # Re-initialize BacktestManager with the current initial_capital for this specific run
+            current_backtest_manager = BacktestManager(initial_capital=initial_capital)
+            logger.info(f"BacktestManager re-initialized with capital: ${initial_capital:,.2f}")
+            if progress_callback: progress_callback((3, "Service: Backtest Manager Initialized. Configuring DataLoader..."))
 
-            # Run the core backtest
-            signals, results, stats = self.backtest_manager.run_backtest(
+            # --- 3. Configure DataLoader with Date Range ---
+            # This step is mostly conceptual for progress, as DataLoader is configured within BacktestManager
+            if progress_callback: progress_callback((4, "Service: DataLoader Configuration Simulated. Calling Manager's run_backtest..."))
+
+            # --- 4. Execute Backtest via BacktestManager ---
+            # Manager's progress will range from 8% to 80%
+            all_signals, combined_results, stats = current_backtest_manager.run_backtest(
                 strategy_type=strategy_type,
                 tickers=tickers,
-                strategy_params=strategy_params,
-                risk_params=risk_params,
-                cost_params=cost_params,
-                rebalancing_params=rebalancing_params,
-                progress_callback=progress_callback # Pass down
+                strategy_params=strategy_params or {},
+                risk_params=risk_params or {},
+                cost_params=cost_params or {},
+                rebalancing_params=rebalancing_params or {},
+                progress_callback=progress_callback # Pass the callback
             )
 
-            # Store raw results
-            self.current_signals = signals
-            self.current_results = results
+            logger.info("Backtest execution completed by BacktestManager.")
+            # Service resumes progress from 81%
+            SERVICE_RESUME_PROGRESS = 81
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS, "Service: Backtest Complete. Processing Results..."))
+
+            # --- 5. Process and Package Results (81% - 98%) --- Range: 18%
+            self.current_results = combined_results
+            self.current_signals = all_signals
             self.current_stats = stats
-
-            # Check if core backtest was successful
-            success = signals is not None and results is not None and stats is not None
-
-            if not success:
-                error_msg_detail = "Core backtest failed."
-                if stats and "error" in stats:
-                    error_msg_detail = stats["error"]
-                elif results and "error" in results:
-                    error_msg_detail = results["error"]
-
-                logger.error(f"Core backtest execution failed. Details: {error_msg_detail}")
-                if progress_callback: progress_callback((70, f"Core Engine Failed: {error_msg_detail[:30]}..."))
-                return {"success": False, "error": error_msg_detail}
-
-            if progress_callback: progress_callback((71, "Core Engine Finished. Processing Results..."))
             
-            # --- Generate outputs for the store --- 
-            metrics_dict = self.get_performance_metrics()
+            # Prepare data for UI
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 2, "Service: Formatting Metrics...")) # 83%
+            formatted_metrics = self.get_performance_metrics()
+            
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 5, "Service: Formatting Trades...")) # 86%
             trades_list = self.get_trades_table_data()
-            if progress_callback: progress_callback((80, "Metrics Processed. Generating Visualizations..."))
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 7, "Service: Metrics & Trades Processed. Initializing Visualizer...")) # 88%
 
             # Initialize visualizer
             visualizer = BacktestVisualizer()
             visualizer.theme = CHART_THEME
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 9, "Service: Visualizer Initialized. Generating Charts...")) # 90%
 
             # Generate chart figures
-            portfolio_values = results.get("Portfolio_Value")
-            benchmark_values = results.get("Benchmark")
+            portfolio_value_series = combined_results.get('Portfolio_Value')
+            benchmark_series = combined_results.get('Benchmark')
 
-            value_fig = visualizer.create_equity_curve_figure(portfolio_values, benchmark_values, chart_type="value")
-            returns_fig = visualizer.create_equity_curve_figure(portfolio_values, benchmark_values, chart_type="returns")
-            drawdown_fig = visualizer.create_equity_curve_figure(portfolio_values, benchmark_values, chart_type="drawdown")
-            heatmap_fig = visualizer.create_monthly_returns_heatmap(portfolio_values)
+            # Equity Curve (Value)
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 10, "Service: Charting Equity (Value)...")) # 91%
+            equity_value_fig = visualizer.create_equity_curve_figure(portfolio_value_series, benchmark_series, chart_type="value", initial_capital=initial_capital)
+            
+            # Equity Curve (Returns)
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 11, "Service: Charting Equity (Returns)...")) # 92%
+            equity_returns_fig = visualizer.create_equity_curve_figure(portfolio_value_series, benchmark_series, chart_type="returns", initial_capital=initial_capital)
 
-            # Convert figures to JSON
-            value_json = pio.to_json(value_fig) if value_fig else None
-            returns_json = pio.to_json(returns_fig) if returns_fig else None
-            drawdown_json = pio.to_json(drawdown_fig) if drawdown_fig else None
-            heatmap_json = pio.to_json(heatmap_fig) if heatmap_fig else None
-            if progress_callback: progress_callback((95, "Visualizations Generated. Finalizing..."))
+            # Drawdown Chart
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 12, "Service: Charting Drawdown...")) # 93%
+            drawdown_fig = visualizer.create_equity_curve_figure(portfolio_value_series, benchmark_series, chart_type="drawdown", initial_capital=initial_capital)
 
-            # Prepare the final dictionary for the store
-            store_output = {
+            # Monthly Returns Heatmap
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 13, "Service: Charting Monthly Returns...")) # 94%
+            monthly_returns_fig = config.MONTHLY_RETURNS_DEFAULT_TITLE 
+            if portfolio_value_series is not None and not portfolio_value_series.empty:
+                 monthly_returns_fig = visualizer.create_monthly_returns_heatmap(portfolio_value_series)
+            else: # Create an empty chart if no data
+                 monthly_returns_fig = visualizer.create_empty_chart(config.MONTHLY_RETURNS_DEFAULT_TITLE)
+
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 14, "Service: Charts Generated. Packaging...")) # 95%
+
+            results_package = {
                 "success": True,
-                "metrics": metrics_dict,
+                "metrics": formatted_metrics,
                 "trades_data": trades_list,
-                "portfolio_value_chart_json": value_json,
-                "portfolio_returns_chart_json": returns_json,
-                "drawdown_chart_json": drawdown_json,
-                "heatmap_json": heatmap_json,
+                "portfolio_value_chart_json": equity_value_fig.to_json() if equity_value_fig else None,
+                "portfolio_returns_chart_json": equity_returns_fig.to_json() if equity_returns_fig else None,
+                "drawdown_chart_json": drawdown_fig.to_json() if drawdown_fig else None,
+                "monthly_returns_heatmap_json": monthly_returns_fig.to_json() if monthly_returns_fig else None,
                 "selected_tickers": tickers
             }
-            logger.info("Successfully generated backtest results package for store.")
-            return store_output
+            logger.info("BacktestService: Successfully processed and packaged results.")
+            if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 17, "Service: Results Packaged. Finalizing...")) # 98%
+            return results_package
 
+        except DataError as de: # Specific data error
+            logger.error(f"DataError in BacktestService: {de}", exc_info=True)
+            if progress_callback: progress_callback((100, f"Service Error: Data Issue - {str(de)[:30]}..."))
+            return {"success": False, "error": f"Data Error: {str(de)}", "metrics": {}, "trades_data": [], "charts": {}}
+        except StrategyError as se: # Specific strategy error
+            logger.error(f"StrategyError in BacktestService: {se}", exc_info=True)
+            if progress_callback: progress_callback((100, f"Service Error: Strategy Issue - {str(se)[:30]}..."))
+            return {"success": False, "error": f"Strategy Error: {str(se)}", "metrics": {}, "trades_data": [], "charts": {}}
+        except BacktestError as be: # General backtest error
+            logger.error(f"BacktestError in BacktestService: {be}", exc_info=True)
+            if progress_callback: progress_callback((100, f"Service Error: Backtest Issue - {str(be)[:30]}..."))
+            return {"success": False, "error": f"Backtest Error: {str(be)}", "metrics": {}, "trades_data": [], "charts": {}}
         except Exception as e:
-            logger.error(f"Error running backtest service method: {e}", exc_info=True)
-            if progress_callback: progress_callback((99, f"Service Error: {type(e).__name__}"))
-            return {"success": False, "error": f"Service error: {e}"}
+            tb_str = traceback.format_exc()
+            logger.error(f"Unexpected error in BacktestService run_backtest: {e}\nTraceback:\n{tb_str}")
+            # Ensure progress is set to 100% with an error message before returning
+            if progress_callback: progress_callback((100, f"Service Error: Unexpected - {str(e)[:30]}..."))
+            return {"success": False, "error": f"An unexpected error occurred: {str(e)}", "metrics": {}, "trades_data": [], "charts": {}}
 
     def get_performance_metrics(self) -> Dict[str, Any]:
         """
