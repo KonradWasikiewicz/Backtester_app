@@ -113,4 +113,5 @@ except Exception as e:
     # Print to stderr as a fallback if logging somehow failed
     print(f"CRITICAL ERROR initializing application: {e}", file=sys.stderr)
     traceback.print_exc()
+    logging.shutdown() # Ensure all log messages are flushed
     sys.exit(1) # Exit with error code

@@ -341,7 +341,7 @@ class BacktestManager:
             logger.error(f"CRITICAL error during backtest execution: {str(e)}", exc_info=True)
             # Use a progress value within the manager's range for critical errors
             error_progress_value = MANAGER_PROGRESS_END_BEFORE_SERVICE_RESUMES -1 # e.g. 79%
-            if progress_callback: progress_callback((error_progress_value, f"Manager Error: {type(e).__name__}"))
+            if progress_callback: progress_callback((error_progress_value, f"Manager Error: {type(e).__name__} - {str(e)[:30]}..."))
             return None, None, {"error": f"Manager critical error: {str(e)}"}
 
     def _get_benchmark_data(self, target_index: pd.DatetimeIndex) -> Optional[pd.Series]:
