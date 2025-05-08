@@ -80,7 +80,7 @@ def register_backtest_callbacks(app: Dash):
         if not config_data:
             logger.warning("run_backtest triggered without config_data.")
             return {"timestamp": time.time(), "success": False, "error": "Configuration data is missing."}, \
-                   {"display": "none"}, 0, "Config Error", {'display': 'none'}, {'display': 'none'}
+                   {"display": "none"}, 0, "Config Error", {'display': 'none'}, no_update, no_update
 
         logger.info(f"run_backtest: Received config_data: {config_data}")
 
@@ -115,7 +115,7 @@ def register_backtest_callbacks(app: Dash):
             error_msg = "Missing required inputs from config_data: Strategy, Tickers, Start/End Dates, or Initial Capital."
             logger.error(f"run_backtest: Input validation failed: {error_msg}")
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                   {"display": "none"}, 0, "Input Error", {'display': 'none'}, {'display': 'none'}
+                   {"display": "none"}, 0, "Input Error", {'display': 'none'}, no_update, no_update
 
         try:
             start_date_dt = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
@@ -124,7 +124,7 @@ def register_backtest_callbacks(app: Dash):
              error_msg = f"Invalid date format in config_data: {e}. Please use YYYY-MM-DD."
              logger.error(f"run_backtest: {error_msg}")
              return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                    {"display": "none"}, 0, "Date Error", {'display': 'none'}, {'display': 'none'}
+                    {"display": "none"}, 0, "Date Error", {'display': 'none'}, no_update, no_update
         
         if 'features' in risk_params_dict and 'enabled_features' not in risk_params_dict:
             risk_params_dict['enabled_features'] = risk_params_dict.pop('features')
@@ -158,7 +158,7 @@ def register_backtest_callbacks(app: Dash):
                 logger.info("run_backtest: Setting final progress (100% - Complete).")
                 set_progress((100, "Complete")) 
                 logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
-                return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, {'display': 'block'}
+                return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
             else:
                 error_msg = results_package.get('error', 'Unknown backtest failure')
                 logger.error(f"run_backtest: Returning FAILED results: {error_msg}")
@@ -166,7 +166,7 @@ def register_backtest_callbacks(app: Dash):
                 logger.info(f"run_backtest: Setting final progress (100% - Failed: {display_error_msg}).")
                 set_progress((100, f"Failed: {display_error_msg}")) 
                 logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
-                return results_package, {"display": "none"}, 100, f"Failed: {display_error_msg}", {'display': 'none'}, {'display': 'none'}
+                return results_package, {"display": "none"}, 100, f"Failed: {display_error_msg}", {'display': 'none'}, no_update, no_update
 
         except Exception as e:
             logger.error(f"run_backtest: Exception during execution: {e}", exc_info=True)
@@ -176,7 +176,7 @@ def register_backtest_callbacks(app: Dash):
             set_progress((100, f"Error: {display_error_msg}")) 
             logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                   {"display": "none"}, 100, f"Callback Error: {display_error_msg}", {'display': 'none'}, {'display': 'none'}
+                   {"display": "none"}, 100, f"Callback Error: {display_error_msg}", {'display': 'none'}, no_update, no_update
 
     # --- Result Update Callbacks (Triggered by Store) ---
     @app.callback(
