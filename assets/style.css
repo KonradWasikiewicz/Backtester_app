@@ -110,6 +110,18 @@ input:focus, .form-control:focus {
   margin-bottom: 0.25rem !important; /* Consistent small bottom margin, reduced from 0.5rem */
 }
 
+.card-header { /* New style for card headers */
+  display: flex;
+  align-items: center;
+  min-height: 40px; /* Adjust as needed for consistent height */
+}
+
+.card-title-text { /* New class for title text within card headers */
+  text-align: center;
+  flex-grow: 1; /* Allow title to take available space for centering */
+  margin-bottom: 0; /* Remove default margin from h5/etc if used */
+}
+
 .card-title {
     margin-bottom: 0.75rem;
 }

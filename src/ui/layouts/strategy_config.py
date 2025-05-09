@@ -518,7 +518,7 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
                 style=content_style # Apply visibility style here
             )
         ],
-        className="mb-3 wizard-step" # Keep class for potential CSS targeting
+        className="mb-1 wizard-step" # Keep class for potential CSS targeting
         # No ID or style needed on the parent Card itself
     )
 

@@ -281,8 +281,16 @@ class VisualizationService:
         fig = go.Figure()
         
         # Calculate normalized returns (starting from 100)
+        # Ensure 'portfolio_values' is a Series for pct_change()
+        if not isinstance(portfolio_values, pd.Series):
+            portfolio_values = pd.Series(portfolio_values)
+
         portfolio_norm = 100 * (1 + (portfolio_values.pct_change().fillna(0)).cumsum())
-        
+        # Ensure portfolio_norm starts at 100 if the first value is NaN after cumsum
+        if pd.isna(portfolio_norm.iloc[0]) and len(portfolio_norm) > 0:
+            portfolio_norm.iloc[0] = 100
+
+
         # Add portfolio performance line
         fig.add_trace(
             go.Scatter(
@@ -302,6 +310,9 @@ class VisualizationService:
             # Calculate normalized benchmark returns
             benchmark_returns = benchmark['Close'].pct_change().fillna(0)
             benchmark_norm = 100 * (1 + benchmark_returns.cumsum())
+            # Ensure benchmark_norm starts at 100
+            if pd.isna(benchmark_norm.iloc[0]) and len(benchmark_norm) > 0:
+                 benchmark_norm.iloc[0] = 100
             
             fig.add_trace(
                 go.Scatter(
@@ -316,12 +327,15 @@ class VisualizationService:
         # Add drawdown series
         drawdown = backtest_result.get('drawdown')
         if drawdown is not None:
+            # Ensure 'drawdown' is a Series for indexing
+            if not isinstance(drawdown, pd.Series):
+                drawdown = pd.Series(drawdown)
             fig.add_trace(
                 go.Scatter(
                     x=drawdown.index,
                     y=-drawdown * 100,  # Convert to negative percentage
                     mode='lines',
-                    name='Drawdown',
+                    name='Drawdown', # This name is for the legend, not the chart title
                     line=dict(color='purple', width=1.5),
                     yaxis="y2"
                 )
@@ -329,9 +343,6 @@ class VisualizationService:
         
         # Update layout
         fig.update_layout(
-            title="Strategy Performance",
-            xaxis_title="Date",
-            yaxis_title="Value (Normalized to 100)",
             height=self.height,
             template=self.theme,
             legend=dict(
@@ -341,19 +352,22 @@ class VisualizationService:
                 xanchor="right",
                 x=1
             ),
-            margin=dict(l=50, r=50, b=50, t=80, pad=4),
+            margin=dict(l=50, r=50, b=20, t=30, pad=4), # Reduced bottom and top margin further
             yaxis=dict(
-                title="Value (Normalized to 100)",
+                title_text=None, # Remove y-axis title
                 side="left",
                 showgrid=True
             ),
             yaxis2=dict(
-                title="Drawdown (%)",
+                title_text=None, # Remove y-axis title for drawdown
                 side="right",
                 overlaying="y",
-                showgrid=False,
-                range=[0, 100]  # For drawdowns from 0% to 100%
-            )
+                showgrid=False
+            ),
+            xaxis=dict(
+                title_text=None, # Remove x-axis title
+                showticklabels=True
+            ) 
         )
         
         return fig

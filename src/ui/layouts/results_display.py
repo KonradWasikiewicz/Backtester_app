@@ -12,23 +12,21 @@ logger = logging.getLogger(__name__)
 def create_portfolio_value_returns_chart() -> dbc.Card:
     """
     Creates the card containing the portfolio value/returns chart and toggle buttons.
-    Labels updated to USD / %.
     """
     logger.debug("Creating portfolio value/returns chart card structure.")
     return dbc.Card([
         dbc.CardHeader(
             dbc.Row([
-                dbc.Col("Portfolio Performance", width="auto"),
+                dbc.Col("Portfolio Value", width="auto"), # Removed card-title-text and me-1
+                dbc.Col("in", width="auto", className="mx-1"), # mx-1 for space around "in"
                 dbc.Col(
                     dbc.ButtonGroup([
-                        # --- UPDATED LABELS ---
-                        dbc.Button("USD", id=ResultsIDs.PORTFOLIO_VALUE_BUTTON, color="primary", outline=False, size="sm", n_clicks=0),
-                        dbc.Button("%", id=ResultsIDs.PORTFOLIO_RETURNS_BUTTON, color="primary", outline=True, size="sm", n_clicks=0),
-                        # --- END UPDATED LABELS ---
+                        dbc.Button("USD", id=ResultsIDs.PORTFOLIO_VALUE_BUTTON, color="primary", outline=False, size="sm", n_clicks=0, className="py-0 px-1"),
+                        dbc.Button("%", id=ResultsIDs.PORTFOLIO_RETURNS_BUTTON, color="primary", outline=True, size="sm", n_clicks=0, className="py-0 px-1"),
                     ], size="sm"),
                     width="auto"
                 )
-            ], justify="between", align="center")
+            ], justify="start", align="center") # justify="start" to keep the group left
         ),
         dbc.CardBody([
             dcc.Loading(
@@ -40,7 +38,7 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                 type="circle"
             )
         ])
-    ], className="mb-3") # Use mb-3 for tighter spacing in vertical stack
+    ], className="mb-1") # Use mb-1 for tighter spacing in vertical stack
 
 def create_drawdown_chart() -> dbc.Card:
     """
@@ -48,7 +46,7 @@ def create_drawdown_chart() -> dbc.Card:
     """
     logger.debug("Creating drawdown chart card structure.")
     return dbc.Card([
-        dbc.CardHeader("Drawdown"),
+        dbc.CardHeader(html.Span(["Drawdown ", html.Span("(%)", style={"font-weight": "normal"})]), className="card-title-text"), # Added (%) and className
         dbc.CardBody([
             dcc.Loading(
                 id=ResultsIDs.DRAWDOWN_CHART_LOADING, # Unique ID for drawdown loading
@@ -59,7 +57,7 @@ def create_drawdown_chart() -> dbc.Card:
                 type="circle"
             )
         ])
-    ], className="mb-3") # Use mb-3
+    ], className="mb-1") # Use mb-1
 
 def create_monthly_returns_heatmap() -> dbc.Card:
     """
@@ -67,7 +65,7 @@ def create_monthly_returns_heatmap() -> dbc.Card:
     """
     logger.debug("Creating monthly returns heatmap card structure.")
     return dbc.Card([
-        dbc.CardHeader("Monthly Returns Heatmap"),
+        dbc.CardHeader("Monthly Returns Heatmap", className="card-title-text"), # Added className
         dbc.CardBody([
             dcc.Loading(
                 id=ResultsIDs.MONTHLY_RETURNS_HEATMAP_LOADING, # Corrected ID
@@ -78,7 +76,7 @@ def create_monthly_returns_heatmap() -> dbc.Card:
                 type="circle"
             )
         ])
-    ], className="mb-3") # Use mb-3
+    ], className="mb-1") # Use mb-1
 
 def create_trades_table() -> dbc.Card:
     """
@@ -87,7 +85,7 @@ def create_trades_table() -> dbc.Card:
     """
     logger.debug("Creating trades table card structure.")
     return dbc.Card([
-        dbc.CardHeader("Trade History"),
+        dbc.CardHeader("Trade History", className="card-title-text"), # Added className
         dbc.CardBody([
             dcc.Loading(
                 id=ResultsIDs.TRADES_TABLE_LOADING, # Corrected ID
@@ -99,7 +97,7 @@ def create_trades_table() -> dbc.Card:
                 type="circle"
             )
         ])
-    ], className="mb-3") # Use mb-3
+    ], className="mb-1") # Use mb-1
 
 def create_signals_chart() -> dbc.Card:
     """
@@ -109,7 +107,7 @@ def create_signals_chart() -> dbc.Card:
     return dbc.Card([
         dbc.CardHeader(
             dbc.Row([
-                dbc.Col("Signals & Price Action", width="auto"),
+                dbc.Col("Signals & Price Action", width="auto", className="card-title-text"), # Added className
                 dbc.Col(
                     dbc.Select(
                         id=ResultsIDs.SIGNALS_TICKER_SELECTOR,
@@ -131,7 +129,7 @@ def create_signals_chart() -> dbc.Card:
                 type="circle"
             )
         ])
-    ], className="mb-3") # Use mb-3
+    ], className="mb-1") # Use mb-1
 
 
 # --- NEW: Center Panel Layout ---
@@ -183,20 +181,20 @@ def create_right_panel_layout() -> html.Div:
     logger.debug("Creating right panel layout.")
     return html.Div([
         dbc.Card([
-            dbc.CardHeader("Performance Overview"),
+            dbc.CardHeader("Performance Overview", className="card-title-text"), # Added className
             dbc.CardBody(
                 # Container for performance metrics, populated by callback
                 # Use g-2 for smaller gutters between metric cards
                 dbc.Row(id=ResultsIDs.PERFORMANCE_METRICS_CONTAINER, className="g-2")
             )
-        ], className="mb-3"),
+        ], className="mb-1"),
 
         dbc.Card([
-            dbc.CardHeader("Trade Statistics"),
+            dbc.CardHeader("Trade Statistics", className="card-title-text"), # Added className
             dbc.CardBody(
                 # Container for trade statistics, populated by callback
                 # Use g-2 for smaller gutters between metric cards
                 dbc.Row(id=ResultsIDs.TRADE_METRICS_CONTAINER, className="g-2")
             )
-        ], className="mb-3")
+        ], className="mb-1")
     ])
