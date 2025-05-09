@@ -107,6 +107,9 @@ class ResultsIDs:
     # Buttons
     PORTFOLIO_VALUE_BUTTON = "btn-chart-value"
     PORTFOLIO_RETURNS_BUTTON = "btn-chart-returns"
+    # ADDED NEW IDs for currency/percentage toggle
+    PORTFOLIO_VALUE_CURRENCY_USD = "portfolio-value-currency-usd"
+    PORTFOLIO_VALUE_CURRENCY_PERCENT = "portfolio-value-currency-percent"
 
     # Charts & Their Loaders
     PORTFOLIO_CHART = "portfolio-chart"

@@ -3,7 +3,7 @@ from dash import dcc, html
 from typing import List
 import logging
 # Import centralized IDs
-from src.ui.ids.ids import ResultsIDs
+from src.ui import ids as app_ids
 
 logger = logging.getLogger(__name__)
 
@@ -13,51 +13,80 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
     """
     Creates the card containing the portfolio value/returns chart and toggle buttons.
     """
-    logger.debug("Creating portfolio value/returns chart card structure.")
+    logger.debug("Creating portfolio value/returns chart card structure with Row/Col and flex-nowrap.")
     return dbc.Card([
         dbc.CardHeader(
-            dbc.Row([
-                dbc.Col("Portfolio Value", width="auto"), # Removed card-title-text and me-1
-                dbc.Col("in", width="auto", className="mx-1"), # mx-1 for space around "in"
-                dbc.Col(
-                    dbc.ButtonGroup([
-                        dbc.Button("USD", id=ResultsIDs.PORTFOLIO_VALUE_BUTTON, color="primary", outline=False, size="sm", n_clicks=0, className="py-0 px-1"),
-                        dbc.Button("%", id=ResultsIDs.PORTFOLIO_RETURNS_BUTTON, color="primary", outline=True, size="sm", n_clicks=0, className="py-0 px-1"),
-                    ], size="sm"),
-                    width="auto"
-                )
-            ], justify="start", align="center") # justify="start" to keep the group left
+            dbc.Row(
+                [
+                    dbc.Col(
+                        html.H4("Portfolio Value", className="card-title mb-0"), 
+                        width="auto"
+                    ),
+                    dbc.Col(
+                        html.Span("in"), 
+                        width="auto", 
+                        className="px-1" # Adds padding left and right of "in" for spacing
+                    ),
+                    dbc.Col(
+                        dbc.ButtonGroup(
+                            [
+                                dbc.Button(
+                                    "USD",
+                                    id=app_ids.PORTFOLIO_VALUE_CURRENCY_USD,
+                                    className="py-0 px-1", # Small padding
+                                    color="primary",
+                                    outline=False, # Active by default
+                                    size="sm",
+                                    n_clicks=0
+                                ),
+                                dbc.Button(
+                                    "%",
+                                    id=app_ids.PORTFOLIO_VALUE_CURRENCY_PERCENT,
+                                    className="py-0 px-1", # Small padding
+                                    color="primary",
+                                    outline=True,
+                                    size="sm",
+                                    n_clicks=0
+                                ),
+                            ],
+                            size="sm"
+                        ),
+                        width="auto"
+                    )
+                ],
+                align="center", # Vertically aligns items (columns) within the Row
+                className="gx-2 flex-nowrap"  # gx-2 for horizontal gutters, flex-nowrap to prevent wrapping
+            )
         ),
         dbc.CardBody([
             dcc.Loading(
-                id=ResultsIDs.PORTFOLIO_CHART_LOADING,
-                children=dcc.Graph(
-                    id=ResultsIDs.PORTFOLIO_CHART,
-                    # config={'displayModeBar': False} # Optional: hide mode bar
-                ),
+                id=app_ids.PORTFOLIO_CHART_LOADING, 
+                children=[
+                    dcc.Graph(id=app_ids.PORTFOLIO_CHART)
+                ],
                 type="circle"
             )
         ])
-    ], className="mb-1") # Use mb-1 for tighter spacing in vertical stack
+    ], className="mb-1")
 
 def create_drawdown_chart() -> dbc.Card:
     """
     Creates the card containing the drawdown chart.
+    Now uses the dedicated drawdown chart from VisualizationService.
     """
     logger.debug("Creating drawdown chart card structure.")
     return dbc.Card([
-        dbc.CardHeader(html.Span(["Drawdown ", html.Span("(%)", style={"font-weight": "normal"})]), className="card-title-text"), # Added (%) and className
+        dbc.CardHeader(html.Span(["Drawdown ", html.Span("(%)", style={"font-weight": "normal"})]), className="card-title-text"),
         dbc.CardBody([
             dcc.Loading(
-                id=ResultsIDs.DRAWDOWN_CHART_LOADING, # Unique ID for drawdown loading
+                id=app_ids.DRAWDOWN_CHART_LOADING, 
                 children=dcc.Graph(
-                    id=ResultsIDs.DRAWDOWN_CHART,
-                    # config={'displayModeBar': False}
+                    id=app_ids.DRAWDOWN_CHART, # This ID will be targeted by a callback that sets the figure
                 ),
                 type="circle"
             )
         ])
-    ], className="mb-1") # Use mb-1
+    ], className="mb-1")
 
 def create_monthly_returns_heatmap() -> dbc.Card:
     """
@@ -68,10 +97,9 @@ def create_monthly_returns_heatmap() -> dbc.Card:
         dbc.CardHeader("Monthly Returns Heatmap", className="card-title-text"), # Added className
         dbc.CardBody([
             dcc.Loading(
-                id=ResultsIDs.MONTHLY_RETURNS_HEATMAP_LOADING, # Corrected ID
+                id=app_ids.MONTHLY_RETURNS_HEATMAP_LOADING, # Corrected ID
                 children=dcc.Graph(
-                    id=ResultsIDs.MONTHLY_RETURNS_HEATMAP,
-                    # config={'displayModeBar': False}
+                    id=app_ids.MONTHLY_RETURNS_HEATMAP,
                 ),
                 type="circle"
             )
@@ -88,9 +116,9 @@ def create_trades_table() -> dbc.Card:
         dbc.CardHeader("Trade History", className="card-title-text"), # Added className
         dbc.CardBody([
             dcc.Loading(
-                id=ResultsIDs.TRADES_TABLE_LOADING, # Corrected ID
+                id=app_ids.TRADES_TABLE_LOADING, # Corrected ID
                 # Container for the DataTable, populated by the callback
-                children=html.Div(id=ResultsIDs.TRADES_TABLE_CONTAINER, children=[
+                children=html.Div(id=app_ids.TRADES_TABLE_CONTAINER, children=[
                     # Initial placeholder message
                     html.Div("Run a backtest to view trade history.")
                 ]),
@@ -110,7 +138,7 @@ def create_signals_chart() -> dbc.Card:
                 dbc.Col("Signals & Price Action", width="auto", className="card-title-text"), # Added className
                 dbc.Col(
                     dbc.Select(
-                        id=ResultsIDs.SIGNALS_TICKER_SELECTOR,
+                        id=app_ids.SIGNALS_TICKER_SELECTOR,
                         options=[], # Populated by callback
                         placeholder="Select Ticker...",
                         size="sm"
@@ -121,16 +149,39 @@ def create_signals_chart() -> dbc.Card:
         ),
         dbc.CardBody([
             dcc.Loading(
-                id=ResultsIDs.SIGNALS_CHART_LOADING,
+                id=app_ids.SIGNALS_CHART_LOADING,
                 children=dcc.Graph(
-                    id=ResultsIDs.SIGNALS_CHART,
-                    # config={'displayModeBar': False}
+                    id=app_ids.SIGNALS_CHART,
                 ),
                 type="circle"
             )
         ])
     ], className="mb-1") # Use mb-1
 
+def create_status_and_progress_bar() -> html.Div:
+    """
+    Creates the container for status messages and the progress bar.
+    """
+    logger.debug("Creating status and progress bar container.")
+    return html.Div([
+        html.Div(
+            id=app_ids.ResultsIDs.BACKTEST_STATUS_MESSAGE, # Corrected access
+            className="text-center my-2", 
+            style={"color": "white"}
+        ),
+        dbc.Collapse( # Wrap progress bar in a collapse for conditional visibility
+            dbc.Progress(
+                id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR, 
+                label="0%", 
+                value=0, 
+                striped=True, 
+                animated=True,
+                style={"height": "20px"} # Ensure progress bar has some height
+            ),
+            id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, # ID for the Collapse component
+            is_open=False # Initially hidden
+        )
+    ], className="status-progress-container mb-2") # Add a class for potential styling
 
 # --- NEW: Center Panel Layout ---
 def create_center_panel_layout() -> html.Div:
@@ -144,10 +195,7 @@ def create_center_panel_layout() -> html.Div:
         html.Div(
             id="loading-overlay", # New ID for the overlay
             children=[
-                html.Div(id=ResultsIDs.BACKTEST_STATUS_MESSAGE, className="text-center my-2", style={"color": "white"}), # Ensure text is visible
-                html.Div([
-                    dbc.Progress(id=ResultsIDs.BACKTEST_PROGRESS_BAR, value=0, striped=True, animated=True, className="mb-3", style={"height": "20px"})
-                ], id=ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, style={"width": "75%", "textAlign": "center"}) # Centering handled by parent flex
+                create_status_and_progress_bar()
             ],
             style={ # Style for the overlay
                 "display": "none", # Initially hidden
@@ -163,7 +211,7 @@ def create_center_panel_layout() -> html.Div:
         ),
         # --- END MODIFIED: Loading Overlay ---
         # New div to wrap actual results, initially hidden
-        html.Div(id=ResultsIDs.RESULTS_AREA_WRAPPER, children=[
+        html.Div(id=app_ids.ResultsIDs.RESULTS_AREA_WRAPPER, children=[
             create_portfolio_value_returns_chart(),
             create_drawdown_chart(),
             create_monthly_returns_heatmap(),
@@ -185,7 +233,7 @@ def create_right_panel_layout() -> html.Div:
             dbc.CardBody(
                 # Container for performance metrics, populated by callback
                 # Use g-2 for smaller gutters between metric cards
-                dbc.Row(id=ResultsIDs.PERFORMANCE_METRICS_CONTAINER, className="g-2")
+                dbc.Row(id=app_ids.PERFORMANCE_METRICS_CONTAINER, className="g-2")
             )
         ], className="mb-1"),
 
@@ -194,7 +242,32 @@ def create_right_panel_layout() -> html.Div:
             dbc.CardBody(
                 # Container for trade statistics, populated by callback
                 # Use g-2 for smaller gutters between metric cards
-                dbc.Row(id=ResultsIDs.TRADE_METRICS_CONTAINER, className="g-2")
+                dbc.Row(id=app_ids.TRADE_METRICS_CONTAINER, className="g-2")
             )
         ], className="mb-1")
     ])
+
+def create_main_results_area() -> html.Div:
+    """
+    Creates the main area where all results (charts, tables, metrics) will be displayed.
+    """
+    logger.debug("Creating main results display area.")
+    return html.Div(
+        id=app_ids.ResultsIDs.RESULTS_AREA_WRAPPER, # Corrected: Access via ResultsIDs class
+        children=[
+            dbc.Row([
+                dbc.Col(
+                    create_center_panel_layout(), 
+                    id=app_ids.ResultsIDs.CENTER_PANEL_COLUMN, 
+                    width=12, lg=8, 
+                    className="mb-3 mb-lg-0"
+                ),
+                dbc.Col(
+                    create_right_panel_layout(), 
+                    id=app_ids.ResultsIDs.RIGHT_PANEL_COLUMN, 
+                    width=12, lg=4
+                ),
+            ])
+        ],
+        style={"display": "none"}  # Initially hidden, shown after backtest
+    )

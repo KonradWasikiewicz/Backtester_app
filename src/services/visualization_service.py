@@ -261,58 +261,48 @@ class VisualizationService:
                                benchmark_data: Optional[pd.DataFrame] = None) -> go.Figure:
         """
         Create a performance chart comparing strategy returns to a benchmark.
-        
-        Args:
-            backtest_result: Dictionary containing backtest results
-                Must include 'portfolio_values' Series with DatetimeIndex
-            benchmark_data: Optional DataFrame with benchmark data (should have 'Close' column)
-            
-        Returns:
-            Plotly Figure object
         """
-        # Extract portfolio values
         portfolio_values = backtest_result.get('portfolio_values')
-        
-        if portfolio_values is None or portfolio_values.empty:
-            logger.error("No portfolio values available for performance chart")
+        if portfolio_values is None:
+            logger.error("No portfolio values available for performance chart (None found)")
             return go.Figure()
-            
-        # Create figure
-        fig = go.Figure()
-        
-        # Calculate normalized returns (starting from 100)
-        # Ensure 'portfolio_values' is a Series for pct_change()
         if not isinstance(portfolio_values, pd.Series):
             portfolio_values = pd.Series(portfolio_values)
+        if portfolio_values.empty:
+            logger.error("No portfolio values available for performance chart (empty series)")
+            return go.Figure()
+            
+        fig = go.Figure()
+        
+        portfolio_pct_change = portfolio_values.pct_change().fillna(0)
+        if portfolio_pct_change.empty or portfolio_pct_change.isnull().all():
+            portfolio_norm = pd.Series([100.0] * len(portfolio_values), index=portfolio_values.index)
+        else:
+            portfolio_norm = 100.0 * (1 + portfolio_pct_change.cumsum())
+        
+        if not portfolio_norm.empty and pd.isna(portfolio_norm.iloc[0]):
+            portfolio_norm.iloc[0] = 100.0
 
-        portfolio_norm = 100 * (1 + (portfolio_values.pct_change().fillna(0)).cumsum())
-        # Ensure portfolio_norm starts at 100 if the first value is NaN after cumsum
-        if pd.isna(portfolio_norm.iloc[0]) and len(portfolio_norm) > 0:
-            portfolio_norm.iloc[0] = 100
-
-
-        # Add portfolio performance line
         fig.add_trace(
             go.Scatter(
                 x=portfolio_values.index,
                 y=portfolio_norm,
                 mode='lines',
-                name='Strategy',
-                line=dict(color=self.color_map['portfolio'], width=2)
+                name='Portfolio', # Changed name
+                line=dict(color=self.color_map.get('portfolio', '#ff7f0e'), width=2)
             )
         )
         
-        # Add benchmark if provided
         if benchmark_data is not None and not benchmark_data.empty and 'Close' in benchmark_data.columns:
-            # Align benchmark data with portfolio dates
             benchmark = benchmark_data.reindex(portfolio_values.index, method='ffill')
-            
-            # Calculate normalized benchmark returns
             benchmark_returns = benchmark['Close'].pct_change().fillna(0)
-            benchmark_norm = 100 * (1 + benchmark_returns.cumsum())
-            # Ensure benchmark_norm starts at 100
-            if pd.isna(benchmark_norm.iloc[0]) and len(benchmark_norm) > 0:
-                 benchmark_norm.iloc[0] = 100
+            if benchmark_returns.empty or benchmark_returns.isnull().all():
+                benchmark_norm = pd.Series([100.0] * len(benchmark), index=benchmark.index)
+            else:
+                benchmark_norm = 100.0 * (1 + benchmark_returns.cumsum())
+
+            if not benchmark_norm.empty and pd.isna(benchmark_norm.iloc[0]):
+                 benchmark_norm.iloc[0] = 100.0
             
             fig.add_trace(
                 go.Scatter(
@@ -320,28 +310,27 @@ class VisualizationService:
                     y=benchmark_norm.values,
                     mode='lines',
                     name='Benchmark',
-                    line=dict(color=self.color_map['benchmark'], width=2, dash='dash')
+                    line=dict(color=self.color_map.get('benchmark', '#1f77b4'), width=2, dash='dash')
                 )
             )
         
-        # Add drawdown series
         drawdown = backtest_result.get('drawdown')
         if drawdown is not None:
-            # Ensure 'drawdown' is a Series for indexing
             if not isinstance(drawdown, pd.Series):
                 drawdown = pd.Series(drawdown)
-            fig.add_trace(
-                go.Scatter(
-                    x=drawdown.index,
-                    y=-drawdown * 100,  # Convert to negative percentage
-                    mode='lines',
-                    name='Drawdown', # This name is for the legend, not the chart title
-                    line=dict(color='purple', width=1.5),
-                    yaxis="y2"
+            if not drawdown.empty:
+                fig.add_trace(
+                    go.Scatter(
+                        x=drawdown.index,
+                        y=-drawdown * 100,
+                        mode='lines',
+                        name='Drawdown', 
+                        line=dict(color='purple', width=1.5),
+                        yaxis="y2",
+                        visible='legendonly' # Hidden on chart, shown in legend
+                    )
                 )
-            )
         
-        # Update layout
         fig.update_layout(
             height=self.height,
             template=self.theme,
@@ -349,10 +338,10 @@ class VisualizationService:
                 orientation="h",
                 yanchor="bottom",
                 y=1.02,
-                xanchor="right",
-                x=1
+                xanchor="left", # Align legend to left
+                x=0
             ),
-            margin=dict(l=50, r=50, b=20, t=30, pad=4), # Reduced bottom and top margin further
+            margin=dict(l=50, r=20, b=20, t=5, pad=4), # Minimal top margin
             yaxis=dict(
                 title_text=None, # Remove y-axis title
                 side="left",
@@ -362,16 +351,83 @@ class VisualizationService:
                 title_text=None, # Remove y-axis title for drawdown
                 side="right",
                 overlaying="y",
-                showgrid=False
+                showgrid=False,
+                visible=False # Hide secondary y-axis if drawdown trace is legendonly
             ),
             xaxis=dict(
                 title_text=None, # Remove x-axis title
                 showticklabels=True
             ) 
         )
-        
         return fig
     
+    def create_drawdown_only_chart(self, backtest_result: Dict[str, Any]) -> go.Figure:
+        """
+        Create a chart showing only the drawdown.
+        Args:
+            backtest_result: Dictionary containing backtest results
+                Must include 'drawdown' Series with DatetimeIndex
+        Returns:
+            Plotly Figure object
+        """
+        drawdown = backtest_result.get('drawdown')
+        if drawdown is None:
+            logger.warning("No drawdown data available for drawdown chart (None found)")
+            return go.Figure() 
+
+        if not isinstance(drawdown, pd.Series):
+            drawdown = pd.Series(drawdown)
+
+        if drawdown.empty:
+            logger.warning("No drawdown data available for drawdown chart (empty series)")
+            return go.Figure()
+
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Scatter(
+                x=drawdown.index,
+                y=-drawdown * 100,  # Convert to negative percentage
+                mode='lines',
+                name='Drawdown', # Legend name
+                fill='tozeroy', 
+                line=dict(color=self.color_map.get('loss', '#d62728'), width=1.5), # Use loss color
+            )
+        )
+        
+        # Placeholder for benchmark drawdown if it becomes available
+        # benchmark_drawdown = backtest_result.get('benchmark_drawdown')
+        # if benchmark_drawdown is not None and not benchmark_drawdown.empty:
+        #     if not isinstance(benchmark_drawdown, pd.Series):
+        #         benchmark_drawdown = pd.Series(benchmark_drawdown)
+        #     fig.add_trace(go.Scatter(... name='Benchmark Drawdown' ...))
+
+
+        fig.update_layout(
+            height=self.height, 
+            template=self.theme,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="left", # Align legend to left
+                x=0
+            ),
+            margin=dict(l=50, r=20, b=20, t=5, pad=4), # Minimal top margin
+            yaxis=dict(
+                title_text=None, 
+                ticksuffix="%",   # Add % suffix to tick labels
+                showgrid=True,
+                zeroline=True, 
+                zerolinecolor='rgba(128,128,128,0.5)' # Gray zeroline
+            ),
+            xaxis=dict(
+                title_text=None, 
+                showticklabels=True
+            )
+        )
+        return fig
+
     def create_returns_distribution_chart(self, 
                                        backtest_result: Dict[str, Any], 
                                        benchmark_returns: Optional[pd.Series] = None) -> go.Figure:
