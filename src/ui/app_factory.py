@@ -407,19 +407,19 @@ def create_app_layout() -> html.Div:
                     # Left Panel (Steps/Config)
                     dbc.Col([
                         create_strategy_config_section(available_tickers),
-                    ], id='left-panel-col', width=12, lg=3, className="mb-4"), # Added id, removed inline style, lg=3
+                    ], id='left-panel-col', width=12, lg=3, className="mb-4"), # lg=3 (unchanged)
 
                     # Center Panel (Charts/Table)
                     dbc.Col([
                         create_center_panel_layout(),
                     # --- ADDED ID and initial style --- 
-                    ], id='center-panel-col', width=12, lg=5, className="mb-4", style={'display': 'none'}), # lg changed to 5, removed inline padding
+                    ], id='center-panel-col', width=12, lg=6, className="mb-4", style={'display': 'none'}), # lg changed to 6
 
                     # Right Panel (Stats)
                     dbc.Col([
                         create_right_panel_layout()
                     # --- ADDED ID and initial style --- 
-                    ], id='right-panel-col', width=12, lg=4, className="mb-4", style={'display': 'none'}) # lg changed to 4, removed inline padding
+                    ], id='right-panel-col', width=12, lg=3, className="mb-4", style={'display': 'none'}) # lg changed to 3
                 ])
             ], fluid=True),
             # --- END UPDATED Three-Panel Main Content ---

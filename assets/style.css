@@ -106,7 +106,8 @@ input:focus, .form-control:focus {
 
 /* --- Component Specific Styles --- */
 .card {
-  margin-bottom: 1rem;
+  margin-top: 0 !important; /* Ensure no top margin */
+  margin-bottom: 0.25rem !important; /* Consistent small bottom margin, reduced from 0.5rem */
 }
 
 .card-title {
@@ -138,22 +139,23 @@ input:focus, .form-control:focus {
    This reduces the default Bootstrap column gutter for a 50% visual reduction.
 */
 #left-panel-col {
-  padding-right: 7.5px !important; /* Default is ~15px */
+  padding-right: 3.75px !important; /* Further reduced from 7.5px */
 }
 
 #center-panel-col {
-  padding-left: 7.5px !important;  /* Default is ~15px */
-  padding-right: 7.5px !important; /* Default is ~15px */
+  padding-left: 3.75px !important;  /* Further reduced from 7.5px */
+  padding-right: 3.75px !important; /* Further reduced from 7.5px */
 }
 
 #right-panel-col {
-  padding-left: 7.5px !important;   /* Default is ~15px */
+  padding-left: 3.75px !important;   /* Further reduced from 7.5px */
 }
 /* --- End Main Layout Styles --- */
 
 /* --- Wizard Specific Styles --- */
 .wizard-step {
-  margin-bottom: 0.75rem; /* Reduced from 1.5rem */
+  margin-top: 0 !important; /* Ensure no top margin */
+  margin-bottom: 0.25rem !important; /* Consistent small bottom margin, reduced from 0.1875rem and unified with .card */
 }
 
 /* --- Strategy Parameter Inputs Styling --- */
@@ -177,7 +179,7 @@ input:focus, .form-control:focus {
 /* --- Utility Classes --- */
 .mb-2 { margin-bottom: 0.5rem !important; }
 .mt-2 { margin-top: 0.5rem !important; }
-.mb-3 { margin-bottom: 1rem !important; }
+.mb-3 { margin-bottom: 0.5rem !important; } /* Reduced from 1rem */
 .mt-3 { margin-top: 1rem !important; }
 
 /* Add more specific styles as needed */
