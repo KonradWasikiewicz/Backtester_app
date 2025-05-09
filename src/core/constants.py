@@ -113,6 +113,8 @@ VISUALIZATION_CONFIG: dict[str, str | list[str]] = {
 # Ustaw domyślny motyw plotly lub własny. 'plotly_dark' pasuje do ciemnego tła.
 CHART_THEME: str = 'plotly_dark'
 
+MONTHLY_RETURNS_DEFAULT_TITLE: str = "Monthly Returns Heatmap"
+
 # --- Other Application Constants ---
 # DEFAULT_COMMISSION: float = 0.001
 # DEFAULT_SLIPPAGE: float = 0.0005

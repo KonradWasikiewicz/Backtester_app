@@ -98,7 +98,6 @@ input:focus, .form-control:focus {
   background-color: #343a40; /* Dark header */
   color: white;
   padding: 1rem;
-  text-align: center;
 }
 
 .content {
@@ -114,9 +113,47 @@ input:focus, .form-control:focus {
     margin-bottom: 0.75rem;
 }
 
+/* --- Main Layout Styles --- */
+/* Removing previously added incorrect flexbox styles.
+   The layout is managed by Bootstrap columns (dbc.Col).
+.main-app-layout {
+  display: flex;
+  padding: 1rem;
+}
+#left-panel {
+  flex: 0 0 20%;
+}
+#center-panel {
+  flex: 1;
+  margin-left: 1rem;
+  margin-right: 1rem;
+}
+#right-panel {
+  flex: 0 0 30%;
+}
+*/
+
+/* New styles for panel spacing using padding for Bootstrap dbc.Col components.
+   These target the IDs that will be set on the dbc.Col components in app_factory.py.
+   This reduces the default Bootstrap column gutter for a 50% visual reduction.
+*/
+#left-panel-col {
+  padding-right: 7.5px !important; /* Default is ~15px */
+}
+
+#center-panel-col {
+  padding-left: 7.5px !important;  /* Default is ~15px */
+  padding-right: 7.5px !important; /* Default is ~15px */
+}
+
+#right-panel-col {
+  padding-left: 7.5px !important;   /* Default is ~15px */
+}
+/* --- End Main Layout Styles --- */
+
 /* --- Wizard Specific Styles --- */
 .wizard-step {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem; /* Reduced from 1.5rem */
 }
 
 /* --- Strategy Parameter Inputs Styling --- */

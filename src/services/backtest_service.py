@@ -11,12 +11,11 @@ logger = logging.getLogger(__name__)
 
 # Import local modules
 from src.core.backtest_manager import BacktestManager
-from src.core.constants import AVAILABLE_STRATEGIES
+from src.core.constants import AVAILABLE_STRATEGIES, CHART_THEME, MONTHLY_RETURNS_DEFAULT_TITLE # Added MONTHLY_RETURNS_DEFAULT_TITLE
 from src.core.config import config
 from src.services.data_service import DataService
 from src.services.visualization_service import VisualizationService
 from src.visualization.visualizer import BacktestVisualizer
-from src.core.constants import CHART_THEME
 from src.core.exceptions import DataError, StrategyError, BacktestError # Added
 
 class BacktestService:
@@ -140,11 +139,11 @@ class BacktestService:
 
             # Monthly Returns Heatmap
             if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 13, "Service: Charting Monthly Returns...")) # 94%
-            monthly_returns_fig = config.MONTHLY_RETURNS_DEFAULT_TITLE 
+            monthly_returns_fig = MONTHLY_RETURNS_DEFAULT_TITLE # Changed from config.MONTHLY_RETURNS_DEFAULT_TITLE
             if portfolio_value_series is not None and not portfolio_value_series.empty:
                  monthly_returns_fig = visualizer.create_monthly_returns_heatmap(portfolio_value_series)
             else: # Create an empty chart if no data
-                 monthly_returns_fig = visualizer.create_empty_chart(config.MONTHLY_RETURNS_DEFAULT_TITLE)
+                 monthly_returns_fig = visualizer.create_empty_chart(MONTHLY_RETURNS_DEFAULT_TITLE) # Changed from config.MONTHLY_RETURNS_DEFAULT_TITLE
 
             if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 14, "Service: Charts Generated. Packaging...")) # 95%
 

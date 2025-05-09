@@ -72,6 +72,17 @@ def register_backtest_callbacks(app: Dash):
         prevent_initial_call=True
     )
     def run_backtest(set_progress, trigger_data, config_data): 
+        # Define the wrapper function that adds a delay
+        def wrapped_set_progress(progress_tuple):
+            value, label = progress_tuple # Unpack to get value for conditional sleep
+            set_progress(progress_tuple) # Call the original Dash set_progress
+            if value <= 4:  # Very early steps (e.g., Service initialization)
+                time.sleep(0.25) # Longer delay for these steps
+            elif value < 26:  # Early steps before signal generation (e.g., Manager setup, data loading)
+                time.sleep(0.1)  # Moderately longer delay
+            else: # Later steps (Signal generation, main loop, etc.)
+                time.sleep(0.05) # Standard delay
+
         logger.info("--- run_backtest callback: Entered. 'running' state should hide right-panel-col.")
         if not trigger_data: 
             logger.warning("run_backtest triggered without trigger_data.")
@@ -79,8 +90,8 @@ def register_backtest_callbacks(app: Dash):
 
         if not config_data:
             logger.warning("run_backtest triggered without config_data.")
-            # Ensure progress is set to 100% with an error message before returning
-            set_progress((100, "Config Error"))
+            wrapped_set_progress((100, "Config Error")) # Use wrapped function
+            time.sleep(0.05) # Add small delay for UI update
             return {"timestamp": time.time(), "success": False, "error": "Configuration data is missing."}, \
                    {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
 
@@ -116,7 +127,8 @@ def register_backtest_callbacks(app: Dash):
         if not all([strategy_type, tickers_list, start_date_str, end_date_str, initial_capital is not None]):
             error_msg = "Missing required inputs from config_data: Strategy, Tickers, Start/End Dates, or Initial Capital."
             logger.error(f"run_backtest: Input validation failed: {error_msg}")
-            set_progress((100, "Input Error"))
+            wrapped_set_progress((100, "Input Error")) # Use wrapped function
+            time.sleep(0.05) # Add small delay for UI update
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                    {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
 
@@ -126,7 +138,8 @@ def register_backtest_callbacks(app: Dash):
         except ValueError as e:
              error_msg = f"Invalid date format in config_data: {e}. Please use YYYY-MM-DD."
              logger.error(f"run_backtest: {error_msg}")
-             set_progress((100, "Date Error")) # Set progress to 100% with error
+             wrapped_set_progress((100, "Date Error")) # Use wrapped function
+             time.sleep(0.05) # Add small delay for UI update
              return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                     {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
         
@@ -135,7 +148,8 @@ def register_backtest_callbacks(app: Dash):
 
         try:
             logger.info("run_backtest: Setting initial progress (1%).")
-            set_progress((1, "Initializing Backtest...")) 
+            wrapped_set_progress((1, "Initializing Backtest...")) # Use wrapped function
+            time.sleep(0.05) # Added small delay for UI update
 
             logger.info("run_backtest: Calling backtest_service.run_backtest. This might be a long operation.")
             start_time = time.time()
@@ -150,17 +164,18 @@ def register_backtest_callbacks(app: Dash):
                 risk_params=risk_params_dict, 
                 cost_params=cost_params_dict, 
                 rebalancing_params=rebalancing_params_dict,
-                progress_callback=set_progress 
+                progress_callback=wrapped_set_progress # Pass the wrapped function
             )
 
             end_time = time.time()
-            logger.info(f"run_backtest: backtest_service.run_backtest finished in {end_time - start_time:.2f} seconds.")
+            logger.info(f"run_backtest: backtest_service.run_backtest finished in {end_time - start_time:.2f} seconds.") # Corrected variable name
             results_package["timestamp"] = time.time()
 
             if results_package.get("success"):
                 logger.info(f"run_backtest: Preparing SUCCESSFUL results. Keys: {list(results_package.keys())}")
                 logger.info("run_backtest: Setting final progress (100% - Complete).")
-                set_progress((100, "Complete")) 
+                wrapped_set_progress((100, "Complete")) # Use wrapped function
+                time.sleep(0.05) # Add small delay for UI update
                 logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
                 return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
             else:
@@ -168,7 +183,8 @@ def register_backtest_callbacks(app: Dash):
                 logger.error(f"run_backtest: Returning FAILED results: {error_msg}")
                 display_error_msg = (error_msg[:47] + '...') if len(error_msg) > 50 else error_msg
                 logger.info(f"run_backtest: Setting final progress (100% - Failed: {display_error_msg}).")
-                set_progress((100, f"Failed: {display_error_msg}")) 
+                wrapped_set_progress((100, f"Failed: {display_error_msg}")) # Use wrapped function
+                time.sleep(0.05) # Add small delay for UI update
                 return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
 
         except Exception as e:
@@ -177,7 +193,8 @@ def register_backtest_callbacks(app: Dash):
             error_msg = f"An unexpected error occurred in the run_backtest callback: {str(e)}"
             display_error_msg = (error_msg[:47] + '...') if len(error_msg) > 50 else error_msg
             # Ensure progress is set to 100% with an error message before returning
-            set_progress((100, f"Callback Error: {display_error_msg}"))
+            wrapped_set_progress((100, f"Callback Error: {display_error_msg}")) # Use wrapped function
+            time.sleep(0.05) # Add small delay for UI update
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                    {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
 
