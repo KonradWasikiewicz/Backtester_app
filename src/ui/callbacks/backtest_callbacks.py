@@ -47,6 +47,7 @@ def register_backtest_callbacks(app: Dash):
         Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True), # Wizard progress bar
         Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
         Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
+        Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open', allow_duplicate=True), # ADDED to control collapse
         Input('run-backtest-trigger-store', 'data'), 
         State(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data'),
         background=True,
@@ -57,6 +58,7 @@ def register_backtest_callbacks(app: Dash):
              {"display": "flex", "position": "absolute", "top": "0", "left": "0", "right": "0", "bottom": "0", "backgroundColor": "rgba(18, 18, 18, 0.85)", "zIndex": "1050", "flexDirection": "column", "alignItems": "center", "justifyContent": "center"}, 
              {"display": "none"}),
             (Output(ResultsIDs.BACKTEST_STATUS_MESSAGE, 'children'), "Running backtest...", ""),
+            (Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open'), True, False), # ADDED: Open on start, close on end
             (Output(WizardIDs.PROGRESS_BAR, "style"), {'display': 'none'}, no_update), 
             (Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
              {'visibility': 'hidden', 'paddingLeft': '15px'}, 
@@ -93,7 +95,7 @@ def register_backtest_callbacks(app: Dash):
             wrapped_set_progress((100, "Config Error")) # Use wrapped function
             time.sleep(0.05) # Add small delay for UI update
             return {"timestamp": time.time(), "success": False, "error": "Configuration data is missing."}, \
-                   {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
+                   {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
 
         logger.info(f"run_backtest: Received config_data: {config_data}")
 
@@ -130,7 +132,7 @@ def register_backtest_callbacks(app: Dash):
             wrapped_set_progress((100, "Input Error")) # Use wrapped function
             time.sleep(0.05) # Add small delay for UI update
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                   {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
+                   {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
 
         try:
             start_date_dt = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
@@ -141,7 +143,7 @@ def register_backtest_callbacks(app: Dash):
              wrapped_set_progress((100, "Date Error")) # Use wrapped function
              time.sleep(0.05) # Add small delay for UI update
              return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                    {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
+                    {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
         
         if 'features' in risk_params_dict and 'enabled_features' not in risk_params_dict:
             risk_params_dict['enabled_features'] = risk_params_dict.pop('features')
@@ -177,7 +179,7 @@ def register_backtest_callbacks(app: Dash):
                 wrapped_set_progress((100, "Complete")) # Use wrapped function
                 time.sleep(0.05) # Add small delay for UI update
                 logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
-                return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
+                return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
             else:
                 error_msg = results_package.get('error', 'Unknown backtest failure')
                 logger.error(f"run_backtest: Returning FAILED results: {error_msg}")
@@ -185,7 +187,7 @@ def register_backtest_callbacks(app: Dash):
                 logger.info(f"run_backtest: Setting final progress (100% - Failed: {display_error_msg}).")
                 wrapped_set_progress((100, f"Failed: {display_error_msg}")) # Use wrapped function
                 time.sleep(0.05) # Add small delay for UI update
-                return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
+                return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
 
         except Exception as e:
             tb_str = traceback.format_exc()
@@ -196,7 +198,7 @@ def register_backtest_callbacks(app: Dash):
             wrapped_set_progress((100, f"Callback Error: {display_error_msg}")) # Use wrapped function
             time.sleep(0.05) # Add small delay for UI update
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                   {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update
+                   {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
 
     # --- Result Update Callbacks (Triggered by Store) ---
     @app.callback(

@@ -60,9 +60,9 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
         ),
         dbc.CardBody([
             dcc.Loading(
-                id=app_ids.PORTFOLIO_CHART_LOADING, 
+                id=app_ids.ResultsIDs.PORTFOLIO_CHART_LOADING, 
                 children=[
-                    dcc.Graph(id=app_ids.PORTFOLIO_CHART)
+                    dcc.Graph(id=app_ids.ResultsIDs.PORTFOLIO_CHART)
                 ],
                 type="circle"
             )
@@ -79,9 +79,9 @@ def create_drawdown_chart() -> dbc.Card:
         dbc.CardHeader(html.Span(["Drawdown ", html.Span("(%)", style={"font-weight": "normal"})]), className="card-title-text"),
         dbc.CardBody([
             dcc.Loading(
-                id=app_ids.DRAWDOWN_CHART_LOADING, 
+                id=app_ids.ResultsIDs.DRAWDOWN_CHART_LOADING, 
                 children=dcc.Graph(
-                    id=app_ids.DRAWDOWN_CHART, # This ID will be targeted by a callback that sets the figure
+                    id=app_ids.ResultsIDs.DRAWDOWN_CHART, # This ID will be targeted by a callback that sets the figure
                 ),
                 type="circle"
             )
@@ -97,9 +97,9 @@ def create_monthly_returns_heatmap() -> dbc.Card:
         dbc.CardHeader("Monthly Returns Heatmap", className="card-title-text"), # Added className
         dbc.CardBody([
             dcc.Loading(
-                id=app_ids.MONTHLY_RETURNS_HEATMAP_LOADING, # Corrected ID
+                id=app_ids.ResultsIDs.MONTHLY_RETURNS_HEATMAP_LOADING, # Corrected ID
                 children=dcc.Graph(
-                    id=app_ids.MONTHLY_RETURNS_HEATMAP,
+                    id=app_ids.ResultsIDs.MONTHLY_RETURNS_HEATMAP,
                 ),
                 type="circle"
             )
@@ -116,9 +116,9 @@ def create_trades_table() -> dbc.Card:
         dbc.CardHeader("Trade History", className="card-title-text"), # Added className
         dbc.CardBody([
             dcc.Loading(
-                id=app_ids.TRADES_TABLE_LOADING, # Corrected ID
+                id=app_ids.ResultsIDs.TRADES_TABLE_LOADING, # Corrected ID
                 # Container for the DataTable, populated by the callback
-                children=html.Div(id=app_ids.TRADES_TABLE_CONTAINER, children=[
+                children=html.Div(id=app_ids.ResultsIDs.TRADES_TABLE_CONTAINER, children=[
                     # Initial placeholder message
                     html.Div("Run a backtest to view trade history.")
                 ]),
@@ -138,7 +138,7 @@ def create_signals_chart() -> dbc.Card:
                 dbc.Col("Signals & Price Action", width="auto", className="card-title-text"), # Added className
                 dbc.Col(
                     dbc.Select(
-                        id=app_ids.SIGNALS_TICKER_SELECTOR,
+                        id=app_ids.ResultsIDs.SIGNALS_TICKER_SELECTOR,
                         options=[], # Populated by callback
                         placeholder="Select Ticker...",
                         size="sm"
@@ -149,9 +149,9 @@ def create_signals_chart() -> dbc.Card:
         ),
         dbc.CardBody([
             dcc.Loading(
-                id=app_ids.SIGNALS_CHART_LOADING,
+                id=app_ids.ResultsIDs.SIGNALS_CHART_LOADING,
                 children=dcc.Graph(
-                    id=app_ids.SIGNALS_CHART,
+                    id=app_ids.ResultsIDs.SIGNALS_CHART,
                 ),
                 type="circle"
             )
@@ -179,7 +179,8 @@ def create_status_and_progress_bar() -> html.Div:
                 style={"height": "20px"} # Ensure progress bar has some height
             ),
             id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, # ID for the Collapse component
-            is_open=False # Initially hidden
+            is_open=False, # Initially hidden
+            className="w-75" # Make the progress bar container 75% wide
         )
     ], className="status-progress-container mb-2") # Add a class for potential styling
 
@@ -233,7 +234,7 @@ def create_right_panel_layout() -> html.Div:
             dbc.CardBody(
                 # Container for performance metrics, populated by callback
                 # Use g-2 for smaller gutters between metric cards
-                dbc.Row(id=app_ids.PERFORMANCE_METRICS_CONTAINER, className="g-2")
+                dbc.Row(id=app_ids.ResultsIDs.PERFORMANCE_METRICS_CONTAINER, className="g-2")
             )
         ], className="mb-1"),
 
@@ -242,7 +243,7 @@ def create_right_panel_layout() -> html.Div:
             dbc.CardBody(
                 # Container for trade statistics, populated by callback
                 # Use g-2 for smaller gutters between metric cards
-                dbc.Row(id=app_ids.TRADE_METRICS_CONTAINER, className="g-2")
+                dbc.Row(id=app_ids.ResultsIDs.TRADE_METRICS_CONTAINER, className="g-2")
             )
         ], className="mb-1")
     ])
