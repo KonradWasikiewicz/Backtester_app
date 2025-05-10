@@ -32,7 +32,7 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                             [
                                 dbc.Button(
                                     "USD",
-                                    id=app_ids.PORTFOLIO_VALUE_CURRENCY_USD,
+                                    id=app_ids.ResultsIDs.PORTFOLIO_VALUE_CURRENCY_USD,
                                     className="py-0 px-1", # Small padding
                                     color="primary",
                                     outline=False, # Active by default
@@ -41,7 +41,7 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                                 ),
                                 dbc.Button(
                                     "%",
-                                    id=app_ids.PORTFOLIO_VALUE_CURRENCY_PERCENT,
+                                    id=app_ids.ResultsIDs.PORTFOLIO_VALUE_CURRENCY_PERCENT,
                                     className="py-0 px-1", # Small padding
                                     color="primary",
                                     outline=True,
