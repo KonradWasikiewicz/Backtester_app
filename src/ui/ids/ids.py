@@ -137,6 +137,10 @@ class ResultsIDs:
     BACKTEST_STATUS_MESSAGE = "backtest-status"
     BACKTEST_PROGRESS_BAR = "backtesting_progress_bar"
     BACKTEST_PROGRESS_BAR_CONTAINER = "backtesting_progress_bar_container"
+    BACKTEST_PROGRESS_LABEL_TEXT = "backtest-progress-label-text" # New ID for the custom label
+    BACKTEST_ANIMATED_TEXT = "backtest-animated-text" # For "Running backtest..."
+    BACKTEST_PROGRESS_DETAIL_TEXT = "backtest-progress-detail-text" # For "X%", "Initializing", etc.
+    BACKTEST_ANIMATION_INTERVAL = "backtest-animation-interval" # For dcc.Interval
 
     # Layout Wrappers / Areas
     RESULTS_AREA_WRAPPER = "actual-results-area" # The div that's initially hidden

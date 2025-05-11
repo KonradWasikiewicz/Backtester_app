@@ -41,70 +41,75 @@ def register_backtest_callbacks(app: Dash):
     # This callback now outputs to the store instead of directly to result components
     @app.callback(
         Output(ResultsIDs.BACKTEST_RESULTS_STORE, 'data'),
-        Output("loading-overlay", 'style', allow_duplicate=True), 
-        Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value', allow_duplicate=True),
-        Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'label', allow_duplicate=True),
-        Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True), # Wizard progress bar
+        Output("loading-overlay", 'style', allow_duplicate=True),
+        Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value', allow_duplicate=True), # For bar fill
+        Output(ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT, 'children', allow_duplicate=True), # Inner detailed message
+        Output(ResultsIDs.BACKTEST_ANIMATED_TEXT, 'children', allow_duplicate=True), # Outer animated text + percentage
+        Output(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'disabled', allow_duplicate=True), # To control animation
+        Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True),
         Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
         Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
-        Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open', allow_duplicate=True), # ADDED to control collapse
-        Input('run-backtest-trigger-store', 'data'), 
+        Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open', allow_duplicate=True),
+        Input('run-backtest-trigger-store', 'data'),
         State(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data'),
         background=True,
         running=[
-            (Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'disabled'), True, False), 
-            (Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'disabled'), True, False), 
-            (Output("loading-overlay", 'style'), 
-             {"display": "flex", "position": "absolute", "top": "0", "left": "0", "right": "0", "bottom": "0", "backgroundColor": "rgba(18, 18, 18, 0.85)", "zIndex": "1050", "flexDirection": "column", "alignItems": "center", "justifyContent": "center"}, 
+            (Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'disabled'), True, False),
+            (Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'disabled'), True, False),
+            (Output("loading-overlay", 'style'),
+             {"display": "flex", "position": "absolute", "top": "0", "left": "0", "right": "0", "bottom": "0", "backgroundColor": "rgba(18, 18, 18, 0.85)", "zIndex": "1050", "flexDirection": "column", "alignItems": "center", "justifyContent": "center"},
              {"display": "none"}),
-            (Output(ResultsIDs.BACKTEST_STATUS_MESSAGE, 'children'), "Running backtest...", ""),
-            (Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open'), True, False), # ADDED: Open on start, close on end
-            (Output(WizardIDs.PROGRESS_BAR, "style"), {'display': 'none'}, no_update), 
+            (Output(ResultsIDs.BACKTEST_STATUS_MESSAGE, 'children'), "", ""), # No longer primary status, clear it
+            (Output(ResultsIDs.BACKTEST_ANIMATED_TEXT, 'children'), "Running backtest... (0%)", ""), # Initial outer text
+            (Output(ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT, 'children'), "Initializing...", " "), # Initial inner text
+            (Output(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'disabled'), False, True), # Enable animation interval
+            (Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open'), True, False),
+            (Output(WizardIDs.PROGRESS_BAR, "style"), {'display': 'none'}, no_update),
             (Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
-             {'visibility': 'hidden', 'paddingLeft': '15px'}, 
+             {'visibility': 'hidden', 'paddingLeft': '15px'},
              {'visibility': 'hidden', 'paddingLeft': '15px'}),
             (Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
-             {'display': 'none'}, 
+             {'display': 'none'},
              {'display': 'none'})
         ],
         progress=[
-            Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value'),
-            Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'label'),
+            Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value'), # Updated by set_progress
+            Output(ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT, 'children') # Inner message, updated by set_progress
+            # BACKTEST_ANIMATED_TEXT is handled by its own callback or final states here
         ],
         prevent_initial_call=True
     )
-    def run_backtest(set_progress, trigger_data, config_data): 
-        # Define the wrapper function that adds a delay
-        def wrapped_set_progress(progress_tuple):
-            value, label = progress_tuple # Unpack to get value for conditional sleep
-            set_progress(progress_tuple) # Call the original Dash set_progress
-            if value <= 4:  # Very early steps (e.g., Service initialization)
-                time.sleep(0.25) # Longer delay for these steps
-            elif value < 26:  # Early steps before signal generation (e.g., Manager setup, data loading)
-                time.sleep(0.1)  # Moderately longer delay
-            else: # Later steps (Signal generation, main loop, etc.)
-                time.sleep(0.05) # Standard delay
+    def run_backtest(set_progress, trigger_data, config_data):
+        def wrapped_set_progress(progress_tuple): # progress_tuple is (value, detail_message)
+            value, detail_message = progress_tuple
+            set_progress((value, detail_message)) # Update bar value and inner detail message
 
-        logger.info("--- run_backtest callback: Entered. 'running' state should hide right-panel-col.")
-        if not trigger_data: 
+            # Standard delays, adjust if necessary
+            if value <= 4: time.sleep(0.01)
+            elif value < 26: time.sleep(0.05)
+            else: time.sleep(0.05)
+
+        logger.info("--- run_backtest callback: Entered.")
+        if not trigger_data:
             logger.warning("run_backtest triggered without trigger_data.")
             raise PreventUpdate
 
+        initial_animated_text = "Running backtest... (0%)" # Set by 'running' state, but good to have a default
+
         if not config_data:
             logger.warning("run_backtest triggered without config_data.")
-            wrapped_set_progress((100, "Config Error")) # Use wrapped function
-            time.sleep(0.05) # Add small delay for UI update
+            # value, inner_message, outer_message, interval_disabled
             return {"timestamp": time.time(), "success": False, "error": "Configuration data is missing."}, \
-                   {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
+                   {"display": "none"}, 100, "Config Error", "Config Error (100%)", True, \
+                   {'display': 'none'}, no_update, no_update, False
 
         logger.info(f"run_backtest: Received config_data: {config_data}")
-
-        # Extract parameters from config_data
+        # ... (extract parameters as before) ...
         strategy_type = config_data.get("strategy_type")
-        tickers = config_data.get("tickers") 
+        tickers = config_data.get("tickers")
         start_date_str = config_data.get("start_date")
         end_date_str = config_data.get("end_date")
-        initial_capital = config_data.get("initial_capital") 
+        initial_capital = config_data.get("initial_capital")
         strategy_params_dict = config_data.get("strategy_params", {})
         risk_params_dict = config_data.get("risk_management", {})
         trading_costs_config = config_data.get("trading_costs", {})
@@ -121,84 +126,104 @@ def register_backtest_callbacks(app: Dash):
 
         if isinstance(tickers, list) and tickers:
             tickers_list = [str(t).strip() for t in tickers if t]
-        elif isinstance(tickers, str) and tickers.strip(): 
+        elif isinstance(tickers, str) and tickers.strip():
              tickers_list = [t.strip() for t in tickers.split(',') if t.strip()]
         else:
             tickers_list = []
 
         if not all([strategy_type, tickers_list, start_date_str, end_date_str, initial_capital is not None]):
-            error_msg = "Missing required inputs from config_data: Strategy, Tickers, Start/End Dates, or Initial Capital."
+            error_msg = "Missing required inputs."
             logger.error(f"run_backtest: Input validation failed: {error_msg}")
-            wrapped_set_progress((100, "Input Error")) # Use wrapped function
-            time.sleep(0.05) # Add small delay for UI update
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                   {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
-
+                   {"display": "none"}, 100, "Input Error", "Input Error (100%)", True, \
+                   {'display': 'none'}, no_update, no_update, False
         try:
             start_date_dt = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
             end_date_dt = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
         except ValueError as e:
-             error_msg = f"Invalid date format in config_data: {e}. Please use YYYY-MM-DD."
+             error_msg = f"Invalid date format: {e}."
              logger.error(f"run_backtest: {error_msg}")
-             wrapped_set_progress((100, "Date Error")) # Use wrapped function
-             time.sleep(0.05) # Add small delay for UI update
              return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                    {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
-        
+                    {"display": "none"}, 100, "Date Error", "Date Error (100%)", True, \
+                    {'display': 'none'}, no_update, no_update, False
+
         if 'features' in risk_params_dict and 'enabled_features' not in risk_params_dict:
             risk_params_dict['enabled_features'] = risk_params_dict.pop('features')
 
         try:
-            logger.info("run_backtest: Setting initial progress (1%).")
-            wrapped_set_progress((1, "Initializing Backtest...")) # Use wrapped function
-            time.sleep(0.05) # Added small delay for UI update
+            logger.info("run_backtest: Setting initial progress (1% for inner message).")
+            wrapped_set_progress((1, "Initializing Backtest...")) # value, inner_message
 
-            logger.info("run_backtest: Calling backtest_service.run_backtest. This might be a long operation.")
+            logger.info("run_backtest: Calling backtest_service.run_backtest.")
             start_time = time.time()
-            
+
             results_package = backtest_service.run_backtest(
                 strategy_type=strategy_type,
                 tickers=tickers_list,
-                start_date=start_date_dt, 
-                end_date=end_date_dt,     
-                initial_capital=initial_capital, 
+                start_date=start_date_dt,
+                end_date=end_date_dt,
+                initial_capital=initial_capital,
                 strategy_params=strategy_params_dict,
-                risk_params=risk_params_dict, 
-                cost_params=cost_params_dict, 
+                risk_params=risk_params_dict,
+                cost_params=cost_params_dict,
                 rebalancing_params=rebalancing_params_dict,
-                progress_callback=wrapped_set_progress # Pass the wrapped function
+                progress_callback=wrapped_set_progress
             )
-
             end_time = time.time()
-            logger.info(f"run_backtest: backtest_service.run_backtest finished in {end_time - start_time:.2f} seconds.") # Corrected variable name
+            logger.info(f"run_backtest: backtest_service.run_backtest finished in {end_time - start_time:.2f} seconds.")
             results_package["timestamp"] = time.time()
 
             if results_package.get("success"):
-                logger.info(f"run_backtest: Preparing SUCCESSFUL results. Keys: {list(results_package.keys())}")
-                logger.info("run_backtest: Setting final progress (100% - Complete).")
-                wrapped_set_progress((100, "Complete")) # Use wrapped function
-                time.sleep(0.05) # Add small delay for UI update
-                logger.info("run_backtest: Exiting. 'running' state should show right-panel-col.")
-                return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
+                logger.info(f"run_backtest: Preparing SUCCESSFUL results.")
+                wrapped_set_progress((100, "Complete"))
+                time.sleep(0.05)
+                logger.info("run_backtest: Exiting successfully.")
+                # store_data, overlay_style, bar_value, inner_text, outer_text, interval_disabled, wizard_progress_style, right_panel_style, results_wrapper_style, progress_container_open
+                return results_package, {"display": "none"}, 100, "Complete", "Complete (100%)", True, \
+                       {'display': 'none'}, no_update, no_update, False
             else:
                 error_msg = results_package.get('error', 'Unknown backtest failure')
                 logger.error(f"run_backtest: Returning FAILED results: {error_msg}")
-                display_error_msg = (error_msg[:47] + '...') if len(error_msg) > 50 else error_msg
-                logger.info(f"run_backtest: Setting final progress (100% - Failed: {display_error_msg}).")
-                wrapped_set_progress((100, f"Failed: {display_error_msg}")) # Use wrapped function
-                time.sleep(0.05) # Add small delay for UI update
-                return results_package, {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
+                display_error_msg = (error_msg[:30] + '...') if len(error_msg) > 33 else error_msg # Shorter for inner
+                outer_display_error_msg = (error_msg[:40] + '...') if len(error_msg) > 43 else error_msg # For outer
+                wrapped_set_progress((100, f"Failed: {display_error_msg}"))
+                time.sleep(0.05)
+                return results_package, {"display": "none"}, 100, f"Failed: {display_error_msg}", f"Failed: {outer_display_error_msg} (100%)", True, \
+                       {'display': 'none'}, no_update, no_update, False
 
         except Exception as e:
             tb_str = traceback.format_exc()
             logger.error(f"run_backtest: An unexpected error occurred: {e}\nTraceback:\n{tb_str}")
-            error_msg = f"An unexpected error occurred in the run_backtest callback: {str(e)}"
-            display_error_msg = (error_msg[:47] + '...') if len(error_msg) > 50 else error_msg
-            # Ensure progress is set to 100% with an error message before returning
-            wrapped_set_progress((100, f"Callback Error: {display_error_msg}")) # Use wrapped function
-            time.sleep(0.05) # Add small delay for UI update
+            error_msg = f"Unexpected error: {str(e)}"
+            display_error_msg = (error_msg[:30] + '...') if len(error_msg) > 33 else error_msg
+            outer_display_error_msg = (error_msg[:40] + '...') if len(error_msg) > 43 else error_msg
+            wrapped_set_progress((100, f"Error: {display_error_msg}"))
+            time.sleep(0.05)
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
-                   {"display": "none"}, no_update, no_update, {'display': 'none'}, no_update, no_update, False # ADDED: Ensure progress container is closed
+                   {"display": "none"}, 100, f"Error: {display_error_msg}", f"Error: {outer_display_error_msg} (100%)", True, \
+                   {'display': 'none'}, no_update, no_update, False
+
+    # --- NEW Animation Callback ---
+    @app.callback(
+        Output(ResultsIDs.BACKTEST_ANIMATED_TEXT, 'children', allow_duplicate=True),
+        Input(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'n_intervals'),
+        State(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value'),
+        State(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'disabled'),
+        prevent_initial_call=True
+    )
+    def update_animated_progress_text(n_intervals, current_progress_value, interval_disabled):
+        if interval_disabled or n_intervals == 0: # Also check n_intervals to avoid update on first enable if not needed
+            # When the interval is disabled (backtest not running or finished),
+            # the run_backtest callback is responsible for setting the final static text.
+            raise PreventUpdate
+
+        dots = ['.  ', '.. ', '...'] # Cycle through 1, 2, 3 dots with spaces for consistent width
+        dot_str = dots[n_intervals % len(dots)]
+        
+        # Ensure current_progress_value is an int for formatting
+        progress_percent = int(current_progress_value) if current_progress_value is not None else 0
+        
+        return f"Running backtest{dot_str}({progress_percent}%)"
 
     # --- Result Update Callbacks (Triggered by Store) ---
     @app.callback(
