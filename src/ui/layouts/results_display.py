@@ -180,9 +180,9 @@ def create_status_and_progress_bar() -> html.Div:
             ),
             id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, # ID for the Collapse component
             is_open=False, # Initially hidden
-            className="w-75" # Make the progress bar container 75% wide
+            className="w-100" # Make the progress bar 100% of its new parent width
         )
-    ], className="status-progress-container mb-2") # Add a class for potential styling
+    ], className="status-progress-container mb-2 w-75") # Make this container 75% of overlay width
 
 # --- NEW: Center Panel Layout ---
 def create_center_panel_layout() -> html.Div:
