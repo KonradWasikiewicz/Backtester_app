@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 # Import centralized IDs
 from src.ui.ids.ids import WizardIDs
 
+# Import the stepper component
+from src.ui.components.stepper import create_wizard_stepper
+
 # Add project root to sys.path for imports
 try:
     # Try import from src for full application
@@ -170,14 +173,41 @@ def create_strategy_config_section(tickers=None):
             try:
                 data_service = DataService()
                 tickers = data_service.get_available_tickers()
-                # Format tickers for checklist: [{'label': 'TICKER', 'value': 'TICKER'}, ...]
-                tickers = [{'label': t, 'value': t} for t in tickers]
+                # Format tickers for checklist: [{'label': 'TICKER', 'value': 'TICKER'}, ...]                tickers = [{'label': t, 'value': t} for t in tickers]
             except Exception as e:
                 logger.error(f"Error fetching tickers via DataService: {e}")
                 tickers = [] # Fallback to empty list
 
-        # --- Progress bar ---
-        progress = dbc.Progress(id=WizardIDs.PROGRESS_BAR, value=0, striped=True, animated=True, className="mb-4")
+        # --- Define step names for the stepper ---
+        step_names = [
+            "Strategy",
+            "Date Range",
+            "Tickers",
+            "Risk",
+            "Costs",
+            "Rebalancing",
+            "Summary"
+        ]
+        
+        # --- Create stepper (starts at step 0) ---
+        stepper = create_wizard_stepper(0, step_names)
+        
+        # --- Keep the original progress bar but hide it initially ---
+        # This is kept for compatibility with existing callbacks
+        progress_bar = dbc.Progress(
+            id=WizardIDs.PROGRESS_BAR, 
+            value=0, 
+            striped=True, 
+            animated=True, 
+            className="d-none",  # Hide it by default
+            style={"display": "none"}
+        )
+        
+        # Create a container for both - the stepper will be visible, progress bar hidden
+        progress = html.Div([
+            stepper,
+            progress_bar
+        ], id=WizardIDs.PROGRESS_CONTAINER, className="mb-4")
 
         # --- Definition of wizard steps ---
         steps = [
