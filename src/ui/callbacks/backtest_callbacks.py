@@ -217,7 +217,8 @@ def register_backtest_callbacks(app: Dash):
             # the run_backtest callback is responsible for setting the final static text.
             raise PreventUpdate
 
-        dots = ['.  ', '.. ', '...'] # Cycle through 1, 2, 3 dots with spaces for consistent width
+        # Ensure dots have consistent width using non-breaking spaces
+        dots = ['.\u00A0\u00A0', '..\u00A0', '...']  # Replaced spaces with non-breaking spaces
         dot_str = dots[n_intervals % len(dots)]
         
         # Ensure current_progress_value is an int for formatting

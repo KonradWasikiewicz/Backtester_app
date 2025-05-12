@@ -162,51 +162,74 @@ def create_status_and_progress_bar() -> html.Div:
     """
     Creates the container for status messages and the progress bar.
     """
-    logger.debug("Creating status and progress bar container.")
+    logger.debug("Creating status and progress bar layout component.")
     return html.Div([
-        html.Div( # For "Running backtest... X%" - outside, above, centered
+        # Outer text: "Running backtest..." with animation and percentage
+        html.Div(
             id=app_ids.ResultsIDs.BACKTEST_ANIMATED_TEXT,
-            children=" ", # Initial placeholder
-            className="text-center mb-1", # Center text, margin bottom for spacing
-            style={"color": "white", "height": "20px"} # Ensure it has some height for alignment
+            children="Running backtest...",  # Initial text
+            className="text-center mb-1", # Centered and margin below
+            style={
+                "fontSize": "var(--font-size-sm)",
+                "color": "white"  # Ensure outer text is white
+            }
         ),
-        dbc.Collapse(
-            id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER,
-            is_open=False,
-            className="w-100",
-            style={"position": "relative"}, # Needed for absolute positioning of the inside label
+        # Container for the progress bar itself (for width control and collapse)
+        html.Div(
+            className="w-100",  # Changed from w-75 mx-auto to w-100
             children=[
-                html.Div( # For the detailed message INSIDE the bar
-                    id=app_ids.ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT,
-                    children=" ", # Initial placeholder
-                    style={
-                        "position": "absolute",
-                        "top": "50%",
-                        "left": "50%",
-                        "transform": "translate(-50%, -50%)",
-                        "width": "100%",
-                        "textAlign": "center",
-                        "color": "white", # Adjust color for visibility against progress bar
-                        "zIndex": "2", # Ensure it's above the progress bar fill
-                        "fontSize": "0.9rem" # Slightly smaller font for inside
-                    }
-                ),
-                dbc.Progress(
-                    id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR,
-                    value=0,
-                    striped=True,
-                    animated=True, # Animates the stripes on the bar
-                    style={"height": "25px", "position": "relative", "zIndex": "1", "fontSize": "0.8rem"} # Ensure Progress is behind the label text
+                dbc.Collapse(
+                    id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER,
+                    is_open=False, # Initially hidden
+                    className="w-100", # Progress bar takes full width of this container
+                    children=[
+                        # Relative container for positioning the inner text
+                        html.Div(
+                            style={"position": "relative", "height": "20px"}, # Height of standard progress bar
+                            children=[
+                                dbc.Progress(
+                                    id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR,
+                                    value=0,
+                                    # label="", # Label handled by the overlay div
+                                    className="mb-3", # Margin bottom
+                                    style={"height": "20px"} # Explicit height
+                                ),
+                                # Inner text: Detailed progress message, overlaid on the bar
+                                html.Div(
+                                    id=app_ids.ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT,
+                                    children="", # Initial empty text
+                                    style={
+                                        "position": "absolute",
+                                        "top": "50%",
+                                        "left": "50%",
+                                        "transform": "translate(-50%, -50%)",
+                                        "fontSize": "var(--font-size-xs)", # Inner text font size
+                                        "color": "white", # Ensure inner text is white
+                                        "whiteSpace": "nowrap",
+                                        "overflow": "hidden",
+                                        "textOverflow": "ellipsis",
+                                        "maxWidth": "calc(100% - 20px)", # Prevent overflow at edges
+                                        "textAlign": "center",
+                                        "zIndex": "10" # Ensure it's above the progress bar fill
+                                    }
+                                )
+                            ]
+                        )
+                    ]
                 )
             ]
         ),
         dcc.Interval(
             id=app_ids.ResultsIDs.BACKTEST_ANIMATION_INTERVAL,
-            interval=333,  # Approximately 1/3 of a second
+            interval=300,  # Milliseconds
             n_intervals=0,
-            disabled=True  # Initially disabled, enabled by callback when backtest starts
-        ),
-    ], className="status-progress-container mb-2 w-75")
+            disabled=True # Initially disabled
+        )
+    ],
+    id="status-and-progress-bar-div", 
+    className="status-progress-container mb-3",
+    style={"width": "60%"} # Added style to set width of the entire component
+)
 
 # --- NEW: Center Panel Layout ---
 def create_center_panel_layout() -> html.Div:
