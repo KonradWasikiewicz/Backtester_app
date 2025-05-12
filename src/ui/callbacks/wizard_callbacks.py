@@ -141,7 +141,8 @@ def register_wizard_callbacks(app: Dash):
                     target_step_index = step_number - 1  # Convert to 0-based index
                     logger.info(f"Step indicator {step_number} clicked. Target step index: {target_step_index}")
                 except ValueError:
-                    logger.error(f"Invalid step indicator ID format: {trigger_id}")                    return no_update
+                    logger.error(f"Invalid step indicator ID format: {trigger_id}")
+                    return no_update
             else:
                 logger.error(f"Unhandled trigger ID in step transition: {trigger_id}")
                 return no_update

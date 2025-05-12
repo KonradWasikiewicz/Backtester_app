@@ -231,10 +231,11 @@ input:focus, .form-control:focus {
   height: 100%;
   width: 24px; /* Width of the diagonal line - increased */
   background-color: inherit; /* Match the segment color */
-  /* Sharp angled divider */
+  /* Sharp angled divider with improved shape */
   clip-path: polygon(0 0, 50% 0, 100% 50%, 50% 100%, 0 100%);
   z-index: 2;
-  border-right: 2px solid #222; /* Dark border to enhance the divider */
+  /* Add a shadow effect to the right edge of the divider */
+  box-shadow: 2px 0 3px rgba(0,0,0,0.3);
 }
 
 .step-segment {
@@ -267,24 +268,31 @@ input:focus, .form-control:focus {
   width: 100%;
   left: 0;
   color: #adb5bd;
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.5); /* Add subtle shadow for better visibility */
+  font-weight: 500; /* Slightly bolder */
 }
 
 /* Step statuses for the progress bar style */
 .step-indicator.completed .step-segment {
   background-color: #198754; /* Green for completed */
   color: white;
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.2); /* Enhanced inner shadow */
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.2), 0 0 5px rgba(25, 135, 84, 0.5); /* Enhanced inner shadow and subtle glow */
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.15) 100%); /* Gradient for 3D effect */
 }
 
 .step-indicator.current .step-segment {
   background-color: #0d6efd; /* Blue for current */
   color: white;
-  box-shadow: inset 0 0 10px rgba(255,255,255,0.15), 0 0 15px rgba(13, 110, 253, 0.4); /* Glow effect */
+  box-shadow: inset 0 0 10px rgba(255,255,255,0.15), 0 0 15px rgba(13, 110, 253, 0.5); /* Glow effect */
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(0,0,0,0.15) 100%); /* Gradient for 3D effect */
 }
 
 .step-indicator.pending .step-segment {
   background-color: #6c757d; /* Gray for pending */
   color: #ddd;
+  /* Add subtle gradient for consistent look */
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.1) 100%);
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
 }
 
 .step-indicator.completed.clickable {
@@ -300,21 +308,43 @@ input:focus, .form-control:focus {
   width: 100% !important; /* Ensure full width */
 }
 
-/* Step header colors to match stepper segments */
+/* Step header colors to match stepper segments - with enhanced gradients */
 .wizard-step-header-completed {
   background-color: rgba(25, 135, 84, 1) !important; /* Solid green */
   color: #fff !important;
+  /* Add gradient effect to match step indicators */
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(0,0,0,0.15) 100%) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25) !important;
+  transition: all 0.3s ease;
 }
 
 .wizard-step-header-current {
   background-color: rgba(13, 110, 253, 1) !important; /* Solid blue */
   color: #fff !important;
-  box-shadow: 0 2px 5px rgba(13, 110, 253, 0.3);
+  /* Add gradient effect to match step indicators */
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(0,0,0,0.15) 100%) !important;
+  box-shadow: 0 2px 5px rgba(13, 110, 253, 0.5) !important;
+  /* Add subtle pulse animation to highlight the current step */
+  animation: currentStepPulse 2s infinite alternate;
+  transition: all 0.3s ease;
 }
 
 .wizard-step-header-pending {
   background-color: rgba(108, 117, 125, 1) !important; /* Solid gray */
   color: #ddd !important;
+  /* Add gradient effect to match step indicators */
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.15) 100%) !important;
+  transition: all 0.3s ease;
+}
+
+/* Subtle animation for current step */
+@keyframes currentStepPulse {
+  from {
+    box-shadow: 0 2px 5px rgba(13, 110, 253, 0.5);
+  }
+  to {
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.7);
+  }
 }
 
 /* Style the entire card based on step status */

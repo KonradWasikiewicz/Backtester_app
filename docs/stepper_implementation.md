@@ -8,7 +8,8 @@ The Stepper component provides a visual representation of the user's progress th
 - The current step (highlighted in blue)
 - Completed steps (highlighted in green)
 - Pending steps (greyed out)
-- Angled connectors between segments for a modern, flowing design
+- Angled dividers between segments for a modern, flowing design
+- Enhanced 3D effects with gradients, shadows, and subtle highlights
 
 The implementation allows users to navigate directly to completed steps by clicking on them, providing better context on the user's location in the wizard process. The step header backgrounds are also color-coordinated to match the stepper, making it visually clearer which step is active.
 
@@ -17,8 +18,10 @@ The implementation allows users to navigate directly to completed steps by click
 ### 1. CSS Styling
 
 The stepper component requires custom CSS styles defined in `assets/style.css`. These styles control the appearance of:
-- Progress bar-style step segments with angled dividers
-- Status-based coloring (green for completed, blue for current, gray for pending)
+- Progress bar-style step segments with prominent angled dividers
+- Status-based coloring (green for completed, blue for current, gray for pending) 
+- Advanced visual effects (gradients, shadows, glows) for a modern 3D appearance
+- Matching color themes for step headers and progress bar segments
 - Coordinated header backgrounds that match the stepper colors
 - Interactive elements (hover effects, clickable steps)
 
@@ -46,10 +49,18 @@ The stepper is integrated into the main wizard interface in `src/ui/layouts/stra
 
 - **Step Status Indication**: Different visual styling for completed, current, and pending steps
 - **Navigation**: Clicking on completed steps navigates directly to that step
-- **Progress Tracking**: Connector lines between steps show completion progress
-- **Visual Feedback**: Icons change based on step status (checkmarks for completed steps)
+- **Progress Tracking**: Angled dividers between steps show completion progress
+- **Visual Feedback**: Modern 3D appearance with color-coded segments
+- **Unified Design**: Step headers match their corresponding progress bar segments 
+- **Enhanced Visual Cues**: Current step has a subtle glow effect to draw attention
 
-## Benefits
+## Visual Design Elements
+
+- **Angled Dividers**: Sharp angled dividers between steps create a flowing, connected appearance
+- **Depth Effects**: Subtle shadows and gradients give a 3D, raised appearance to segments
+- **Consistent Color Coding**: All elements use a consistent color scheme (green/blue/grey)
+- **Text Enhancements**: Bold, shadowed numbers make step identification clear
+- **Responsive Design**: The stepper maintains its appearance at different screen sizes
 
 This implementation provides several advantages over the simple progress bar:
 - Better visual context for the user's position in the workflow
