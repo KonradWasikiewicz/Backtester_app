@@ -113,7 +113,10 @@ input:focus, .form-control:focus {
 .card-header { /* New style for card headers */
   display: flex;
   align-items: center;
-  min-height: 40px; /* Adjust as needed for consistent height */
+  min-height: 28px; /* Further reduced from 32px to make headers shorter */
+  padding: 0 !important; /* Remove padding completely and control it in the child div */
+  overflow: hidden;
+  border-radius: 4px 4px 0 0;
 }
 
 .card-title-text { /* New class for title text within card headers */
@@ -182,7 +185,17 @@ input:focus, .form-control:focus {
 /* --- Wizard Specific Styles --- */
 .wizard-step {
   margin-top: 0 !important; /* Ensure no top margin */
-  margin-bottom: 0.25rem !important; /* Consistent small bottom margin, reduced from 0.1875rem and unified with .card */
+  margin-bottom: 0.125rem !important; /* Reduced by half from 0.25rem to minimize space between steps */
+  border-radius: 4px;
+  overflow: hidden;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Add hover effect to the wizard step */
+.wizard-step:hover {
+  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
 /* --- Stepper Component Styles --- */
@@ -193,13 +206,14 @@ input:focus, .form-control:focus {
   margin-bottom: 1.5rem;
   padding: 0;
   width: 100%;
-  background: #333;
+  background: linear-gradient(to bottom, #444 0%, #333 100%);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
   height: 44px; /* Slightly taller */
   position: relative;
   border: 1px solid #222;
+  transform: translateZ(0); /* Force hardware acceleration for smoother animations */
 }
 
 /* Progress-bar style stepper */
@@ -258,6 +272,14 @@ input:focus, .form-control:focus {
   font-size: 1.3em; /* Slightly larger */
   text-shadow: 1px 1px 3px rgba(0,0,0,0.7); /* Enhanced shadow */
   position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  border-radius: 50%;
+  background-color: rgba(0,0,0,0.2);
+  box-shadow: 0 0 8px rgba(255,255,255,0.2);
 }
 
 .step-label {
@@ -304,7 +326,7 @@ input:focus, .form-control:focus {
 .wizard-step .card-header {
   transition: background-color 0.3s ease;
   border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding: 8px !important; /* Consistent padding */
+  padding: 4px !important; /* Reduced from 8px to make headers less tall */
   width: 100% !important; /* Ensure full width */
 }
 
@@ -337,13 +359,19 @@ input:focus, .form-control:focus {
   transition: all 0.3s ease;
 }
 
-/* Subtle animation for current step */
+/* Enhance animation for current step */
 @keyframes currentStepPulse {
-  from {
+  0% {
     box-shadow: 0 2px 5px rgba(13, 110, 253, 0.5);
+    background-color: rgba(13, 110, 253, 0.9);
   }
-  to {
-    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.7);
+  50% {
+    box-shadow: 0 2px 10px rgba(13, 110, 253, 0.8);
+    background-color: rgba(13, 110, 253, 1);
+  }
+  100% {
+    box-shadow: 0 2px 5px rgba(13, 110, 253, 0.5);
+    background-color: rgba(13, 110, 253, 0.9);
   }
 }
 
@@ -353,14 +381,14 @@ input:focus, .form-control:focus {
   overflow: hidden;
   border: none;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  margin-bottom: 12px !important; /* Increase spacing between steps */
+  margin-bottom: 6px !important; /* Reduced from 12px to half the spacing between steps */
 }
 
 /* Adjust card body styling */
 .wizard-step .card-body {
   background-color: #1e222d;
   border-top: none;
-  padding: 15px;
+  padding: 12px; /* Reduced from 15px for more compact content */
 }
 
 /* Ensure the header takes up the entire width */
@@ -373,7 +401,7 @@ input:focus, .form-control:focus {
 
 /* Make the header wrapper take the full width */
 .wizard-step .card-header > div {
-  padding: 12px !important;
+  padding: 6px !important; /* Reduced from 12px to half the padding */
   width: 100%;
 }
 

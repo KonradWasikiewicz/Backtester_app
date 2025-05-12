@@ -526,18 +526,19 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
     # Content style controlled by is_hidden initially, and by callback later
     content_style = {"display": "none"} if is_hidden else {"display": "block"}
     # Add padding for spacing
-    content_style.update({"paddingTop": "10px"})    # Default to pending state for initial display
+    content_style.update({"paddingTop": "10px"})
+    # Default to pending state for initial display
     initial_header_class = "wizard-step-header-pending" if step_number > 0 else "wizard-step-header-current"
-
+    
     return dbc.Card(
         [
             dbc.CardHeader(
                 # Wrap H5 in an html.Div and assign the ID here - this div gets the header class for coloring
                 html.Div(
-                    html.H5(title, className="mb-0 fw-bold text-white"), # Ensure text is white for visibility
+                    html.H6(title, className="mb-0 fw-bold text-white"), # Changed H5 to H6 for more compact sizing
                     id=WizardIDs.step_header(step_id), # ID for click events moved to Div
                     className=initial_header_class, # Apply initial coloring to the div directly
-                    style={"cursor": "pointer", "width": "100%"} # Indicate it's clickable and take full width
+                    style={"cursor": "pointer", "width": "100%", "padding": "4px"} # Reduced padding in the header div
                 ),
                 className="step-header p-0" # Remove padding from header, apply to div inside
                 # Removed ID from CardHeader itself
@@ -546,11 +547,12 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
             dbc.CardBody(
                 content,
                 id=WizardIDs.step_content(step_id),
-                style=content_style # Apply visibility style here
+                style=content_style, # Apply visibility style here
+                className="px-2 py-2" # Add smaller padding for more compact layout
             )
         ],
-        className="mb-1 wizard-step" # Keep class for potential CSS targeting
-        # No ID or style needed on the parent Card itself
+        className="mb-0 wizard-step", # Changed from mb-1 to mb-0 to minimize spacing between steps
+        style={"margin-bottom": "2px"} # Even smaller space between steps
     )
 
 def create_import_tickers_modal() -> dbc.Modal:
