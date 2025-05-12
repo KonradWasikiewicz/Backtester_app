@@ -16,9 +16,7 @@ def register_wizard_callbacks(app: Dash):
     """
     Register callbacks for the wizard interface, including step transitions and validation.
     """
-    logger.info("Registering wizard and main page run button callbacks...")
-
-    # --- Consolidated Step Transition Callback ---
+    logger.info("Registering wizard and main page run button callbacks...")    # --- Consolidated Step Transition Callback ---
     @app.callback(
         [
             # Step Content Visibility
@@ -63,11 +61,11 @@ def register_wizard_callbacks(app: Dash):
             # --- ADDED Step Indicator Inputs ---
             Input(WizardIDs.step_indicator(1), "n_clicks"),
             Input(WizardIDs.step_indicator(2), "n_clicks"),
-            Input(WizardIDs.step_indicator(3), "n_clicks"),            Input(WizardIDs.step_indicator(4), "n_clicks"),
+            Input(WizardIDs.step_indicator(3), "n_clicks"),
+            Input(WizardIDs.step_indicator(4), "n_clicks"),
             Input(WizardIDs.step_indicator(5), "n_clicks"),
             Input(WizardIDs.step_indicator(6), "n_clicks"),
-            Input(WizardIDs.step_indicator(7), "n_clicks")
-        ],
+            Input(WizardIDs.step_indicator(7), "n_clicks")        ],
         prevent_initial_call=True
     )
     def handle_step_transition(*args):
@@ -112,8 +110,7 @@ def register_wizard_callbacks(app: Dash):
                 logger.info(f"Confirm tickers button clicked. Target step index: {target_step_index}")
             elif trigger_id == WizardIDs.CONFIRM_RISK_BUTTON:
                 target_step_index = 4  # Move to trading costs
-                logger.info(f"Confirm risk button clicked. Target step index: {target_step_index}")
-            elif trigger_id == WizardIDs.CONFIRM_COSTS_BUTTON:
+                logger.info(f"Confirm risk button clicked. Target step index: {target_step_index}")            elif trigger_id == WizardIDs.CONFIRM_COSTS_BUTTON:
                 target_step_index = 5  # Move to rebalancing
                 logger.info(f"Confirm costs button clicked. Target step index: {target_step_index}")
             elif trigger_id == WizardIDs.CONFIRM_REBALANCING_BUTTON:
@@ -122,9 +119,10 @@ def register_wizard_callbacks(app: Dash):
             elif "-header" in trigger_id:
                 header_map = {
                     WizardIDs.step_header("strategy-selection"): 0, 
-                    WizardIDs.step_header("date-range-selection"): 1,                    WizardIDs.step_header("tickers-selection"): 2, 
+                    WizardIDs.step_header("date-range-selection"): 1,
+                    WizardIDs.step_header("tickers-selection"): 2, 
                     WizardIDs.step_header("risk-management"): 3,
-                    WizardIDs.step_header("trading-costs"): 4,
+                    WizardIDs.step_header("trading-costs"): 4, 
                     WizardIDs.step_header("rebalancing-rules"): 5, 
                     WizardIDs.step_header("wizard-summary"): 6
                 }
@@ -134,40 +132,39 @@ def register_wizard_callbacks(app: Dash):
                     return no_update
                 logger.info(f"Header '{trigger_id}' clicked. Target step index: {target_step_index}")
             # --- ADDED: Step Indicator Click Handler ---
-            elif trigger_id.startswith("step-indicator-"):
+            elif "step-indicator-" in trigger_id:
                 try:
                     # Extract step number from the indicator ID (1-based)
                     step_number = int(trigger_id.split("-")[-1])
                     target_step_index = step_number - 1  # Convert to 0-based index
                     logger.info(f"Step indicator {step_number} clicked. Target step index: {target_step_index}")
                 except ValueError:
-                    logger.error(f"Invalid step indicator ID format: {trigger_id}")                    return no_update
+                    logger.error(f"Invalid step indicator ID format: {trigger_id}")
+                    return no_update
+                    logger.error(f"Unknown header ID: {trigger_id}")
+                    return no_update
+                logger.info(f"Header '{trigger_id}' clicked. Target step index: {target_step_index}")
             else:
                 logger.error(f"Unhandled trigger ID in step transition: {trigger_id}")
                 return no_update
-                
+
             # --- Generate Outputs ---
-            visible_style = {"display": "block", "paddingTop": "10px"}
-            hidden_style = {"display": "none"}
+            visible_style = {"display": "block", "marginLeft": "30px", "paddingTop": "10px"}
+            hidden_style = {"display": "none", "marginLeft": "30px", "paddingTop": "10px"}
             step_styles = [hidden_style] * num_steps
-            # Updated classes for header styling to match the progress bar colors
-            status_classes = [""] * num_steps # Start with empty classes
-            
+            status_classes = ["step-status"] * num_steps # Base class
+
             if 0 <= target_step_index < num_steps:
                 step_styles[target_step_index] = visible_style
                 for i in range(num_steps):
-                    if i < target_step_index:
-                        status_classes[i] = "wizard-step-header-completed"  # Green for completed
-                    elif i == target_step_index:
-                        status_classes[i] = "wizard-step-header-current"  # Blue for current
-                    else:
-                        status_classes[i] = "wizard-step-header-pending"  # Gray for pending
+                    if i < target_step_index: status_classes[i] += " completed"
+                    elif i == target_step_index: status_classes[i] += " current"
+                    else: status_classes[i] += " pending"
             else:
                 logger.error(f"Invalid target_step_index calculated: {target_step_index}. Defaulting to step 0.")
                 step_styles[0] = visible_style # Fallback to first step
-                status_classes[0] = "wizard-step-header-current"  # Use the new class name
-                for i in range(1, num_steps):
-                    status_classes[i] = "wizard-step-header-pending"  # Use the new class name
+                status_classes[0] += " current"
+                for i in range(1, num_steps): status_classes[i] += " pending"
 
             progress = ((target_step_index + 1) / num_steps) * 100            # --- Determine strategy progress bar style ---
             # Show if a header was clicked, otherwise no_update (run_backtest callback will hide it)

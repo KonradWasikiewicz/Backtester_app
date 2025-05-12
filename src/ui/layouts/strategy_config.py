@@ -202,8 +202,7 @@ def create_strategy_config_section(tickers=None):
             className="d-none",  # Hide it by default
             style={"display": "none"}
         )
-        
-        # Create a container for both - the stepper will be visible, progress bar hidden
+          # Create a container for both - the stepper will be visible, progress bar hidden
         progress = html.Div([
             stepper,
             progress_bar
@@ -526,19 +525,21 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
     """Creates a single step (card) for the wizard."""
     # Content style controlled by is_hidden initially, and by callback later
     content_style = {"display": "none"} if is_hidden else {"display": "block"}
-    # Add margin consistent with previous attempts
-    content_style.update({"marginLeft": "30px", "paddingTop": "10px"})
+    # Add padding for spacing
+    content_style.update({"paddingTop": "10px"})    # Default to pending state for initial display
+    initial_header_class = "wizard-step-header-pending" if step_number > 0 else "wizard-step-header-current"
 
     return dbc.Card(
         [
             dbc.CardHeader(
-                # Wrap H5 in an html.Div and assign the ID here
+                # Wrap H5 in an html.Div and assign the ID here - this div gets the header class for coloring
                 html.Div(
-                    html.H5(title, className="mb-0 fw-bold"), # Keep existing title style
+                    html.H5(title, className="mb-0 fw-bold text-white"), # Ensure text is white for visibility
                     id=WizardIDs.step_header(step_id), # ID for click events moved to Div
-                    style={"cursor": "pointer"} # Indicate it's clickable
+                    className=initial_header_class, # Apply initial coloring to the div directly
+                    style={"cursor": "pointer", "width": "100%"} # Indicate it's clickable and take full width
                 ),
-                className="step-header p-2" # Use step-header class for styling
+                className="step-header p-0" # Remove padding from header, apply to div inside
                 # Removed ID from CardHeader itself
             ),
             # Assign the ID expected by the callback for content visibility control

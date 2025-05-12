@@ -2,6 +2,22 @@
 
 All notable changes to the Backtester App will be documented in this file.
 
+## [v1.0.90] - 2025-05-12
+
+### Bug fixes and minor updates
+
+- 1
+
+
+## [Unreleased]
+
+### Added
+
+- Implemented Visual Progress Indicator (Stepper) for the wizard interface
+- Added interactive navigation through completed wizard steps
+- Created visual styling for step completion status
+- Added documentation for the stepper component
+
 ## [v1.0.89] - 2025-05-12
 
 ### Bug fixes and minor updates

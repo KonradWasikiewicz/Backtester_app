@@ -13,11 +13,18 @@ class WizardIDs:
     STRATEGY_DESCRIPTION_OUTPUT = "wizard-strategy-description-output"
     STRATEGY_PARAM_INPUTS_CONTAINER = "wizard-strategy-param-inputs"
     CONFIRM_STRATEGY_BUTTON = "wizard-confirm-strategy"
-    
-    # Wizard Progress & Main Containers
+      # Wizard Progress & Main Containers
     PROGRESS_BAR = "wizard-progress"
     STEPS_CONTAINER = "wizard-steps-container"
     STRATEGY_CONFIG_CONTAINER = "strategy-config-container"
+    PROGRESS_CONTAINER = "wizard-progress-container"
+    WIZARD_STEPPER = "wizard-stepper"
+    
+    # Stepper Component IDs (NEW)
+    @staticmethod
+    def step_indicator(step_number):
+        """Generate ID for a step indicator in the stepper."""
+        return f"step-indicator-{step_number}"
     
     # Step Headers and Contents (by pattern)
     @staticmethod

@@ -13,6 +13,7 @@ Backtester App is a tool for testing and analyzing trading strategies using hist
 - Risk management with multiple options (position sizing, stop-loss, take-profit)
 - Result analysis with key metrics (CAGR, Sharpe Ratio, max drawdown)
 - Interactive visualizations (equity charts, returns heatmap, signal charts)
+- Intuitive wizard interface with visual stepper navigation
 
 ## Installation
 
@@ -101,6 +102,7 @@ Detailed documentation is available in the `docs/` directory:
 - [Technical Specification](docs/technical_specification.md)
 - [Aesthetics Guidelines](docs/aesthetics_guidelines.md)
 - [Workflow Guide](docs/workflow_guide.md)
+- [Stepper Implementation](docs/stepper_implementation.md)
 
 ## License
 

@@ -185,6 +185,168 @@ input:focus, .form-control:focus {
   margin-bottom: 0.25rem !important; /* Consistent small bottom margin, reduced from 0.1875rem and unified with .card */
 }
 
+/* --- Stepper Component Styles --- */
+.wizard-stepper {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  margin-bottom: 1.5rem;
+  padding: 0;
+  width: 100%;
+  background: #333;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+  height: 44px; /* Slightly taller */
+  position: relative;
+  border: 1px solid #222;
+}
+
+/* Progress-bar style stepper */
+.wizard-stepper.progress-style {
+  height: 44px;
+}
+
+/* Create angled dividers between steps */
+.step-indicator {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  transition: all 0.3s ease;
+  overflow: visible;
+  border-right: 2px solid #222; /* Add dark border between segments */
+}
+
+.step-indicator:last-child {
+  border-right: none; /* Remove border from last segment */
+}
+
+/* Create the angled dividers between segments - enhanced for visibility */
+.step-indicator:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -12px; /* Negative value creates overlap */
+  top: 0;
+  height: 100%;
+  width: 24px; /* Width of the diagonal line - increased */
+  background-color: inherit; /* Match the segment color */
+  /* Sharp angled divider */
+  clip-path: polygon(0 0, 50% 0, 100% 50%, 50% 100%, 0 100%);
+  z-index: 2;
+  border-right: 2px solid #222; /* Dark border to enhance the divider */
+}
+
+.step-segment {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 8px;
+  transition: background-color 0.3s ease;
+  /* Add subtle inner shadow for depth */
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
+}
+
+.step-number {
+  font-weight: bold;
+  color: #fff;
+  z-index: 3;
+  font-size: 1.3em; /* Slightly larger */
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.7); /* Enhanced shadow */
+  position: relative;
+}
+
+.step-label {
+  font-size: var(--font-size-xs);
+  text-align: center;
+  position: absolute;
+  bottom: -18px;
+  width: 100%;
+  left: 0;
+  color: #adb5bd;
+}
+
+/* Step statuses for the progress bar style */
+.step-indicator.completed .step-segment {
+  background-color: #198754; /* Green for completed */
+  color: white;
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.2); /* Enhanced inner shadow */
+}
+
+.step-indicator.current .step-segment {
+  background-color: #0d6efd; /* Blue for current */
+  color: white;
+  box-shadow: inset 0 0 10px rgba(255,255,255,0.15), 0 0 15px rgba(13, 110, 253, 0.4); /* Glow effect */
+}
+
+.step-indicator.pending .step-segment {
+  background-color: #6c757d; /* Gray for pending */
+  color: #ddd;
+}
+
+.step-indicator.completed.clickable {
+  cursor: pointer;
+  box-shadow: inset 0 0 10px rgba(255,255,255,0.2);
+}
+
+/* Header styling to match stepper colors */
+.wizard-step .card-header {
+  transition: background-color 0.3s ease;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding: 8px !important; /* Consistent padding */
+  width: 100% !important; /* Ensure full width */
+}
+
+/* Step header colors to match stepper segments */
+.wizard-step-header-completed {
+  background-color: rgba(25, 135, 84, 1) !important; /* Solid green */
+  color: #fff !important;
+}
+
+.wizard-step-header-current {
+  background-color: rgba(13, 110, 253, 1) !important; /* Solid blue */
+  color: #fff !important;
+  box-shadow: 0 2px 5px rgba(13, 110, 253, 0.3);
+}
+
+.wizard-step-header-pending {
+  background-color: rgba(108, 117, 125, 1) !important; /* Solid gray */
+  color: #ddd !important;
+}
+
+/* Style the entire card based on step status */
+.wizard-step {
+  border-radius: 4px;
+  overflow: hidden;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  margin-bottom: 12px !important; /* Increase spacing between steps */
+}
+
+/* Adjust card body styling */
+.wizard-step .card-body {
+  background-color: #1e222d;
+  border-top: none;
+  padding: 15px;
+}
+
+/* Ensure the header takes up the entire width */
+.wizard-step .card-header {
+  width: 100% !important;
+  padding: 0 !important;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Make the header wrapper take the full width */
+.wizard-step .card-header > div {
+  padding: 12px !important;
+  width: 100%;
+}
+
 /* --- Strategy Parameter Inputs Styling --- */
 .param-row {
   display: flex;

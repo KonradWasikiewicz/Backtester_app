@@ -2,11 +2,14 @@ import dash_bootstrap_components as dbc
 from dash import html
 import logging
 
+# Import centralized IDs
+from src.ui.ids.ids import WizardIDs
+
 logger = logging.getLogger(__name__)
 
 def create_step_indicator(step_number, label, status="pending", is_clickable=True):
     """
-    Creates a single step indicator for the stepper component.
+    Creates a single step indicator for the progress bar-like stepper component.
     
     Args:
         step_number (int): The number of the step
@@ -17,30 +20,25 @@ def create_step_indicator(step_number, label, status="pending", is_clickable=Tru
     Returns:
         html.Div: The step indicator component
     """
-    # Define status-specific styling
-    icon = "○"  # Default pending icon
-    if status == "completed":
-        icon = "✓"
-    elif status == "current":
-        icon = "⦿"
-    
     # Define class based on status
     base_class = "step-indicator"
     status_class = f"{base_class} {status}"
     if is_clickable:
         status_class += " clickable"
     
+    # Create a progress-bar segment style step indicator
     return html.Div([
-        html.Div([
-            html.Span(icon, className="step-icon"),
-            html.Span(str(step_number), className="step-number ml-1"),
-        ], className="step-circle"),
-        html.Span(label, className="step-label")
-    ], className=status_class, id=f"step-indicator-{step_number}")
+        html.Div(
+            html.Span(str(step_number), className="step-number"),
+            className="step-segment"
+        ),
+        html.Span(label, className="step-label d-none d-lg-block") # Hide on small screens
+    ], className=status_class, id=WizardIDs.step_indicator(step_number))
 
 def create_wizard_stepper(current_step_index, step_names):
     """
     Creates a wizard stepper component showing the progress through the wizard steps.
+    This creates a progress-bar-like stepper instead of individual circle indicators.
     
     Args:
         current_step_index (int): The index of the current step (0-based)
@@ -73,13 +71,7 @@ def create_wizard_stepper(current_step_index, step_names):
             is_clickable=is_clickable
         )
         
+        # Add to stepper container (no separate connector lines in the new design)
         step_indicators.append(step_indicator)
-        
-        # Add connector line between steps (except after the last step)
-        if i < len(step_names) - 1:
-            connector_class = "step-connector"
-            if i < current_step_index:
-                connector_class += " completed"
-            step_indicators.append(html.Div(className=connector_class))
     
-    return html.Div(step_indicators, className="wizard-stepper mb-4", id="wizard-stepper")
+    return html.Div(step_indicators, className="wizard-stepper progress-style mb-4", id=WizardIDs.WIZARD_STEPPER)
