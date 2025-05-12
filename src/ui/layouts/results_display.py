@@ -167,8 +167,8 @@ def create_status_and_progress_bar() -> html.Div:
         # Outer text: "Running backtest..." with animation and percentage
         html.Div(
             id=app_ids.ResultsIDs.BACKTEST_ANIMATED_TEXT,
-            children="Running backtest...",  # Initial text
-            className="text-center mb-1", # Centered and margin below
+            children=["Running backtest...", html.Span(id="progress-bar-percentage-span", className="progress-bar-percentage")],  # Initial text, added span for percentage
+            className="text-center mb-1 progress-bar-text", # Centered and margin below, added progress-bar-text class
             style={
                 "fontSize": "var(--font-size-sm)",
                 "color": "white"  # Ensure outer text is white
@@ -190,6 +190,7 @@ def create_status_and_progress_bar() -> html.Div:
                                 dbc.Progress(
                                     id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR,
                                     value=0,
+                                    striped=True,  # Ensure stripes are enabled
                                     # label="", # Label handled by the overlay div
                                     className="mb-3", # Margin bottom
                                     style={"height": "20px"} # Explicit height
@@ -198,12 +199,13 @@ def create_status_and_progress_bar() -> html.Div:
                                 html.Div(
                                     id=app_ids.ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT,
                                     children="", # Initial empty text
+                                    className="progress-bar-text", # <--- ADDED THIS CLASS
                                     style={
                                         "position": "absolute",
                                         "top": "50%",
                                         "left": "50%",
                                         "transform": "translate(-50%, -50%)",
-                                        "fontSize": "var(--font-size-xs)", # Inner text font size
+                                        # "fontSize": "var(--font-size-sm)", # This will now be handled by the class with !important
                                         "color": "white", # Ensure inner text is white
                                         "whiteSpace": "nowrap",
                                         "overflow": "hidden",

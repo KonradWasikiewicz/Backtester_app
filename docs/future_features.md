@@ -7,7 +7,7 @@ This document tracks potential features and improvements for the Backtester App,
 ## I. UI/UX Enhancements
 
 -   [ ] **(H) Modernized Wizard:**
-    -   [ ] Visual Progress Indicator (Stepper)
+    -   [x] Visual Progress Indicator (Stepper)
         > Replace the simple `dbc.Progress` bar with a more interactive component (e.g., using `dbc.Nav` with `dbc.NavItem` or a custom component) showing distinct steps. This provides better context on the user's location in the process and could allow clicking back to completed steps. Involves changes in `src/ui/layouts/strategy_config.py` and `src/ui/callbacks/wizard_callbacks.py`.
     -   [ ] Real-time Input Validation
         > Implement immediate feedback within each step for invalid inputs (e.g., end date before start date, non-numeric capital) using Dash clientside callbacks (`assets/clientside.js`) or server-side callbacks triggered by individual fields. Display errors near the input using `dbc.FormFeedback`. Update callbacks in `src/ui/callbacks/wizard_callbacks.py` and potentially `strategy_callbacks.py`.

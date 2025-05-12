@@ -220,11 +220,11 @@ def register_backtest_callbacks(app: Dash):
         # Ensure dots have consistent width using non-breaking spaces
         dots = ['.\u00A0\u00A0', '..\u00A0', '...']  # Replaced spaces with non-breaking spaces
         dot_str = dots[n_intervals % len(dots)]
-        
-        # Ensure current_progress_value is an int for formatting
+          # Ensure current_progress_value is an int for formatting
         progress_percent = int(current_progress_value) if current_progress_value is not None else 0
         
-        return f"Running backtest{dot_str}({progress_percent}%)"
+        # Return the text and a span with the percentage to utilize the CSS spacing
+        return ["Running backtest" + dot_str, html.Span(f"({progress_percent}%)", className="progress-bar-percentage")]
 
     # --- Result Update Callbacks (Triggered by Store) ---
     @app.callback(
