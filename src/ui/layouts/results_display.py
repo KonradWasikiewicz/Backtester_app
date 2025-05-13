@@ -76,7 +76,7 @@ def create_drawdown_chart() -> dbc.Card:
     """
     logger.debug("Creating drawdown chart card structure.")
     return dbc.Card([
-        dbc.CardHeader(html.Span(["Drawdown ", html.Span("(%)", style={"font-weight": "normal"})]), className="card-title-text"),
+        dbc.CardHeader(html.Span(["Drawdown ", html.Span("(%)", style={"fontWeight": "normal"})]), className="card-title-text"), # Corrected: "font-weight" to "fontWeight"
         dbc.CardBody([
             dcc.Loading(
                 id=app_ids.ResultsIDs.DRAWDOWN_CHART_LOADING, 

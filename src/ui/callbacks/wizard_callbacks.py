@@ -81,13 +81,15 @@ def register_wizard_callbacks(app: Dash):
             State(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),  # From step 1
             State(WizardIDs.DATE_RANGE_START_PICKER, "date"),  # From step 2
             State(WizardIDs.DATE_RANGE_END_PICKER, "date"),  # From step 2
-            State(WizardIDs.TICKER_LIST_CONTAINER, "children"),  # From step 3
+            State(WizardIDs.TICKER_DROPDOWN, "value"),  # MODIFIED: Was TICKER_LIST_CONTAINER, "children"
             # Risk management states (step 4) - Using any applicable state from the risk step
             State(WizardIDs.MAX_POSITION_SIZE_INPUT, "value"),  # Example from step 4
             # Trading costs states (step 5) - Using any applicable state from the costs step
-            State("wizard-commission-input", "value"),  # Example from step 5
+            State(WizardIDs.COMMISSION_INPUT, "value"),  # Example from step 5
+            State(WizardIDs.SLIPPAGE_INPUT, "value"),   # Example from step 5
             # Rebalancing states (step 6) - Using any applicable state from the rebalancing step
-            State("wizard-rebalancing-freq-dropdown", "value"),  # Example from step 6
+            State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),  # Corrected ID
+            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")  # Example from step 6
         ],
         prevent_initial_call=True
     )
@@ -124,23 +126,26 @@ def register_wizard_callbacks(app: Dash):
         initial_capital = args[first_state_index + 1]
         date_start = args[first_state_index + 2]
         date_end = args[first_state_index + 3]
-        selected_tickers = args[first_state_index + 4]
+        selected_tickers_value = args[first_state_index + 4]  # MODIFIED: Was selected_tickers, now from dropdown value
         max_position_size = args[first_state_index + 5]
         commission_value = args[first_state_index + 6]
-        rebalancing_freq = args[first_state_index + 7]
+        slippage_value = args[first_state_index + 7]
+        rebalancing_freq = args[first_state_index + 8]
+        rebalancing_threshold = args[first_state_index + 9]
         
         # Track completed steps based on required inputs
         if strategy_value and initial_capital:
             completed_steps.add(1)
         if date_start and date_end:
             completed_steps.add(2)
-        if selected_tickers and isinstance(selected_tickers, list) and len(selected_tickers) > 0:
+        # MODIFIED: Check selected_tickers_value (list of strings from dropdown)
+        if selected_tickers_value and isinstance(selected_tickers_value, list) and len(selected_tickers_value) > 0:
             completed_steps.add(3)
         if max_position_size is not None:  # This might need a more comprehensive check depending on risk requirements
             completed_steps.add(4)
-        if commission_value is not None:  # This might need a more comprehensive check
+        if commission_value is not None and slippage_value is not None:  # This might need a more comprehensive check
             completed_steps.add(5)
-        if rebalancing_freq:  # This might need a more comprehensive check
+        if rebalancing_freq and rebalancing_threshold is not None:  # This might need a more comprehensive check
             completed_steps.add(6)
         
         # Handle different trigger types
@@ -347,7 +352,7 @@ def register_wizard_callbacks(app: Dash):
 
     # --- Collect selected strategy parameters for the summary ---    
     @app.callback(
-        Output("wizard-strategy-parameters-summary", "children"),
+        Output(WizardIDs.SUMMARY_STRATEGY_PARAMETERS, "children"),
         [Input(WizardIDs.STRATEGY_DROPDOWN, "value")],
         [State({"type": "strategy-param", "name": ALL}, "id"),
          State({"type": "strategy-param", "name": ALL}, "value")]
@@ -397,28 +402,29 @@ def register_wizard_callbacks(app: Dash):
 
     # --- Summary page updates ---
     @app.callback(
-        [Output("wizard-summary-strategy", "children"),
-         Output("wizard-summary-dates", "children"),
-         Output("wizard-summary-tickers", "children"),
-         Output("wizard-summary-risk", "children"),
-         Output("wizard-summary-costs", "children"),
-         Output("wizard-summary-rebalancing", "children")],
-        [Input(WizardIDs.step_header("wizard-summary"), "n_clicks")],
+        [Output(WizardIDs.SUMMARY_STRATEGY_DETAILS, "children"),
+         Output(WizardIDs.SUMMARY_DATES_DETAILS, "children"),
+         Output(WizardIDs.SUMMARY_TICKERS_DETAILS, "children"),
+         Output(WizardIDs.SUMMARY_RISK_DETAILS, "children"),
+         Output(WizardIDs.SUMMARY_COSTS_DETAILS, "children"),
+         Output(WizardIDs.SUMMARY_REBALANCING_DETAILS, "children")],
+        [Input(WizardIDs.step_header(WizardIDs.SUMMARY_CONTAINER), "n_clicks")],
         [State(WizardIDs.STRATEGY_DROPDOWN, "value"),
          State(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),
          State(WizardIDs.DATE_RANGE_START_PICKER, "date"),
          State(WizardIDs.DATE_RANGE_END_PICKER, "date"),
-         State(WizardIDs.TICKER_LIST_CONTAINER, "children"),
+         State(WizardIDs.TICKER_DROPDOWN, "value"),  # MODIFIED: Was TICKER_LIST_CONTAINER
          State(WizardIDs.MAX_POSITION_SIZE_INPUT, "value"),
          State(WizardIDs.STOP_LOSS_INPUT, "value"),
          State(WizardIDs.TAKE_PROFIT_INPUT, "value"),
-         State("wizard-commission-input", "value"),
-         State("wizard-slippage-input", "value"),
-         State("wizard-rebalancing-freq-dropdown", "value")]
+         State(WizardIDs.COMMISSION_INPUT, "value"),
+         State(WizardIDs.SLIPPAGE_INPUT, "value"),
+         State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
+         State(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")]
     )
     def update_wizard_summary(n_clicks, strategy, initial_capital, start_date, end_date, 
-                             ticker_children, max_position, stop_loss, take_profit,
-                             commission, slippage, rebalancing_freq):
+                             selected_tickers_dropdown_value, max_position, stop_loss, take_profit, 
+                             commission, slippage, rebalancing_freq, rebalancing_threshold):
         """Update the wizard summary page with all selected configurations."""
         if n_clicks is None:
             # Don't update on initial load
@@ -435,14 +441,8 @@ def register_wizard_callbacks(app: Dash):
             html.P(f"Backtest Period: {start_date} to {end_date}")
         ])
         
-        # Extract ticker names from the ticker container children
-        ticker_names = []
-        if ticker_children and isinstance(ticker_children, list):
-            for child in ticker_children:
-                if isinstance(child, dict) and child.get('props', {}).get('children'):
-                    ticker_text = child['props']['children']
-                    if isinstance(ticker_text, str) and ticker_text.strip():
-                        ticker_names.append(ticker_text.strip())
+        # MODIFIED: Extract ticker names directly from the dropdown value
+        ticker_names = selected_tickers_dropdown_value if selected_tickers_dropdown_value else []
         
         # Format ticker summary
         ticker_summary = html.Div([
@@ -462,7 +462,8 @@ def register_wizard_callbacks(app: Dash):
         ])
           # Format rebalancing summary
         rebalancing_summary = html.Div([
-            html.P(f"Rebalancing Frequency: {rebalancing_freq}")
+            html.P(f"Rebalancing Frequency: {rebalancing_freq}"),
+            html.P(f"Rebalancing Threshold: {rebalancing_threshold}%")
         ])
         
         return (strategy_summary, date_summary, ticker_summary, 

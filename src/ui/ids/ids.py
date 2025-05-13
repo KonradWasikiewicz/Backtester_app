@@ -14,10 +14,8 @@ class WizardIDs:
     STRATEGY_PARAM_INPUTS_CONTAINER = "wizard-strategy-param-inputs"
     CONFIRM_STRATEGY_BUTTON = "wizard-confirm-strategy"
       # Wizard Progress & Main Containers
-    PROGRESS_BAR = "wizard-progress"
     STEPS_CONTAINER = "wizard-steps-container"
     STRATEGY_CONFIG_CONTAINER = "strategy-config-container"
-    PROGRESS_CONTAINER = "wizard-progress-container"
     WIZARD_STEPPER = "wizard-stepper"
     
     # Stepper Component IDs (NEW)
@@ -62,7 +60,6 @@ class WizardIDs:
     MARKET_TREND_LOOKBACK_INPUT = "wizard-market-trend-lookback-input"
     MAX_DRAWDOWN_INPUT = "wizard-max-drawdown-input" # Existing
     MAX_DAILY_LOSS_INPUT = "wizard-max-daily-loss-input"
-    MAX_CONSECUTIVE_LOSSES_INPUT = "wizard-max-consecutive-losses-input" # ADDED
     CONFIRM_RISK_BUTTON = "wizard-confirm-risk-button"
 
     # Risk Management Panels (NEW)
@@ -92,6 +89,15 @@ class WizardIDs:
     SUMMARY_OUTPUT_CONTAINER = "wizard-summary-output"
     RUN_BACKTEST_BUTTON_WIZARD = "wizard-run-backtest-button"
 
+    # Summary Detail Fields (NEW - based on wizard_callbacks.py usage)
+    SUMMARY_STRATEGY_DETAILS = "wizard-summary-strategy" # For strategy name and initial capital
+    SUMMARY_DATES_DETAILS = "wizard-summary-dates"
+    SUMMARY_TICKERS_DETAILS = "wizard-summary-tickers"
+    SUMMARY_RISK_DETAILS = "wizard-summary-risk"
+    SUMMARY_COSTS_DETAILS = "wizard-summary-costs"
+    SUMMARY_REBALANCING_DETAILS = "wizard-summary-rebalancing"
+    SUMMARY_STRATEGY_PARAMETERS = "wizard-strategy-parameters-summary"
+
     # Wizard-specific data stores
     RISK_MANAGEMENT_STORE_WIZARD = "wizard-risk-management-store" # NEW
 
@@ -100,7 +106,6 @@ class LayoutIDs:
     """IDs for main layout components."""
     
     MAIN_CONTAINER = "main-content-container"
-    SIDEBAR = "sidebar"
     CONTENT_AREA = "content-area"
     TAB_CONTAINER = "tabs-container"
 

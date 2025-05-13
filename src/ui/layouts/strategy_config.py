@@ -297,6 +297,7 @@ def create_strategy_config_section(tickers=None):
                         placeholder="Select tickers...",
                         className="mb-2 w-100"
                     ),
+                    html.Div(id=WizardIDs.TICKER_LIST_CONTAINER, className="mt-2"), # ADDED: Container for selected ticker badges
                     dbc.Button(
                         "Confirm",
                         id=WizardIDs.CONFIRM_TICKERS_BUTTON,
@@ -555,7 +556,7 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
             )
         ],
         className="mb-0 wizard-step", # Changed from mb-1 to mb-0 to minimize spacing between steps
-        style={"margin-bottom": "2px", "overflow": "visible"} # Allow overflow for dropdowns
+        style={"marginBottom": "2px", "overflow": "visible"} # Corrected: "margin-bottom" to "marginBottom"
     )
 
 def create_import_tickers_modal() -> dbc.Modal:
