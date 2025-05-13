@@ -13,7 +13,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 # Import centralized IDs
-from src.ui.ids.ids import WizardIDs
+from src.ui.ids.ids import WizardIDs, StrategyConfigIDs, AppStructureIDs
 
 # Import the stepper component
 from src.ui.components.stepper import create_wizard_stepper
@@ -84,7 +84,7 @@ def create_ticker_checklist(ticker_options: List[Dict[str, str]]):
         logger.warning(f"Received unexpected format for ticker options: {ticker_options}. Expected list of dicts like {{'label': 'X', 'value': 'X'}}.")
 
     return dcc.Checklist(
-        id='ticker-input',
+        id=StrategyConfigIDs.TICKER_INPUT_LEGACY,
         options=options, # Use the already formatted options directly
         value=[], # Default to nothing selected
         labelStyle={'display': 'block'} # Display each ticker on a new line
@@ -126,10 +126,10 @@ def create_backtest_parameters():
         dbc.Row([
             dbc.Col(html.Div([
                 html.Div([
-                    html.Label('From:', className='mb-1', htmlFor='backtest-start-date'), # Added htmlFor
+                    html.Label('From:', className='mb-1', htmlFor=StrategyConfigIDs.BACKTEST_START_DATE_LEGACY),
                     html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div 
                     dcc.DatePickerSingle(
-                        id='backtest-start-date',
+                        id=StrategyConfigIDs.BACKTEST_START_DATE_LEGACY,
                         date=default_start.strftime('%Y-%m-%d'),
                         min_date_allowed=min_date.strftime('%Y-%m-%d'),
                         max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
@@ -142,10 +142,10 @@ def create_backtest_parameters():
             ]), width=6),
             dbc.Col(html.Div([
                 html.Div([
-                    html.Label('To:', className='mb-1', htmlFor='backtest-end-date'), # Added htmlFor
+                    html.Label('To:', className='mb-1', htmlFor=StrategyConfigIDs.BACKTEST_END_DATE_LEGACY),
                     html.Div(style={"width": "60px", "display": "inline-block"}),  # Spacer div
                     dcc.DatePickerSingle(
-                        id='backtest-end-date',
+                        id=StrategyConfigIDs.BACKTEST_END_DATE_LEGACY,
                         date=default_end.strftime('%Y-%m-%d'),
                         min_date_allowed=min_date.strftime('%Y-%m-%d'),
                         max_date_allowed=max_date.strftime('%Y-%m-%d') if max_date else None,
@@ -570,18 +570,18 @@ def create_import_tickers_modal() -> dbc.Modal:
                 dbc.Tab([
                     html.Div([
                         dbc.Textarea(
-                            id="import-tickers-text",
+                            id=AppStructureIDs.IMPORT_TICKERS_TEXT_INPUT,
                             placeholder="Enter tickers, one per line",
                             className="mb-3",
                             style={"height": "200px"}
                         ),
-                        dbc.Button("Import", id="import-tickers-submit", color="primary")
+                        dbc.Button("Import", id=AppStructureIDs.IMPORT_TICKERS_SUBMIT_BUTTON, color="primary")
                     ])
                 ], label="Text Input"),
                 dbc.Tab([
                     html.Div([
                         dcc.Upload(
-                            id="import-tickers-file",
+                            id=AppStructureIDs.IMPORT_TICKERS_FILE_UPLOAD,
                             children=html.Div([
                                 "Drag and drop or ",
                                 html.A("select a file")
@@ -597,12 +597,12 @@ def create_import_tickers_modal() -> dbc.Modal:
                             },
                             multiple=False
                         ),
-                        html.Div(id="import-tickers-file-output", className="mt-3")
+                        html.Div(id=AppStructureIDs.IMPORT_TICKERS_FILE_OUTPUT, className="mt-3")
                     ])
                 ], label="File Upload")
             ])
         ]),
         dbc.ModalFooter([
-            dbc.Button("Close", id="import-tickers-close", color="secondary")
+            dbc.Button("Close", id=AppStructureIDs.IMPORT_TICKERS_CLOSE_BUTTON, color="secondary")
         ])
-    ], id="import-tickers-modal", size="lg")
+    ], id=AppStructureIDs.IMPORT_TICKERS_MODAL, size="lg")

@@ -38,7 +38,7 @@ from src.ui.layouts.strategy_config import create_strategy_config_section
 # --- Import the new panel layout functions ---
 from src.ui.layouts.results_display import create_center_panel_layout, create_right_panel_layout
 # --- END Import ---
-from src.ui.ids.ids import ResultsIDs, StrategyConfigIDs # ADDED IMPORT
+from src.ui.ids.ids import ResultsIDs, StrategyConfigIDs, AppStructureIDs, SharedComponentIDs # MODIFIED IMPORT
 from src.version import get_version, get_version_info, RELEASE_DATE, get_changelog  # Import version info
 
 # Update function signature to accept assets_dir
@@ -69,9 +69,6 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True, a
         external_stylesheets=[
             dbc.themes.DARKLY,  # Using dark Bootstrap theme
             "https://use.fontawesome.com/releases/v6.0.0/css/all.css",  # Font Awesome icons
-            # No need to specify /assets/ here if assets_folder is set correctly
-            # Dash will automatically serve files from the root of assets_folder
-            # at the /assets/ URL path. Let's simplify the path.
             f'style.css?v={css_version}' # Simplified path to custom CSS
         ],
         suppress_callback_exceptions=suppress_callback_exceptions,
@@ -306,9 +303,6 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True, a
     # Register all application callbacks
     register_callbacks(app)
 
-    # --- REMOVED the @app.server.route('/log-client-errors', ...) block ---
-    # This route is now registered only once in app.py via log_client_errors_endpoint(app)
-
     return app
 
 def create_version_display():
@@ -325,7 +319,7 @@ def create_version_display():
         [
             html.Span("v" + version, className="version-badge"),
         ],
-        id="version-badge",
+        id=AppStructureIDs.VERSION_BADGE, # CHANGED
         color="link",
         size="sm",
         className="p-0 text-light text-decoration-none"
@@ -349,23 +343,23 @@ def create_app_layout() -> html.Div:
         # Create the application layout
         layout = html.Div([
             # Store for app state
-            dcc.Store(id="app-state", data={}),
+            dcc.Store(id=AppStructureIDs.APP_STATE_STORE, data={}), # CHANGED
             dcc.Store(id=ResultsIDs.BACKTEST_RESULTS_STORE), # Use ResultsID
             dcc.Store(id=StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN), # Add main config store
-            dcc.Store(id='run-backtest-trigger-store'), # ADDED: Store to trigger backtest execution
+            dcc.Store(id=SharedComponentIDs.RUN_BACKTEST_TRIGGER_STORE), # CHANGED
 
             # Changelog modal
             dbc.Modal(
                 [
                     dbc.ModalHeader(dbc.ModalTitle("Backtester Changelog")),
                     dbc.ModalBody(
-                        html.Div(id="changelog-content")
+                        html.Div(id=AppStructureIDs.CHANGELOG_CONTENT) # CHANGED
                     ),
                     dbc.ModalFooter(
-                        dbc.Button("Close", id="close-changelog", className="ms-auto")
+                        dbc.Button("Close", id=AppStructureIDs.CHANGELOG_CLOSE_BUTTON, className="ms-auto") # CHANGED
                     ),
                 ],
-                id="changelog-modal",
+                id=AppStructureIDs.CHANGELOG_MODAL, # CHANGED
                 size="lg",
                 is_open=False,
             ),
@@ -407,19 +401,19 @@ def create_app_layout() -> html.Div:
                     # Left Panel (Steps/Config)
                     dbc.Col([
                         create_strategy_config_section(available_tickers),
-                    ], id='left-panel-col', width=12, lg=3, className="mb-4"), # lg=3 (unchanged)
+                    ], id=AppStructureIDs.LEFT_PANEL_COL, width=12, lg=3, className="mb-4"), # CHANGED
 
                     # Center Panel (Charts/Table)
                     dbc.Col([
                         create_center_panel_layout(),
                     # --- ADDED ID and initial style --- 
-                    ], id='center-panel-col', width=12, lg=6, className="mb-4", style={'display': 'none'}), # lg changed to 6
+                    ], id=ResultsIDs.CENTER_PANEL_COLUMN, width=12, lg=6, className="mb-4", style={'display': 'none'}), # CHANGED (using ResultsIDs)
 
                     # Right Panel (Stats)
                     dbc.Col([
                         create_right_panel_layout()
                     # --- ADDED ID and initial style --- 
-                    ], id='right-panel-col', width=12, lg=3, className="mb-4", style={'display': 'none'}) # lg changed to 3
+                    ], id=ResultsIDs.RIGHT_PANEL_COLUMN, width=12, lg=3, className="mb-4", style={'display': 'none'}) # CHANGED (using ResultsIDs)
                 ])
             ], fluid=True),
             # --- END UPDATED Three-Panel Main Content ---
@@ -439,7 +433,7 @@ def create_app_layout() -> html.Div:
                             html.A(
                                 f"v{get_version()}",
                                 href="#",
-                                id="footer-version",
+                                id=AppStructureIDs.FOOTER_VERSION_LINK, # CHANGED
                                 className="text-light fw-bold"
                             )
                         ])
@@ -514,9 +508,9 @@ def register_callbacks(app: dash.Dash) -> None:
 
         # --- Register Changelog Modal Callbacks ---
         @app.callback(
-            Output("changelog-modal", "is_open"),
-            [Input("version-badge", "n_clicks"), Input("close-changelog", "n_clicks")],
-            [State("changelog-modal", "is_open")],
+            Output(AppStructureIDs.CHANGELOG_MODAL, "is_open"), # CHANGED
+            [Input(AppStructureIDs.VERSION_BADGE, "n_clicks"), Input(AppStructureIDs.CHANGELOG_CLOSE_BUTTON, "n_clicks")], # CHANGED
+            [State(AppStructureIDs.CHANGELOG_MODAL, "is_open")], # CHANGED
             prevent_initial_call=True,
         )
         def toggle_changelog_modal(n_badge, n_close, is_open):
@@ -525,8 +519,8 @@ def register_callbacks(app: dash.Dash) -> None:
             return is_open
 
         @app.callback(
-            Output("changelog-content", "children"),
-            Input("version-badge", "n_clicks"),
+            Output(AppStructureIDs.CHANGELOG_CONTENT, "children"), # CHANGED
+            Input(AppStructureIDs.VERSION_BADGE, "n_clicks"), # CHANGED
             prevent_initial_call=True,
         )
         def load_changelog_content(n_clicks):

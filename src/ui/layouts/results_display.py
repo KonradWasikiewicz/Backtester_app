@@ -4,6 +4,7 @@ from typing import List
 import logging
 # Import centralized IDs
 from src.ui import ids as app_ids
+from src.ui.ids.ids import SharedComponentIDs
 
 logger = logging.getLogger(__name__)
 
@@ -228,7 +229,7 @@ def create_status_and_progress_bar() -> html.Div:
             disabled=True # Initially disabled
         )
     ],
-    id="status-and-progress-bar-div", 
+    id=SharedComponentIDs.STATUS_AND_PROGRESS_BAR_DIV, 
     className="status-progress-container mb-3",
     style={"width": "60%"} # Added style to set width of the entire component
 )
@@ -243,7 +244,7 @@ def create_center_panel_layout() -> html.Div:
     return html.Div([
         # --- MODIFIED: Loading Overlay ---
         html.Div(
-            id="loading-overlay", # New ID for the overlay
+            id=SharedComponentIDs.LOADING_OVERLAY, # New ID for the overlay
             children=[
                 create_status_and_progress_bar()
             ],

@@ -5,6 +5,9 @@ from typing import Dict, Any, List
 import json
 import logging
 
+# Import centralized IDs
+from src.ui.ids.ids import StrategyConfigIDs
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -18,14 +21,14 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
     # Panel visibility callback (This one is correct, depends only on the checklist)
     @app.callback(
         [
-            Output("position_sizing-panel", "style"),
-            Output("stop_loss-panel", "style"),
-            Output("take_profit-panel", "style"),
-            Output("risk_per_trade-panel", "style"),
-            Output("market_filter-panel", "style"),
-            Output("drawdown_protection-panel", "style")
+            Output(StrategyConfigIDs.POSITION_SIZING_PANEL_ALT, "style"),
+            Output(StrategyConfigIDs.STOP_LOSS_PANEL_ALT, "style"),
+            Output(StrategyConfigIDs.TAKE_PROFIT_PANEL_ALT, "style"),
+            Output(StrategyConfigIDs.RISK_PER_TRADE_PANEL_ALT, "style"),
+            Output(StrategyConfigIDs.MARKET_FILTER_PANEL_ALT, "style"),
+            Output(StrategyConfigIDs.DRAWDOWN_PROTECTION_PANEL_ALT, "style")
         ],
-        Input("risk-features-checklist", "value"),
+        Input(StrategyConfigIDs.RISK_FEATURES_CHECKLIST_ALT, "value"),
          prevent_initial_call=True # Good practice
     )
     def update_panel_visibility(enabled_features: List[str]):
@@ -64,16 +67,16 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
         ),
         [
             # Outputs are the individual checkboxes
-            Output("position_sizing-checkbox", "value"),
-            Output("stop_loss-checkbox", "value"),
-            Output("take_profit-checkbox", "value"),
-            Output("risk_per_trade-checkbox", "value"),
-            Output("market_filter-checkbox", "value"),
-            Output("drawdown_protection-checkbox", "value"),
-            Output("continue-iterate-checkbox", "value") # Assuming this exists
+            Output(StrategyConfigIDs.POSITION_SIZING_CHECKBOX_ALT, "value"),
+            Output(StrategyConfigIDs.STOP_LOSS_CHECKBOX_ALT, "value"),
+            Output(StrategyConfigIDs.TAKE_PROFIT_CHECKBOX_ALT, "value"),
+            Output(StrategyConfigIDs.RISK_PER_TRADE_CHECKBOX_ALT, "value"),
+            Output(StrategyConfigIDs.MARKET_FILTER_CHECKBOX_ALT, "value"),
+            Output(StrategyConfigIDs.DRAWDOWN_PROTECTION_CHECKBOX_ALT, "value"),
+            Output(StrategyConfigIDs.CONTINUE_ITERATE_CHECKBOX_ALT, "value") # Assuming this exists
         ],
         # Input is the master checklist
-        [Input("risk-features-checklist", "value")],
+        [Input(StrategyConfigIDs.RISK_FEATURES_CHECKLIST_ALT, "value")],
          # prevent_initial_call=False # Allow initial sync
     )
     logger.debug("Registered clientside callback syncCheckboxesToList")
@@ -81,18 +84,18 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
     # Server-side callback to update the checklist FROM the checkboxes
     # This is the one causing the loop. It should ONLY update the checklist.
     @app.callback(
-        Output("risk-features-checklist", "value"), # Output is ONLY the checklist
+        Output(StrategyConfigIDs.RISK_FEATURES_CHECKLIST_ALT, "value"), # Output is ONLY the checklist
         [
             # Inputs are the individual checkboxes
-            Input("position_sizing-checkbox", "value"),
-            Input("stop_loss-checkbox", "value"),
-            Input("take_profit-checkbox", "value"),
-            Input("risk_per_trade-checkbox", "value"),
-            Input("market_filter-checkbox", "value"),
-            Input("drawdown_protection-checkbox", "value"),
-            Input("continue-iterate-checkbox", "value") # Assuming this exists
+            Input(StrategyConfigIDs.POSITION_SIZING_CHECKBOX_ALT, "value"),
+            Input(StrategyConfigIDs.STOP_LOSS_CHECKBOX_ALT, "value"),
+            Input(StrategyConfigIDs.TAKE_PROFIT_CHECKBOX_ALT, "value"),
+            Input(StrategyConfigIDs.RISK_PER_TRADE_CHECKBOX_ALT, "value"),
+            Input(StrategyConfigIDs.MARKET_FILTER_CHECKBOX_ALT, "value"),
+            Input(StrategyConfigIDs.DRAWDOWN_PROTECTION_CHECKBOX_ALT, "value"),
+            Input(StrategyConfigIDs.CONTINUE_ITERATE_CHECKBOX_ALT, "value") # Assuming this exists
         ],
-        State("risk-features-checklist", "value"), # Get current checklist value as State
+        State(StrategyConfigIDs.RISK_FEATURES_CHECKLIST_ALT, "value"), # Get current checklist value as State
         prevent_initial_call=True # Prevent firing on load
     )
     def update_features_list_from_checkboxes(*args):
@@ -136,20 +139,20 @@ def register_risk_management_callbacks(app: dash.Dash) -> None:
 
     # Store the risk management configuration data (This seems fine)
     @app.callback(
-        Output('risk-management-store', 'data'),
+        Output(StrategyConfigIDs.RISK_MANAGEMENT_STORE_ALT, 'data'),
         [
-            Input('risk-features-checklist', 'value'),
-            Input('max-position-size', 'value'),
-            Input('max-portfolio-risk', 'value'),
-            Input('stop-loss-type', 'value'),
-            Input('stop-loss-value', 'value'),
-            Input('take-profit-type', 'value'),
-            Input('take-profit-value', 'value'),
-            Input('max-risk-per-trade', 'value'),
-            Input('risk-reward-ratio', 'value'),
-            Input('market-trend-lookback', 'value'),
-            Input('max-drawdown', 'value'),
-            Input('max-daily-loss', 'value')
+            Input(StrategyConfigIDs.RISK_FEATURES_CHECKLIST_ALT, 'value'),
+            Input(StrategyConfigIDs.MAX_POSITION_SIZE_ALT, 'value'),
+            Input(StrategyConfigIDs.MAX_PORTFOLIO_RISK_ALT, 'value'),
+            Input(StrategyConfigIDs.STOP_LOSS_TYPE_ALT, 'value'),
+            Input(StrategyConfigIDs.STOP_LOSS_VALUE_ALT, 'value'),
+            Input(StrategyConfigIDs.TAKE_PROFIT_TYPE_ALT, 'value'),
+            Input(StrategyConfigIDs.TAKE_PROFIT_VALUE_ALT, 'value'),
+            Input(StrategyConfigIDs.MAX_RISK_PER_TRADE_ALT, 'value'),
+            Input(StrategyConfigIDs.RISK_REWARD_RATIO_ALT, 'value'),
+            Input(StrategyConfigIDs.MARKET_TREND_LOOKBACK_ALT, 'value'),
+            Input(StrategyConfigIDs.MAX_DRAWDOWN_ALT, 'value'),
+            Input(StrategyConfigIDs.MAX_DAILY_LOSS_ALT, 'value')
         ],
          prevent_initial_call=True # Good practice
     )

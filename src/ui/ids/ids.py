@@ -102,14 +102,6 @@ class WizardIDs:
     RISK_MANAGEMENT_STORE_WIZARD = "wizard-risk-management-store" # NEW
 
 
-class LayoutIDs:
-    """IDs for main layout components."""
-    
-    MAIN_CONTAINER = "main-content-container"
-    CONTENT_AREA = "content-area"
-    TAB_CONTAINER = "tabs-container"
-
-
 class ResultsIDs:
     """IDs for results display components."""
 
@@ -201,3 +193,71 @@ class StrategyConfigIDs:
 
     # Store for configuration if used by main page components
     STRATEGY_CONFIG_STORE_MAIN = "strategy-config-store-main" # Distinct from wizard's potential store
+
+    # IDs from src/ui/layouts/risk_management.py, potentially for a non-wizard main page context
+    RISK_FEATURES_CHECKLIST_ALT = "risk-features-checklist" # WizardIDs.RISK_FEATURES_CHECKLIST exists
+    POSITION_SIZING_PANEL_ALT = "position_sizing-panel"
+    STOP_LOSS_PANEL_ALT = "stop_loss-panel"
+    TAKE_PROFIT_PANEL_ALT = "take_profit-panel"
+    RISK_PER_TRADE_PANEL_ALT = "risk_per_trade-panel"
+    MARKET_FILTER_PANEL_ALT = "market_filter-panel"
+    DRAWDOWN_PROTECTION_PANEL_ALT = "drawdown_protection-panel"
+
+    POSITION_SIZING_CHECKBOX_ALT = "position_sizing-checkbox"
+    STOP_LOSS_CHECKBOX_ALT = "stop_loss-checkbox"
+    TAKE_PROFIT_CHECKBOX_ALT = "take_profit-checkbox"
+    RISK_PER_TRADE_CHECKBOX_ALT = "risk_per_trade-checkbox"
+    MARKET_FILTER_CHECKBOX_ALT = "market_filter-checkbox"
+    DRAWDOWN_PROTECTION_CHECKBOX_ALT = "drawdown_protection-checkbox"
+    CONTINUE_ITERATE_CHECKBOX_ALT = "continue-iterate-checkbox"
+
+    RISK_MANAGEMENT_STORE_ALT = "risk-management-store" # WizardIDs.RISK_MANAGEMENT_STORE_WIZARD exists
+
+    # Inputs from src/ui/layouts/risk_management.py (alternative context)
+    MAX_POSITION_SIZE_ALT = "max-position-size" # WizardIDs.MAX_POSITION_SIZE_INPUT exists
+    MAX_PORTFOLIO_RISK_ALT = "max-portfolio-risk"
+    STOP_LOSS_TYPE_ALT = "stop-loss-type" # WizardIDs.STOP_LOSS_TYPE_SELECT exists
+    STOP_LOSS_VALUE_ALT = "stop-loss-value" # WizardIDs.STOP_LOSS_INPUT exists
+    TAKE_PROFIT_TYPE_ALT = "take-profit-type" # WizardIDs.TAKE_PROFIT_TYPE_SELECT exists
+    TAKE_PROFIT_VALUE_ALT = "take-profit-value" # WizardIDs.TAKE_PROFIT_INPUT exists
+    MAX_RISK_PER_TRADE_ALT = "max-risk-per-trade" # WizardIDs.MAX_RISK_PER_TRADE_INPUT exists
+    RISK_REWARD_RATIO_ALT = "risk-reward-ratio"
+    MARKET_TREND_LOOKBACK_ALT = "market-trend-lookback" # WizardIDs.MARKET_TREND_LOOKBACK_INPUT exists
+    MAX_DRAWDOWN_ALT = "max-drawdown" # WizardIDs.MAX_DRAWDOWN_INPUT exists
+    MAX_DAILY_LOSS_ALT = "max-daily-loss" # WizardIDs.MAX_DAILY_LOSS_INPUT exists
+
+    # IDs from src/ui/layouts/strategy_config.py (non-wizard parts, e.g. old main page elements)
+    TICKER_INPUT_LEGACY = "ticker-input" # WizardIDs.TICKER_DROPDOWN and StrategyConfigIDs.TICKER_INPUT_MAIN exist
+    BACKTEST_START_DATE_LEGACY = "backtest-start-date" # WizardIDs.DATE_RANGE_START_PICKER and StrategyConfigIDs.START_DATE_PICKER_MAIN exist
+    BACKTEST_END_DATE_LEGACY = "backtest-end-date" # WizardIDs.DATE_RANGE_END_PICKER and StrategyConfigIDs.END_DATE_PICKER_MAIN exist
+
+
+class SharedComponentIDs:
+    """IDs for components shared or used across different UI modules."""
+    LOADING_OVERLAY = "loading-overlay"
+    RUN_BACKTEST_TRIGGER_STORE = "run-backtest-trigger-store"
+    STATUS_AND_PROGRESS_BAR_DIV = "status-and-progress-bar-div"
+
+
+class AppStructureIDs:
+    """IDs for main application structural elements, modals, and global stores."""
+    APP_STATE_STORE = "app-state"
+
+    # Main layout columns
+    LEFT_PANEL_COL = "left-panel-col"
+
+    # Modals
+    CHANGELOG_MODAL = "changelog-modal"
+    CHANGELOG_CONTENT = "changelog-content"
+    CHANGELOG_CLOSE_BUTTON = "close-changelog"
+
+    IMPORT_TICKERS_MODAL = "import-tickers-modal"
+    IMPORT_TICKERS_TEXT_INPUT = "import-tickers-text"
+    IMPORT_TICKERS_SUBMIT_BUTTON = "import-tickers-submit"
+    IMPORT_TICKERS_FILE_UPLOAD = "import-tickers-file"
+    IMPORT_TICKERS_FILE_OUTPUT = "import-tickers-file-output"
+    IMPORT_TICKERS_CLOSE_BUTTON = "import-tickers-close"
+
+    # Other UI elements
+    VERSION_BADGE = "version-badge"
+    FOOTER_VERSION_LINK = "footer-version"

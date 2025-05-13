@@ -23,7 +23,7 @@ from src.core.exceptions import BacktestError, DataError
 from src.core.constants import CHART_THEME
 
 # Import centralized IDs
-from src.ui.ids.ids import ResultsIDs, WizardIDs, StrategyConfigIDs # Added StrategyConfigIDs for main page inputs
+from src.ui.ids.ids import ResultsIDs, WizardIDs, StrategyConfigIDs, SharedComponentIDs # MODIFIED
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def register_backtest_callbacks(app: Dash):
     # This callback now outputs to the store instead of directly to result components
     @app.callback(
         Output(ResultsIDs.BACKTEST_RESULTS_STORE, 'data'),
-        Output("loading-overlay", 'style', allow_duplicate=True),
+        Output(SharedComponentIDs.LOADING_OVERLAY, 'style', allow_duplicate=True), # CHANGED
         Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value', allow_duplicate=True), # For bar fill
         Output(ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT, 'children', allow_duplicate=True), # Inner detailed message
         Output(ResultsIDs.BACKTEST_ANIMATED_TEXT, 'children', allow_duplicate=True), # Outer animated text + percentage
@@ -50,13 +50,13 @@ def register_backtest_callbacks(app: Dash):
         Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
         Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
         Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open', allow_duplicate=True),
-        Input('run-backtest-trigger-store', 'data'),
+        Input(SharedComponentIDs.RUN_BACKTEST_TRIGGER_STORE, 'data'), # CHANGED
         State(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data'),
         background=True,
         running=[
             (Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'disabled'), True, False),
             (Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'disabled'), True, False),
-            (Output("loading-overlay", 'style'),
+            (Output(SharedComponentIDs.LOADING_OVERLAY, 'style'), # CHANGED
              {"display": "flex", "position": "absolute", "top": "0", "left": "0", "right": "0", "bottom": "0", "backgroundColor": "rgba(18, 18, 18, 0.85)", "zIndex": "1050", "flexDirection": "column", "alignItems": "center", "justifyContent": "center"},
              {"display": "none"}),
             (Output(ResultsIDs.BACKTEST_STATUS_MESSAGE, 'children'), "", ""), # No longer primary status, clear it
@@ -296,7 +296,7 @@ def register_backtest_callbacks(app: Dash):
     # --- Callback to make results panels visible ---
     @app.callback(
         Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style'), # MODIFIED: Only controls center panel now
-        Input('run-backtest-trigger-store', 'data'),
+        Input(SharedComponentIDs.RUN_BACKTEST_TRIGGER_STORE, 'data'), # CHANGED
         prevent_initial_call=True
     )
     def toggle_results_panels_visibility(trigger_data): 
