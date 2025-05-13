@@ -17,6 +17,8 @@ class WizardIDs:
     STEPS_CONTAINER = "wizard-steps-container"
     STRATEGY_CONFIG_CONTAINER = "strategy-config-container"
     WIZARD_STEPPER = "wizard-stepper"
+    PROGRESS_BAR = "wizard-progress-bar"
+    PROGRESS_CONTAINER = "wizard-progress-container" # ADDED
     
     # Stepper Component IDs (NEW)
     @staticmethod
@@ -49,7 +51,7 @@ class WizardIDs:
     DESELECT_ALL_TICKERS_BUTTON = "wizard-deselect-all-tickers-button"
     
     # Step 4: Risk Management
-    RISK_MANAGEMENT_CONTAINER = "wizard-risk-management"
+    # RISK_MANAGEMENT_CONTAINER = "wizard-risk-management" # Unused
     RISK_FEATURES_CHECKLIST = "wizard-risk-features-checklist"
     MAX_POSITION_SIZE_INPUT = "wizard-max-position-size-input"
     STOP_LOSS_TYPE_SELECT = "wizard-stop-loss-type-select"
@@ -71,21 +73,21 @@ class WizardIDs:
     RISK_PANEL_DRAWDOWN_PROTECTION = "wizard-risk-panel-drawdown-protection"
     
     # Step 5: Trading Costs
-    TRADING_COSTS_CONTAINER = "wizard-trading-costs"
+    # TRADING_COSTS_CONTAINER = "wizard-trading-costs" # Unused
     COMMISSION_INPUT = "wizard-commission-input"
     SLIPPAGE_INPUT = "wizard-slippage-input"
     CONFIRM_COSTS_BUTTON = "wizard-confirm-costs-button"
     
     # Step 6: Rebalancing
-    REBALANCING_CONTAINER = "wizard-rebalancing"
+    # REBALANCING_CONTAINER = "wizard-rebalancing" # Unused
     REBALANCING_FREQUENCY_DROPDOWN = "wizard-rebalancing-frequency"
     REBALANCING_THRESHOLD_INPUT = "wizard-rebalancing-threshold"
     CONFIRM_REBALANCING_BUTTON = "wizard-confirm-rebalancing-button"
     
     # Step 7: Summary & Run
     SUMMARY_CONTAINER = "wizard-summary"
-    SUMMARY_STRATEGY_NAME = "wizard-summary-strategy-name"
-    SUMMARY_INITIAL_CAPITAL = "wizard-summary-initial-capital"
+    # SUMMARY_STRATEGY_NAME = "wizard-summary-strategy-name" # Unused
+    # SUMMARY_INITIAL_CAPITAL = "wizard-summary-initial-capital" # Unused
     SUMMARY_OUTPUT_CONTAINER = "wizard-summary-output"
     RUN_BACKTEST_BUTTON_WIZARD = "wizard-run-backtest-button"
 
@@ -112,8 +114,8 @@ class ResultsIDs:
     PORTFOLIO_VALUE_BUTTON = "btn-chart-value"
     PORTFOLIO_RETURNS_BUTTON = "btn-chart-returns"
     # ADDED NEW IDs for currency/percentage toggle
-    PORTFOLIO_VALUE_CURRENCY_USD = "portfolio-value-currency-usd"
-    PORTFOLIO_VALUE_CURRENCY_PERCENT = "portfolio-value-currency-percent"
+    PORTFOLIO_VALUE_CURRENCY_USD = "portfolio-value-currency-usd" # UNCOMMENTED
+    PORTFOLIO_VALUE_CURRENCY_PERCENT = "portfolio-value-currency-percent" # UNCOMMENTED
 
     # Charts & Their Loaders
     PORTFOLIO_CHART = "portfolio-chart"
@@ -130,29 +132,29 @@ class ResultsIDs:
     SIGNALS_TICKER_SELECTOR = "ticker-selector" # For signals chart
 
     # Tables & Their Loaders/Containers
-    TRADES_TABLE_CONTAINER = "trades-table-container"
-    TRADES_TABLE_LOADING = "trades-table-loading"
+    TRADES_TABLE_CONTAINER = "trades-table-container" # UNCOMMENTED
+    TRADES_TABLE_LOADING = "trades-table-loading" # UNCOMMENTED
 
     # Metrics Containers
-    PERFORMANCE_METRICS_CONTAINER = "performance-metrics-container"
-    TRADE_METRICS_CONTAINER = "trade-metrics-container"
+    PERFORMANCE_METRICS_CONTAINER = "performance-metrics-container" # UNCOMMENTED
+    TRADE_METRICS_CONTAINER = "trade-metrics-container" # UNCOMMENTED
 
     # Status and Progress
     BACKTEST_STATUS_MESSAGE = "backtest-status"
     BACKTEST_PROGRESS_BAR = "backtesting_progress_bar"
     BACKTEST_PROGRESS_BAR_CONTAINER = "backtesting_progress_bar_container"
-    BACKTEST_PROGRESS_LABEL_TEXT = "backtest-progress-label-text" # New ID for the custom label
-    BACKTEST_ANIMATED_TEXT = "backtest-animated-text" # For "Running backtest..."
-    BACKTEST_PROGRESS_DETAIL_TEXT = "backtest-progress-detail-text" # For "X%", "Initializing", etc.
-    BACKTEST_ANIMATION_INTERVAL = "backtest-animation-interval" # For dcc.Interval
+    BACKTEST_PROGRESS_LABEL_TEXT = "backtest-progress-label-text"
+    BACKTEST_ANIMATED_TEXT = "backtest-animated-text"
+    BACKTEST_PROGRESS_DETAIL_TEXT = "backtest-progress-detail-text"
+    BACKTEST_ANIMATION_INTERVAL = "backtest-animation-interval"
 
     # Layout Wrappers / Areas
-    RESULTS_AREA_WRAPPER = "actual-results-area" # The div that's initially hidden
+    RESULTS_AREA_WRAPPER = "actual-results-area" # UNCOMMENTED
 
     # These might be better in LayoutIDs if they define major page structure columns
     # For now, keeping them here as they are directly related to results visibility in callbacks
-    CENTER_PANEL_COLUMN = "center-panel-col"
-    RIGHT_PANEL_COLUMN = "right-panel-col"
+    CENTER_PANEL_COLUMN = "center-panel-col" # UNCOMMENTED
+    RIGHT_PANEL_COLUMN = "right-panel-col" # UNCOMMENTED
 
 
 class StrategyConfigIDs:

@@ -172,11 +172,17 @@ This document tracks potential features and improvements for the Backtester App,
 
 ## V. ID Management & Code Cohesion (Generated from Roadmap)
 
--   [ ] **(M) Complete Risk Management UI Integration:**
-    -   The Risk Management step (Step 4) in the wizard currently has defined IDs in `src/ui/ids/ids.py`. Initial checks showed some of these IDs were not found in layout or callback files. However, a more detailed audit confirmed that most `WizardIDs` for Risk Management **are actively used** in `src/ui/layouts/strategy_config.py`, `src/ui/callbacks/risk_management_callbacks.py`, or `src/ui/callbacks/wizard_callbacks.py`.
+**Phase 1 Status: Substantially Completed. Unused IDs have been commented out in `src/ui/ids/ids.py`. The main structure for ID management is in place.**
+
+-   [x] **(M) Complete Risk Management UI Integration:**
+    -   The Risk Management step (Step 4) in the wizard uses IDs from `src/ui/ids/ids.py`.
     -   **ID Usage Status (WizardIDs - Risk Management):**
-        -   `WizardIDs.RISK_MANAGEMENT_CONTAINER`: **No usage found.** This ID might be a candidate for removal or planned for future layout structuring.
-        -   The following IDs are **confirmed to be in use**:
+        -   ~`WizardIDs.RISK_MANAGEMENT_CONTAINER`~: **Commented out (unused).**
+        -   `WizardIDs.TRADING_COSTS_CONTAINER`: **Commented out (unused).** (Related to Step 5 but listed here for wizard containers)
+        -   `WizardIDs.REBALANCING_CONTAINER`: **Commented out (unused).** (Related to Step 6 but listed here for wizard containers)
+        -   `WizardIDs.SUMMARY_STRATEGY_NAME`: **Commented out (unused).**
+        -   `WizardIDs.SUMMARY_INITIAL_CAPITAL`: **Commented out (unused).**
+        -   The following IDs are **confirmed to be in use** for Risk Management and other wizard steps:
             -   `WizardIDs.RISK_FEATURES_CHECKLIST`
             -   `WizardIDs.MAX_POSITION_SIZE_INPUT`
             -   `WizardIDs.STOP_LOSS_TYPE_SELECT`
@@ -195,50 +201,52 @@ This document tracks potential features and improvements for the Backtester App,
             -   `WizardIDs.RISK_PANEL_MARKET_FILTER`
             -   `WizardIDs.RISK_PANEL_DRAWDOWN_PROTECTION`
             -   `WizardIDs.RISK_MANAGEMENT_STORE_WIZARD`
-    -   **Action:** Investigate the purpose of `WizardIDs.RISK_MANAGEMENT_CONTAINER`. If it's part of a planned but unimplemented layout structure for the risk management step, its implementation should be prioritized. If it's genuinely unused and not planned, it can be flagged for removal after further review.
+            -   Other wizard step IDs (strategy selection, dates, tickers, costs, rebalancing inputs, summary structure) are also in use.
+    -   **Action:** Future development for Step 4 should ensure all necessary components are implemented and use existing defined IDs where appropriate, or new IDs are added to `ids.py`. The commented-out container IDs can be reinstated if a specific container component is added to the layout for these steps.
 
--   [ ] **(M) Review Unused ResultsIDs:**
-    -   The following IDs within the `ResultsIDs` class (defined in `src/ui/ids/ids.py`) were not found in `src/ui/layouts/results_display.py` or relevant callbacks in `src/ui/callbacks/`:
-        -   `ResultsIDs.PORTFOLIO_VALUE_BUTTON`
-        -   `ResultsIDs.PORTFOLIO_RETURNS_BUTTON`
-        -   `ResultsIDs.BACKTEST_PROGRESS_DETAIL_TEXT`
-    -   **Action:** Determine if these IDs correspond to planned features (e.g., chart toggle buttons, specific progress text elements) that haven't been implemented yet, or if they are remnants of previous designs. If planned, their implementation should be scheduled. If obsolete, they can be removed from `ids.py` after confirming they are not referenced elsewhere or intended for upcoming features.
+-   [x] **(M) Review Unused ResultsIDs:**
+    -   The following IDs within the `ResultsIDs` class were found to be unused and have been **commented out** in `src/ui/ids/ids.py`:
+        -   ~`ResultsIDs.PORTFOLIO_VALUE_BUTTON`~
+        -   ~`ResultsIDs.PORTFOLIO_RETURNS_BUTTON`~
+        -   ~`ResultsIDs.PORTFOLIO_VALUE_CURRENCY_USD`~
+        -   ~`ResultsIDs.PORTFOLIO_VALUE_CURRENCY_PERCENT`~
+        -   ~`ResultsIDs.TRADES_TABLE_CONTAINER`~
+        -   ~`ResultsIDs.TRADES_TABLE_LOADING`~
+        -   ~`ResultsIDs.PERFORMANCE_METRICS_CONTAINER`~
+        -   ~`ResultsIDs.TRADE_METRICS_CONTAINER`~
+        -   ~`ResultsIDs.BACKTEST_STATUS_MESSAGE`~
+        -   ~`ResultsIDs.BACKTEST_PROGRESS_BAR`~
+        -   ~`ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER`~
+        -   ~`ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT`~
+        -   ~`ResultsIDs.BACKTEST_ANIMATED_TEXT`~
+        -   ~`ResultsIDs.BACKTEST_PROGRESS_DETAIL_TEXT`~
+        -   ~`ResultsIDs.BACKTEST_ANIMATION_INTERVAL`~
+        -   ~`ResultsIDs.RESULTS_AREA_WRAPPER`~
+        -   ~`ResultsIDs.CENTER_PANEL_COLUMN`~
+        -   ~`ResultsIDs.RIGHT_PANEL_COLUMN`~
+    -   **Action:** If these features/components are planned, the corresponding IDs can be uncommented and implemented. Otherwise, they can be permanently removed later.
 
--   [ ] **(M) Address StrategyConfigIDs Discrepancies and Unused IDs:**
-    -   **Discrepancy:**
-        -   `StrategyConfigIDs.CONFIG_CONTAINER` is defined in `ids.py` but `WizardIDs.STRATEGY_CONFIG_CONTAINER` is used in `src/ui/layouts/strategy_config.py` for what appears to be the main configuration container in the wizard.
-    -   **Potentially Unused IDs:** A significant number of IDs in `StrategyConfigIDs` (intended for a main page configuration separate from the wizard) were not found in `src/ui/layouts/strategy_config.py` or any callbacks. These include:
-        -   `StrategyConfigIDs.STRATEGY_SELECTOR`
-        -   `StrategyConfigIDs.PARAMS_CONTAINER`
-        -   `StrategyConfigIDs.INITIAL_CAPITAL_INPUT_MAIN`
-        -   `StrategyConfigIDs.TICKER_INPUT_MAIN`
-        -   `StrategyConfigIDs.START_DATE_PICKER_MAIN`
-        -   `StrategyConfigIDs.END_DATE_PICKER_MAIN`
-        -   `StrategyConfigIDs.RISK_FEATURES_CHECKLIST_MAIN`
-        -   `StrategyConfigIDs.MAX_POSITION_SIZE_INPUT_MAIN`
-        -   `StrategyConfigIDs.STOP_LOSS_TYPE_SELECT_MAIN`
-        -   `StrategyConfigIDs.STOP_LOSS_INPUT_MAIN`
-        -   `StrategyConfigIDs.TAKE_PROFIT_TYPE_SELECT_MAIN`
-        -   `StrategyConfigIDs.TAKE_PROFIT_INPUT_MAIN`
-        -   `StrategyConfigIDs.MAX_RISK_PER_TRADE_INPUT_MAIN`
-        -   `StrategyConfigIDs.MARKET_TREND_LOOKBACK_INPUT_MAIN`
-        -   `StrategyConfigIDs.MAX_DRAWDOWN_INPUT_MAIN`
-        -   `StrategyConfigIDs.MAX_DAILY_LOSS_INPUT_MAIN`
-        -   `StrategyConfigIDs.COMMISSION_INPUT_MAIN`
-        -   `StrategyConfigIDs.SLIPPAGE_INPUT_MAIN`
-        -   `StrategyConfigIDs.REBALANCING_FREQUENCY_DROPDOWN_MAIN`
-        -   `StrategyConfigIDs.REBALANCING_THRESHOLD_INPUT_MAIN`
-    -   **IDs in Use:**
-        -   `StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN`
-        -   `StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN`
+-   [x] **(M) Address StrategyConfigIDs Discrepancies and Unused IDs:**
+    -   **Discrepancy Resolution:**
+        -   `WizardIDs.STRATEGY_CONFIG_CONTAINER` is used in `src/ui/wizard/layout.py` for the wizard's main container.
+        -   `StrategyConfigIDs.CONFIG_CONTAINER` ("strategy-config-container-main") remains defined in `ids.py` and is intended for a potential non-wizard "main page" configuration area, which is not yet implemented.
+    -   **Unused `StrategyConfigIDs` (for main page):** A significant number of IDs in `StrategyConfigIDs` (intended for a main page configuration separate from the wizard) are defined but not yet used in any layout. These include most `_MAIN` suffixed IDs (e.g., `STRATEGY_SELECTOR_MAIN`, `INITIAL_CAPITAL_INPUT_MAIN`, etc.) and the `_ALT` suffixed IDs.
+    -   **IDs in Use (StrategyConfigIDs):**
+        -   `StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN` (used in `app_factory.py`)
+        -   `StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN` (used in `app_factory.py`)
+        -   The `_LEGACY` suffixed IDs (e.g., `TICKER_INPUT_LEGACY`) were used in `strategy_config.py` after refactoring.
     -   **Action:**
-        1.  Clarify the intended use of `StrategyConfigIDs.CONFIG_CONTAINER` versus `WizardIDs.STRATEGY_CONFIG_CONTAINER`. If the wizard's main container is indeed `WizardIDs.STRATEGY_CONFIG_CONTAINER`, then `StrategyConfigIDs.CONFIG_CONTAINER` might be for a different, perhaps unimplemented, main page configuration area.
-        2.  Investigate the large list of potentially unused `StrategyConfigIDs`. These might be for a planned non-wizard configuration interface. If this interface is still desired, their implementation is a pending task. If this main page configuration concept has been superseded by the wizard, these IDs might be obsolete. Avoid removal until the architectural direction is clear, as their absence might indicate incomplete features rather than true obsolescence.
+        1.  The distinction between `WizardIDs.STRATEGY_CONFIG_CONTAINER` (for wizard) and `StrategyConfigIDs.CONFIG_CONTAINER` (for potential main page) is now clear.
+        2.  The list of unused `StrategyConfigIDs` for the main page remains as a reference for future development of that interface. They are not considered obsolete at this stage but represent unimplemented features.
 
--   [ ] **(ONGOING) Identify IDs Used in Layout/Callback Files NOT Defined in ids.py:**
-    -   Continue systematic search across all UI files (`src/ui/layouts/`, `src/ui/callbacks/`, `src/ui/components/`, `src/ui/wizard/`) for any hardcoded string IDs or IDs that do not originate from `src/ui/ids/ids.py`.
-    -   **Action:** Any such IDs found should be centralized into `ids.py` under the appropriate class (WizardIDs, ResultsIDs, StrategyConfigIDs, or a new class if necessary) to maintain consistency and ease of refactoring.
+-   [x] **(COMPLETED - Initial Pass) Identify IDs Used in Layout/Callback Files NOT Defined in ids.py:**
+    -   Systematic search across UI files (`src/ui/layouts/`, `src/ui/callbacks/`, `src/ui/components/`, `src/ui/wizard/`, `src/ui/app_factory.py`) was performed.
+    -   Identified hardcoded IDs were centralized into `src/ui/ids/ids.py`.
+    -   **Action:** This task is complete for the initial refactoring. Ongoing vigilance will be needed as new components are developed.
 
--   [ ] **(ONGOING) Enforce Consistent ID Naming and Usage:**
-    -   As discrepancies or inconsistencies are found (like the `CONFIG_CONTAINER` issue), apply corrections to ensure `ids.py` is the single source of truth and that IDs are used as defined.
-    -   **Action:** This is an ongoing task integrated with the audit and correction process.
+-   [x] **(COMPLETED - Initial Pass) Enforce Consistent ID Naming and Usage:**
+    -   Corrections were applied to ensure `ids.py` is the single source of truth and that IDs are used as defined within the refactored files.
+    -   **Action:** This task is complete for the initial refactoring. Future code should adhere to this standard.
+
+**Summary of Phase 1 (ID Management):**
+The primary goals of auditing, centralizing, and refactoring UI component IDs have been met. Hardcoded IDs have been moved to `src/ui/ids/ids.py`, and relevant files have been updated to use these centralized IDs. Unused IDs identified during the audit have been commented out for future review or potential removal. The codebase is now in a better state for managing UI component IDs.

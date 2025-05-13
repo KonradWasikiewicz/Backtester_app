@@ -190,23 +190,35 @@ def create_strategy_config_section(tickers=None):
             "Summary"
         ]
         
-        # --- Create stepper (starts at step 0) ---
-        stepper = create_wizard_stepper(0, step_names)
+        # --- Create stepper components (NEW WAY) ---
+        # Get the initial list of indicator components
+        initial_stepper_indicators = create_wizard_stepper(current_step_index=1, completed_steps=set())
+
+        # This is the html.Div that will contain the step indicators.
+        # Its 'children' property will be updated by the handle_step_transition callback.
+        wizard_stepper_div = html.Div(
+            children=initial_stepper_indicators, # Initial children
+            id=WizardIDs.WIZARD_STEPPER,
+            className="wizard-stepper progress-style mb-2" # CSS class for the stepper bar itself
+        )
         
         # --- Keep the original progress bar but hide it initially ---
-        # This is kept for compatibility with existing callbacks
-        progress_bar = dbc.Progress(            id=WizardIDs.PROGRESS_BAR, 
+        # This is kept for compatibility with existing callbacks if any still use it, though it's hidden.
+        progress_bar = dbc.Progress(
+            id=WizardIDs.PROGRESS_BAR, 
             value=0, 
             striped=True, 
             animated=True, 
             className="d-none",  # Hide it by default
             style={"display": "none"}
         )
-        # Create a container for both - the stepper will be visible, progress bar hidden
-        progress = html.Div([
-            stepper,
-            progress_bar
-        ], id=WizardIDs.PROGRESS_CONTAINER, className="mb-2")
+
+        # This is the outer container that gets sticky styling.
+        # It holds the wizard_stepper_div (which contains the actual step indicators) and the hidden progress_bar.
+        progress_container_for_stepper = html.Div([
+            wizard_stepper_div,    # The Div that groups the step indicators
+            progress_bar           # The hidden progress bar
+        ], id=WizardIDs.PROGRESS_CONTAINER, className="wizard-stepper-container") # Class for sticky behavior
 
         # --- Definition of wizard steps ---
         steps = [
@@ -493,8 +505,16 @@ def create_strategy_config_section(tickers=None):
                 "wizard-summary",
                 "Step 7: Summary and Run Backtest",
                 html.Div([
-                    html.H5("Review Configuration Summary", className="mb-2"),
-                    html.Div([], id=WizardIDs.SUMMARY_OUTPUT_CONTAINER, className="mb-2"),
+                    html.H5("Review Configuration Summary", className="mb-3 text-center"),
+                    html.Div([
+                        html.Div(id=WizardIDs.SUMMARY_STRATEGY_DETAILS, className="summary-section"),
+                        html.Div(id=WizardIDs.SUMMARY_STRATEGY_PARAMETERS, className="summary-section"),
+                        html.Div(id=WizardIDs.SUMMARY_DATES_DETAILS, className="summary-section"),
+                        html.Div(id=WizardIDs.SUMMARY_TICKERS_DETAILS, className="summary-section"),
+                        html.Div(id=WizardIDs.SUMMARY_RISK_DETAILS, className="summary-section"),
+                        html.Div(id=WizardIDs.SUMMARY_COSTS_DETAILS, className="summary-section"),
+                        html.Div(id=WizardIDs.SUMMARY_REBALANCING_DETAILS, className="summary-section")
+                    ], id=WizardIDs.SUMMARY_OUTPUT_CONTAINER, className="mb-3"),
                     dbc.Button(
                         "Run Backtest",
                         id=WizardIDs.RUN_BACKTEST_BUTTON_WIZARD,
@@ -510,9 +530,9 @@ def create_strategy_config_section(tickers=None):
 
         # Wrap all steps in a single container
         return html.Div([
-            progress, # Keep wizard progress
+            progress_container_for_stepper, # MODIFIED: Use the new container for the stepper
             html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps"),
-            dcc.Store(id=WizardIDs.RISK_MANAGEMENT_STORE_WIZARD) # ADDED WIZARD RISK STORE
+            dcc.Store(id=WizardIDs.RISK_MANAGEMENT_STORE_WIZARD)
         ], id=WizardIDs.STRATEGY_CONFIG_CONTAINER, className="strategy-wizard")
 
     except Exception as e:

@@ -233,26 +233,33 @@ input:focus, .form-control:focus {
 }
 
 /* --- Stepper Component Styles --- */
-.wizard-stepper {
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
-  margin-bottom: 0.6rem; /* Reduced from 1.5rem to 0.6rem */
-  padding: 0;
-  width: 100%;
-  background: linear-gradient(to bottom, #444 0%, #333 100%);
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
-  height: 44px; /* Slightly taller */
-  position: relative;
-  border: 1px solid #222;
-  transform: translateZ(0); /* Force hardware acceleration for smoother animations */
+.wizard-stepper-container {
+    width: 100%;
+    box-sizing: border-box; /* Ensures padding/border don't alter final dimensions */
+    padding: 15px 0;        /* Vertical padding to center the 44px stepper */
+    margin-bottom: 10px;    /* Space below the sticky container */
+    position: sticky;
+    top: 0;
+    background-color: #121212; /* Match page background for seamless sticky */
+    z-index: 100;           /* Ensure it's above other content */
+    height: 74px;           /* Fixed height: 44px stepper height + (15px padding * 2) */
+                            /* This replaces any min-height */
 }
 
-/* Progress-bar style stepper */
-.wizard-stepper.progress-style {
-  height: 44px;
+.wizard-stepper {
+  display: flex;
+  align-items: stretch;       /* Children (indicators) will stretch to fill height */
+  justify-content: stretch;   /* Children (indicators) will distribute width (due to flex:1 on child) */
+  padding: 0;                 /* No internal padding for the flex container itself */
+  width: 100%;                /* Take full width of parent (.wizard-stepper-container) */
+  height: 44px;               /* Fixed height for the stepper bar */
+  box-sizing: border-box;     /* Ensures padding/border don't alter final dimensions */
+  background: linear-gradient(to bottom, #444 0%, #333 100%);
+  border-radius: 10px;
+  overflow: hidden;           /* Important for the angled dividers if they poke out */
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  position: relative;         /* For z-indexing children or pseudo-elements if any */
+  border: 1px solid #222;
 }
 
 /* Create angled dividers between steps */
@@ -439,6 +446,29 @@ input:focus, .form-control:focus {
   padding: 2px 4px !important; /* Further reduced: 2px vertical, 4px horizontal */
   width: 100%;
   margin-bottom: 0 !important;
+}
+
+/* Wizard Stepper Container */
+.wizard-stepper-container {
+    width: 100%;
+    padding: 15px 0; /* This padding is for vertical positioning of the .stepper-container within */
+    margin-bottom: 10px;
+    position: sticky;
+    top: 0;
+    background-color: #121212; /* Or your page background color */
+    z-index: 100; /* Ensure it's above other content */
+    min-height: 60px; /* Should accommodate padding + stepper height */
+}
+
+/* Stepper Component */
+.stepper-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Distributes space between step indicators */
+    width: 100%; /* Make it take full width of its parent */
+    height: 50px; /* Fixed height for the stepper */
+    padding: 0 10px; /* Add some padding so indicators are not at the very edges */
+    box-sizing: border-box; /* Important if adding padding/border to a width:100% element */
 }
 
 /* --- Strategy Parameter Inputs Styling --- */

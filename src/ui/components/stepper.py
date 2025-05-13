@@ -37,17 +37,16 @@ def create_step_indicator(step_number, label, status="pending", is_clickable=Tru
 
 def create_wizard_stepper(current_step_index, completed_steps=None):
     """
-    Creates a wizard stepper component showing the progress through the wizard steps.
-    This creates a progress-bar-like stepper instead of individual circle indicators.
+    Creates a list of step indicator components for the wizard stepper.
     
     Args:
         current_step_index (int): The index of the current step (1-based)
         completed_steps (set, optional): Set of step indices that have been completed/confirmed
     
     Returns:
-        html.Div: The stepper component
+        list: A list of html.Div components representing the step indicators.
     """
-    logger.debug(f"Creating wizard stepper with current step index: {current_step_index}, completed steps: {completed_steps}")
+    logger.debug(f"Creating wizard stepper indicators with current step index: {current_step_index}, completed steps: {completed_steps}")
     
     # Initialize completed_steps if not provided
     if completed_steps is None:
@@ -57,7 +56,7 @@ def create_wizard_stepper(current_step_index, completed_steps=None):
         "Strategy",
         "Date Range",
         "Tickers",
-        "Management",
+        "Management", # Shortened from "Risk Management" for brevity if needed
         "Costs",
         "Rebalancing",
         "Summary"
@@ -75,17 +74,19 @@ def create_wizard_stepper(current_step_index, completed_steps=None):
             status = "current"
         
         # Determine if clickable (only completed steps and current step + 1)
-        is_clickable = (step_num in completed_steps or step_num == current_step_index + 1) and (step_num != current_step_index)
-        
+        # Or allow clicking current step to 'refresh' or if logic changes
+        is_clickable = (step_num in completed_steps or step_num == current_step_index + 1 or step_num == current_step_index) and (step_num <= len(step_names))
+
         # Create the step indicator
         step_indicator = create_step_indicator(
             step_number=step_num,  # 1-based step number for display
             label=name,
             status=status,
-            is_clickable=is_clickable
+            is_clickable=is_clickable # Pass clickability
         )
         
-        # Add to stepper container (no separate connector lines in the new design)
         step_indicators.append(step_indicator)
     
-    return html.Div(step_indicators, className="wizard-stepper progress-style mb-2", id=WizardIDs.WIZARD_STEPPER)
+    # Return the list of indicators directly, not wrapped in a Div with the WIZARD_STEPPER ID here.
+    # The parent Div with id=WizardIDs.WIZARD_STEPPER will be in the layout file.
+    return step_indicators
