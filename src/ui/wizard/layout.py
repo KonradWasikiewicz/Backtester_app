@@ -102,8 +102,7 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
         ),
         # Step 3: Ticker Selection (placeholder)
         create_wizard_step(
-            "tickers-selection",
-            "Step 3: Tickers Selection",
+            "tickers-selection",            "Step 3: Tickers Selection",
             html.Div([
                 html.Label("Select tickers:", className="mb-2", htmlFor=WizardIDs.TICKER_DROPDOWN),
                 dcc.Dropdown(
@@ -116,10 +115,14 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                     dbc.Button("Select All", id=WizardIDs.SELECT_ALL_TICKERS_BUTTON, color="secondary", className="me-2"),
                     dbc.Button("Deselect All", id=WizardIDs.DESELECT_ALL_TICKERS_BUTTON, color="secondary")
                 ], className="d-flex justify-content-start mb-3"),
-                dbc.Button("Confirm", id=WizardIDs.CONFIRM_TICKERS_BUTTON, color="primary", className="mt-3", disabled=True)
+                html.Div(
+                    id=WizardIDs.TICKER_LIST_CONTAINER,
+                    className="selected-tickers-container mb-3"
+                ),                dbc.Button("Confirm", id=WizardIDs.CONFIRM_TICKERS_BUTTON, color="primary", className="mt-3", disabled=True)
             ]),
             is_hidden=True
-        ),        # Step 4: Risk Management (placeholder - simplified)
+        ),
+        # Step 4: Risk Management (placeholder - simplified)
         create_wizard_step(
             "risk-management",
             "Step 4: Management",
@@ -231,11 +234,11 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                         ], width=6)
                     ], className="mb-3")
                 ], id=WizardIDs.RISK_PANEL_DRAWDOWN_PROTECTION, style={"display": "none"}),
-                
-                dbc.Button("Confirm", id=WizardIDs.CONFIRM_RISK_BUTTON, color="primary", className="mt-3")
+                  dbc.Button("Confirm", id=WizardIDs.CONFIRM_RISK_BUTTON, color="primary", className="mt-3")
             ]),
             is_hidden=True
-        ),        # Step 5: Trading Costs
+        ),
+        # Step 5: Trading Costs
         create_wizard_step(
             "trading-costs",
             "Step 5: Costs",
