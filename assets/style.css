@@ -35,6 +35,40 @@ input, .form-control, .form-select, .dbc-input, .Select-control, .Select-menu-ou
   border-color: #444 !important;
 }
 
+/* Fix dropdown menu styling to be visible over other elements */
+.Select-menu-outer {
+  z-index: 1000 !important; /* Ensure dropdown appears above other elements */
+  max-height: 300px !important; /* Allow more items to be visible */
+  position: absolute !important;
+}
+
+/* Make dropdown options visible and correctly styled */
+.Select-option {
+  background-color: #1e222d !important;
+  color: #ffffff !important;
+}
+
+.Select-option.is-selected {
+  background-color: rgba(13, 110, 253, 0.8) !important;
+  color: #ffffff !important;
+}
+
+.Select-option.is-focused {
+  background-color: rgba(13, 110, 253, 0.5) !important;
+  color: #ffffff !important;
+}
+
+/* For virtualized dropdown menus */
+.VirtualizedSelectOption {
+  background-color: #1e222d !important;
+  color: #ffffff !important;
+}
+
+.VirtualizedSelectFocusedOption {
+  background-color: #0d6efd !important;
+  color: #ffffff !important;
+}
+
 /* Ensure text remains white while typing and on focus */
 input::placeholder, .form-control::placeholder {
   color: #adb5bd !important;
@@ -203,7 +237,7 @@ input:focus, .form-control:focus {
   display: flex;
   align-items: stretch;
   justify-content: stretch;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.6rem; /* Reduced from 1.5rem to 0.6rem */
   padding: 0;
   width: 100%;
   background: linear-gradient(to bottom, #444 0%, #333 100%);
@@ -388,7 +422,8 @@ input:focus, .form-control:focus {
 .wizard-step .card-body {
   background-color: #1e222d;
   border-top: none;
-  padding: 12px; /* Reduced from 15px for more compact content */
+  padding: 4px 6px; /* Further reduced padding: vertical 4px, horizontal 6px */
+  margin-top: 0; /* Remove any potential top margin */
 }
 
 /* Ensure the header takes up the entire width */
@@ -399,10 +434,11 @@ input:focus, .form-control:focus {
   overflow: hidden;
 }
 
-/* Make the header wrapper take the full width */
+/* Make the header wrapper take the full width with minimal vertical spacing */
 .wizard-step .card-header > div {
-  padding: 6px !important; /* Reduced from 12px to half the padding */
+  padding: 2px 4px !important; /* Further reduced: 2px vertical, 4px horizontal */
   width: 100%;
+  margin-bottom: 0 !important;
 }
 
 /* --- Strategy Parameter Inputs Styling --- */

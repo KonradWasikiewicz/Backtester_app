@@ -132,29 +132,7 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
         if not selected_strategy:
             return html.P("Select a strategy to see its description.")
         description = STRATEGY_DESCRIPTIONS.get(selected_strategy, "No description available.")
-        return html.P(description)
-
-    @app.callback(
-        [Output(WizardIDs.STRATEGY_PARAM_INPUTS_CONTAINER, 'children'), Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, 'disabled')],
-        Input(WizardIDs.STRATEGY_DROPDOWN, 'value')
-    )
-    def update_strategy_parameters(selected_strategy: Optional[str]):
-        logger.info(f"WIZARD: update_strategy_parameters triggered. Selected strategy: '{selected_strategy}' (Type: {type(selected_strategy)})")
-        if not selected_strategy:
-            logger.warning("WIZARD: No strategy selected or empty value. Disabling confirm button and clearing params.")
-            # Clear section and disable confirm
-            return [], True
-        
-        logger.info(f"WIZARD: Strategy '{selected_strategy}' is selected. Generating inputs and ENABLING confirm button.")
-        # Build section: header + generated inputs
-        inputs = []
-        try:
-            inputs = _generate_parameter_inputs(selected_strategy)
-        except Exception as e:
-            logger.error(f"Error generating parameters for strategy {selected_strategy}: {e}", exc_info=True)
-            inputs = [dbc.Alert(f"Error loading parameters: {e}", color="danger")]
-        # Enable confirm when strategy selected (defaults assumed valid)
-        logger.debug(f"WIZARD: Returning {len(inputs)} input components and disabled=False for confirm button.")
-        return inputs, False
+        return html.P(description)    # This callback was removed because it was causing a duplicate with wizard_callbacks.py
+    # Parameters inputs are now handled by wizard_callbacks.py
 
     logger.info("Strategy callbacks registered.")

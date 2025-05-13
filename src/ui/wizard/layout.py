@@ -120,11 +120,10 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                 dbc.Button("Confirm", id=WizardIDs.CONFIRM_TICKERS_BUTTON, color="primary", className="mt-3", disabled=True)
             ]),
             is_hidden=True
-        ),
-        # Step 4: Risk Management (placeholder - simplified)
+        ),        # Step 4: Risk Management (placeholder - simplified)
         create_wizard_step(
             "risk-management",
-            "Step 4: Risk Management",
+            "Step 4: Management",
             html.Div([
                 html.Label("Configure risk parameters:", className="mb-1", htmlFor=WizardIDs.RISK_FEATURES_CHECKLIST),
                 dcc.Checklist(
@@ -237,11 +236,10 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                 dbc.Button("Confirm", id=WizardIDs.CONFIRM_RISK_BUTTON, color="primary", className="mt-3")
             ]),
             is_hidden=True
-        ),
-        # Step 5: Trading Costs
+        ),        # Step 5: Trading Costs
         create_wizard_step(
             "trading-costs",
-            "Step 5: Trading Costs",
+            "Step 5: Costs",
             html.Div([
                 html.Label("Commission (%):", className="mb-2", htmlFor=WizardIDs.COMMISSION_INPUT),
                 dbc.Input(

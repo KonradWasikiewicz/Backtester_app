@@ -35,14 +35,15 @@ def create_step_indicator(step_number, label, status="pending", is_clickable=Tru
         html.Span(label, className="step-label d-none d-lg-block") # Hide on small screens
     ], className=status_class, id=WizardIDs.step_indicator(step_number))
 
-def create_wizard_stepper(current_step_index, completed_steps=None):
+def create_wizard_stepper(current_step_index, step_names, completed_steps=None):
     """
     Creates a wizard stepper component showing the progress through the wizard steps.
     This creates a progress-bar-like stepper instead of individual circle indicators.
     
     Args:
-        current_step_index (int): The index of the current step (1-based)
-        completed_steps (set, optional): Set of step indices that have been completed/confirmed
+        current_step_index (int): The index of the current step (0-based)
+        step_names (list): List of step names
+        completed_steps (list, optional): List of step indices that have been completed/confirmed
     
     Returns:
         html.Div: The stepper component
@@ -51,35 +52,25 @@ def create_wizard_stepper(current_step_index, completed_steps=None):
     
     # Initialize completed_steps if not provided
     if completed_steps is None:
-        completed_steps = set()
-      # Define step names
-    step_names = [
-        "Strategy",
-        "Date Range",
-        "Tickers",
-        "Management",
-        "Costs",
-        "Rebalancing",
-        "Summary"
-    ]
+        completed_steps = []
     
     step_indicators = []
-      # Create indicators for each step
+    
+    # Create indicators for each step
     for i, name in enumerate(step_names):
-        # Determine step status (1-based indexing)
-        step_num = i + 1
+        # Determine step status
         status = "pending"
-        if step_num in completed_steps:
+        if i in completed_steps:
             status = "completed"
-        elif step_num == current_step_index:
+        elif i == current_step_index:
             status = "current"
         
         # Determine if clickable (only completed steps and current step + 1)
-        is_clickable = (step_num in completed_steps or step_num == current_step_index + 1) and (step_num != current_step_index)
+        is_clickable = (i in completed_steps or i == current_step_index + 1) and (i != current_step_index)
         
         # Create the step indicator
         step_indicator = create_step_indicator(
-            step_number=step_num,  # 1-based step number for display
+            step_number=i + 1,  # 1-based step number for display
             label=name,
             status=status,
             is_clickable=is_clickable

@@ -87,7 +87,7 @@ try:
 
     # --- NEW: Log confirmation of endpoint registration ---
     # This log will appear when the app starts IF the route is successfully registered.
-    logger.info("Successfully registered /log-client-errors endpoint.")
+    logger.info("Successfully registered /log-client-errors endpoint")
     # --- END NEW Log ---
 
 
@@ -114,4 +114,4 @@ except Exception as e:
     print(f"CRITICAL ERROR initializing application: {e}", file=sys.stderr)
     traceback.print_exc()
     logging.shutdown() # Ensure all log messages are flushed
-    sys.exit(1) # Exit with error code
+    sys.exit(1) # Exit with error code  

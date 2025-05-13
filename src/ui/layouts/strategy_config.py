@@ -60,14 +60,14 @@ def get_strategy_dropdown(available_strategies: List[Dict[str, str]]) -> dcc.Dro
         ]
         # Check if options are empty
         if not options:
-             logger.warning("Generated empty options for strategy dropdown. Check AVAILABLE_STRATEGIES structure in constants.py.")
-
+            logger.warning("Generated empty options for strategy dropdown. Check AVAILABLE_STRATEGIES structure in constants.py.")
     return dcc.Dropdown(
         id=WizardIDs.STRATEGY_DROPDOWN,  # Updated to use centralized ID
         options=options,
         placeholder="Click here...",
         className="mb-3 w-100",
-        clearable=False
+        clearable=False,
+        style={"position": "relative", "zIndex": "1050"} # Higher z-index to appear above all other content
     )
 
 # ... (rest of the helper functions: generate_strategy_parameters, create_ticker_checklist, create_backtest_parameters - no changes in logic, but ensure IDs are consistent) ...
@@ -173,7 +173,8 @@ def create_strategy_config_section(tickers=None):
             try:
                 data_service = DataService()
                 tickers = data_service.get_available_tickers()
-                # Format tickers for checklist: [{'label': 'TICKER', 'value': 'TICKER'}, ...]                tickers = [{'label': t, 'value': t} for t in tickers]
+                # Format tickers for checklist: [{'label': 'TICKER', 'value': 'TICKER'}, ...]
+                tickers = [{'label': t, 'value': t} for t in tickers]
             except Exception as e:
                 logger.error(f"Error fetching tickers via DataService: {e}")
                 tickers = [] # Fallback to empty list
@@ -194,19 +195,18 @@ def create_strategy_config_section(tickers=None):
         
         # --- Keep the original progress bar but hide it initially ---
         # This is kept for compatibility with existing callbacks
-        progress_bar = dbc.Progress(
-            id=WizardIDs.PROGRESS_BAR, 
+        progress_bar = dbc.Progress(            id=WizardIDs.PROGRESS_BAR, 
             value=0, 
             striped=True, 
             animated=True, 
             className="d-none",  # Hide it by default
             style={"display": "none"}
         )
-          # Create a container for both - the stepper will be visible, progress bar hidden
+        # Create a container for both - the stepper will be visible, progress bar hidden
         progress = html.Div([
             stepper,
             progress_bar
-        ], id=WizardIDs.PROGRESS_CONTAINER, className="mb-4")
+        ], id=WizardIDs.PROGRESS_CONTAINER, className="mb-2")
 
         # --- Definition of wizard steps ---
         steps = [
@@ -529,6 +529,9 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
     content_style.update({"paddingTop": "10px"})
     # Default to pending state for initial display
     initial_header_class = "wizard-step-header-pending" if step_number > 0 else "wizard-step-header-current"
+      # Set overflow style for the card body based on step_id
+    # For strategy step, allow overflow visible to show dropdown
+    overflow_style = {"overflow": "visible"} if step_id == "strategy-selection" else {}
     
     return dbc.Card(
         [
@@ -538,7 +541,7 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
                     html.H6(title, className="mb-0 fw-bold text-white"), # Changed H5 to H6 for more compact sizing
                     id=WizardIDs.step_header(step_id), # ID for click events moved to Div
                     className=initial_header_class, # Apply initial coloring to the div directly
-                    style={"cursor": "pointer", "width": "100%", "padding": "4px"} # Reduced padding in the header div
+                    style={"cursor": "pointer", "width": "100%", "padding": "2px"} # Further reduced padding
                 ),
                 className="step-header p-0" # Remove padding from header, apply to div inside
                 # Removed ID from CardHeader itself
@@ -547,12 +550,12 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
             dbc.CardBody(
                 content,
                 id=WizardIDs.step_content(step_id),
-                style=content_style, # Apply visibility style here
-                className="px-2 py-2" # Add smaller padding for more compact layout
+                style={**content_style, **overflow_style}, # Apply visibility and overflow styles
+                className="px-2 py-1" # Reduced vertical padding further
             )
         ],
         className="mb-0 wizard-step", # Changed from mb-1 to mb-0 to minimize spacing between steps
-        style={"margin-bottom": "2px"} # Even smaller space between steps
+        style={"margin-bottom": "2px", "overflow": "visible"} # Allow overflow for dropdowns
     )
 
 def create_import_tickers_modal() -> dbc.Modal:

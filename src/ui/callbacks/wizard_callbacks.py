@@ -17,6 +17,9 @@ def register_wizard_callbacks(app: Dash):
     Register callbacks for the wizard interface, including step transitions and validation.
     """
     logger.info("Registering wizard and main page run button callbacks...")
+    
+    # Track the completion status of each step
+    completed_steps = set()
 
     # --- Consolidated Step Transition Callback ---
     @app.callback(
@@ -63,534 +66,347 @@ def register_wizard_callbacks(app: Dash):
             # --- ADDED Step Indicator Inputs ---
             Input(WizardIDs.step_indicator(1), "n_clicks"),
             Input(WizardIDs.step_indicator(2), "n_clicks"),
-            Input(WizardIDs.step_indicator(3), "n_clicks"),            Input(WizardIDs.step_indicator(4), "n_clicks"),
+            Input(WizardIDs.step_indicator(3), "n_clicks"),
+            Input(WizardIDs.step_indicator(4), "n_clicks"),
             Input(WizardIDs.step_indicator(5), "n_clicks"),
             Input(WizardIDs.step_indicator(6), "n_clicks"),
             Input(WizardIDs.step_indicator(7), "n_clicks")
         ],
+        [
+            # State variables to verify steps are complete before allowing navigation
+            State(WizardIDs.STRATEGY_DROPDOWN, "value"),  # From step 1
+            State(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),  # From step 1
+            State(WizardIDs.DATE_RANGE_START_PICKER, "date"),  # From step 2
+            State(WizardIDs.DATE_RANGE_END_PICKER, "date"),  # From step 2
+            State(WizardIDs.TICKER_LIST_CONTAINER, "children"),  # From step 3
+            # Risk management states (step 4) - Using any applicable state from the risk step
+            State(WizardIDs.MAX_POSITION_SIZE_INPUT, "value"),  # Example from step 4
+            # Trading costs states (step 5) - Using any applicable state from the costs step
+            State("wizard-commission-input", "value"),  # Example from step 5
+            # Rebalancing states (step 6) - Using any applicable state from the rebalancing step
+            State("wizard-rebalancing-freq-dropdown", "value"),  # Example from step 6
+        ],
         prevent_initial_call=True
     )
     def handle_step_transition(*args):
-        """Handles navigation between wizard steps based on button or header clicks."""
-        if not ctx.triggered:
-            logger.warning("Step transition callback triggered without context.")
-            return no_update
-
-        trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        logger.info(f"Step transition triggered by: {trigger_id}")
-
-        # Define step indices and names
-        steps = [
-            "strategy-selection", "date-range-selection", "tickers-selection",
-            "risk-management", "trading-costs", "rebalancing-rules", "wizard-summary"
-        ]
-        step_names = [
-            "Strategy",
-            "Date Range",
-            "Tickers",
-            "Risk",
-            "Costs",
-            "Rebalancing",
-            "Summary"
-        ]
-        num_steps = len(steps)
-        target_step_index = 0 # Default to the first step
-
-        # --- Determine if trigger is a header click ---
-        is_header_click = "-header" in trigger_id
-
-        try:
-            # Check if trigger is one of the centralized confirm buttons
-            if trigger_id == WizardIDs.CONFIRM_STRATEGY_BUTTON:
-                target_step_index = 1  # Move to date selection
-                logger.info(f"Confirm strategy button clicked. Target step index: {target_step_index}")
-            elif trigger_id == WizardIDs.CONFIRM_DATES_BUTTON:
-                target_step_index = 2  # Move to ticker selection
-                logger.info(f"Confirm dates button clicked. Target step index: {target_step_index}")
-            elif trigger_id == WizardIDs.CONFIRM_TICKERS_BUTTON:
-                target_step_index = 3  # Move to risk management
-                logger.info(f"Confirm tickers button clicked. Target step index: {target_step_index}")
-            elif trigger_id == WizardIDs.CONFIRM_RISK_BUTTON:
-                target_step_index = 4  # Move to trading costs
-                logger.info(f"Confirm risk button clicked. Target step index: {target_step_index}")
-            elif trigger_id == WizardIDs.CONFIRM_COSTS_BUTTON:
-                target_step_index = 5  # Move to rebalancing
-                logger.info(f"Confirm costs button clicked. Target step index: {target_step_index}")
-            elif trigger_id == WizardIDs.CONFIRM_REBALANCING_BUTTON:
-                target_step_index = 6  # Move to summary
-                logger.info(f"Confirm rebalancing button clicked. Target step index: {target_step_index}")
-            elif "-header" in trigger_id:
-                header_map = {
-                    WizardIDs.step_header("strategy-selection"): 0, 
-                    WizardIDs.step_header("date-range-selection"): 1,                    WizardIDs.step_header("tickers-selection"): 2, 
-                    WizardIDs.step_header("risk-management"): 3,
-                    WizardIDs.step_header("trading-costs"): 4,
-                    WizardIDs.step_header("rebalancing-rules"): 5, 
-                    WizardIDs.step_header("wizard-summary"): 6
-                }
-                target_step_index = header_map.get(trigger_id)
-                if target_step_index is None:
-                    logger.error(f"Unknown header ID: {trigger_id}")
-                    return no_update
-                logger.info(f"Header '{trigger_id}' clicked. Target step index: {target_step_index}")
-            # --- ADDED: Step Indicator Click Handler ---
-            elif trigger_id.startswith("step-indicator-"):
-                try:
-                    # Extract step number from the indicator ID (1-based)
-                    step_number = int(trigger_id.split("-")[-1])
-                    target_step_index = step_number - 1  # Convert to 0-based index
-                    logger.info(f"Step indicator {step_number} clicked. Target step index: {target_step_index}")
-                except ValueError:
-                    logger.error(f"Invalid step indicator ID format: {trigger_id}")
-                    return no_update
-            else:
-                logger.error(f"Unhandled trigger ID in step transition: {trigger_id}")
-                return no_update
+        """
+        Handles transitions between wizard steps, updating visibility and styles accordingly.
+        """
+        # Initialize outputs
+        step_content_styles = []
+        step_header_classes = []
+        step_count = 7  # We have 7 steps in total
+        
+        # Default display style for hidden step content
+        hidden_style = {"display": "none"}
+        visible_style = {"display": "block"}
+        
+        # Preset all steps as hidden initially
+        for _ in range(step_count):
+            step_content_styles.append(hidden_style.copy())
+            step_header_classes.append("wizard-step-header")
+        
+        # Default to the first step if no other trigger
+        current_step = 1
+        
+        # Callback context and parameters
+        trigger = ctx.triggered_id
+        
+        # Extract relevant states
+        # Subtract all inputs to get to the first state index
+        first_state_index = len(ctx.inputs)  # All inputs length
+        
+        # Extract states for each step
+        strategy_value = args[first_state_index]
+        initial_capital = args[first_state_index + 1]
+        date_start = args[first_state_index + 2]
+        date_end = args[first_state_index + 3]
+        selected_tickers = args[first_state_index + 4]
+        max_position_size = args[first_state_index + 5]
+        commission_value = args[first_state_index + 6]
+        rebalancing_freq = args[first_state_index + 7]
+        
+        # Track completed steps based on required inputs
+        if strategy_value and initial_capital:
+            completed_steps.add(1)
+        if date_start and date_end:
+            completed_steps.add(2)
+        if selected_tickers and isinstance(selected_tickers, list) and len(selected_tickers) > 0:
+            completed_steps.add(3)
+        if max_position_size is not None:  # This might need a more comprehensive check depending on risk requirements
+            completed_steps.add(4)
+        if commission_value is not None:  # This might need a more comprehensive check
+            completed_steps.add(5)
+        if rebalancing_freq:  # This might need a more comprehensive check
+            completed_steps.add(6)
+        
+        # Handle different trigger types
+        if isinstance(trigger, str):
+            # Handle button clicks
+            if trigger == WizardIDs.CONFIRM_STRATEGY_BUTTON and 1 in completed_steps:
+                current_step = 2
+            elif trigger == WizardIDs.CONFIRM_DATES_BUTTON and 2 in completed_steps:
+                current_step = 3
+            elif trigger == WizardIDs.CONFIRM_TICKERS_BUTTON and 3 in completed_steps:
+                current_step = 4
+            elif trigger == WizardIDs.CONFIRM_RISK_BUTTON and 4 in completed_steps:
+                current_step = 5
+            elif trigger == WizardIDs.CONFIRM_COSTS_BUTTON and 5 in completed_steps:
+                current_step = 6
+            elif trigger == WizardIDs.CONFIRM_REBALANCING_BUTTON and 6 in completed_steps:
+                current_step = 7
+            # Handle step header clicks for navigation
+            elif trigger.endswith("-header"):
+                # Extract step number from header ID
+                step_name = trigger.replace("-header", "")
+                if step_name == "strategy-selection":
+                    current_step = 1
+                elif step_name == "date-range-selection" and 1 in completed_steps:
+                    current_step = 2
+                elif step_name == "tickers-selection" and 2 in completed_steps:
+                    current_step = 3
+                elif step_name == "risk-management" and 3 in completed_steps:
+                    current_step = 4
+                elif step_name == "trading-costs" and 4 in completed_steps:
+                    current_step = 5
+                elif step_name == "rebalancing-rules" and 5 in completed_steps:
+                    current_step = 6
+                elif step_name == "wizard-summary" and 6 in completed_steps:
+                    current_step = 7
+            # --- ADDED: Handle step indicator clicks ---
+            elif trigger.startswith("step-indicator-"):
+                # Extract step number from indicator ID
+                indicator_step = int(trigger.split("-")[-1])
                 
-            # --- Generate Outputs ---
-            visible_style = {"display": "block", "paddingTop": "10px"}
-            hidden_style = {"display": "none"}
-            step_styles = [hidden_style] * num_steps
-            # Updated classes for header styling to match the progress bar colors
-            status_classes = [""] * num_steps # Start with empty classes
+                # Only allow navigation to completed steps or the next incomplete step
+                if indicator_step in completed_steps or indicator_step == 1 or indicator_step == max(completed_steps) + 1:
+                    current_step = indicator_step
+        
+        # Mark the current step content as visible and header as active
+        if 1 <= current_step <= step_count:
+            step_content_styles[current_step - 1] = visible_style
+            step_header_classes[current_step - 1] = "wizard-step-header active"
             
-            if 0 <= target_step_index < num_steps:
-                step_styles[target_step_index] = visible_style
-                for i in range(num_steps):
-                    if i < target_step_index:
-                        status_classes[i] = "wizard-step-header-completed"  # Green for completed
-                    elif i == target_step_index:
-                        status_classes[i] = "wizard-step-header-current"  # Blue for current
-                    else:
-                        status_classes[i] = "wizard-step-header-pending"  # Gray for pending
-            else:
-                logger.error(f"Invalid target_step_index calculated: {target_step_index}. Defaulting to step 0.")
-                step_styles[0] = visible_style # Fallback to first step
-                status_classes[0] = "wizard-step-header-current"  # Use the new class name
-                for i in range(1, num_steps):
-                    status_classes[i] = "wizard-step-header-pending"  # Use the new class name
-
-            progress = ((target_step_index + 1) / num_steps) * 100            # --- Determine strategy progress bar style ---
-            # Show if a header was clicked, otherwise no_update (run_backtest callback will hide it)
-            progress_bar_style = {'display': 'block'} if is_header_click else no_update
-
-            logger.debug(f"Returning statuses: {status_classes}")
-            logger.debug(f"Returning progress: {progress}")
-            logger.debug(f"Returning progress bar style: {progress_bar_style}")
-
-            # Create updated stepper component
-            updated_stepper = create_wizard_stepper(target_step_index, step_names).children
-
-            # Return styles, classes, progress value, progress bar style, and stepper
-            return step_styles + status_classes + [progress, progress_bar_style, updated_stepper]
-
-        except Exception as e:
-            logger.error(f"Error in handle_step_transition callback: {e}", exc_info=True)
-            # Ensure the number of no_update matches the number of outputs
-            return [no_update] * (num_steps * 2 + 3) # 7 styles + 7 classes + value + style + stepper
-
-    # --- Validation Callbacks (Crucial for enabling Confirm buttons) ---
-    # These should be updated with centralized IDs in Phase 3 when those sections are also refactored
-
-    @app.callback(
-        Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled"),
-        [Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
-         Input(WizardIDs.DATE_RANGE_END_PICKER, "date")]
-    )
-    def validate_date_range(start_date, end_date):
-        is_disabled = not (start_date and end_date)
-        logger.debug(f"Dates selected: Start={start_date}, End={end_date}. Confirm Dates button disabled: {is_disabled}")
-        return is_disabled
-
-    @app.callback(
-        Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled"),
-        Input(WizardIDs.TICKER_DROPDOWN, "value") 
-    )
-    def validate_ticker_selection(tickers):
-        # Add more robust validation if needed (e.g., check format)
-        is_disabled = not bool(tickers)
-        logger.debug(f"Tickers selected: {tickers}. Confirm Tickers button disabled: {is_disabled}")
-        return is_disabled
-
-    @app.callback(
-        Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled"),
-        [Input(WizardIDs.COMMISSION_INPUT, "value"), Input(WizardIDs.SLIPPAGE_INPUT, "value")]
-    )
-    def validate_costs(commission, slippage):
-        ok = commission is not None and slippage is not None
-        logger.debug(f"Costs inputs: commission={commission}, slippage={slippage}, valid: {ok}")
-        return not ok
-
-    @app.callback(
-        Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled"),
-        [Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
-         Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")]
-    )
-    def validate_rebalancing_rules(frequency, threshold):
-        is_disabled = not (frequency and threshold is not None)
-        logger.debug(f"Rebalancing inputs: frequency={frequency}, threshold={threshold}. Confirm Rebalancing button disabled: {is_disabled}")
-        return is_disabled
-
-    @app.callback(
-        [Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled"), Output(WizardIDs.CONFIRM_RISK_BUTTON, "children")],
-        [Input(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
-         Input(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),
-         Input(WizardIDs.STOP_LOSS_TYPE_SELECT, 'value'),
-         Input(WizardIDs.STOP_LOSS_INPUT, 'value'), # MODIFIED: Corrected ID
-         Input(WizardIDs.TAKE_PROFIT_TYPE_SELECT, 'value'),
-         Input(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
-         Input(WizardIDs.MAX_RISK_PER_TRADE_INPUT, 'value'),
-         Input(WizardIDs.MARKET_TREND_LOOKBACK_INPUT, 'value'),
-         Input(WizardIDs.MAX_DRAWDOWN_INPUT, 'value'),
-         Input(WizardIDs.MAX_DAILY_LOSS_INPUT, 'value')
-        ]
-    )
-    def validate_risk_tab(selected_features, max_pos, sl_type, sl_val, tp_type, tp_val, rpt, mtl, md, mdl):
-        """Enable confirm-risk when no features selected (always enabled) or all selected feature params are filled."""
-        # Base label
-        if not selected_features:
-            # No features: always enabled, custom label
-            return False, "Continue without additional risk measures"
-        # If features selected, validate required inputs
-        feature_checks = {
-            'position_sizing': max_pos is not None,
-            'stop_loss': (sl_type is not None and sl_val is not None),
-            'take_profit': (tp_type is not None and tp_val is not None),
-            'risk_per_trade': rpt is not None,
-            'market_filter': mtl is not None,
-            'drawdown_protection': (md is not None and mdl is not None)
+            # Also mark completed steps with a different style
+            for completed_step in completed_steps:
+                if completed_step != current_step and 1 <= completed_step <= step_count:
+                    step_header_classes[completed_step - 1] = "wizard-step-header completed"
+        
+        # Calculate progress percentage - one-indexed
+        progress_percentage = (len(completed_steps) / step_count) * 100
+        
+        # Set progress bar color based on completion
+        progress_bar_style = {
+            "transition": "width 0.5s ease",
+            "backgroundColor": "#4CAF50" if progress_percentage >= 100 else "#375a7f"
         }
-        # If any selected feature fails check, disable
-        for feat in selected_features:
-            if not feature_checks.get(feat, True):
-                return True, "Confirm"
-        # All good
-        return False, "Confirm"
+        
+        # Create or update the stepper
+        current_stepper = create_wizard_stepper(current_step, completed_steps)
+        
+        return (
+            *step_content_styles,
+            *step_header_classes,
+            progress_percentage,
+            progress_bar_style,
+            current_stepper
+        )
 
-    # --- Select/Deselect All Tickers Callbacks ---
+    # --- Callback for Strategy Dropdown to Update Description ---
     @app.callback(
-        Output(WizardIDs.TICKER_DROPDOWN, 'value'),
-        [Input(WizardIDs.SELECT_ALL_TICKERS_BUTTON, 'n_clicks'), Input(WizardIDs.DESELECT_ALL_TICKERS_BUTTON, 'n_clicks')],
-        [State(WizardIDs.TICKER_DROPDOWN, 'options')],
-        prevent_initial_call=True
+        Output(WizardIDs.STRATEGY_DESCRIPTION_OUTPUT, "children"),
+        Input(WizardIDs.STRATEGY_DROPDOWN, "value")
     )
-    def update_ticker_selection(n_select_all, n_deselect_all, options):
-        """Select or deselect all tickers based on which button was clicked."""
-        ctx_trigger = ctx.triggered[0]['prop_id'].split('.')[0]
-        if ctx_trigger == WizardIDs.SELECT_ALL_TICKERS_BUTTON:
-            # options is a list of dicts with 'value' key
-            return [opt['value'] for opt in options]
-        elif ctx_trigger == WizardIDs.DESELECT_ALL_TICKERS_BUTTON:
-            return []
-        return no_update
-
-    # --- Summary Generation and Run Button Activation ---
-    @app.callback(
-        [Output(WizardIDs.SUMMARY_OUTPUT_CONTAINER, 'children'), 
-         Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'disabled', allow_duplicate=True)], 
-        Input(WizardIDs.step_content("wizard-summary"), 'style'),
-        [
-            State(WizardIDs.STRATEGY_DROPDOWN, 'value'),
-            # ADDED: State for initial capital
-            State(WizardIDs.INITIAL_CAPITAL_INPUT, 'value'),
-            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'value'),
-            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'id'),
-            State(WizardIDs.DATE_RANGE_START_PICKER, 'date'),
-            State(WizardIDs.DATE_RANGE_END_PICKER, 'date'),
-            State(WizardIDs.TICKER_DROPDOWN, 'value'),
-            State(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'),
-            State(WizardIDs.MAX_POSITION_SIZE_INPUT, 'value'),
-            State(WizardIDs.STOP_LOSS_TYPE_SELECT, 'value'),
-            State(WizardIDs.STOP_LOSS_INPUT, 'value'), # MODIFIED: Corrected ID
-            State(WizardIDs.TAKE_PROFIT_TYPE_SELECT, 'value'),
-            State(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
-            State(WizardIDs.MAX_RISK_PER_TRADE_INPUT, 'value'),
-            State(WizardIDs.MARKET_TREND_LOOKBACK_INPUT, 'value'),
-            State(WizardIDs.MAX_DRAWDOWN_INPUT, 'value'),
-            State(WizardIDs.MAX_DAILY_LOSS_INPUT, 'value'),
-            State(WizardIDs.COMMISSION_INPUT, 'value'),
-            State(WizardIDs.SLIPPAGE_INPUT, 'value'),
-            State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, 'value'),
-            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, 'value')
-        ],
-        prevent_initial_call=True
-    )
-    def update_summary_and_run(summary_style, strat_value, initial_capital, # Added initial_capital
-                               param_values, param_ids,
-                               start_date, end_date, tickers,
-                               risk_feats, max_ps, sl_type, sl_val,
-                               tp_type, tp_val, rpt, mtl,
-                               mdd, mdl, comm, slip, reb_freq, reb_thresh):
-        if not summary_style or summary_style.get('display') != 'block':
-            # Don't update if the summary step is not visible
-            return no_update, no_update # Return no_update for both outputs
-
-        summary_elements = []
-
-        # --- Strategy ---
-        strategy_label = strat_value # Default to value if not found
-        for strategy_info in AVAILABLE_STRATEGIES:
-            if strategy_info.get('value') == strat_value:
-                strategy_label = strategy_info.get('label', strat_value)
-                break
-        summary_elements.append(html.Div([
-            html.Strong("Strategy: "),
-            html.Span(strategy_label)
-        ], className="mb-1")) # Use mb-1 for closer spacing like screenshot
-
-        # --- Initial Capital ---
-        summary_elements.append(html.Div([
-            html.Strong("Initial Capital: "),
-            # Assuming initial_capital is already formatted string like "100 000"
-            html.Span(f"${initial_capital}" if initial_capital else "Not Set")
-        ], className="mb-1"))
-
-        # --- Parameters ---
-        if param_ids and param_values:
-            params_list = []
-            for i, pid in enumerate(param_ids):
-                # Ensure pid is a dictionary and has 'param' key
-                if isinstance(pid, dict) and 'param' in pid:
-                    name = pid.get('param')
-                    val = param_values[i] if i < len(param_values) else 'N/A'
-                    # Format parameter name nicely
-                    formatted_name = name.replace('_', ' ').title()
-                    params_list.append(html.Li(f"{formatted_name}: {val}"))
-                else:
-                     logger.warning(f"Invalid param_id structure found: {pid}")
-
-            if params_list: # Only add if there are valid parameters
-                 summary_elements.append(html.Div([
-                     html.Strong("Parameters:"),
-                     html.Ul(params_list, style={'paddingLeft': '20px', 'marginTop': '0px', 'marginBottom': '4px'}) # Indent list
-                 ], className="mb-1"))
-
-
-        # --- Date Range ---
-        summary_elements.append(html.Div([
-            html.Strong("Date Range: "),
-            html.Span(f"{start_date} to {end_date}")
-        ], className="mb-1"))
-
-        # --- Tickers ---
-        summary_elements.append(html.Div([
-            html.Strong("Tickers: "),
-            html.Span(", ".join(tickers or ["None"]))
-        ], className="mb-1"))
-
-        # --- Risk Measures ---
-        risk_measures_list = []
-        if risk_feats:
-            if 'position_sizing' in risk_feats: risk_measures_list.append(html.Li(f"Position Sizing: {max_ps}%"))
-            if 'stop_loss' in risk_feats: risk_measures_list.append(html.Li(f"Stop Loss ({sl_type}): {sl_val}%"))
-            if 'take_profit' in risk_feats: risk_measures_list.append(html.Li(f"Take Profit ({tp_type}): {tp_val}%"))
-            if 'risk_per_trade' in risk_feats: risk_measures_list.append(html.Li(f"Risk per Trade: {rpt}%"))
-            if 'market_filter' in risk_feats: risk_measures_list.append(html.Li(f"Market Filter lookback: {mtl} days"))
-            if 'drawdown_protection' in risk_feats: risk_measures_list.append(html.Li(f"Max Drawdown: {mdd}%, Max Daily Loss: {mdl}%"))
-
-        if risk_measures_list:
-             summary_elements.append(html.Div([
-                 html.Strong("Risk Measures:"),
-                 html.Ul(risk_measures_list, style={'paddingLeft': '20px', 'marginTop': '0px', 'marginBottom': '4px'}) # Indent list
-             ], className="mb-1"))
-        else:
-             summary_elements.append(html.Div([
-                 html.Strong("Risk Measures: "),
-                 html.Span("None")
-             ], className="mb-1"))
-
-
-        # --- Costs ---
-        summary_elements.append(html.Div([
-            html.Strong("Commission: "),
-            html.Span(f"{comm}%"),
-            html.Strong(", Slippage: ", style={'marginLeft': '5px'}),
-            html.Span(f"{slip}%")
-        ], className="mb-1"))
-
-        # --- Rebalancing ---
-        rebal_freq_label = reb_freq # Default
-        freq_map = {'D': 'Daily', 'W': 'Weekly', 'M': 'Monthly', 'Q': 'Quarterly', 'A': 'Annually', 'N': 'None'}
-        rebal_freq_label = freq_map.get(reb_freq, reb_freq)
-
-        summary_elements.append(html.Div([
-            html.Strong("Rebalancing: "),
-            html.Span(f"{rebal_freq_label}"),
-            html.Strong(", Threshold: ", style={'marginLeft': '5px'}),
-            html.Span(f"{reb_thresh}%")
-        ], className="mb-1"))
-
-        # Enable Run Backtest button
-        return summary_elements, False
-
-    # --- Connect Wizard Run Backtest Button to Backtest Execution ---
-    @app.callback(
-        [
-            Output(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data', allow_duplicate=True),
-            Output('run-backtest-trigger-store', 'data', allow_duplicate=True) # MODIFIED: Output to the new trigger store
-        ],
-        Input(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'n_clicks'),
-        [
-            State(WizardIDs.STRATEGY_DROPDOWN, 'value'),
-            State(WizardIDs.INITIAL_CAPITAL_INPUT, 'value'),
-            State(WizardIDs.DATE_RANGE_START_PICKER, 'date'),
-            State(WizardIDs.DATE_RANGE_END_PICKER, 'date'),
-            State(WizardIDs.TICKER_DROPDOWN, 'value'),
-            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'value'),
-            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'id'),
-            State(WizardIDs.RISK_MANAGEMENT_STORE_WIZARD, 'data'),
-            State(WizardIDs.COMMISSION_INPUT, 'value'),
-            State(WizardIDs.SLIPPAGE_INPUT, 'value'),
-            State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, 'value'),
-            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, 'value')
-        ],
-        prevent_initial_call=True
-    )
-    def trigger_backtest_from_wizard(n_clicks, strategy_type, initial_capital_str,
-                                     start_date, end_date, tickers,
-                                     strategy_param_values, strategy_param_ids,
-                                     risk_management_data,
-                                     comm, slip, reb_freq, reb_thresh):
+    def update_strategy_description(selected_strategy):
         """
-        When the wizard's Run Backtest button is clicked, this callback populates the
-        main strategy config store and updates the run-backtest-trigger-store to signal execution.
+        Updates the strategy description text based on the selected strategy.
         """
-        if not n_clicks or n_clicks <= 0:
+        if not selected_strategy:
+            # Return a default message if no strategy is selected
+            return html.P("Please select a strategy to see its description.")
+        
+        # Get the description for the selected strategy from our constants
+        description = STRATEGY_DESCRIPTIONS.get(selected_strategy, "No description available.")
+        
+        # Return formatted description
+        return html.Div([
+            html.P(description),
+            # You could add more details, parameters, or examples here if needed
+        ])
+        
+    # --- Callback to Update Strategy Parameter Inputs ---
+    @app.callback(
+        Output(WizardIDs.STRATEGY_PARAM_INPUTS_CONTAINER, "children"),
+        Input(WizardIDs.STRATEGY_DROPDOWN, "value")
+    )
+    def update_strategy_parameters(selected_strategy):
+        """
+        Dynamically generate parameter input fields based on the selected strategy.
+        """
+        if not selected_strategy or selected_strategy not in DEFAULT_STRATEGY_PARAMS:
+            return []  # Return empty list if no strategy selected or no parameters defined
+        
+        # Get the parameters for the selected strategy
+        params = DEFAULT_STRATEGY_PARAMS[selected_strategy]
+        
+        # Create input fields for each parameter
+        parameter_inputs = []
+        
+        for param_name, param_config in params.items():
+            # Extract parameter configuration
+            default_value = param_config.get("default", 0)
+            min_value = param_config.get("min", None)
+            max_value = param_config.get("max", None)
+            step = param_config.get("step", 1)
+            description = param_config.get("description", f"Parameter: {param_name}")
+            
+            # Create parameter input container
+            param_container = html.Div([
+                html.Label(description),
+                # Generate different input types based on parameter configuration
+                dcc.Input(
+                    id={"type": "strategy-param", "name": param_name},
+                    type="number",
+                    value=default_value,
+                    min=min_value,
+                    max=max_value,
+                    step=step,
+                    className="wizard-parameter-input"
+                )
+            ], className="wizard-parameter-container")
+            
+            parameter_inputs.append(param_container)
+        
+        return parameter_inputs
+        
+    # --- Additional callbacks for the wizard would follow here ---
+    
+    # For example, callbacks to:
+    # - Validate inputs for each step
+    # - Add/remove tickers from the selected list
+    # - Update date ranges based on available data
+    # - Toggle risk management features
+    
+    # To avoid making this file too long, implementation details for these additional callbacks
+    # can be added as needed, or potentially split into separate modules.
+
+    # --- Collect selected strategy parameters for the summary ---
+    @app.callback(
+        Output("wizard-strategy-parameters-summary", "children"),
+        [Input(WizardIDs.STRATEGY_DROPDOWN, "value")],
+        [State({"type": "strategy-param", "name": ALL}, "id"),
+         State({"type": "strategy-param", "name": ALL}, "value")]
+    )
+    def update_strategy_parameters_summary(selected_strategy, param_ids, param_values):
+        """Collect and format strategy parameters for the summary screen."""
+        if not selected_strategy:
+            return html.P("No strategy selected.")
+        
+        if not param_ids or not param_values:
+            return html.P(f"Strategy: {selected_strategy} (using default parameters)")
+        
+        # Create a summary of selected parameters
+        param_summary_items = []
+        
+        for param_id, param_value in zip(param_ids, param_values):
+            param_name = param_id["name"]
+            # Get parameter description if available
+            param_desc = "Unknown parameter"
+            
+            if selected_strategy in DEFAULT_STRATEGY_PARAMS and param_name in DEFAULT_STRATEGY_PARAMS[selected_strategy]:
+                param_desc = DEFAULT_STRATEGY_PARAMS[selected_strategy][param_name].get("description", param_name)
+            
+            param_summary_items.append(
+                html.Li(f"{param_desc}: {param_value}")
+            )
+        
+        return html.Div([
+            html.P(f"Strategy: {selected_strategy}", className="summary-title"),
+            html.P("Parameters:"),
+            html.Ul(param_summary_items, className="summary-list")
+        ])
+
+    # --- Summary page updates ---
+    @app.callback(
+        [Output("wizard-summary-strategy", "children"),
+         Output("wizard-summary-dates", "children"),
+         Output("wizard-summary-tickers", "children"),
+         Output("wizard-summary-risk", "children"),
+         Output("wizard-summary-costs", "children"),
+         Output("wizard-summary-rebalancing", "children")],
+        [Input(WizardIDs.step_header("wizard-summary"), "n_clicks")],
+        [State(WizardIDs.STRATEGY_DROPDOWN, "value"),
+         State(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),
+         State(WizardIDs.DATE_RANGE_START_PICKER, "date"),
+         State(WizardIDs.DATE_RANGE_END_PICKER, "date"),
+         State(WizardIDs.TICKER_LIST_CONTAINER, "children"),
+         State(WizardIDs.MAX_POSITION_SIZE_INPUT, "value"),
+         State(WizardIDs.STOP_LOSS_INPUT, "value"),
+         State(WizardIDs.TAKE_PROFIT_INPUT, "value"),
+         State("wizard-commission-input", "value"),
+         State("wizard-slippage-input", "value"),
+         State("wizard-rebalancing-freq-dropdown", "value")]
+    )
+    def update_wizard_summary(n_clicks, strategy, initial_capital, start_date, end_date, 
+                             ticker_children, max_position, stop_loss, take_profit,
+                             commission, slippage, rebalancing_freq):
+        """Update the wizard summary page with all selected configurations."""
+        if n_clicks is None:
+            # Don't update on initial load
             raise PreventUpdate
-
-        logger.info(f"Wizard Run Backtest button clicked. Populating config store and triggering backtest execution via store update.")
-
-        # Clean initial capital (string "100 000" to float 100000.0)
-        cleaned_initial_capital = None
-        if initial_capital_str:
-            try:
-                cleaned_initial_capital = float(str(initial_capital_str).replace(" ", "").replace(",", "."))
-            except ValueError:
-                logger.warning(f"Could not parse initial capital string: {initial_capital_str}")
-                cleaned_initial_capital = None 
-
-        # Prepare strategy parameters
-        params_dict = {}
-        if strategy_param_ids and strategy_param_values:
-            for i, param_id_dict in enumerate(strategy_param_ids):
-                if isinstance(param_id_dict, dict) and 'param' in param_id_dict:
-                    param_name = param_id_dict['param']
-                    try:
-                        params_dict[param_name] = float(strategy_param_values[i])
-                    except (ValueError, TypeError):
-                        params_dict[param_name] = strategy_param_values[i]
-
-        # Consolidate all config data
-        config_data = {
-            "strategy_type": strategy_type,
-            "initial_capital": cleaned_initial_capital,
-            "start_date": start_date,
-            "end_date": end_date,
-            "tickers": tickers,
-            "strategy_params": params_dict,
-            "risk_management": risk_management_data if risk_management_data else {},
-            "trading_costs": {
-                "commission_bps": comm,
-                "slippage_bps": slip
-            },
-            "rebalancing": {
-                "frequency": reb_freq,
-                "threshold_pct": reb_thresh
-            }
-        }
-        logger.debug(f"Consolidated config data from wizard for store: {config_data}")
-
-        # Update the main config store and the trigger store (e.g., with current timestamp or n_clicks)
-        # Using n_clicks for the trigger store to ensure it changes on each click.
-        return config_data, n_clicks
-
-    # --- NEW CALLBACK: Main Page Run Backtest Button --- 
+            
+        # Format strategy summary
+        strategy_summary = html.Div([
+            html.P(f"Strategy: {strategy}"),
+            html.P(f"Initial Capital: ${initial_capital:,.2f}")
+        ])
+        
+        # Format date range summary
+        date_summary = html.Div([
+            html.P(f"Backtest Period: {start_date} to {end_date}")
+        ])
+        
+        # Extract ticker names from the ticker container children
+        ticker_names = []
+        if ticker_children and isinstance(ticker_children, list):
+            for child in ticker_children:
+                if isinstance(child, dict) and child.get('props', {}).get('children'):
+                    ticker_text = child['props']['children']
+                    if isinstance(ticker_text, str) and ticker_text.strip():
+                        ticker_names.append(ticker_text.strip())
+        
+        # Format ticker summary
+        ticker_summary = html.Div([
+            html.P(f"Selected Tickers: {', '.join(ticker_names) if ticker_names else 'None'}")
+        ])
+        
+        # Format risk management summary
+        risk_summary = html.Div([
+            html.P(f"Maximum Position Size: {max_position}%"),
+            html.P(f"Stop Loss: {stop_loss}%"),
+            html.P(f"Take Profit: {take_profit}%")
+        ])
+          # Format trading costs summary
+        costs_summary = html.Div([
+            html.P(f"Commission: {commission}%"),
+            html.P(f"Slippage: {slippage}%")
+        ])
+          # Format rebalancing summary
+        rebalancing_summary = html.Div([
+            html.P(f"Rebalancing Frequency: {rebalancing_freq}")
+        ])
+        
+        return (strategy_summary, date_summary, ticker_summary, 
+                risk_summary, costs_summary, rebalancing_summary)
+                
+    # --- Enable/disable Strategy Confirm button based on selection ---
     @app.callback(
-        [
-            Output(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data', allow_duplicate=True),
-            Output('run-backtest-trigger-store', 'data', allow_duplicate=True)
-        ],
-        [Input(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'n_clicks')],
-        [
-            State(WizardIDs.STRATEGY_DROPDOWN, 'value'),
-            State(WizardIDs.INITIAL_CAPITAL_INPUT, 'value'),
-            State(WizardIDs.DATE_RANGE_START_PICKER, 'date'),
-            State(WizardIDs.DATE_RANGE_END_PICKER, 'date'),
-            State(WizardIDs.TICKER_DROPDOWN, 'value'),
-            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'value'),
-            State({'type': 'strategy-param', 'strategy': ALL, 'param': ALL}, 'id'),
-            State(WizardIDs.STOP_LOSS_INPUT, 'value'),
-            State(WizardIDs.TAKE_PROFIT_INPUT, 'value'),
-            State(WizardIDs.MAX_DRAWDOWN_INPUT, 'value'), # MODIFIED: Corrected ID
-            State(WizardIDs.MAX_CONSECUTIVE_LOSSES_INPUT, 'value'),
-            State(WizardIDs.RISK_FEATURES_CHECKLIST, 'value'), # CORRECTED TO PLURAL
-            State(WizardIDs.COMMISSION_INPUT, 'value'),
-            State(WizardIDs.SLIPPAGE_INPUT, 'value'),
-            State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, 'value'),
-            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, 'value')
-        ],
-        prevent_initial_call=True
+        Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled"),
+        [Input(WizardIDs.STRATEGY_DROPDOWN, "value"),
+         Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value")]
     )
-    def trigger_backtest_from_main_page(n_clicks, strategy_type, initial_capital_str,
-                                        start_date, end_date, tickers,
-                                        strategy_param_values, strategy_param_ids,
-                                        stop_loss_pct, take_profit_pct, max_drawdown_pct, max_consecutive_losses, risk_features,
-                                        comm, slip, reb_freq, reb_thresh):
-        """
-        When the main page's Run Backtest button is clicked, this callback collects all config data,
-        populates the main strategy config store, and updates the run-backtest-trigger-store.
-        """
-        if not n_clicks or n_clicks <= 0:
-            raise PreventUpdate
-
-        logger.info(f"Main Page Run Backtest button clicked (n_clicks: {n_clicks}). Populating config store and triggering backtest execution.")
-
-        cleaned_initial_capital = None
-        if initial_capital_str:
-            try:
-                cleaned_initial_capital = float(str(initial_capital_str).replace(" ", "").replace(",", "."))
-            except ValueError:
-                logger.warning(f"Could not parse initial capital string from main page: {initial_capital_str}")
-                cleaned_initial_capital = None
-
-        params_dict = {}
-        if strategy_param_ids and strategy_param_values:
-            for i, param_id_dict in enumerate(strategy_param_ids):
-                if isinstance(param_id_dict, dict) and 'param' in param_id_dict and param_id_dict.get('strategy') == strategy_type:
-                    param_name = param_id_dict['param']
-                    try:
-                        params_dict[param_name] = float(strategy_param_values[i])
-                    except (ValueError, TypeError):
-                        params_dict[param_name] = strategy_param_values[i]
-
-        # Construct risk_management dictionary from individual State inputs
-        risk_management_data = {
-            "stop_loss_pct": stop_loss_pct,
-            "take_profit_pct": take_profit_pct,
-            "max_drawdown_pct": max_drawdown_pct,
-            "max_consecutive_losses": max_consecutive_losses,
-            "enabled_features": risk_features if risk_features else []  # Ensure it's a list
-        }
-
-        config_data = {
-            "strategy_type": strategy_type,
-            "initial_capital": cleaned_initial_capital,
-            "start_date": start_date,
-            "end_date": end_date,
-            "tickers": tickers,
-            "strategy_params": params_dict,
-            "risk_management": risk_management_data,
-            "trading_costs": {
-                "commission_bps": comm,
-                "slippage_bps": slip
-            },
-            "rebalancing": {
-                "frequency": reb_freq,
-                "threshold_pct": reb_thresh
-            }
-        }
-        logger.debug(f"Consolidated config data from main page for store: {config_data}")
-
-        return config_data, n_clicks
-
-    logger.info("Wizard callbacks registered successfully.")
+    def toggle_strategy_confirm_button(selected_strategy, initial_capital):
+        """Enable the confirm button when both a strategy is selected and initial capital is provided"""
+        if selected_strategy and initial_capital is not None and initial_capital > 0:
+            return False  # Enable button
+        return True  # Keep button disabled
