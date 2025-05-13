@@ -121,18 +121,17 @@ def register_strategy_callbacks(app: dash.Dash) -> None:
     
     # --- Instantiate DataService (assuming it's lightweight or managed elsewhere if heavy) ---
     # If DataService requires complex setup, this might need to be passed in or accessed differently.
-    data_service = DataService()
-
-    @app.callback(
-        Output(WizardIDs.STRATEGY_DESCRIPTION_OUTPUT, 'children'),
-        Input(WizardIDs.STRATEGY_DROPDOWN, 'value')
-    )
-    def update_strategy_description(selected_strategy: Optional[str]) -> html.P:
-        """Update the strategy description text when a strategy is selected."""
-        if not selected_strategy:
-            return html.P("Select a strategy to see its description.")
-        description = STRATEGY_DESCRIPTIONS.get(selected_strategy, "No description available.")
-        return html.P(description)    # This callback was removed because it was causing a duplicate with wizard_callbacks.py
+    data_service = DataService()    # @app.callback(
+    #     Output(WizardIDs.STRATEGY_DESCRIPTION_OUTPUT, 'children'),
+    #     Input(WizardIDs.STRATEGY_DROPDOWN, 'value')
+    # )
+    # def update_strategy_description(selected_strategy: Optional[str]) -> html.P:
+    #     """Update the strategy description text when a strategy is selected."""
+    #     if not selected_strategy:
+    #         return html.P("Select a strategy to see its description.")
+    #     description = STRATEGY_DESCRIPTIONS.get(selected_strategy, "No description available.")
+    #     return html.P(description)
+    # This callback was removed because it was causing a duplicate with wizard_callbacks.py
     # Parameters inputs are now handled by wizard_callbacks.py
 
     logger.info("Strategy callbacks registered.")

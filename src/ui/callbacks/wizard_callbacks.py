@@ -397,8 +397,7 @@ def register_wizard_callbacks(app: Dash):
         ])
         
         return (strategy_summary, date_summary, ticker_summary, 
-                risk_summary, costs_summary, rebalancing_summary)
-                
+                risk_summary, costs_summary, rebalancing_summary)                
     # --- Enable/disable Strategy Confirm button based on selection ---
     @app.callback(
         Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled"),
@@ -407,6 +406,21 @@ def register_wizard_callbacks(app: Dash):
     )
     def toggle_strategy_confirm_button(selected_strategy, initial_capital):
         """Enable the confirm button when both a strategy is selected and initial capital is provided"""
-        if selected_strategy and initial_capital is not None and initial_capital > 0:
-            return False  # Enable button
-        return True  # Keep button disabled
+        if not selected_strategy:
+            return True  # Keep button disabled if no strategy selected
+            
+        # Handle text input that might contain spaces or other formatting
+        if initial_capital is not None:
+            try:
+                # Remove spaces and convert to float
+                if isinstance(initial_capital, str):
+                    initial_capital = float(initial_capital.replace(" ", ""))
+                else:
+                    initial_capital = float(initial_capital)
+                
+                if initial_capital > 0:
+                    return False  # Enable button
+            except (ValueError, TypeError):
+                pass  # If conversion fails, keep the button disabled
+                
+        return True  # Keep button disabled in all other cases

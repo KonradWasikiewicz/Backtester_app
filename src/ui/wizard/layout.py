@@ -68,9 +68,8 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                     options=[{'label': s['label'], 'value': s['value']} for s in AVAILABLE_STRATEGIES],
                     placeholder="Select a strategy...",
                     className="mb-3",
-                    clearable=False
-                ),
-                html.Div(id=WizardIDs.STRATEGY_DESCRIPTION_OUTPUT, className="mb-3 mt-3"),
+                    clearable=False                ),
+                html.Div(id="wizard-strategy-description-output-alt", className="mb-3 mt-3"),
                 html.H6("Strategy Parameters:", className="mt-4 mb-2"),
                 html.Div(id=WizardIDs.STRATEGY_PARAM_INPUTS_CONTAINER, className="mb-3"),
                 dbc.Button("Confirm", id=WizardIDs.CONFIRM_STRATEGY_BUTTON, color="primary", className="mt-3", disabled=True)
