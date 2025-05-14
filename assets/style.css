@@ -235,15 +235,13 @@ input:focus, .form-control:focus {
 /* --- Summary Step Compact Styling --- */
 .summary-item,
 #wizard-summary-strategy-parameters { /* Apply common styles to all summary blocks */
-  margin-bottom: 0.075rem !important; /* Further reduced inter-block spacing */
-  padding-top: 0.1rem !important;
-  padding-bottom: 0.1rem !important; /* Reduced to match top padding */
+  margin-bottom: 0.075rem !important; /* Minimal bottom margin */
+  padding-top: 0.05rem !important; /* Reduced top padding */
+  padding-bottom: 0.05rem !important; /* Reduced bottom padding */
   border-bottom: 1px solid #2a2e39 !important;
-  background-color: #1e222d; /* Ensure consistent background */
-  border-left: 3px solid #0d6efd; /* Ensure consistent left border */
-  border-radius: 5px; /* Ensure consistent radius */
-  padding-left: 10px; /* Consistent horizontal padding */
-  padding-right: 10px; /* Consistent horizontal padding */
+  /* Remove background, border-left, and border-radius since they're now applied only to .summary-section */
+  padding-left: 5px; /* Reduced horizontal padding */
+  padding-right: 5px; /* Reduced horizontal padding */
 }
 
 /* Remove border and all bottom spacing from the very last summary block in the container */
@@ -272,8 +270,8 @@ input:focus, .form-control:focus {
 #wizard-summary-strategy-parameters h5 {
     margin-top: 0.05rem !important;
     margin-bottom: 0.05rem !important;
-    font-size: 1rem !important; /* Consistent with previous */
-    font-weight: bold; /* Ensure strategy title is bold */
+    font-size: 0.95rem !important; /* Reduced to match summary-section h5 */
+    font-weight: 600; /* Changed to match summary-section h5 */
 }
 
 #wizard-summary-strategy-parameters p.text-muted { /* Strategy description */
@@ -281,13 +279,15 @@ input:focus, .form-control:focus {
     margin-bottom: 0.05rem !important;
     font-size: 0.85rem !important;
     line-height: 1.2;
+    color: #8a94a0 !important; /* Match the updated text-muted color */
 }
 
 #wizard-summary-strategy-parameters h6 { /* "Parameters:" subtitle */
-    margin-top: 0.1rem !important;
+    margin-top: 0.05rem !important; /* Reduced to match summary-section h6 */
     margin-bottom: 0.05rem !important;
     font-size: 0.9rem !important;
-    font-weight: bold;
+    font-weight: 600; /* Changed to match summary-section h6 */
+    color: #adb5bd; /* Match summary-section h6 color */
 }
 
 #wizard-summary-strategy-parameters .strategy-params-list { /* Div containing parameter rows */
@@ -662,32 +662,31 @@ input:focus, .form-control:focus {
 .summary-section {
   background-color: #1e222d;
   border-radius: 5px;
-  padding: 12px 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 6px 10px;
+  margin-bottom: 8px;
   border-left: 3px solid #0d6efd;
 }
 
 .summary-section h5 {
   color: #ffffff;
-  margin-bottom: 0.05rem; /* Reduced from 8px */
+  margin-bottom: 0.05rem; /* Minimal bottom margin */
   font-weight: 600;
-  font-size: 1rem; /* Ensure consistency */
+  font-size: 0.95rem; /* Slightly reduced for consistency */
 }
 
 .summary-section h6 {
   color: #adb5bd;
-  margin-top: 0.1rem; /* Reduced from 12px */
-  margin-bottom: 0.05rem; /* Reduced from 8px */
+  margin-top: 0.05rem; /* Reduced top margin */
+  margin-bottom: 0.05rem; /* Minimal bottom margin */
   font-weight: 600;
-  font-size: 0.9rem; /* Ensure consistency */
+  font-size: 0.9rem; /* Consistent size */
 }
 
 .summary-section .text-muted {
-  color: #6c757d !important;
-  font-size: 0.85rem; /* Ensure consistency */
-  margin-bottom: 0.05rem !important; /* Add tight margin for P > text-muted */
-  line-height: 1.2; /* Ensure consistency */
+  color: #8a94a0 !important; /* Slightly brighter for better readability */
+  font-size: 0.85rem; /* Consistent size */
+  margin-bottom: 0.05rem !important; /* Minimal margin */
+  line-height: 1.2; /* Compact line height */
 }
 
 .summary-section .border-light {

@@ -34,6 +34,7 @@ from src.ui.callbacks.strategy_callbacks import register_strategy_callbacks
 from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
 from src.ui.callbacks.risk_management_callbacks import register_risk_management_callbacks
 from src.ui.callbacks.wizard_callbacks import register_wizard_callbacks
+from src.ui.callbacks.run_backtest_callback import register_run_backtest_callback
 from src.ui.layouts.strategy_config import create_strategy_config_section
 # --- Import the new panel layout functions ---
 from src.ui.layouts.results_display import create_center_panel_layout, create_right_panel_layout
@@ -505,6 +506,7 @@ def register_callbacks(app: dash.Dash) -> None:
         register_backtest_callbacks(app)
         register_risk_management_callbacks(app)
         register_wizard_callbacks(app)
+        register_run_backtest_callback(app)
 
         # --- Register Changelog Modal Callbacks ---
         @app.callback(
