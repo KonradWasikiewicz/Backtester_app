@@ -344,16 +344,15 @@ def register_wizard_callbacks(app: Dash):
             return html.P("No strategy selected.")
         
         strategy_description = STRATEGY_DESCRIPTIONS.get(selected_strategy, "No description available.")
-        
-        # The parent Div (with ID WizardIDs.SUMMARY_STRATEGY_PARAMETERS) will be styled by CSS.
+          # The parent Div (with ID WizardIDs.SUMMARY_STRATEGY_PARAMETERS) will be styled by CSS.
         # No conflicting className here.
-        
         if not param_ids or not param_values:
-            # Using H5 for strategy name, P for description. CSS will handle margins.
+            # Use H6 with summary-subtitle class for consistency with other summary items
             return html.Div([
-                html.H5([html.Span("Strategy:", className="fw-bold"), f" {selected_strategy} (using default parameters)"]),
+                html.H6("Strategy:", className="summary-subtitle mt-2 mb-1"),
+                html.P(f"{selected_strategy} (using default parameters)"),
                 html.P(strategy_description, className="text-muted")
-            ])
+            ], className="summary-item")
 
         param_summary_items = []
         param_data = sorted(zip(param_ids, param_values), key=lambda x: x[0]["name"])
@@ -370,14 +369,14 @@ def register_wizard_callbacks(app: Dash):
                     dbc.Col(html.Span(str(param_value)), width=6)
                 ], className="mb-0") # mb-0 for tight parameter rows, CSS will handle font
             )
-        
-        # Using H5, P, H6. Parameter list div gets a specific class for styling.
+          # Use consistent heading styles with other summary items
         return html.Div([
-            html.H5([html.Span("Strategy:", className="fw-bold"), f" {selected_strategy}"]),
+            html.H6("Strategy:", className="summary-subtitle mt-2 mb-1"),
+            html.P(f"{selected_strategy}"),
             html.P(strategy_description, className="text-muted"),
-            html.H6("Parameters:"),
+            html.H6("Parameters:", className="summary-subtitle mt-2 mb-1"),
             html.Div(param_summary_items, className="strategy-params-list") # Specific class for this list
-        ])
+        ], className="summary-item")
 
     # --- Summary page updates ---
     @app.callback(

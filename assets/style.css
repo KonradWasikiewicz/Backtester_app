@@ -268,10 +268,8 @@ input:focus, .form-control:focus {
 
 /* Styling for elements specifically within #wizard-summary-strategy-parameters */
 #wizard-summary-strategy-parameters h5 {
-    margin-top: 0.05rem !important;
-    margin-bottom: 0.05rem !important;
-    font-size: 0.95rem !important; /* Reduced to match summary-section h5 */
-    font-weight: 600; /* Changed to match summary-section h5 */
+    /* Remove specific styling for h5 as we now use h6.summary-subtitle instead */
+    display: none; /* Hide any existing h5 elements */
 }
 
 #wizard-summary-strategy-parameters p.text-muted { /* Strategy description */
@@ -282,13 +280,7 @@ input:focus, .form-control:focus {
     color: #8a94a0 !important; /* Match the updated text-muted color */
 }
 
-#wizard-summary-strategy-parameters h6 { /* "Parameters:" subtitle */
-    margin-top: 0.05rem !important; /* Reduced to match summary-section h6 */
-    margin-bottom: 0.05rem !important;
-    font-size: 0.9rem !important;
-    font-weight: 600; /* Changed to match summary-section h6 */
-    color: #adb5bd; /* Match summary-section h6 color */
-}
+/* Style for strategy section subtitle is now inherited from common classes */
 
 #wizard-summary-strategy-parameters .strategy-params-list { /* Div containing parameter rows */
     padding-top: 0.05rem !important;
