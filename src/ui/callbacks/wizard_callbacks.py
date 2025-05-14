@@ -369,14 +369,14 @@ def register_wizard_callbacks(app: Dash):
 
     # --- Summary page updates ---
     @app.callback(
-        [Output(WizardIDs.SUMMARY_STRATEGY_DETAILS, "children"),
+        [Output(WizardIDs.SUMMARY_STRATEGY_DETAILS, "children"),  # This will now be for Initial Capital
          Output(WizardIDs.SUMMARY_DATES_DETAILS, "children"),
          Output(WizardIDs.SUMMARY_TICKERS_DETAILS, "children"),
          Output(WizardIDs.SUMMARY_RISK_DETAILS, "children"),
          Output(WizardIDs.SUMMARY_COSTS_DETAILS, "children"),
          Output(WizardIDs.SUMMARY_REBALANCING_DETAILS, "children")],
-        [Input(WizardIDs.step_header(WizardIDs.SUMMARY_CONTAINER), "n_clicks")],
-        [State(WizardIDs.STRATEGY_DROPDOWN, "value"),
+        [Input(WizardIDs.step_content("wizard-summary"), "style")],
+        [State(WizardIDs.STRATEGY_DROPDOWN, "value"), # Keep strategy state for context if needed, though not directly displayed here
          State(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),
          State(WizardIDs.DATE_RANGE_START_PICKER, "date"),
          State(WizardIDs.DATE_RANGE_END_PICKER, "date"),
@@ -389,36 +389,85 @@ def register_wizard_callbacks(app: Dash):
          State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
          State(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")]
     )
-    def update_wizard_summary(n_clicks, strategy, initial_capital, start_date, end_date, 
+    def update_wizard_summary(summary_style, strategy, initial_capital, start_date, end_date, 
                              selected_tickers_dropdown_value, max_position, stop_loss, take_profit, 
                              commission, slippage, rebalancing_freq, rebalancing_threshold):
-        if n_clicks is None:
+        if not summary_style or summary_style.get("display") == "none":
             raise PreventUpdate
-        strategy_summary = html.Div([
-            html.P(f"Strategy: {strategy}"),
-            html.P(f"Initial Capital: ${initial_capital:,.2f}")
-        ])
+        
+        try:
+            if isinstance(initial_capital, str):
+                formatted_capital = f"${float(initial_capital.replace(' ', '')):,.2f}"
+            elif initial_capital is not None:
+                formatted_capital = f"${float(initial_capital):,.2f}"
+            else:
+                formatted_capital = "N/A"
+        except ValueError:
+            formatted_capital = "Invalid"
+
+        initial_capital_summary = html.Div([
+            html.H6("Initial Capital:", className="summary-subtitle mt-2 mb-1"),
+            html.P(f"{formatted_capital}")
+        ], className="summary-item")
+        
         date_summary = html.Div([
-            html.P(f"Backtest Period: {start_date} to {end_date}")
-        ])
+            html.H6("Backtest Period:", className="summary-subtitle mt-2 mb-1"),
+            html.P(f"{start_date if start_date else 'N/A'} to {end_date if end_date else 'N/A'}")
+        ], className="summary-item")
+        
         ticker_names = selected_tickers_dropdown_value if selected_tickers_dropdown_value else []
         ticker_summary = html.Div([
-            html.P(f"Selected Tickers: {', '.join(ticker_names) if ticker_names else 'None'}")
-        ])
+            html.H6("Selected Tickers:", className="summary-subtitle mt-2 mb-1"),
+            html.P(f"{', '.join(ticker_names) if ticker_names else 'None'}")
+        ], className="summary-item")
+        
+        # Risk Management Summary
+        all_risk_params_effectively_none = True
+        risk_items_content = []
+
+        if max_position is not None:
+            risk_items_content.append(html.P(f"Max Position Size: {max_position}%"))
+            all_risk_params_effectively_none = False
+        else:
+            risk_items_content.append(html.P("Max Position Size: N/A"))
+
+        if stop_loss is not None:
+            risk_items_content.append(html.P(f"Stop Loss: {stop_loss}%"))
+            all_risk_params_effectively_none = False
+        else:
+            risk_items_content.append(html.P("Stop Loss: N/A"))
+
+        if take_profit is not None:
+            risk_items_content.append(html.P(f"Take Profit: {take_profit}%"))
+            all_risk_params_effectively_none = False
+        else:
+            risk_items_content.append(html.P("Take Profit: N/A"))
+        
+        # Add checks for other risk parameters here if they are added to states
+
+        if all_risk_params_effectively_none:
+            risk_display_content = html.P("No additional risk measures defined")
+        else:
+            risk_display_content = html.Div(risk_items_content)
+
         risk_summary = html.Div([
-            html.P(f"Maximum Position Size: {max_position}%"),
-            html.P(f"Stop Loss: {stop_loss}%"),
-            html.P(f"Take Profit: {take_profit}%")
-        ])
+            html.H6("Risk Management:", className="summary-subtitle mt-2 mb-1"),
+            risk_display_content
+        ], className="summary-item")
+        
         costs_summary = html.Div([
-            html.P(f"Commission: {commission}%"),
-            html.P(f"Slippage: {slippage}%")
-        ])
+            html.H6("Trading Costs:", className="summary-subtitle mt-2 mb-1"),
+            html.P(f"Commission: {commission if commission is not None else 'N/A'}%"),
+            html.P(f"Slippage: {slippage if slippage is not None else 'N/A'}%")
+        ], className="summary-item")
+        
         rebalancing_summary = html.Div([
-            html.P(f"Rebalancing Frequency: {rebalancing_freq}"),
-            html.P(f"Rebalancing Threshold: {rebalancing_threshold}%")
-        ])
-        return (strategy_summary, date_summary, ticker_summary, 
+            html.H6("Rebalancing:", className="summary-subtitle mt-2 mb-1"),
+            html.P(f"Frequency: {rebalancing_freq if rebalancing_freq else 'N/A'}"),
+            html.P(f"Threshold: {rebalancing_threshold if rebalancing_threshold is not None else 'N/A'}%")
+        ], className="summary-item")
+        
+        return (initial_capital_summary, date_summary, ticker_summary, 
                 risk_summary, costs_summary, rebalancing_summary)
 
     # --- Enable/disable Strategy Confirm button based on selection ---
@@ -485,30 +534,39 @@ def register_wizard_callbacks(app: Dash):
 
     # --- Update Selected Tickers List ---
     @app.callback(
-        [Output(WizardIDs.TICKER_LIST_CONTAINER, "children"),
+        [Output(WizardIDs.TICKER_DROPDOWN, "value"), # ADDED Output
+         Output(WizardIDs.TICKER_LIST_CONTAINER, "children"),
          Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled")],
         [Input(WizardIDs.TICKER_DROPDOWN, "value"),
          Input(WizardIDs.SELECT_ALL_TICKERS_BUTTON, "n_clicks"),
          Input(WizardIDs.DESELECT_ALL_TICKERS_BUTTON, "n_clicks")],
         [State(WizardIDs.TICKER_DROPDOWN, "options")]
     )
-    def update_selected_tickers(selected_tickers, select_all_clicks, deselect_all_clicks, available_options):
+    def update_selected_tickers(current_selected_tickers, select_all_clicks, deselect_all_clicks, available_options):
         trigger = ctx.triggered_id
+        
+        # Determine the new list of selected_tickers based on the trigger
         if trigger == WizardIDs.SELECT_ALL_TICKERS_BUTTON and available_options:
-            selected_tickers = [option["value"] for option in available_options] if available_options else []
+            new_selected_tickers = [option["value"] for option in available_options]
         elif trigger == WizardIDs.DESELECT_ALL_TICKERS_BUTTON:
-            selected_tickers = []
-        if not selected_tickers:
-            return html.Div("No tickers selected. Please select at least one ticker."), True
+            new_selected_tickers = []
+        else:
+            # This branch handles direct interaction with the dropdown
+            new_selected_tickers = current_selected_tickers if current_selected_tickers is not None else []
+
+        if not new_selected_tickers:
+            return [], html.Div("No tickers selected. Please select at least one ticker."), True
+            
         ticker_badges = []
-        for ticker in selected_tickers:
+        for ticker in new_selected_tickers:
             badge = html.Div(
                 ticker,
                 className="badge bg-primary me-2 mb-2 p-2"
             )
             ticker_badges.append(badge)
+            
         button_disabled = len(ticker_badges) == 0
-        return html.Div(ticker_badges, className="mt-2"), button_disabled
+        return new_selected_tickers, html.Div(ticker_badges, className="mt-2"), button_disabled
 
     # --- Populate ticker dropdown options ---
     @app.callback(

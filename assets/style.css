@@ -232,6 +232,59 @@ input:focus, .form-control:focus {
   box-shadow: 0 3px 6px rgba(0,0,0,0.3);
 }
 
+/* --- Summary Step Compact Styling --- */
+.summary-item,
+#wizard-summary-strategy-parameters.summary-section { /* Apply common styles to all summary blocks */
+  margin-bottom: 0.125rem !important; /* Halved from 0.25rem */
+  padding-top: 0.1rem !important; /* Minimal top padding */
+  padding-bottom: 0.125rem !important; /* Halved, for content before border */
+  border-bottom: 1px solid #2a2e39 !important; /* Consistent border */
+}
+
+/* Remove border and all bottom spacing from the very last summary block in the container */
+#wizard-summary-output > div:last-child {
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Subtitles (H6) within any summary block */
+.summary-subtitle, /* Targets H6 in .summary-item */
+#wizard-summary-strategy-parameters.summary-section h6 { /* Targets H6 in strategy params section */
+  margin-top: 0.15rem !important; /* Slightly reduced top margin */
+  margin-bottom: 0.05rem !important; /* Very tight space below subtitle */
+  font-size: 0.9rem !important;
+  font-weight: bold;
+}
+
+/* Paragraphs within any summary block */
+.summary-item p,
+#wizard-summary-strategy-parameters.summary-section p {
+  margin-bottom: 0.05rem !important; /* Very tight space below paragraph */
+  font-size: 0.85rem !important;
+  line-height: 1.25; /* Slightly reduced line height */
+}
+
+/* H5 within the strategy parameters section (e.g., "Strategy: MAC") */
+#wizard-summary-strategy-parameters.summary-section h5 {
+    margin-top: 0.15rem !important; /* Consistent with subtitle top margin */
+    margin-bottom: 0.05rem !important; /* Very tight space below H5 */
+    font-size: 1rem !important; /* Keep it slightly prominent */
+}
+
+/* Reduce bottom padding of the inner div that lists custom strategy parameters */
+#wizard-summary-strategy-parameters.summary-section > div[class*="border-start"] {
+    padding-bottom: 0.05rem !important; /* Make padding below parameter list very small */
+}
+
+/* Fallback/general styling for .summary-section if it's used elsewhere or for the main container */
+/* This rule for #wizard-summary-output .summary-section might be redundant if all children are covered by the more specific rules above */
+/* We'll keep it minimal. The padding-bottom for #wizard-summary-strategy-parameters is handled by the combined rule at the top. */
+#wizard-summary-output .summary-section {
+    padding-top: 0.1rem; /* General top padding for sections */
+    /* padding-bottom is effectively handled by the more specific rules or defaults to this if no other rule matches */
+}
+
 /* --- Stepper Component Styles --- */
 .wizard-stepper-container {
     width: 100%;
