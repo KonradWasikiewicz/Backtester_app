@@ -526,13 +526,12 @@ def create_strategy_config_section(tickers=None):
                 is_hidden=True,
                 step_number=7
             )
-        ]
-
-        # Wrap all steps in a single container
+        ]        # Wrap all steps in a single container
         return html.Div([
             progress_container_for_stepper, # MODIFIED: Use the new container for the stepper
             html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps"),
-            dcc.Store(id=WizardIDs.RISK_MANAGEMENT_STORE_WIZARD)
+            dcc.Store(id=WizardIDs.RISK_MANAGEMENT_STORE_WIZARD),
+            dcc.Store(id=WizardIDs.STRATEGY_PARAMS_STORE)  # Add store for strategy-specific parameters
         ], id=WizardIDs.STRATEGY_CONFIG_CONTAINER, className="strategy-wizard")
 
     except Exception as e:

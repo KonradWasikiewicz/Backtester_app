@@ -34,11 +34,11 @@ def register_run_backtest_callback(app: Dash):
             State(WizardIDs.COMMISSION_INPUT, "value"),
             State(WizardIDs.SLIPPAGE_INPUT, "value"),
             State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
-            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")        ],
+            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")
+        ],
         prevent_initial_call=True
-    )
-    def on_run_backtest_button_clicked(n_clicks, current_config, strategy_type, initial_capital, 
-                                      start_date, end_date, ticker, max_position_size, 
+    )    def on_run_backtest_button_clicked(n_clicks, current_config, strategy_type, initial_capital, 
+                                      start_date, end_date, tickers, max_position_size, 
                                       stop_loss, take_profit, commission, slippage, 
                                       rebalancing_frequency, rebalancing_threshold):
         """
@@ -56,41 +56,27 @@ def register_run_backtest_callback(app: Dash):
         strategy_params = {}
         if strategy_type and strategy_type in DEFAULT_STRATEGY_PARAMS:
             strategy_params = DEFAULT_STRATEGY_PARAMS[strategy_type]
-          # Safe conversion of numeric inputs with error handling
-        try:
-            initial_capital_value = float(initial_capital) if initial_capital else None
-            max_position_size_value = float(max_position_size) if max_position_size else None
-            stop_loss_value = float(stop_loss) if stop_loss else None
-            take_profit_value = float(take_profit) if take_profit else None
-            commission_value = float(commission) if commission else None
-            slippage_value = float(slippage) if slippage else None
-            threshold_value = float(rebalancing_threshold) if rebalancing_threshold else None
-        except (ValueError, TypeError) as e:
-            logger.warning(f"Failed to convert numeric values: {e}. Using None for invalid values.")
-            initial_capital_value = None if not isinstance(initial_capital, (int, float)) else initial_capital
-            max_position_size_value = None if not isinstance(max_position_size, (int, float)) else max_position_size
-            stop_loss_value = None if not isinstance(stop_loss, (int, float)) else stop_loss
-            take_profit_value = None if not isinstance(take_profit, (int, float)) else take_profit
-            commission_value = None if not isinstance(commission, (int, float)) else commission
-            slippage_value = None if not isinstance(slippage, (int, float)) else slippage
-            threshold_value = None if not isinstance(rebalancing_threshold, (int, float)) else rebalancing_threshold
         
         # Update with the wizard values
-        config_data.update({            "strategy_type": strategy_type,
-            "initial_capital": initial_capital_value,
+        config_data.update({
+            "strategy_type": strategy_type,
+            "initial_capital": initial_capital,
             "start_date": start_date,
             "end_date": end_date,
-            "tickers": [ticker] if ticker else [],
-            "strategy_params": strategy_params,            "risk_management": {
-                "max_position_size": max_position_size_value,
-                "stop_loss": stop_loss_value,
-                "take_profit": take_profit_value
-            },            "trading_costs": {
-                "commission_bps": commission_value,
-                "slippage_bps": slippage_value
-            },            "rebalancing": {
+            "tickers": tickers,
+            "strategy_params": strategy_params,
+            "risk_management": {
+                "max_position_size": max_position_size,
+                "stop_loss": stop_loss,
+                "take_profit": take_profit
+            },
+            "trading_costs": {
+                "commission_bps": commission,
+                "slippage_bps": slippage
+            },
+            "rebalancing": {
                 "frequency": rebalancing_frequency,
-                "threshold_pct": threshold_value
+                "threshold_pct": rebalancing_threshold
             }
         })
         

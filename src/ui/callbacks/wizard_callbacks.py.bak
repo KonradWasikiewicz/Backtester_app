@@ -301,8 +301,7 @@ def register_wizard_callbacks(app: Dash):
                 html.I(className="fas fa-info-circle"),
                 id=tooltip_id,
                 style={'cursor': 'help', 'color': '#0d6efd'}
-            )
-            label_container = html.Div(
+            )            label_container = html.Div(
                 [tooltip_icon, html.Label(display_label, className="ms-1")],
                 className="param-label"
             )

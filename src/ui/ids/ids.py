@@ -83,13 +83,13 @@ class WizardIDs:
     REBALANCING_FREQUENCY_DROPDOWN = "wizard-rebalancing-frequency"
     REBALANCING_THRESHOLD_INPUT = "wizard-rebalancing-threshold"
     CONFIRM_REBALANCING_BUTTON = "wizard-confirm-rebalancing-button"
-    
-    # Step 7: Summary & Run
+      # Step 7: Summary & Run
     SUMMARY_CONTAINER = "wizard-summary"
     # SUMMARY_STRATEGY_NAME = "wizard-summary-strategy-name" # Unused
     # SUMMARY_INITIAL_CAPITAL = "wizard-summary-initial-capital" # Unused
     SUMMARY_OUTPUT_CONTAINER = "wizard-summary-output"
     RUN_BACKTEST_BUTTON_WIZARD = "wizard-run-backtest-button"
+    STRATEGY_PARAMS_STORE = "wizard-strategy-params-store"  # Store for strategy-specific parameters
 
     # Summary Detail Fields (NEW - based on wizard_callbacks.py usage)
     SUMMARY_STRATEGY_DETAILS = "wizard-summary-strategy" # For strategy name and initial capital
@@ -98,10 +98,11 @@ class WizardIDs:
     SUMMARY_RISK_DETAILS = "wizard-summary-risk"
     SUMMARY_COSTS_DETAILS = "wizard-summary-costs"
     SUMMARY_REBALANCING_DETAILS = "wizard-summary-rebalancing"
-    SUMMARY_STRATEGY_PARAMETERS = "wizard-strategy-parameters-summary"
-
-    # Wizard-specific data stores
+    SUMMARY_STRATEGY_PARAMETERS = "wizard-strategy-parameters-summary"    # Wizard-specific data stores
     RISK_MANAGEMENT_STORE_WIZARD = "wizard-risk-management-store" # NEW
+    
+    # Run Backtest Button in Wizard
+    RUN_BACKTEST_BUTTON_WIZARD = "run-backtest-button-wizard"
 
 
 class ResultsIDs:
