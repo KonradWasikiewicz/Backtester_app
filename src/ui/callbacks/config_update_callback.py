@@ -15,7 +15,7 @@ def register_config_update_callback(app):
     logger.info("Registering wizard config update callback...")
     
     @app.callback(
-        Output(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data'),
+        Output(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data', allow_duplicate=True),
         [Input(WizardIDs.step_content("wizard-summary"), "style")],
         [
             State(WizardIDs.STRATEGY_DROPDOWN, "value"),

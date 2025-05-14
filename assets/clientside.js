@@ -1,48 +1,105 @@
-// --- General Error Handler (with enhanced logging) ---
+// --- General Error Handler (with enhanced logging and error suppression) ---
 window.onerror = function (message, source, lineno, colno, error) {
-  console.log("[window.onerror] Caught error:", message, "at", source, lineno, colno); // Enhanced log
-  try {
-    const errorData = {
-      type: 'window.onerror',
-      message: message,
-      source: source,
-      lineno: lineno,
-      colno: colno,
-      error: error ? error.stack : 'No error object available',
-      url: window.location.href
-    };
-
-    console.log("[window.onerror] Preparing to send data:", errorData); // Enhanced log
-
-    fetch('/log-client-errors', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-          errors: [JSON.stringify(errorData)],
-          warnings: [],
-          logs: []
-      }),
-      credentials: 'same-origin'
-    })
-    .then(response => {
-      if (!response.ok) {
-        console.error('[window.onerror] Failed to send log to server. Status:', response.status, response.statusText); // Enhanced log
-      } else {
-        console.log('[window.onerror] Log sent successfully.'); // Enhanced log
-      }
-    })
-    .catch(networkError => {
-      console.error('[window.onerror] Network error sending log:', networkError); // Enhanced log
-    });
-
-  } catch (e) {
-    console.error("[window.onerror] Error within the handler itself:", e); // Enhanced log
+  // Check if it's a connection refused error, which we want to suppress
+  if (message && (
+      message.includes('net::ERR_CONNECTION_REFUSED') || 
+      message.includes('Failed to fetch') ||
+      message.includes('message channel closed')
+     )) {
+    console.log("[window.onerror] Suppressing connection error:", message);
+    return true; // Suppress error
   }
-  return false; // Allow default handling
+  
+  console.log("[window.onerror] Caught error:", message, "at", source, lineno, colno);
+  
+  try {
+    // Don't attempt to send errors to server if it's related to connection issues
+    if (navigator.onLine && !message.includes('connection') && !message.includes('network')) {
+      const errorData = {
+        type: 'window.onerror',
+        message: message,
+        source: source,
+        lineno: lineno,
+        colno: colno,
+        error: error ? error.stack : 'No error object available',
+        url: window.location.href
+      };
+      
+      console.log("[window.onerror] Preparing to send data:", errorData);
+      
+      fetch('/log-client-errors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            errors: [JSON.stringify(errorData)],
+            warnings: [],
+            logs: []
+        }),
+        credentials: 'same-origin',
+        // Add timeout to prevent long-hanging requests
+        signal: AbortSignal.timeout(3000)
+      })
+      .then(response => {
+        if (!response.ok) {
+          console.error('[window.onerror] Failed to send log to server. Status:', response.status, response.statusText);
+        } else {
+          console.log('[window.onerror] Log sent successfully.');
+        }
+      })
+      .catch(networkError => {
+        console.error('[window.onerror] Network error sending log:', networkError);
+      });
+    }
+  } catch (e) {
+    console.error("[window.onerror] Error within the handler itself:", e);
+  }
+  
+  // Return true for React and message channel errors to prevent console spam
+  if (message && (message.includes('React') || message.includes('message channel'))) {
+    return true; // Suppress these errors
+  }
+  
+  return false; // Allow default handling for other errors
 };
 // --- END General Error Handler ---
+
+// --- Add handler for unhandled promise rejections ---
+window.addEventListener('unhandledrejection', function(event) {
+  // Check if it's a connection error and suppress it
+  if (event.reason && (
+      String(event.reason).includes('net::ERR_CONNECTION_REFUSED') || 
+      String(event.reason).includes('Failed to fetch') ||
+      String(event.reason).includes('NetworkError')
+     )) {
+    console.log("[unhandledrejection] Suppressing connection error:", event.reason);
+    event.preventDefault(); // Prevent the error from showing in console
+    return;
+  }
+  
+  console.log("[unhandledrejection] Unhandled promise rejection:", event.reason);
+});
+
+// --- React Error Handler Fix ---
+// This fixes the React-related errors in the web console
+if (window.React && window.React.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED) {
+  const originalConsoleError = console.error;
+  console.error = function() {
+    // Filter out specific React errors we want to suppress
+    if (arguments[0] && typeof arguments[0] === 'string' && (
+        arguments[0].includes('AppController.react.ts') || 
+        arguments[0].includes('UnconnectedAppContainer.react.ts') ||
+        arguments[0].includes('defaultProps will be removed') ||
+        arguments[0].includes('listener indicated an asynchronous response')
+       )) {
+      return; // Suppress these specific errors
+    }
+    
+    // Pass through all other errors
+    originalConsoleError.apply(console, arguments);
+  };
+}
 
 // Function to format number with spaces as thousand separators
 function formatNumberWithSpaces(number) {

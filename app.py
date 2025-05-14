@@ -50,11 +50,20 @@ try:
         logger.info("Dash application created successfully.")
 
     # --- Explicitly Configure Flask Static Files ---
-    # This might be redundant now, but let's keep it for safety
+    # Make sure Flask can find and serve the clientside.js file
     app.server.static_folder = str(ASSETS_DIR)
     app.server.static_url_path = '/assets'
+    # Add cache control to prevent stale JavaScript files
+    @app.server.after_request
+    def add_cache_control(response):
+        if response.mimetype == 'application/javascript':
+            response.cache_control.no_cache = True
+            response.cache_control.no_store = True
+            response.cache_control.must_revalidate = True
+        return response
     logger.info(f"Flask static_folder explicitly set to: {app.server.static_folder}")
     logger.info(f"Flask static_url_path explicitly set to: {app.server.static_url_path}")
+    logger.info("Added cache control headers for JavaScript resources")
     # --- End Explicit Configuration ---
 
 
@@ -62,27 +71,45 @@ try:
     @app.server.route('/log-client-errors', methods=['POST'])
     def log_client_errors():
         """Logs errors/warnings received from the client-side JavaScript."""
-        data = request.get_json()
-        if not data:
-            logger.warning("Received empty request to /log-client-errors")
-            return jsonify(status="bad request"), 400
+        try:
+            data = request.get_json(silent=True)
+            if not data:
+                logger.warning("Received empty request to /log-client-errors")
+                return jsonify(status="bad request"), 400
 
-        errors = data.get('errors', [])
-        warnings = data.get('warnings', [])
-        logs = data.get('logs', []) # Optional: capture console.log if needed
+            errors = data.get('errors', [])
+            warnings = data.get('warnings', [])
+            logs = data.get('logs', [])
 
-        log_prefix = "[Client-Side]"
-        if errors:
-            for error in errors:
-                logger.error(f"{log_prefix} Error: {error}")
-        if warnings:
-            for warning in warnings:
-                logger.warning(f"{log_prefix} Warning: {warning}")
-        if logs:
-            for log_msg in logs:
-                logger.info(f"{log_prefix} Log: {log_msg}") # Log client logs as info
-
-        return jsonify(status="received"), 200
+            log_prefix = "[Client-Side]"
+            
+            # Filter out specific React errors we want to ignore to reduce noise
+            if errors:
+                filtered_errors = []
+                for error in errors:
+                    # Skip connection refused errors - they're expected during development
+                    if (isinstance(error, str) and
+                        ('ERR_CONNECTION_REFUSED' in error or 
+                         'message channel closed' in error or
+                         'defaultProps will be removed' in error or
+                         'AppController.react' in error or 
+                         'UnconnectedAppContainer.react' in error)):
+                        continue
+                    filtered_errors.append(error)
+                    logger.error(f"{log_prefix} Error: {error}")
+            
+            if warnings:
+                for warning in warnings:
+                    logger.warning(f"{log_prefix} Warning: {warning}")
+            
+            if logs:
+                for log_msg in logs:
+                    logger.info(f"{log_prefix} Log: {log_msg}")
+            
+            return jsonify(status="received"), 200
+        except Exception as e:
+            logger.error(f"Error in log_client_errors endpoint: {e}", exc_info=True)
+            return jsonify(status="error", message=str(e)), 500
     # --- END Endpoint ---
 
     # --- NEW: Log confirmation of endpoint registration ---

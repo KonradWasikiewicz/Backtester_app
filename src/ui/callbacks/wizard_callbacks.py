@@ -181,15 +181,99 @@ def register_wizard_callbacks(app: Dash):
             "transition": "width 0.5s ease",
             "backgroundColor": "#4CAF50" if progress_percentage >= 100 else "#375a7f"
         }
-        current_stepper = create_wizard_stepper(current_step, completed_steps)
-
-        return (
+        current_stepper = create_wizard_stepper(current_step, completed_steps)        return (
             *step_content_styles,
             *step_header_classes,
             progress_percentage,
             progress_bar_style,
             current_stepper
         )
+
+    @app.callback(
+        Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled"),
+        [
+            Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
+            Input(WizardIDs.DATE_RANGE_END_PICKER, "date"),
+        ],
+    )
+    def toggle_confirm_dates_button(start_date_str: str | None, end_date_str: str | None) -> bool:
+        logger.debug(
+            "Callback 'toggle_confirm_dates_button' triggered with start_date: %s, end_date: %s",
+            start_date_str,
+            end_date_str,
+        )
+        if not start_date_str or not end_date_str:
+            logger.debug("Disabling CONFIRM_DATES_BUTTON because one or both dates are not selected.")
+            return True
+        try:
+            start_date = date.fromisoformat(start_date_str)
+            end_date = date.fromisoformat(end_date_str)
+        except ValueError:
+            logger.error(
+                "Invalid date format received for date pickers. start_date: %s, end_date: %s",
+                start_date_str,
+                end_date_str,
+                exc_info=True,
+            )
+            return True
+        if start_date > end_date:
+            logger.debug(
+                "Disabling CONFIRM_DATES_BUTTON because start_date (%s) is after end_date (%s).",
+                start_date,
+                end_date,
+            )
+            return True
+        logger.debug(
+            "Enabling CONFIRM_DATES_BUTTON. Start date: %s, End date: %s",
+            start_date,
+            end_date,
+        )
+        return False
+
+    # --- Enable/disable Strategy Step 1 Confirm button ---
+    @app.callback(
+        Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled"),
+        [
+            Input(WizardIDs.STRATEGY_DROPDOWN, "value"),
+            Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value")
+        ]
+    )
+    def toggle_confirm_strategy_button(strategy, initial_capital):
+        """
+        Enable the Step 1 confirm button only when a strategy is selected and valid initial capital is provided.
+        """
+        logger.info(
+            "Callback 'toggle_confirm_strategy_button' triggered with strategy: %s, initial_capital: %s",
+            strategy,
+            initial_capital
+        )
+        
+        # Check if strategy and initial capital are provided
+        if not strategy:
+            logger.info("Disabling CONFIRM_STRATEGY_BUTTON because strategy is not selected.")
+            return True
+            
+        if initial_capital is None:
+            logger.info("Disabling CONFIRM_STRATEGY_BUTTON because initial capital is not provided.")
+            return True
+        
+        # Check if initial capital is a valid number and greater than minimum
+        try:
+            capital_value = float(initial_capital)
+            if capital_value < 1000:  # Matches the min value in the UI
+                logger.info("Disabling CONFIRM_STRATEGY_BUTTON because initial capital is less than minimum required.")
+                return True
+        except (ValueError, TypeError):
+            logger.info("Disabling CONFIRM_STRATEGY_BUTTON due to invalid initial capital type.")
+            return True
+        
+        # All validation passed
+        logger.info(
+            "Enabling CONFIRM_STRATEGY_BUTTON. Strategy: %s, Initial capital: %s",
+            strategy,
+            initial_capital
+        )
+        return False
 
     # --- Enable/disable Risk Confirm button ---
     @app.callback(
@@ -547,47 +631,6 @@ def register_wizard_callbacks(app: Dash):
         
         logger.info(f"Updated main configuration store with wizard data: {config_data}")
         return config_data
-
-    @app.callback(
-        Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled"),
-        [
-            Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
-            Input(WizardIDs.DATE_RANGE_END_PICKER, "date"),
-        ],
-    )
-    def toggle_confirm_dates_button(start_date_str: str | None, end_date_str: str | None) -> bool:
-        logger.debug(
-            "Callback 'toggle_confirm_dates_button' triggered with start_date: %s, end_date: %s",
-            start_date_str,
-            end_date_str,
-        )
-        if not start_date_str or not end_date_str:
-            logger.debug("Disabling CONFIRM_DATES_BUTTON because one or both dates are not selected.")
-            return True
-        try:
-            start_date = date.fromisoformat(start_date_str)
-            end_date = date.fromisoformat(end_date_str)
-        except ValueError:
-            logger.error(
-                "Invalid date format received for date pickers. start_date: %s, end_date: %s",
-                start_date_str,
-                end_date_str,
-                exc_info=True,
-            )
-            return True
-        if start_date > end_date:
-            logger.debug(
-                "Disabling CONFIRM_DATES_BUTTON because start_date (%s) is after end_date (%s).",
-                start_date,
-                end_date,
-            )
-            return True
-        logger.debug(
-            "Enabling CONFIRM_DATES_BUTTON. Start date: %s, End date: %s",
-            start_date,
-            end_date,
-        )
-        return False
 
     # --- Update Selected Tickers List ---
     @app.callback(

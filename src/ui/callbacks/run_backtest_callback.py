@@ -17,7 +17,7 @@ def register_run_backtest_callback(app: Dash):
     
     @app.callback(
         [
-            Output(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data'),
+            Output(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data', allow_duplicate=True),
             Output(SharedComponentIDs.RUN_BACKTEST_TRIGGER_STORE, 'data')
         ],
         Input(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'n_clicks'),
