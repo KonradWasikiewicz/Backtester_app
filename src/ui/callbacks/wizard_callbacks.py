@@ -342,10 +342,20 @@ def register_wizard_callbacks(app: Dash):
     def update_strategy_parameters_summary(selected_strategy, param_ids, param_values):
         if not selected_strategy:
             return html.P("No strategy selected.")
-        if not param_ids or not param_values:
-            return html.P(f"Strategy: {selected_strategy} (using default parameters)")
-        param_summary_items = []
+        
         strategy_description = STRATEGY_DESCRIPTIONS.get(selected_strategy, "No description available.")
+        
+        # The parent Div (with ID WizardIDs.SUMMARY_STRATEGY_PARAMETERS) will be styled by CSS.
+        # No conflicting className here.
+        
+        if not param_ids or not param_values:
+            # Using H5 for strategy name, P for description. CSS will handle margins.
+            return html.Div([
+                html.H5([html.Span("Strategy:", className="fw-bold"), f" {selected_strategy} (using default parameters)"]),
+                html.P(strategy_description, className="text-muted")
+            ])
+
+        param_summary_items = []
         param_data = sorted(zip(param_ids, param_values), key=lambda x: x[0]["name"])
         for param_id, param_value in param_data:
             param_name = param_id["name"]
@@ -358,14 +368,16 @@ def register_wizard_callbacks(app: Dash):
                 dbc.Row([
                     dbc.Col(html.Span(display_label, className="fw-bold"), width=6),
                     dbc.Col(html.Span(str(param_value)), width=6)
-                ], className="mb-1")
+                ], className="mb-0") # mb-0 for tight parameter rows, CSS will handle font
             )
+        
+        # Using H5, P, H6. Parameter list div gets a specific class for styling.
         return html.Div([
-            html.H5(f"Strategy: {selected_strategy}", className="mt-2 mb-2"),
-            html.P(strategy_description, className="text-muted mb-3"),
-            html.H6("Parameters:", className="mb-2"),
-            html.Div(param_summary_items, className="ps-3 pe-3 pb-2 pt-1 border-start border-light")
-        ], className="summary-section")
+            html.H5([html.Span("Strategy:", className="fw-bold"), f" {selected_strategy}"]),
+            html.P(strategy_description, className="text-muted"),
+            html.H6("Parameters:"),
+            html.Div(param_summary_items, className="strategy-params-list") # Specific class for this list
+        ])
 
     # --- Summary page updates ---
     @app.callback(

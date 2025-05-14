@@ -505,7 +505,7 @@ def create_strategy_config_section(tickers=None):
                 "wizard-summary",
                 "Step 7: Summary and Run Backtest",
                 html.Div([
-                    html.H5("Review Configuration Summary", className="mb-3 text-center"),
+                    html.H5("Strategy Configuration Summary", className="mb-3 text-center"),
                     html.Div([
                         html.Div(id=WizardIDs.SUMMARY_STRATEGY_DETAILS, className="summary-section"),
                         html.Div(id=WizardIDs.SUMMARY_STRATEGY_PARAMETERS, className="summary-section"),

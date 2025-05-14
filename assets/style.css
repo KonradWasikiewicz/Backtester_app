@@ -234,11 +234,16 @@ input:focus, .form-control:focus {
 
 /* --- Summary Step Compact Styling --- */
 .summary-item,
-#wizard-summary-strategy-parameters.summary-section { /* Apply common styles to all summary blocks */
-  margin-bottom: 0.125rem !important; /* Halved from 0.25rem */
-  padding-top: 0.1rem !important; /* Minimal top padding */
-  padding-bottom: 0.125rem !important; /* Halved, for content before border */
-  border-bottom: 1px solid #2a2e39 !important; /* Consistent border */
+#wizard-summary-strategy-parameters { /* Apply common styles to all summary blocks */
+  margin-bottom: 0.075rem !important; /* Further reduced inter-block spacing */
+  padding-top: 0.1rem !important;
+  padding-bottom: 0.1rem !important; /* Reduced to match top padding */
+  border-bottom: 1px solid #2a2e39 !important;
+  background-color: #1e222d; /* Ensure consistent background */
+  border-left: 3px solid #0d6efd; /* Ensure consistent left border */
+  border-radius: 5px; /* Ensure consistent radius */
+  padding-left: 10px; /* Consistent horizontal padding */
+  padding-right: 10px; /* Consistent horizontal padding */
 }
 
 /* Remove border and all bottom spacing from the very last summary block in the container */
@@ -248,41 +253,86 @@ input:focus, .form-control:focus {
   padding-bottom: 0 !important;
 }
 
-/* Subtitles (H6) within any summary block */
-.summary-subtitle, /* Targets H6 in .summary-item */
-#wizard-summary-strategy-parameters.summary-section h6 { /* Targets H6 in strategy params section */
-  margin-top: 0.15rem !important; /* Slightly reduced top margin */
-  margin-bottom: 0.05rem !important; /* Very tight space below subtitle */
+/* Subtitles (H6) within .summary-item */
+.summary-item .summary-subtitle { /* More specific for .summary-item H6 */
+  margin-top: 0.1rem !important;
+  margin-bottom: 0.05rem !important;
   font-size: 0.9rem !important;
   font-weight: bold;
 }
 
-/* Paragraphs within any summary block */
-.summary-item p,
-#wizard-summary-strategy-parameters.summary-section p {
-  margin-bottom: 0.05rem !important; /* Very tight space below paragraph */
+/* Paragraphs within .summary-item */
+.summary-item p { /* More specific for .summary-item P */
+  margin-bottom: 0.05rem !important;
   font-size: 0.85rem !important;
-  line-height: 1.25; /* Slightly reduced line height */
+  line-height: 1.2;
 }
 
-/* H5 within the strategy parameters section (e.g., "Strategy: MAC") */
-#wizard-summary-strategy-parameters.summary-section h5 {
-    margin-top: 0.15rem !important; /* Consistent with subtitle top margin */
-    margin-bottom: 0.05rem !important; /* Very tight space below H5 */
-    font-size: 1rem !important; /* Keep it slightly prominent */
+/* Styling for elements specifically within #wizard-summary-strategy-parameters */
+#wizard-summary-strategy-parameters h5 {
+    margin-top: 0.05rem !important;
+    margin-bottom: 0.05rem !important;
+    font-size: 1rem !important; /* Consistent with previous */
+    font-weight: bold; /* Ensure strategy title is bold */
 }
 
-/* Reduce bottom padding of the inner div that lists custom strategy parameters */
-#wizard-summary-strategy-parameters.summary-section > div[class*="border-start"] {
-    padding-bottom: 0.05rem !important; /* Make padding below parameter list very small */
+#wizard-summary-strategy-parameters p.text-muted { /* Strategy description */
+    margin-top: 0.05rem !important;
+    margin-bottom: 0.05rem !important;
+    font-size: 0.85rem !important;
+    line-height: 1.2;
+}
+
+#wizard-summary-strategy-parameters h6 { /* "Parameters:" subtitle */
+    margin-top: 0.1rem !important;
+    margin-bottom: 0.05rem !important;
+    font-size: 0.9rem !important;
+    font-weight: bold;
+}
+
+#wizard-summary-strategy-parameters .strategy-params-list { /* Div containing parameter rows */
+    padding-top: 0.05rem !important;
+    padding-bottom: 0.05rem !important;
+    padding-left: 0.25rem !important; /* Minimal padding for the list itself */
+    padding-right: 0.25rem !important;
+}
+
+/* Ensure parameter rows (dbc.Row) within strategy-params-list have no extra margin */
+#wizard-summary-strategy-parameters .strategy-params-list .row {
+    margin-bottom: 0 !important; /* Already set by mb-0 in Python, but enforce here */
+}
+
+#wizard-summary-strategy-parameters .strategy-params-list .row span {
+    font-size: 0.85rem !important; /* Ensure param text matches other p text */
+    line-height: 1.2;
 }
 
 /* Fallback/general styling for .summary-section if it's used elsewhere or for the main container */
-/* This rule for #wizard-summary-output .summary-section might be redundant if all children are covered by the more specific rules above */
-/* We'll keep it minimal. The padding-bottom for #wizard-summary-strategy-parameters is handled by the combined rule at the top. */
 #wizard-summary-output .summary-section {
     padding-top: 0.1rem; /* General top padding for sections */
     /* padding-bottom is effectively handled by the more specific rules or defaults to this if no other rule matches */
+}
+
+.summary-section h5 {
+  color: #ffffff;
+  margin-bottom: 0.05rem; /* Reduced from 8px */
+  font-weight: 600;
+  font-size: 1rem; /* Ensure consistency */
+}
+
+.summary-section h6 {
+  color: #adb5bd;
+  margin-top: 0.1rem; /* Reduced from 12px */
+  margin-bottom: 0.05rem; /* Reduced from 8px */
+  font-weight: 600;
+  font-size: 0.9rem; /* Ensure consistency */
+}
+
+.summary-section .text-muted {
+  color: #6c757d !important;
+  font-size: 0.85rem; /* Ensure consistency */
+  margin-bottom: 0.05rem !important; /* Add tight margin for P > text-muted */
+  line-height: 1.2; /* Ensure consistency */
 }
 
 /* --- Stepper Component Styles --- */
@@ -620,20 +670,24 @@ input:focus, .form-control:focus {
 
 .summary-section h5 {
   color: #ffffff;
-  margin-bottom: 8px;
+  margin-bottom: 0.05rem; /* Reduced from 8px */
   font-weight: 600;
+  font-size: 1rem; /* Ensure consistency */
 }
 
 .summary-section h6 {
   color: #adb5bd;
-  margin-top: 12px;
-  margin-bottom: 8px;
+  margin-top: 0.1rem; /* Reduced from 12px */
+  margin-bottom: 0.05rem; /* Reduced from 8px */
   font-weight: 600;
+  font-size: 0.9rem; /* Ensure consistency */
 }
 
 .summary-section .text-muted {
   color: #6c757d !important;
-  font-size: 0.9rem;
+  font-size: 0.85rem; /* Ensure consistency */
+  margin-bottom: 0.05rem !important; /* Add tight margin for P > text-muted */
+  line-height: 1.2; /* Ensure consistency */
 }
 
 .summary-section .border-light {
