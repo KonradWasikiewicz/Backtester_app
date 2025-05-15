@@ -254,7 +254,6 @@ def create_center_panel_layout() -> html.Div:
                 "top": "0", "left": "0", "right": "0", "bottom": "0",
                 "backgroundColor": "rgba(18, 18, 18, 0.85)", # Dark, slightly transparent background
                 "zIndex": "1050", # High z-index to be on top of other content
-                "display": "flex", # Using flex to center children
                 "flexDirection": "column",
                 "alignItems": "center",
                 "justifyContent": "center"
