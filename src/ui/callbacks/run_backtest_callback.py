@@ -80,12 +80,34 @@ def register_run_backtest_callback(app: Dash):
             slippage_value = None if not isinstance(slippage, (int, float)) else slippage
             threshold_value = None if not isinstance(rebalancing_threshold, (int, float)) else rebalancing_threshold
         
+        # Ensure tickers is a flat list of strings
+        tickers_flat = []
+        if isinstance(ticker, list):
+            # Flatten if nested (e.g., [['AAPL', ...]])
+            if len(ticker) == 1 and isinstance(ticker[0], list):
+                tickers_flat = ticker[0]
+            else:
+                tickers_flat = ticker
+        elif isinstance(ticker, str):
+            # Try to parse stringified list
+            import ast
+            try:
+                parsed = ast.literal_eval(ticker)
+                if isinstance(parsed, list):
+                    tickers_flat = parsed
+                else:
+                    tickers_flat = [ticker]
+            except Exception:
+                tickers_flat = [ticker]
+        else:
+            tickers_flat = []
+
         # Update with the wizard values
         config_data.update({            "strategy_type": strategy_type,
             "initial_capital": initial_capital_value,
             "start_date": start_date,
             "end_date": end_date,
-            "tickers": [ticker] if ticker else [],
+            "tickers": tickers_flat,
             "strategy_params": strategy_params,            "risk_management": {
                 "max_position_size": max_position_size_value,
                 "stop_loss": stop_loss_value,

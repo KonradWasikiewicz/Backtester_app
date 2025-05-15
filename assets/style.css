@@ -189,6 +189,8 @@ input:focus, .form-control:focus {
 */
 #left-panel-col {
   padding-right: 3.75px !important; /* Further reduced from 7.5px */
+  padding-top: 0 !important;
+  margin-top: 0 !important;
 }
 
 #center-panel-col {
@@ -330,15 +332,15 @@ input:focus, .form-control:focus {
 /* --- Stepper Component Styles --- */
 .wizard-stepper-container {
     width: 100%;
-    box-sizing: border-box; /* Ensures padding/border don't alter final dimensions */
-    padding: 15px 0;        /* Vertical padding to center the 44px stepper */
-    margin-bottom: 10px;    /* Space below the sticky container */
+    box-sizing: border-box;
+    padding: 0;
+    margin-bottom: 0.125rem;
+    margin-top: -1.25rem !important; /* Stronger pull up to align with center panel */
     position: sticky;
     top: 0;
-    background-color: #121212; /* Match page background for seamless sticky */
-    z-index: 100;           /* Ensure it's above other content */
-    height: 74px;           /* Fixed height: 44px stepper height + (15px padding * 2) */
-                            /* This replaces any min-height */
+    background-color: #121212;
+    z-index: 100;
+    height: 44px; /* Only the stepper bar, no extra space */
 }
 
 .wizard-stepper {
@@ -548,6 +550,7 @@ input:focus, .form-control:focus {
     width: 100%;
     padding: 15px 0; /* This padding is for vertical positioning of the .stepper-container within */
     margin-bottom: 10px;
+    margin-top: -1.25rem !important; /* Stronger pull up to align with center panel */
     position: sticky;
     top: 0;
     background-color: #121212; /* Or your page background color */
