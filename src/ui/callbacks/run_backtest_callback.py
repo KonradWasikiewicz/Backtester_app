@@ -58,13 +58,18 @@ def register_run_backtest_callback(app: Dash):
             strategy_params = DEFAULT_STRATEGY_PARAMS[strategy_type]
           # Safe conversion of numeric inputs with error handling
         try:
-            initial_capital_value = float(initial_capital) if initial_capital else None
-            max_position_size_value = float(max_position_size) if max_position_size else None
-            stop_loss_value = float(stop_loss) if stop_loss else None
-            take_profit_value = float(take_profit) if take_profit else None
-            commission_value = float(commission) if commission else None
-            slippage_value = float(slippage) if slippage else None
-            threshold_value = float(rebalancing_threshold) if rebalancing_threshold else None
+            # Remove spaces from initial_capital and other numeric fields if needed
+            def sanitize_num(val):
+                if isinstance(val, str):
+                    return float(val.replace(' ', ''))
+                return float(val) if val is not None else None
+            initial_capital_value = sanitize_num(initial_capital) if initial_capital else None
+            max_position_size_value = sanitize_num(max_position_size) if max_position_size else None
+            stop_loss_value = sanitize_num(stop_loss) if stop_loss else None
+            take_profit_value = sanitize_num(take_profit) if take_profit else None
+            commission_value = sanitize_num(commission) if commission else None
+            slippage_value = sanitize_num(slippage) if slippage else None
+            threshold_value = sanitize_num(rebalancing_threshold) if rebalancing_threshold else None
         except (ValueError, TypeError) as e:
             logger.warning(f"Failed to convert numeric values: {e}. Using None for invalid values.")
             initial_capital_value = None if not isinstance(initial_capital, (int, float)) else initial_capital

@@ -181,7 +181,9 @@ def register_wizard_callbacks(app: Dash):
             "transition": "width 0.5s ease",
             "backgroundColor": "#4CAF50" if progress_percentage >= 100 else "#375a7f"
         }
-        current_stepper = create_wizard_stepper(current_step, completed_steps)        return (
+        current_stepper = create_wizard_stepper(current_step, completed_steps)
+
+        return (
             *step_content_styles,
             *step_header_classes,
             progress_percentage,
@@ -259,7 +261,11 @@ def register_wizard_callbacks(app: Dash):
         
         # Check if initial capital is a valid number and greater than minimum
         try:
-            capital_value = float(initial_capital)
+            # Remove spaces and any non-numeric except dot and minus
+            sanitized_capital = (
+                initial_capital.replace(' ', '') if isinstance(initial_capital, str) else initial_capital
+            )
+            capital_value = float(sanitized_capital)
             if capital_value < 1000:  # Matches the min value in the UI
                 logger.info("Disabling CONFIRM_STRATEGY_BUTTON because initial capital is less than minimum required.")
                 return True
@@ -519,10 +525,18 @@ def register_wizard_callbacks(app: Dash):
             raise PreventUpdate
         
         # Prepare summary components for each section
+        # Sanitize initial_capital for formatting
+        sanitized_capital = (
+            str(initial_capital).replace(' ', '') if isinstance(initial_capital, str) else initial_capital
+        )
+        try:
+            capital_value = float(sanitized_capital)
+        except (ValueError, TypeError):
+            capital_value = 0.0
         strategy_summary = html.Div([
             html.H5("Strategy Configuration", className="summary-section-title"),
             html.P(f"Strategy Type: {strategy_value or 'Not selected'}"),
-            html.P(f"Initial Capital: ${initial_capital or 0:,.2f}")
+            html.P(f"Initial Capital: ${capital_value:,.2f}")
         ])
         
         date_summary = html.Div([
