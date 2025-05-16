@@ -236,14 +236,26 @@ input:focus, .form-control:focus {
 
 /* --- Wizard Specific Styles --- */
 .wizard-step {
-  margin-top: 0 !important; /* Ensure no top margin */
-  margin-bottom: 0.125rem !important; /* Reduced by half from 0.25rem to minimize space between steps */
+  margin-top: 0 !important;
+  margin-bottom: 0.125rem !important;
   border-radius: 4px;
   overflow: hidden;
   border: none;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   transition: box-shadow 0.3s ease;
 }
+
+/* NEW: Styles for wizard layout containers to ensure full width */
+.strategy-wizard {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.wizard-steps { /* This container holds all the wizard step cards */
+    width: 100%;
+    box-sizing: border-box;
+}
+/* END NEW */
 
 /* Add hover effect to the wizard step */
 .wizard-step:hover {
@@ -517,9 +529,10 @@ input:focus, .form-control:focus {
 .wizard-step-header-completed,
 .wizard-step-header-current,
 .wizard-step-header-pending {
-  width: 120px !important; /* Fixed width for all step headers */
-  min-width: 120px !important;
-  max-width: 120px !important;
+  /* width: 120px !important; */ /* REMOVED */
+  /* min-width: 120px !important; */ /* REMOVED */
+  /* max-width: 120px !important; */ /* REMOVED */
+  width: 100% !important; /* ADDED: Make header take full width of its card */
   box-sizing: border-box !important;
   padding: 4px 8px !important;
   text-align: center;
@@ -535,7 +548,20 @@ input:focus, .form-control:focus {
 
 /* Ensure the stepper container allows horizontal scrolling if needed */
 .wizard-stepper {
-  overflow-x: auto;
+  /* overflow-x: auto; */ /* REMOVED to get rid of the scrollbar */
+  display: flex; /* Keep flex properties that were already there */
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  width: 100%;
+  height: 44px;
+  box-sizing: border-box;
+  background: linear-gradient(to bottom, #444 0%, #333 100%);
+  border-radius: 10px;
+  overflow: hidden; /* This will hide overflow from step-indicators if they are too wide */
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  position: relative;
+  border: 1px solid #222;
 }
 
 /* Enhance animation for current step */
@@ -556,6 +582,8 @@ input:focus, .form-control:focus {
 
 /* Style the entire card based on step status */
 .wizard-step {
+  width: 100% !important; /* Ensure card takes full width */
+  box-sizing: border-box !important; /* Include padding and border in the element's total width and height */
   border-radius: 4px;
   overflow: hidden;
   border: none;

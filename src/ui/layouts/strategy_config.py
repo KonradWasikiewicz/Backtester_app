@@ -243,7 +243,7 @@ def create_strategy_config_section(tickers=None):
             ),
             create_wizard_step(
                 "date-range-selection",
-                "Step 2: Date Range Selection",
+                "Step 2: Selection",
                 html.Div([
                     html.Label("Select date range:", className="mb-1"), 
                     html.Div([
