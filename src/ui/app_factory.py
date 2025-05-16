@@ -39,6 +39,7 @@ from src.ui.callbacks.config_update_callback import register_config_update_callb
 from src.ui.layouts.strategy_config import create_strategy_config_section
 # --- Import the new panel layout functions ---
 from src.ui.layouts.results_display import create_center_panel_layout, create_right_panel_layout
+from src.ui.components.loading_overlay import create_loading_overlay  # Import the loading overlay component
 # --- END Import ---
 from src.ui.ids.ids import ResultsIDs, StrategyConfigIDs, AppStructureIDs, SharedComponentIDs # MODIFIED IMPORT
 from src.version import get_version, get_version_info, RELEASE_DATE, get_changelog  # Import version info
@@ -395,7 +396,8 @@ def create_app_layout() -> html.Div:
                 color="dark",
                 dark=True,
                 className="mb-4"
-            ),
+            ),            # Global loading overlay (fixed position, covers the entire app)
+            create_loading_overlay(),
 
             # --- UPDATED Three-Panel Main Content ---
             dbc.Container([

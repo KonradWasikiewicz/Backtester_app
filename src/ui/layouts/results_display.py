@@ -159,80 +159,7 @@ def create_signals_chart() -> dbc.Card:
         ])
     ], className="mb-1") # Use mb-1
 
-def create_status_and_progress_bar() -> html.Div:
-    """
-    Creates the container for status messages and the progress bar.
-    """
-    logger.debug("Creating status and progress bar layout component.")
-    return html.Div([
-        # Outer text: "Running backtest..." with animation and percentage
-        html.Div(
-            id=app_ids.ResultsIDs.BACKTEST_ANIMATED_TEXT,
-            children=["Running backtest...", html.Span(id="progress-bar-percentage-span", className="progress-bar-percentage")],  # Initial text, added span for percentage
-            className="text-center mb-1 progress-bar-text", # Centered and margin below, added progress-bar-text class
-            style={
-                "fontSize": "var(--font-size-sm)",
-                "color": "white"  # Ensure outer text is white
-            }
-        ),
-        # Container for the progress bar itself (for width control and collapse)
-        html.Div(
-            className="w-100",  # Changed from w-75 mx-auto to w-100
-            children=[
-                dbc.Collapse(
-                    id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER,
-                    is_open=False, # Initially hidden
-                    className="w-100", # Progress bar takes full width of this container
-                    children=[
-                        # Relative container for positioning the inner text
-                        html.Div(
-                            style={"position": "relative", "height": "20px"}, # Height of standard progress bar
-                            children=[
-                                dbc.Progress(
-                                    id=app_ids.ResultsIDs.BACKTEST_PROGRESS_BAR,
-                                    value=0,
-                                    striped=True,  # Ensure stripes are enabled
-                                    # label="", # Label handled by the overlay div
-                                    className="mb-3", # Margin bottom
-                                    style={"height": "20px"} # Explicit height
-                                ),
-                                # Inner text: Detailed progress message, overlaid on the bar
-                                html.Div(
-                                    id=app_ids.ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT,
-                                    children="", # Initial empty text
-                                    className="progress-bar-text", # <--- ADDED THIS CLASS
-                                    style={
-                                        "position": "absolute",
-                                        "top": "50%",
-                                        "left": "50%",
-                                        "transform": "translate(-50%, -50%)",
-                                        # "fontSize": "var(--font-size-sm)", # This will now be handled by the class with !important
-                                        "color": "white", # Ensure inner text is white
-                                        "whiteSpace": "nowrap",
-                                        "overflow": "hidden",
-                                        "textOverflow": "ellipsis",
-                                        "maxWidth": "calc(100% - 20px)", # Prevent overflow at edges
-                                        "textAlign": "center",
-                                        "zIndex": "10" # Ensure it's above the progress bar fill
-                                    }
-                                )
-                            ]
-                        )
-                    ]
-                )
-            ]
-        ),
-        dcc.Interval(
-            id=app_ids.ResultsIDs.BACKTEST_ANIMATION_INTERVAL,
-            interval=300,  # Milliseconds
-            n_intervals=0,
-            disabled=True # Initially disabled
-        )
-    ],
-    id=SharedComponentIDs.STATUS_AND_PROGRESS_BAR_DIV, 
-    className="status-progress-container mb-3",
-    style={"width": "60%"} # Added style to set width of the entire component
-)
+# Removed create_status_and_progress_bar - moved to loading_overlay.py
 
 # --- NEW: Center Panel Layout ---
 def create_center_panel_layout() -> html.Div:
@@ -242,25 +169,7 @@ def create_center_panel_layout() -> html.Div:
     """
     logger.debug("Creating center panel layout.")
     return html.Div([
-        # --- MODIFIED: Loading Overlay ---
-        html.Div(
-            id=SharedComponentIDs.LOADING_OVERLAY, # New ID for the overlay
-            children=[
-                create_status_and_progress_bar()
-            ],
-            style={ # Style for the overlay
-                "display": "none", # Initially hidden
-                "position": "absolute",
-                "top": "0", "left": "0", "right": "0", "bottom": "0",
-                "backgroundColor": "rgba(18, 18, 18, 0.85)", # Dark, slightly transparent background
-                "zIndex": "1050", # High z-index to be on top of other content
-                "flexDirection": "column",
-                "alignItems": "center",
-                "justifyContent": "center"
-            }
-        ),
-        # --- END MODIFIED: Loading Overlay ---
-        # New div to wrap actual results, initially hidden
+        # New div to wrap actual results
         html.Div(id=app_ids.ResultsIDs.RESULTS_AREA_WRAPPER, children=[
             create_portfolio_value_returns_chart(),
             create_drawdown_chart(),
