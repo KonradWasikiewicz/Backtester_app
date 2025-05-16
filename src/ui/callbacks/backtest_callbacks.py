@@ -238,7 +238,8 @@ def register_backtest_callbacks(app: Dash):
             Output(ResultsIDs.SIGNALS_TICKER_SELECTOR, 'options'),
             Output(ResultsIDs.SIGNALS_TICKER_SELECTOR, 'value'),
             Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style'), 
-            Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True) # ADDED: Control right panel visibility
+            Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style', allow_duplicate=True), # ADDED: Control center panel visibility
+            Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True) # Control right panel visibility
         ],
         Input(ResultsIDs.BACKTEST_RESULTS_STORE, 'data'),
         prevent_initial_call=True
@@ -248,9 +249,10 @@ def register_backtest_callbacks(app: Dash):
         if not results_data or not results_data.get('success'):
             logger.warning("--- update_results_display: results_data indicates failure or is invalid. Returning empty/default components.")
             empty_fig = create_empty_chart("No data available")
+            # Ensure all style outputs are provided even in failure case
             return ([], [], html.Div("Backtest failed or no data."), 
                     empty_fig, empty_fig, empty_fig, 
-                    [], None, {'display': 'none'}, {'visibility': 'hidden', 'paddingLeft': '15px'})
+                    [], None, {'display': 'none'}, {'display': 'none'}, {'display': 'none'})
 
         metrics = results_data.get('metrics', {})
         trades_list = results_data.get('trades_data', [])
@@ -287,24 +289,29 @@ def register_backtest_callbacks(app: Dash):
         ticker_value = tickers[0] if tickers else None
         
         logger.info("--- update_results_display callback successfully processed data and is returning updates. ---")
+        # Show all relevant panels upon successful backtest
         return (performance_metrics_children, trade_metrics_children, trades_table_component,
                 portfolio_chart_fig, drawdown_chart_fig, monthly_returns_heatmap_fig, 
-                ticker_options, ticker_value, {'display': 'block'}, {'visibility': 'visible', 'paddingLeft': '15px'})
+                ticker_options, ticker_value, {'display': 'block'}, 
+                {'display': 'block', 'paddingLeft': '3.75px', 'paddingRight': '3.75px'}, 
+                {'display': 'block', 'paddingLeft': '3.75px'})
 
     logger.info("Backtest callbacks registered.")
 
     # --- Callback to make results panels visible ---
-    @app.callback(
-        Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style'), # MODIFIED: Only controls center panel now
-        Input(SharedComponentIDs.RUN_BACKTEST_TRIGGER_STORE, 'data'), # CHANGED
-        prevent_initial_call=True
-    )
-    def toggle_results_panels_visibility(trigger_data): 
-        triggered_id = ctx.triggered_id
-        logger.info(f"toggle_results_panels_visibility: Triggered by {triggered_id}. trigger_data: {trigger_data}")
-        if trigger_data: 
-            center_style = {'display': 'block', 'paddingLeft': '15px', 'paddingRight': '15px'} 
-            logger.info(f"toggle_results_panels_visibility: Applying styles - Center: {center_style}")
-            return center_style # MODIFIED: Return only center_style
-        logger.warning("toggle_results_panels_visibility: Condition not met or no trigger_data, preventing update.")
-        raise PreventUpdate
+    # This callback can be removed or simplified if update_results_display handles all visibility.
+    # For now, let\'s comment it out to avoid conflicts.
+    # @app.callback(\r
+    #     Output(ResultsIDs.CENTER_PANEL_COLUMN, \'style\'), # MODIFIED: Only controls center panel now\r
+    #     Input(SharedComponentIDs.RUN_BACKTEST_TRIGGER_STORE, \'data\'), # CHANGED\r
+    #     prevent_initial_call=True\r
+    # )\r
+    # def toggle_results_panels_visibility(trigger_data): \r
+    #     triggered_id = ctx.triggered_id\r
+    #     logger.info(f"toggle_results_panels_visibility: Triggered by {triggered_id}. trigger_data: {trigger_data}")\r
+    #     if trigger_data: \r
+    #         center_style = {\'display\': \'block\', \'paddingLeft\': \'15px\', \'paddingRight\': \'15px\'} \r
+    #         logger.info(f"toggle_results_panels_visibility: Applying styles - Center: {center_style}")\r
+    #         return center_style # MODIFIED: Return only center_style\r
+    #     logger.warning("toggle_results_panels_visibility: Condition not met or no trigger_data, preventing update.")\r
+    #     raise PreventUpdate

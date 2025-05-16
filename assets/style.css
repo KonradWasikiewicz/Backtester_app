@@ -529,13 +529,10 @@ input:focus, .form-control:focus {
 .wizard-step-header-completed,
 .wizard-step-header-current,
 .wizard-step-header-pending {
-  /* width: 120px !important; */ /* REMOVED */
-  /* min-width: 120px !important; */ /* REMOVED */
-  /* max-width: 120px !important; */ /* REMOVED */
-  width: 100% !important; /* ADDED: Make header take full width of its card */
+  width: 100% !important;
   box-sizing: border-box !important;
   padding: 4px 8px !important;
-  text-align: center;
+  text-align: left; /* CHANGED from center to left */
   font-size: 1rem;
   font-weight: 600;
   border: none !important;
