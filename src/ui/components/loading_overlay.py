@@ -97,7 +97,7 @@ def create_loading_overlay():
             "left": "0",
             "right": "0",
             "bottom": "0",
-            "backgroundColor": "rgba(18, 18, 18, 0.95)",  # Very dark, almost opaque background
+            "backgroundColor": "rgba(18, 18, 18, 0.98)",  # Very dark, almost completely opaque background
             "zIndex": "1050",  # High z-index to be on top of other content
             "flexDirection": "column",
             "alignItems": "center",
