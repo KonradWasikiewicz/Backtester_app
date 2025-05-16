@@ -46,7 +46,7 @@ def register_backtest_callbacks(app: Dash):
         Output(ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT, 'children'), 
         Output(ResultsIDs.BACKTEST_ANIMATED_TEXT, 'children'),
         Output(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'disabled'), 
-        Output(WizardIDs.PROGRESS_BAR, "style"),
+        Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True),
         Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style'),
         Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style'),
         Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style'),
@@ -242,9 +242,9 @@ def register_backtest_callbacks(app: Dash):
         Output(ResultsIDs.MONTHLY_RETURNS_HEATMAP, 'figure'),
         Output(ResultsIDs.SIGNALS_TICKER_SELECTOR, 'options'),
         Output(ResultsIDs.SIGNALS_TICKER_SELECTOR, 'value'),
-        Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style'),
-        Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style'), 
-        Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style'),
+        Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
+        Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style', allow_duplicate=True), 
+        Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
         Input(ResultsIDs.BACKTEST_RESULTS_STORE, 'data'),
         prevent_initial_call=True
     )

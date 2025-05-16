@@ -47,7 +47,7 @@ def register_wizard_callbacks(app: Dash):
             # --- UPDATED Progress Bar Output ID ---
             Output(WizardIDs.PROGRESS_BAR, "value"),
             # --- ADDED Progress Bar Style Output ---
-            Output(WizardIDs.PROGRESS_BAR, "style"),
+            Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True),
             # --- ADDED Stepper Output ---
             Output(WizardIDs.WIZARD_STEPPER, "children")
         ],
