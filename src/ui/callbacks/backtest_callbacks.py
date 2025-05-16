@@ -47,6 +47,7 @@ def register_backtest_callbacks(app: Dash):
         Output(ResultsIDs.BACKTEST_ANIMATED_TEXT, 'children', allow_duplicate=True), # Outer animated text + percentage
         Output(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'disabled', allow_duplicate=True), # To control animation
         Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True),
+        Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style', allow_duplicate=True), # ADDED for consistency
         Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
         Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
         Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open', allow_duplicate=True),
@@ -57,20 +58,24 @@ def register_backtest_callbacks(app: Dash):
             (Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'disabled'), True, False),
             (Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'disabled'), True, False),
             (Output(SharedComponentIDs.LOADING_OVERLAY, 'style'), # CHANGED
-             {"display": "flex", "position": "absolute", "top": "0", "left": "0", "right": "0", "bottom": "0", "backgroundColor": "rgba(18, 18, 18, 0.85)", "zIndex": "1050", "flexDirection": "column", "alignItems": "center", "justifyContent": "center"},
+             {"display": "flex", "position": "absolute", "top": "0", "left": "0", "right": "0", "bottom": "0", "backgroundColor": "rgba(18, 18, 18, 0.95)", "zIndex": "1050", "flexDirection": "column", "alignItems": "center", "justifyContent": "center"},
              {"display": "none"}),
-            (Output(ResultsIDs.BACKTEST_STATUS_MESSAGE, 'children'), "", ""), # No longer primary status, clear it
-            (Output(ResultsIDs.BACKTEST_ANIMATED_TEXT, 'children'), "Running backtest... (0%)", ""), # Initial outer text
-            (Output(ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT, 'children'), "Initializing...", " "), # Initial inner text
-            (Output(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'disabled'), False, True), # Enable animation interval
+            (Output(ResultsIDs.BACKTEST_STATUS_MESSAGE, 'children'), "", ""),
+            (Output(ResultsIDs.BACKTEST_ANIMATED_TEXT, 'children'), "Running backtest... (0%)", ""),
+            (Output(ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT, 'children'), "Initializing...", " "),
+            (Output(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'disabled'), False, True),
             (Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open'), True, False),
-            (Output(WizardIDs.PROGRESS_BAR, "style"), {'display': 'none'}, no_update),
+            (Output(WizardIDs.PROGRESS_BAR, "style"), {'display': 'none'}, no_update), # Hide wizard progress bar during main backtest
+            # Ensure panels are hidden by default and during run, update_results_display will show them.
+            (Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style', allow_duplicate=True),
+             {'display': 'none'}, # Style when RUNNING
+             {'display': 'none'}), # Style when NOT RUNNING (initial)
             (Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
-             {'visibility': 'hidden', 'paddingLeft': '15px'},
-             {'visibility': 'hidden', 'paddingLeft': '15px'}),
-            (Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
-             {'display': 'none'},
-             {'display': 'none'})
+             {'display': 'none'}, # Style when RUNNING
+             {'display': 'none'}), # Style when NOT RUNNING (initial)
+            (Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True), # This is inside CENTER_PANEL_COLUMN
+             {'display': 'none'}, # Style when RUNNING
+             {'display': 'none'}) # Style when NOT RUNNING (initial)
         ],
         progress=[
             Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value'), # Updated by set_progress
@@ -178,18 +183,18 @@ def register_backtest_callbacks(app: Dash):
                 wrapped_set_progress((100, "Complete"))
                 time.sleep(0.05)
                 logger.info("run_backtest: Exiting successfully.")
-                # store_data, overlay_style, bar_value, inner_text, outer_text, interval_disabled, wizard_progress_style, right_panel_style, results_wrapper_style, progress_container_open
+                # store_data, overlay_style, bar_value, inner_text, outer_text, interval_disabled, wizard_progress_style, center_panel_style, right_panel_style, results_wrapper_style, progress_container_open
                 return results_package, {"display": "none"}, 100, "Complete", "Complete (100%)", True, \
-                       {'display': 'none'}, no_update, no_update, False
+                       no_update, no_update, no_update, no_update, False # Use no_update for panel styles, let update_results_display handle them
             else:
                 error_msg = results_package.get('error', 'Unknown backtest failure')
                 logger.error(f"run_backtest: Returning FAILED results: {error_msg}")
-                display_error_msg = (error_msg[:30] + '...') if len(error_msg) > 33 else error_msg # Shorter for inner
-                outer_display_error_msg = (error_msg[:40] + '...') if len(error_msg) > 43 else error_msg # For outer
+                display_error_msg = (error_msg[:30] + '...') if len(error_msg) > 33 else error_msg
+                outer_display_error_msg = (error_msg[:40] + '...') if len(error_msg) > 43 else error_msg
                 wrapped_set_progress((100, f"Failed: {display_error_msg}"))
                 time.sleep(0.05)
                 return results_package, {"display": "none"}, 100, f"Failed: {display_error_msg}", f"Failed: {outer_display_error_msg} (100%)", True, \
-                       {'display': 'none'}, no_update, no_update, False
+                       no_update, no_update, no_update, no_update, False # Use no_update for panel styles
 
         except Exception as e:
             tb_str = traceback.format_exc()
@@ -201,7 +206,7 @@ def register_backtest_callbacks(app: Dash):
             time.sleep(0.05)
             return {"timestamp": time.time(), "success": False, "error": error_msg}, \
                    {"display": "none"}, 100, f"Error: {display_error_msg}", f"Error: {outer_display_error_msg} (100%)", True, \
-                   {'display': 'none'}, no_update, no_update, False
+                   no_update, no_update, no_update, no_update, False # Use no_update for panel styles
 
     # --- NEW Animation Callback ---
     @app.callback(
@@ -292,26 +297,26 @@ def register_backtest_callbacks(app: Dash):
         # Show all relevant panels upon successful backtest
         return (performance_metrics_children, trade_metrics_children, trades_table_component,
                 portfolio_chart_fig, drawdown_chart_fig, monthly_returns_heatmap_fig, 
-                ticker_options, ticker_value, {'display': 'block'}, 
-                {'display': 'block', 'paddingLeft': '3.75px', 'paddingRight': '3.75px'}, 
-                {'display': 'block', 'paddingLeft': '3.75px'})
+                ticker_options, ticker_value, {'display': 'block'}, # RESULTS_AREA_WRAPPER
+                {'display': 'block', 'paddingLeft': '3.75px', 'paddingRight': '3.75px'}, # CENTER_PANEL_COLUMN
+                {'display': 'block', 'paddingLeft': '3.75px'}) # RIGHT_PANEL_COLUMN
 
     logger.info("Backtest callbacks registered.")
 
     # --- Callback to make results panels visible ---
     # This callback can be removed or simplified if update_results_display handles all visibility.
-    # For now, let\'s comment it out to avoid conflicts.
-    # @app.callback(\r
-    #     Output(ResultsIDs.CENTER_PANEL_COLUMN, \'style\'), # MODIFIED: Only controls center panel now\r
-    #     Input(SharedComponentIDs.RUN_BACKTEST_TRIGGER_STORE, \'data\'), # CHANGED\r
-    #     prevent_initial_call=True\r
-    # )\r
-    # def toggle_results_panels_visibility(trigger_data): \r
-    #     triggered_id = ctx.triggered_id\r
-    #     logger.info(f"toggle_results_panels_visibility: Triggered by {triggered_id}. trigger_data: {trigger_data}")\r
-    #     if trigger_data: \r
-    #         center_style = {\'display\': \'block\', \'paddingLeft\': \'15px\', \'paddingRight\': \'15px\'} \r
-    #         logger.info(f"toggle_results_panels_visibility: Applying styles - Center: {center_style}")\r
-    #         return center_style # MODIFIED: Return only center_style\r
-    #     logger.warning("toggle_results_panels_visibility: Condition not met or no trigger_data, preventing update.")\r
+    # For now, let's comment it out to avoid conflicts.
+    # @app.callback(
+    #     Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style'), # MODIFIED: Only controls center panel now
+    #     Input(SharedComponentIDs.RUN_BACKTEST_TRIGGER_STORE, 'data'), # CHANGED
+    #     prevent_initial_call=True
+    # )
+    # def toggle_results_panels_visibility(trigger_data): 
+    #     triggered_id = ctx.triggered_id
+    #     logger.info(f"toggle_results_panels_visibility: Triggered by {triggered_id}. trigger_data: {trigger_data}")
+    #     if trigger_data: 
+    #         center_style = {'display': 'block', 'paddingLeft': '15px', 'paddingRight': '15px'} 
+    #         logger.info(f"toggle_results_panels_visibility: Applying styles - Center: {center_style}")
+    #         return center_style # MODIFIED: Return only center_style
+    #     logger.warning("toggle_results_panels_visibility: Condition not met or no trigger_data, preventing update.")
     #     raise PreventUpdate
