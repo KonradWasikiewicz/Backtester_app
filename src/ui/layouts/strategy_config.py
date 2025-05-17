@@ -531,7 +531,11 @@ def create_strategy_config_section(tickers=None):
             progress_container_for_stepper, # MODIFIED: Use the new container for the stepper
             html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps"),
             dcc.Store(id=WizardIDs.RISK_MANAGEMENT_STORE_WIZARD),
-            dcc.Store(id=WizardIDs.STRATEGY_PARAMS_STORE)  # Add store for strategy-specific parameters
+            dcc.Store(id=WizardIDs.STRATEGY_PARAMS_STORE),  # Add store for strategy-specific parameters
+            # Add new stores for wizard state management
+            dcc.Store(id=WizardIDs.ACTIVE_STEP_STORE, data=1), # Default to step 1 being active
+            dcc.Store(id=WizardIDs.CONFIRMED_STEPS_STORE, data=[]),
+            dcc.Store(id=WizardIDs.ALL_STEPS_COMPLETED_STORE, data=False)
         ], id=WizardIDs.STRATEGY_CONFIG_CONTAINER, className="strategy-wizard")
 
     except Exception as e:

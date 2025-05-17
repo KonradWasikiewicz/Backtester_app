@@ -104,6 +104,11 @@ class WizardIDs:
     # Run Backtest Button in Wizard
     RUN_BACKTEST_BUTTON_WIZARD = "run-backtest-button-wizard"
 
+    # Stores for wizard state
+    ACTIVE_STEP_STORE = "wizard-active-step-store"
+    CONFIRMED_STEPS_STORE = "wizard-confirmed-steps-store"
+    ALL_STEPS_COMPLETED_STORE = "wizard-all-steps-completed-store"
+
 
 class ResultsIDs:
     """IDs for results display components."""

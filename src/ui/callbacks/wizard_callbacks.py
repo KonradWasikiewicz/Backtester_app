@@ -1,7 +1,5 @@
-import dash
-from dash import Dash, html, dcc, Input, Output, State, ALL, MATCH, ctx, no_update
-import dash_bootstrap_components as dbc  # Import Bootstrap components
-from dash.exceptions import PreventUpdate # Added import
+import dash # Added dash back
+from dash import Dash, html, dcc, Input, Output, State, ALL, MATCH, ctx, no_update, callback_context # Added callback_context
 import logging
 from datetime import date  # Import for date validation
 # Make sure logging is configured appropriately elsewhere (e.g., in app_factory or main app.py)
@@ -10,11 +8,29 @@ from src.core.constants import STRATEGY_DESCRIPTIONS # Poprawna ścieżka do sta
 from src.core.constants import DEFAULT_STRATEGY_PARAMS  # added import for default params
 from src.core.constants import AVAILABLE_STRATEGIES # Ensure this is imported
 from src.core.constants import PARAM_DESCRIPTIONS  # added import for parameter descriptions
-from src.ui.ids import WizardIDs, StrategyConfigIDs  # Import the centralized IDs and StrategyConfigIDs
+from src.ui.ids import WizardIDs, PageIDs, GeneralIDs, StrategyConfigIDs # Added StrategyConfigIDs
 from src.ui.components.stepper import create_wizard_stepper  # Import for updating the stepper
 from src.core.data import DataLoader  # Import for ticker data
+from dash.exceptions import PreventUpdate # Added PreventUpdate
+import dash_bootstrap_components as dbc # Added dbc
+from typing import List, Tuple, Dict # Added Dict
+
+from src.core.config import load_config, save_config # Added load_config, save_config back
 
 logger = logging.getLogger(__name__)
+
+TOTAL_STEPS = 7
+
+# CSS class names (ensure these are defined in style.css)
+# For Stepper Indicators
+STEPPER_COMPLETED_CLASS = "step-completed"
+STEPPER_ACTIVE_CLASS = "step-active"
+STEPPER_PENDING_CLASS = "step-pending"
+# For Step Headers
+HEADER_COMPLETED_CLASS = "wizard-step-header-completed"
+HEADER_ACTIVE_CLASS = "wizard-step-header-current"
+HEADER_PENDING_CLASS = "wizard-step-header-pending"
+
 
 def register_wizard_callbacks(app: Dash):
     """
@@ -698,3 +714,163 @@ def register_wizard_callbacks(app: Dash):
             logger.error(f"Error loading ticker options: {e}")
             default_tickers = ["AAPL", "MSFT", "GOOG", "AMZN", "META", "TSLA", "NVDA", "JPM", "V", "WMT"]
             return [{"label": ticker, "value": ticker} for ticker in default_tickers]
+
+    # --- The new comprehensive callback:
+    @app.callback(
+        [
+            Output(WizardIDs.ACTIVE_STEP_STORE, "data"),                # Index 0
+            Output(WizardIDs.CONFIRMED_STEPS_STORE, "data"),            # Index 1
+            Output(WizardIDs.ALL_STEPS_COMPLETED_STORE, "data"),        # Index 2
+            # Stepper indicator classNames (7 outputs)
+            *[Output(WizardIDs.get_stepper_indicator_id(i), "className") for i in range(1, TOTAL_STEPS + 1)], # Index 3 to 9
+            # Step header classNames (7 outputs)
+            *[Output(WizardIDs.get_step_header_id(i), "className") for i in range(1, TOTAL_STEPS + 1)],    # Index 10 to 16
+            # Step content styles (7 outputs)
+            *[Output(WizardIDs.get_step_content_id(i), "style") for i in range(1, TOTAL_STEPS + 1)],      # Index 17 to 23
+            # Confirm button disabled states (6 outputs for steps 1-6)
+            *[Output(WizardIDs.get_step_confirm_button_id(i), "disabled") for i in range(1, TOTAL_STEPS)], # Index 24 to 29
+            # Run backtest button disabled state (1 output)
+            Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, "disabled"),    # Index 30
+        ],
+        [
+            Input(WizardIDs.ACTIVE_STEP_STORE, "data"),
+            Input(WizardIDs.CONFIRMED_STEPS_STORE, "data"),
+            Input(WizardIDs.ALL_STEPS_COMPLETED_STORE, "data"),
+            *[Input(WizardIDs.get_stepper_indicator_id(i), "n_clicks") for i in range(1, TOTAL_STEPS + 1)],
+            *[Input(WizardIDs.get_step_header_id(i), "n_clicks") for i in range(1, TOTAL_STEPS + 1)],
+            *[Input(WizardIDs.get_step_confirm_button_id(i), "n_clicks") for i in range(1, TOTAL_STEPS)], # Steps 1-6
+            Input(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, "n_clicks"),
+        ],
+        prevent_initial_call=False
+    )
+    def update_wizard_state_and_ui(*args: Tuple[any, ...]) -> Tuple[any, ...]:
+        ctx = callback_context
+        triggered_input_info = ctx.triggered[0]
+        triggered_prop_id = triggered_input_info["prop_id"]
+        
+        current_active_step = args[0]
+        current_confirmed_steps = args[1] if args[1] is not None else []
+        current_all_steps_completed = args[2] if args[2] is not None else False
+
+        if current_active_step is None: current_active_step = 1
+        if not isinstance(current_confirmed_steps, list): current_confirmed_steps = []
+        if current_all_steps_completed is None: current_all_steps_completed = False
+        
+        new_active_step = current_active_step
+        new_confirmed_steps = list(current_confirmed_steps)
+        new_all_steps_completed = current_all_steps_completed
+
+        store_outputs: List[any] = [no_update] * 3
+        
+        is_n_clicks_trigger = ".n_clicks" in triggered_prop_id
+        
+        if not ctx.triggered or not is_n_clicks_trigger or triggered_prop_id == ".":
+            # Initial load or external store update
+            store_outputs = [current_active_step, current_confirmed_steps, current_all_steps_completed]
+        else:
+            triggered_id_str = triggered_prop_id.split(".")[0]
+            interaction_handled = False
+
+            # Stepper indicator clicks
+            for i in range(TOTAL_STEPS):
+                step_num = i + 1
+                if triggered_id_str == WizardIDs.get_stepper_indicator_id(step_num):
+                    new_active_step = step_num
+                    interaction_handled = True
+                    break
+            
+            # Step header clicks
+            if not interaction_handled:
+                for i in range(TOTAL_STEPS):
+                    step_num = i + 1
+                    if triggered_id_str == WizardIDs.get_step_header_id(step_num):
+                        new_active_step = step_num
+                        interaction_handled = True
+                        break
+
+            # Confirm button clicks (steps 1-6)
+            if not interaction_handled:
+                for i in range(TOTAL_STEPS - 1):
+                    step_num = i + 1
+                    if triggered_id_str == WizardIDs.get_step_confirm_button_id(step_num):
+                        if step_num not in new_confirmed_steps:
+                            new_confirmed_steps.append(step_num)
+                            new_confirmed_steps.sort()
+                        if step_num < TOTAL_STEPS:
+                            new_active_step = step_num + 1
+                        else:
+                            new_active_step = step_num 
+                        interaction_handled = True
+                        break
+            
+            # Run Backtest button click (Step 7 confirmation)
+            if not interaction_handled and triggered_id_str == WizardIDs.RUN_BACKTEST_BUTTON_WIZARD:
+                # Assuming prerequisites (steps 1-6 confirmed) are met because button should be enabled
+                if TOTAL_STEPS not in new_confirmed_steps:
+                    new_confirmed_steps.append(TOTAL_STEPS)
+                    new_confirmed_steps.sort()
+                
+                if all(s in new_confirmed_steps for s in range(1, TOTAL_STEPS + 1)):
+                    new_all_steps_completed = True
+                    new_confirmed_steps = list(range(1, TOTAL_STEPS + 1)) # Ensure all are marked
+                new_active_step = TOTAL_STEPS 
+                interaction_handled = True
+
+            if interaction_handled or \
+               new_active_step != current_active_step or \
+               set(new_confirmed_steps) != set(current_confirmed_steps) or \
+               new_all_steps_completed != current_all_steps_completed:
+                store_outputs = [new_active_step, new_confirmed_steps, new_all_steps_completed]
+            else: # No change from interaction that warrants a store update
+                store_outputs = [no_update, no_update, no_update]
+
+
+        final_active_step = store_outputs[0] if store_outputs[0] is not no_update else current_active_step
+        final_confirmed_steps = store_outputs[1] if store_outputs[1] is not no_update else current_confirmed_steps
+        final_all_steps_completed = store_outputs[2] if store_outputs[2] is not no_update else current_all_steps_completed
+        
+        if final_confirmed_steps is None: final_confirmed_steps = [] # Ensure list type
+
+        stepper_indicator_classes: List[str] = []
+        step_header_classes: List[str] = []
+        step_content_styles: List[Dict[str, str]] = []
+        confirm_button_disabled_states: List[bool] = []
+
+        for i in range(1, TOTAL_STEPS + 1):
+            is_confirmed = i in final_confirmed_steps
+            is_active = i == final_active_step
+
+            if final_all_steps_completed:
+                stepper_indicator_classes.append(STEPPER_COMPLETED_CLASS)
+                step_header_classes.append(HEADER_COMPLETED_CLASS)
+            elif is_active:
+                stepper_indicator_classes.append(STEPPER_ACTIVE_CLASS)
+                step_header_classes.append(HEADER_ACTIVE_CLASS)
+            elif is_confirmed:
+                stepper_indicator_classes.append(STEPPER_COMPLETED_CLASS)
+                step_header_classes.append(HEADER_COMPLETED_CLASS)
+            else:
+                stepper_indicator_classes.append(STEPPER_PENDING_CLASS)
+                step_header_classes.append(HEADER_PENDING_CLASS)
+
+            step_content_styles.append({'display': 'block'} if is_active else {'display': 'none'})
+
+            if i < TOTAL_STEPS: # Confirm buttons for steps 1-6
+                confirm_button_disabled = is_confirmed or final_all_steps_completed
+                confirm_button_disabled_states.append(confirm_button_disabled)
+
+        prerequisites_for_run_backtest = list(range(1, TOTAL_STEPS)) # Steps 1-6
+        all_prerequisites_met = all(s in final_confirmed_steps for s in prerequisites_for_run_backtest)
+        run_backtest_disabled = not all_prerequisites_met or final_all_steps_completed
+
+        outputs_tuple: List[any] = []
+        outputs_tuple.extend(store_outputs)
+        outputs_tuple.extend(stepper_indicator_classes)
+        outputs_tuple.extend(step_header_classes)
+        outputs_tuple.extend(step_content_styles)
+        outputs_tuple.extend(confirm_button_disabled_states)
+        outputs_tuple.append(run_backtest_disabled)
+        
+        return tuple(outputs_tuple)
+
+    logger.info("Wizard callbacks registered.")
