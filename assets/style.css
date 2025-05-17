@@ -458,6 +458,22 @@ input:focus, .form-control:focus {
   /* Color and background are set by the more specific rules above, !important kept there for now */
 }
 
+/* ADDED: Hover effects for step headers */
+.wizard-step-header-completed:hover {
+  background-color: rgba(21, 115, 71, 1) !important; /* Darker green */
+  box-shadow: 0 3px 6px rgba(0,0,0,0.3) !important;
+}
+
+.wizard-step-header-current:hover {
+  background-color: rgba(10, 88, 202, 1) !important; /* Darker blue */
+  box-shadow: 0 3px 7px rgba(13, 110, 253, 0.6) !important;
+}
+
+.wizard-step-header-pending:hover {
+  background-color: rgba(84, 92, 99, 1) !important; /* Darker gray */
+  box-shadow: 0 3px 6px rgba(0,0,0,0.3) !important;
+}
+
 /* Ensure the stepper container allows horizontal scrolling if needed */
 /* This .wizard-stepper block (around lines 507-520) is a duplicate of the one refined earlier (385-398). */
 /* The earlier one is now the primary. This block can be removed or commented if it's truly identical. */

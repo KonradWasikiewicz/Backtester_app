@@ -164,14 +164,14 @@ function setupStepHeaders() {
         // Add visual indicator that headers are clickable
         header.style.cursor = 'pointer';
         
-        // Add hover effect
-        header.addEventListener('mouseover', function() {
-            this.style.backgroundColor = '#2a2e39';
-        });
-        
-        header.addEventListener('mouseout', function() {
-            this.style.backgroundColor = '#1e222d';
-        });
+        // REMOVED JAVASCRIPT HOVER EFFECTS FOR BACKGROUND COLOR
+        // header.addEventListener('mouseover', function() {
+        //     this.style.backgroundColor = '#2a2e39';
+        // });
+        // 
+        // header.addEventListener('mouseout', function() {
+        //     this.style.backgroundColor = '#1e222d';
+        // });
         
         // Add focus effect for accessibility
         header.addEventListener('focus', function() {
