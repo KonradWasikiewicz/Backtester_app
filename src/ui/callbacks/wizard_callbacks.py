@@ -22,7 +22,7 @@ TOTAL_STEPS = 7
 # CSS class names (ensure these are defined in style.css)
 # For Stepper Indicators
 STEPPER_COMPLETED_CLASS = "step-completed"
-STEPPER_ACTIVE_CLASS = "step-active"
+STEPPER_ACTIVE_CLASS = "current" # Changed from "step-active"
 STEPPER_PENDING_CLASS = "step-pending"
 # For Step Headers
 HEADER_COMPLETED_CLASS = "wizard-step-header-completed"
@@ -816,19 +816,20 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
         for i in range(1, TOTAL_STEPS + 1):
             is_confirmed = i in final_confirmed_steps
             is_active = (i == final_active_step)
+            base_stepper_class = "step-indicator" # Added base class
 
             # Stepper and Header classes
             if final_all_steps_completed:
-                stepper_indicator_classes.append(STEPPER_COMPLETED_CLASS)
+                stepper_indicator_classes.append(f"{base_stepper_class} {STEPPER_COMPLETED_CLASS}")
                 step_header_classes.append(HEADER_COMPLETED_CLASS)
             elif is_active:
-                stepper_indicator_classes.append(STEPPER_ACTIVE_CLASS)
+                stepper_indicator_classes.append(f"{base_stepper_class} {STEPPER_ACTIVE_CLASS}")
                 step_header_classes.append(HEADER_ACTIVE_CLASS)
             elif is_confirmed:
-                stepper_indicator_classes.append(STEPPER_COMPLETED_CLASS)
+                stepper_indicator_classes.append(f"{base_stepper_class} {STEPPER_COMPLETED_CLASS}")
                 step_header_classes.append(HEADER_COMPLETED_CLASS)
             else:
-                stepper_indicator_classes.append(STEPPER_PENDING_CLASS)
+                stepper_indicator_classes.append(f"{base_stepper_class} {STEPPER_PENDING_CLASS}")
                 step_header_classes.append(HEADER_PENDING_CLASS)
 
             # Content visibility
