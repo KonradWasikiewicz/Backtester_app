@@ -34,7 +34,6 @@ from src.ui.callbacks.strategy_callbacks import register_strategy_callbacks
 from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
 from src.ui.callbacks.risk_management_callbacks import register_risk_management_callbacks
 from src.ui.callbacks.wizard_callbacks import register_wizard_callbacks
-from src.ui.callbacks.run_backtest_callback import register_run_backtest_callback
 from src.ui.callbacks.config_update_callback import register_config_update_callback
 from src.ui.layouts.strategy_config import create_strategy_config_section
 # --- Import the new panel layout functions ---
@@ -509,8 +508,13 @@ def register_callbacks(app: dash.Dash) -> None:
         register_backtest_callbacks(app)
         register_risk_management_callbacks(app)
         register_wizard_callbacks(app)
-        register_run_backtest_callback(app)
         register_config_update_callback(app)  # Register our new callback to update main config
+
+        # --- Defer import and registration of run_backtest_callback ---
+        from src.ui.callbacks.run_backtest_callback import register_run_backtest_callback
+        register_run_backtest_callback(app)
+        logger.info("Successfully imported and registered run_backtest_callback.")
+        # --- End Deferral ---
 
         # --- Register Changelog Modal Callbacks ---
         @app.callback(
