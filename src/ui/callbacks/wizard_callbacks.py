@@ -21,9 +21,9 @@ TOTAL_STEPS = 7
 
 # CSS class names (ensure these are defined in style.css)
 # For Stepper Indicators
-STEPPER_COMPLETED_CLASS = "step-completed"
+STEPPER_COMPLETED_CLASS = "completed"  # Matches style.css .step-indicator.completed
 STEPPER_ACTIVE_CLASS = "current" # Changed from "step-active"
-STEPPER_PENDING_CLASS = "step-pending"
+STEPPER_PENDING_CLASS = "pending"  # Matches style.css .step-indicator.pending
 # For Step Headers
 HEADER_COMPLETED_CLASS = "wizard-step-header-completed"
 HEADER_ACTIVE_CLASS = "wizard-step-header-current"
@@ -408,18 +408,15 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
     @app.callback(
         Output(WizardIDs.SUMMARY_STRATEGY_PARAMETERS, "children"),
         [Input(WizardIDs.STRATEGY_DROPDOWN, "value")],
-        [State({"type": "strategy-param", "name": ALL}, "id"),
-         State({"type": "strategy-param", "name": ALL}, "value")]
+        [State({"type": "strategy-parameter", "index": ALL}, "id"), # CHANGED type and key from "strategy-param", "name"
+         State({"type": "strategy-parameter", "index": ALL}, "value")] # CHANGED type and key from "strategy-param", "name"
     )
     def update_strategy_parameters_summary(selected_strategy, param_ids, param_values):
         if not selected_strategy:
             return html.P("No strategy selected.")
         
         strategy_description = STRATEGY_DESCRIPTIONS.get(selected_strategy, "No description available.")
-          # The parent Div (with ID WizardIDs.SUMMARY_STRATEGY_PARAMETERS) will be styled by CSS.
-        # No conflicting className here.
         if not param_ids or not param_values:
-            # Use H6 with summary-subtitle class for consistency with other summary items
             return html.Div([
                 html.H6("Strategy:", className="summary-subtitle mt-2 mb-1"),
                 html.P(f"{selected_strategy} (using default parameters)"),
@@ -427,27 +424,65 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
             ], className="summary-item")
 
         param_summary_items = []
-        param_data = sorted(zip(param_ids, param_values), key=lambda x: x[0]["name"])
-        for param_id, param_value in param_data:
-            param_name = param_id["name"]
+        
+        # Create a dictionary of valid parameters, mapping index to value
+        # This handles cases where some param_values might be None if inputs are cleared
+        valid_params_dict = {}
+        if param_ids and param_values: # Ensure both are not empty
+            for p_id_dict, p_val in zip(param_ids, param_values):
+                if p_val is not None: # Only consider parameters that have a value
+                    # p_id_dict is like {'type': 'strategy-parameter', 'index': 'SMA_window_short'}
+                    param_index = p_id_dict["index"] 
+                    valid_params_dict[param_index] = p_val
+
+        # Sort by parameter index (name) for consistent order
+        sorted_param_indices = sorted(valid_params_dict.keys())
+
+        for param_index in sorted_param_indices:
+            param_value = valid_params_dict[param_index]
+            param_name = param_index # param_name is the 'index' from the ID
+
             parts = param_name.split('_')
-            if parts[0].upper() == selected_strategy:
-                display_label = ' '.join([selected_strategy] + [p.title() for p in parts[1:]])
-            else:
+            # Ensure selected_strategy is uppercase for comparison if strategy names in constants are uppercase
+            # Or ensure param_name parts are compared consistently (e.g. both lower/upper)
+            # Assuming selected_strategy matches the casing used in PARAM_DESCRIPTIONS/DEFAULT_STRATEGY_PARAMS keys
+            # And that param_name starts with strategy type e.g. "SMA_window" for "SMA" strategy
+            
+            # Heuristic for display label: if param_name starts with selected_strategy (case-insensitive)
+            if param_name.lower().startswith(selected_strategy.lower()):
+                # Attempt to remove strategy prefix and title case the rest
+                prefix_len = len(selected_strategy)
+                # Check for underscore after prefix or if it's an exact match
+                if len(param_name) > prefix_len and param_name[prefix_len] == '_':
+                    rest_of_name = param_name[prefix_len+1:]
+                else: # Handles cases like "SMA" param for "SMA" strategy if no further parts
+                    rest_of_name = param_name[prefix_len:] if len(param_name) > prefix_len else ""
+
+                # If rest_of_name is empty, it might be a general param for the strategy not needing "Strategy Param Name"
+                # For now, let's keep it simple:
+                # display_label = f"{selected_strategy} {rest_of_name.replace('_', ' ').title()}" if rest_of_name else selected_strategy
+                # Simplified: just title case the parts after the strategy name
+                display_label_parts = [p.title() for p in rest_of_name.split('_') if p]
+                if display_label_parts:
+                    display_label = f"{selected_strategy} {' '.join(display_label_parts)}"
+                else: # If no parts after strategy name (e.g. param "SMA" for strategy "SMA")
+                    display_label = selected_strategy.upper() # Or just selected_strategy
+            else: # Fallback: general title casing
                 display_label = param_name.replace('_', ' ').title()
+
             param_summary_items.append(
                 dbc.Row([
                     dbc.Col(html.Span(display_label, className="fw-bold"), width=6),
                     dbc.Col(html.Span(str(param_value)), width=6)
-                ], className="mb-0") # mb-0 for tight parameter rows, CSS will handle font
+                ], className="mb-0")
             )
-          # Use consistent heading styles with other summary items
+            
         return html.Div([
             html.H6("Strategy:", className="summary-subtitle mt-2 mb-1"),
             html.P(f"{selected_strategy}"),
             html.P(strategy_description, className="text-muted"),
             html.H6("Parameters:", className="summary-subtitle mt-2 mb-1"),
-            html.Div(param_summary_items, className="strategy-params-list") # Specific class for this list
+            html.Div(param_summary_items, className="strategy-params-list")
         ], className="summary-item")
 
     # --- Summary page updates ---
