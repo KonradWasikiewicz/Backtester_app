@@ -19,6 +19,19 @@ class WizardIDs:
     WIZARD_STEPPER = "wizard-stepper"
     PROGRESS_BAR = "wizard-progress-bar"
     PROGRESS_CONTAINER = "wizard-progress-container" # ADDED
+      # Summary section IDs
+    SUMMARY_STRATEGY_DETAILS = "summary-strategy-details"
+    SUMMARY_STRATEGY_PARAMETERS = "summary-strategy-parameters"
+    SUMMARY_DATES_DETAILS = "summary-dates-details"
+    SUMMARY_TICKERS_DETAILS = "summary-tickers-details"
+    SUMMARY_RISK_DETAILS = "summary-risk-details"
+    SUMMARY_COSTS_DETAILS = "summary-costs-details"
+    SUMMARY_REBALANCING_DETAILS = "summary-rebalancing-details"
+    SUMMARY_OUTPUT_CONTAINER = "summary-output-container"
+    
+    # Store IDs
+    RISK_MANAGEMENT_STORE_WIZARD = "risk-management-store-wizard"
+    STRATEGY_PARAMS_STORE = "strategy-params-store"
     
     # Stepper Component IDs (NEW)
     @staticmethod
@@ -82,30 +95,12 @@ class WizardIDs:
     # REBALANCING_CONTAINER = "wizard-rebalancing" # Unused
     REBALANCING_FREQUENCY_DROPDOWN = "wizard-rebalancing-frequency"
     REBALANCING_THRESHOLD_INPUT = "wizard-rebalancing-threshold"
-    CONFIRM_REBALANCING_BUTTON = "wizard-confirm-rebalancing-button"
-      # Step 7: Summary & Run
-    SUMMARY_CONTAINER = "wizard-summary"
-    # SUMMARY_STRATEGY_NAME = "wizard-summary-strategy-name" # Unused
-    # SUMMARY_INITIAL_CAPITAL = "wizard-summary-initial-capital" # Unused
-    SUMMARY_OUTPUT_CONTAINER = "wizard-summary-output"
-    RUN_BACKTEST_BUTTON_WIZARD = "wizard-run-backtest-button"
-    STRATEGY_PARAMS_STORE = "wizard-strategy-params-store"  # Store for strategy-specific parameters
-
-    # Summary Detail Fields (NEW - based on wizard_callbacks.py usage)
-    SUMMARY_STRATEGY_DETAILS = "wizard-summary-strategy" # For strategy name and initial capital
-    SUMMARY_DATES_DETAILS = "wizard-summary-dates"
-    SUMMARY_TICKERS_DETAILS = "wizard-summary-tickers"
-    SUMMARY_RISK_DETAILS = "wizard-summary-risk"
-    SUMMARY_COSTS_DETAILS = "wizard-summary-costs"
-    SUMMARY_REBALANCING_DETAILS = "wizard-summary-rebalancing"
-    SUMMARY_STRATEGY_PARAMETERS = "wizard-strategy-parameters-summary"    # Wizard-specific data stores
-    RISK_MANAGEMENT_STORE_WIZARD = "wizard-risk-management-store" # NEW
-    
-    # Run Backtest Button in Wizard
+    CONFIRM_REBALANCING_BUTTON = "confirm-rebalancing-button"
     RUN_BACKTEST_BUTTON_WIZARD = "run-backtest-button-wizard"
+    RUN_BACKTEST_ERROR_MESSAGE = "run-backtest-error-message" # ADDED
 
     # Stores for wizard state
-    ACTIVE_STEP_STORE = "wizard-active-step-store"
+    ACTIVE_STEP_STORE = "active-step-store"
     CONFIRMED_STEPS_STORE = "wizard-confirmed-steps-store"
     ALL_STEPS_COMPLETED_STORE = "wizard-all-steps-completed-store"
 

@@ -521,7 +521,8 @@ def create_strategy_config_section(tickers=None):
                         color="success",
                         className="w-100 mt-2",
                         disabled=True
-                    )
+                    ),
+                    html.Div(id=WizardIDs.RUN_BACKTEST_ERROR_MESSAGE, style={'color': 'red', 'marginTop': '10px', 'display': 'none'}) # ADDED error message display
                 ]),
                 is_hidden=True,
                 step_number=7

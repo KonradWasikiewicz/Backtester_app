@@ -709,6 +709,9 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
             # Progress Bar Outputs
             Output(WizardIDs.PROGRESS_BAR, "value", allow_duplicate=True),
             Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True),
+            # ADDED: Output for the error message display
+            Output(WizardIDs.RUN_BACKTEST_ERROR_MESSAGE, "children"),
+            Output(WizardIDs.RUN_BACKTEST_ERROR_MESSAGE, "style"),
         ],
         [
             Input(WizardIDs.ACTIVE_STEP_STORE, "data"),
@@ -881,6 +884,30 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
         all_prerequisites_met = all(s in final_confirmed_steps for s in prerequisites_for_run_backtest)
         run_backtest_disabled = not all_prerequisites_met or final_all_steps_completed
 
+        # Initialize error message outputs
+        run_backtest_error_message_content = ""
+        run_backtest_error_message_style = {'color': 'red', 'marginTop': '10px', 'display': 'none'}
+
+        # Handle Run Backtest button click specifically for error message
+        if triggered_prop_id == WizardIDs.RUN_BACKTEST_BUTTON_WIZARD + ".n_clicks":
+            if not all_prerequisites_met:
+                missing_steps = [str(s) for s in prerequisites_for_run_backtest if s not in final_confirmed_steps]
+                if missing_steps:
+                    run_backtest_error_message_content = f"Before running the backtest, please complete steps: {', '.join(missing_steps)}."
+                    run_backtest_error_message_style['display'] = 'block'
+                # Prevent confirming step 7 or setting all_steps_completed if prerequisites are not met
+                # This logic is already implicitly handled by how new_all_steps_completed is set earlier,
+                # but we ensure the error message is the primary feedback here.
+                store_outputs[2] = False # Ensure ALL_STEPS_COMPLETED_STORE is False
+                if TOTAL_STEPS in final_confirmed_steps: # If step 7 was somehow confirmed, unconfirm it
+                    final_confirmed_steps.remove(TOTAL_STEPS)
+                    store_outputs[1] = final_confirmed_steps
+            elif all_prerequisites_met and not final_all_steps_completed:
+                # This case is when button is clicked, prereqs are met, and it's the actual confirmation of step 7
+                # The main logic for this is already handled above where new_all_steps_completed is set to True.
+                # Error message should remain hidden.
+                pass 
+
         # Progress bar calculation
         progress_percentage = (len(final_confirmed_steps) / TOTAL_STEPS) * 100
         progress_bar_style = {
@@ -910,6 +937,9 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
         outputs_tuple.append(run_backtest_disabled)
         outputs_tuple.append(progress_percentage) # For dbc.Progress 'value'
         outputs_tuple.append(progress_bar_style)   # For dbc.Progress 'style' or 'bar_style'
+        # ADDED: Append error message outputs
+        outputs_tuple.append(run_backtest_error_message_content)
+        outputs_tuple.append(run_backtest_error_message_style)
         
         return tuple(outputs_tuple)
 
