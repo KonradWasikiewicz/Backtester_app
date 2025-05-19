@@ -4,6 +4,13 @@ This file serves as the single source of truth for all component IDs,
 preventing conflicts and making refactoring easier.
 """
 
+class PageIDs:
+    """IDs for main page structure elements."""
+    MAIN_CONTAINER = "main-app-container"
+    HEADER_NAVBAR = "header-navbar"
+    CONTENT_CONTAINER = "main-content-container"
+    FOOTER = "app-footer"
+
 class WizardIDs:
     """IDs for components in the wizard interface."""
     
@@ -264,3 +271,23 @@ class AppStructureIDs:
     # Other UI elements
     VERSION_BADGE = "version-badge"
     FOOTER_VERSION_LINK = "footer-version"
+
+class ComponentIDs: # ADDED
+    """General component IDs that might be used across different modules or for stores."""
+    # Stores - these were previously in layouts/__init__.py referencing a non-existent ComponentIDs
+    # Mapping them here or to more specific ID classes.
+    BACKTEST_RESULTS_STORE = "backtest-results-store" # Matches ResultsIDs.BACKTEST_RESULTS_STORE
+    HISTORICAL_DATA_STORE = "historical-data-store"
+    STRATEGY_PARAMS_STORE = "strategy-params-store" # Matches WizardIDs.STRATEGY_PARAMS_STORE
+    RISK_PARAMS_STORE = "risk-params-store" # Could be part of WizardIDs or a new specific store ID
+    TRADING_COSTS_STORE = "trading-costs-store"
+    REBALANCING_RULES_STORE = "rebalancing-rules-store"
+    SELECTED_TICKERS_STORE = "selected-tickers-store"
+    DATE_RANGE_STORE = "date-range-store"
+    INITIAL_CAPITAL_STORE = "initial-capital-store"
+    WIZARD_STATE_STORE = "wizard-state-store" # Matches WizardIDs.ACTIVE_STEP_STORE or similar, ensure consistency
+
+    # Chart/UI containers from layouts/__init__.py
+    CHART_CONTAINER_MAIN = "chart-container-main"
+    PRICE_CHART = "price-chart"
+    PERFORMANCE_CHART = "performance-chart"
