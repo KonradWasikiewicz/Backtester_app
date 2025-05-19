@@ -157,10 +157,9 @@ class ResultsIDs:
     BACKTEST_ANIMATION_INTERVAL = "backtest-animation-interval"
 
     # Layout Wrappers / Areas
-    RESULTS_AREA_WRAPPER = "actual-results-area" # UNCOMMENTED
-
-    # These might be better in LayoutIDs if they define major page structure columns
+    RESULTS_AREA_WRAPPER = "actual-results-area" # UNCOMMENTED    # These might be better in LayoutIDs if they define major page structure columns
     # For now, keeping them here as they are directly related to results visibility in callbacks
+    LEFT_PANEL_COLUMN = "left-panel-col" # Added for consistency
     CENTER_PANEL_COLUMN = "center-panel-col" # UNCOMMENTED
     RIGHT_PANEL_COLUMN = "right-panel-col" # UNCOMMENTED
 

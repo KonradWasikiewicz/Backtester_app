@@ -10,7 +10,7 @@ from src.ui.wizard.layout import create_strategy_config_section # Wizard layout
 # from src.ui.layouts.risk_management import create_risk_management_layout # Placeholder
 from src.ui.layouts.results_display import create_main_results_area as create_results_display_layout # For the right panel, aliased for consistency
 
-from src.ui.ids import PageIDs, ComponentIDs, WizardIDs # Import necessary IDs
+from src.ui.ids import PageIDs, ComponentIDs, WizardIDs, ResultsIDs # Import necessary IDs
 
 def create_layout(tickers: List[Dict[str, str]] = None) -> html.Div:
     """
@@ -61,17 +61,14 @@ def create_layout(tickers: List[Dict[str, str]] = None) -> html.Div:
             dbc.Container(
                 [
                     dbc.Row(
-                        [
-                            # Left Panel: Strategy Configuration Wizard
+                        [                            # Left Panel: Strategy Configuration Wizard
                             dbc.Col(
                                 create_strategy_config_section(tickers=tickers),
-                                id="left-panel-col", # ID for CSS styling
+                                id=ResultsIDs.LEFT_PANEL_COLUMN, # Using centralized ID from ResultsIDs
                                 width=12, lg=4, # Full width on small screens, 1/3 on large
                                 className="mb-3 mb-lg-0", # Margin bottom on small screens
                                 style={'paddingTop': '0.5rem'} # Reduced top padding
-                            ),
-
-                            # Center Panel: Data Visualization / Charts
+                            ),# Center Panel: Data Visualization / Charts
                             dbc.Col(
                                 [
                                     html.Div(id=ComponentIDs.CHART_CONTAINER_MAIN, children=[
@@ -81,16 +78,14 @@ def create_layout(tickers: List[Dict[str, str]] = None) -> html.Div:
                                         dcc.Graph(id=ComponentIDs.PERFORMANCE_CHART, style={'height': '300px'}) # Reduced height
                                     ])
                                 ],
-                                id="center-panel-col", # ID for CSS styling
+                                id=ResultsIDs.CENTER_PANEL_COLUMN, # Using centralized ID from ResultsIDs
                                 width=12, lg=5, # Full width on small screens, 5/12 on large
                                 className="mb-3 mb-lg-0",
                                 style={'paddingTop': '0.5rem'} # Reduced top padding
-                            ),
-
-                            # Right Panel: Backtest Results and Logs
+                            ),                            # Right Panel: Backtest Results and Logs
                             dbc.Col(
                                 create_results_display_layout(), # Use the dedicated layout function
-                                id="right-panel-col", # ID for CSS styling
+                                id=ResultsIDs.RIGHT_PANEL_COLUMN, # Using centralized ID from ResultsIDs
                                 width=12, lg=3, # Full width on small screens, 1/4 on large
                                 style={'paddingTop': '0.5rem'} # Reduced top padding
                             ),

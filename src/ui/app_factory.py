@@ -71,24 +71,35 @@ def create_app(**kwargs: Any) -> Dash: # Added **kwargs to match app.py call
 def register_callbacks(app: Dash) -> None:
     print("--- app_factory.py: register_callbacks CALLED ---")
     try:
-        # Import and register all callbacks
-        # We import them all from the callbacks package to ensure proper dependency resolution
-        from src.ui.callbacks import register_wizard_callbacks, register_backtest_callbacks, register_run_backtest_callback
-        
         # Register wizard callbacks first (UI interaction)
-        print("--- app_factory.py: Registering wizard callbacks ---")
-        register_wizard_callbacks(app)
-        print("--- app_factory.py: Wizard callbacks registered ---")
+        try:
+            print("--- app_factory.py: Registering wizard callbacks ---")
+            from src.ui.callbacks.wizard_callbacks import register_wizard_callbacks
+            register_wizard_callbacks(app)
+            print("--- app_factory.py: Wizard callbacks registered ---")
+        except Exception as e_wizard:
+            logger.error(f"Error registering wizard callbacks: {e_wizard}", exc_info=True)
+            print(f"--- app_factory.py: ERROR registering wizard callbacks: {e_wizard} ---")
         
         # Register backtest callbacks next (backtest execution)
-        print("--- app_factory.py: Registering backtest callbacks ---")
-        register_backtest_callbacks(app)
-        print("--- app_factory.py: Backtest callbacks registered ---")
+        try:
+            print("--- app_factory.py: Registering backtest callbacks ---")
+            from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
+            register_backtest_callbacks(app)
+            print("--- app_factory.py: Backtest callbacks registered ---")
+        except Exception as e_backtest:
+            logger.error(f"Error registering backtest callbacks: {e_backtest}", exc_info=True)
+            print(f"--- app_factory.py: ERROR registering backtest callbacks: {e_backtest} ---")
         
         # Register run backtest callback last (validation before running backtest)
-        print("--- app_factory.py: Registering run backtest callback ---")
-        register_run_backtest_callback(app)
-        print("--- app_factory.py: Run backtest callback registered ---")
+        try:
+            print("--- app_factory.py: Registering run backtest callback ---")
+            from src.ui.callbacks.run_backtest_callback import register_run_backtest_callback
+            register_run_backtest_callback(app)
+            print("--- app_factory.py: Run backtest callback registered ---")
+        except Exception as e_run:
+            logger.error(f"Error registering run backtest callback: {e_run}", exc_info=True)
+            print(f"--- app_factory.py: ERROR registering run backtest callback: {e_run} ---")
 
     except ImportError as e_import:
         print(f"--- app_factory.py: ImportError in register_callbacks: {e_import} ---")
