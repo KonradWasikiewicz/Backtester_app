@@ -45,18 +45,19 @@ def register_backtest_callbacks(app: Dash):
         Output(ResultsIDs.BACKTEST_PROGRESS_BAR, 'value'),
         Output(ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT, 'children'), 
         Output(ResultsIDs.BACKTEST_ANIMATED_TEXT, 'children'),
-        Output(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'disabled'), 
+        Output(ResultsIDs.BACKTEST_ANIMATION_INTERVAL, 'disabled'),
         Output(WizardIDs.PROGRESS_BAR, "style", allow_duplicate=True),
-        Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style'),
-        Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style'),
+        Output("results-center-panel", 'style'),
+        Output("results-right-panel", 'style'),
         Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style'),
-        Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open'),
+        Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open'), # ADDED COMMA HERE
         Input(SharedComponentIDs.RUN_BACKTEST_TRIGGER_STORE, 'data'),
         State(StrategyConfigIDs.STRATEGY_CONFIG_STORE_MAIN, 'data'),
         background=True,
         running=[
             (Output(StrategyConfigIDs.RUN_BACKTEST_BUTTON_MAIN, 'disabled'), True, False),
-            (Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'disabled'), True, False),            (Output(SharedComponentIDs.LOADING_OVERLAY, 'style'), 
+            (Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, 'disabled'), True, False),
+            (Output(SharedComponentIDs.LOADING_OVERLAY, 'style'), 
              # When running, show overlay with fixed position covering whole viewport
              {"display": "flex", "position": "fixed", "top": "0", "left": "0", "right": "0", "bottom": "0", 
               "backgroundColor": "rgba(18, 18, 18, 0.98)", "zIndex": "1050", 
@@ -70,10 +71,10 @@ def register_backtest_callbacks(app: Dash):
             (Output(ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER, 'is_open'), True, False),
             (Output(WizardIDs.PROGRESS_BAR, "style"), {'display': 'none'}, no_update), 
             # Both panels should be hidden during backtest and initially
-            (Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style'),
+            (Output("results-center-panel", 'style'),
              {'display': 'none'}, # Style when RUNNING
              {'display': 'none'}), # Style when NOT RUNNING (initial)
-            (Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style'),
+            (Output("results-right-panel", 'style'),
              {'display': 'none'}, # Style when RUNNING
              {'display': 'none'}), # Style when NOT RUNNING (initial)
             (Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style'), 

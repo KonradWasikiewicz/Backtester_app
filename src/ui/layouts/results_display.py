@@ -170,7 +170,7 @@ def create_center_panel_layout() -> html.Div:
     logger.debug("Creating center panel layout.")
     return html.Div([
         # New div to wrap actual results
-        html.Div(id=app_ids.ResultsIDs.RESULTS_AREA_WRAPPER, children=[
+        html.Div(children=[
             create_portfolio_value_returns_chart(),
             create_drawdown_chart(),
             create_monthly_returns_heatmap(),
@@ -217,13 +217,13 @@ def create_main_results_area() -> html.Div:
             dbc.Row([
                 dbc.Col(
                     create_center_panel_layout(), 
-                    id=app_ids.ResultsIDs.CENTER_PANEL_COLUMN, 
+                    id="results-center-panel", # Changed to a unique ID
                     width=12, lg=8, 
                     className="mb-3 mb-lg-0"
                 ),
                 dbc.Col(
                     create_right_panel_layout(), 
-                    id=app_ids.ResultsIDs.RIGHT_PANEL_COLUMN, 
+                    id="results-right-panel", # Changed to a unique ID
                     width=12, lg=4
                 ),
             ])
