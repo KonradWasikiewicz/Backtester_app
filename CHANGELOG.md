@@ -2,6 +2,13 @@
 
 All notable changes to the Backtester App will be documented in this file.
 
+## [v1.0.122] - 2025-05-22
+
+### Bug fixes and minor updates
+
+- powrót do momentu sprzed crashu dot. buttona run backtest
+
+
 ## [v1.0.121] - 2025-05-18
 
 ### Bug fixes and minor updates
