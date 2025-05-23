@@ -340,8 +340,7 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                     value='M',  # Default to Monthly
                     clearable=False,
                     className="mb-3"
-                ),
-                html.Label("Rebalancing Threshold (%):", className="mb-2", htmlFor=WizardIDs.REBALANCING_THRESHOLD_INPUT),
+                ),                html.Label("Rebalancing Threshold (%):", className="mb-2", htmlFor=WizardIDs.REBALANCING_THRESHOLD_INPUT),
                 dbc.Input(
                     id=WizardIDs.REBALANCING_THRESHOLD_INPUT,
                     type="number",
@@ -349,6 +348,11 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                     max=100,
                     step=1,
                     value=5,  # Default 5%
+                    className="mb-1"
+                ),
+                dbc.FormFeedback(
+                    id=WizardIDs.REBALANCING_THRESHOLD_FEEDBACK,
+                    type="invalid",
                     className="mb-3"
                 ),
                 dbc.Button("Confirm", id=WizardIDs.CONFIRM_REBALANCING_BUTTON, color="primary", className="mt-3")
@@ -368,13 +372,14 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                     size="lg",
                     className="mt-3 w-100",
                     disabled=True
-                )
-            ]),
+                )            ]),
             is_hidden=True
         )
     ]
 
     return html.Div([
+        # Validation state store for tracking validation status
+        dcc.Store(id=WizardIDs.VALIDATION_STATE_STORE, data={}),
         progress,
         html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps")
     ], id=WizardIDs.STRATEGY_CONFIG_CONTAINER, className="strategy-wizard")

@@ -34,6 +34,7 @@ from src.ui.callbacks.strategy_callbacks import register_strategy_callbacks
 from src.ui.callbacks.backtest_callbacks import register_backtest_callbacks
 from src.ui.callbacks.risk_management_callbacks import register_risk_management_callbacks
 from src.ui.callbacks.wizard_callbacks import register_wizard_callbacks
+from src.ui.callbacks.wizard_validation_callbacks import register_validation_callbacks
 from src.ui.callbacks.run_backtest_callback import register_run_backtest_callback
 from src.ui.callbacks.config_update_callback import register_config_update_callback
 from src.ui.layouts.strategy_config import create_strategy_config_section
@@ -509,6 +510,7 @@ def register_callbacks(app: dash.Dash) -> None:
         register_backtest_callbacks(app)
         register_risk_management_callbacks(app)
         register_wizard_callbacks(app)
+        register_validation_callbacks(app)  # Register wizard validation callbacks
         register_run_backtest_callback(app)
         register_config_update_callback(app)  # Register our new callback to update main config
 
