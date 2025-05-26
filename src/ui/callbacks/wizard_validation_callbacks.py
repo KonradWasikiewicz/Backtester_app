@@ -24,8 +24,7 @@ MAX_LOOKBACK_DAYS = 1000
 def register_validation_callbacks(app):
     """Register all real-time validation callbacks for the wizard."""
     logger.info("Registering wizard validation callbacks...")
-    
-    # Step 1: Initial Capital Validation
+      # Step 1: Initial Capital Validation
     @app.callback(
         [
             Output(WizardIDs.INITIAL_CAPITAL_INPUT, "valid"),
@@ -33,15 +32,23 @@ def register_validation_callbacks(app):
             Output(WizardIDs.INITIAL_CAPITAL_FEEDBACK, "children"),
             Output(WizardIDs.INITIAL_CAPITAL_FEEDBACK, "style")
         ],
-        [Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value")]
+        [Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value")],
+        [State(WizardIDs.INITIAL_CAPITAL_INPUT, "id")]  # Use state to track if user interacted
     )
-    def validate_initial_capital(capital_value):
+    def validate_initial_capital(capital_value, input_id):
         """Validate initial capital input in real-time."""
-        if capital_value is None:
+        # Don't validate if it's the default value and user hasn't interacted
+        if capital_value is None or str(capital_value).strip() == "":
             return False, False, "", {"display": "none"}
         
+        # Don't show validation for default values until user changes them
+        if str(capital_value) == "100000" or str(capital_value) == "100 000":
+            return True, False, "", {"display": "none"}
+        
         try:
-            capital = float(capital_value)
+            # Remove formatting (spaces, commas) for validation
+            clean_value = str(capital_value).replace(" ", "").replace(",", "")
+            capital = float(clean_value)
             if capital < MIN_INITIAL_CAPITAL:
                 return False, True, f"Initial capital must be at least ${MIN_INITIAL_CAPITAL:,}", {"display": "block"}
             elif capital > MAX_INITIAL_CAPITAL:
@@ -49,23 +56,73 @@ def register_validation_callbacks(app):
             else:
                 return True, False, "", {"display": "none"}
         except (ValueError, TypeError):
-            return False, True, "Please enter a valid number", {"display": "block"}
-
-    # Step 1: Strategy Selection Validation
+            return False, True, "Please enter a valid number", {"display": "block"}    # Step 1: Strategy Selection Validation
     @app.callback(
         [
             Output(WizardIDs.STRATEGY_VALIDATION_FEEDBACK, "children"),
             Output(WizardIDs.STRATEGY_VALIDATION_FEEDBACK, "style")
         ],
-        [Input(WizardIDs.STRATEGY_DROPDOWN, "value")]
+        [Input(WizardIDs.STRATEGY_DROPDOWN, "value")],
+        [State(WizardIDs.CONFIRM_STRATEGY_BUTTON, "n_clicks")]  # Only show error after user tries to confirm
     )
-    def validate_strategy_selection(strategy_value):
+    def validate_strategy_selection(strategy_value, confirm_clicks):
         """Validate strategy selection."""
-        if strategy_value is None:
+        # Don't show validation error until user tries to confirm or has selected something first
+        if strategy_value is None and (confirm_clicks is None or confirm_clicks == 0):
+            return "", {"display": "none"}
+        elif strategy_value is None:
             return "Please select a strategy", {"display": "block"}
         return "", {"display": "none"}
 
-    # Step 2: Date Range Validation
+    # Step 1: Validation on Confirm Button Click
+    @app.callback(
+        [
+            Output(WizardIDs.STRATEGY_VALIDATION_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.STRATEGY_VALIDATION_FEEDBACK, "style", allow_duplicate=True),
+            Output(WizardIDs.INITIAL_CAPITAL_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.INITIAL_CAPITAL_FEEDBACK, "style", allow_duplicate=True)
+        ],
+        [Input(WizardIDs.CONFIRM_STRATEGY_BUTTON, "n_clicks")],
+        [
+            State(WizardIDs.STRATEGY_DROPDOWN, "value"),
+            State(WizardIDs.INITIAL_CAPITAL_INPUT, "value")
+        ],
+        prevent_initial_call=True
+    )
+    def validate_step1_on_confirm(n_clicks, strategy_value, capital_value):
+        """Show validation errors when user tries to confirm Step 1."""
+        if n_clicks is None or n_clicks == 0:
+            return "", {"display": "none"}, "", {"display": "none"}
+        
+        strategy_feedback = ""
+        strategy_style = {"display": "none"}
+        capital_feedback = ""
+        capital_style = {"display": "none"}
+        
+        # Validate strategy selection
+        if strategy_value is None:
+            strategy_feedback = "Please select a strategy"
+            strategy_style = {"display": "block"}
+        
+        # Validate capital input
+        if capital_value is None or str(capital_value).strip() == "":
+            capital_feedback = "Please enter initial capital"
+            capital_style = {"display": "block"}
+        else:
+            try:
+                clean_value = str(capital_value).replace(" ", "").replace(",", "")
+                capital = float(clean_value)
+                if capital < MIN_INITIAL_CAPITAL:
+                    capital_feedback = f"Initial capital must be at least ${MIN_INITIAL_CAPITAL:,}"
+                    capital_style = {"display": "block"}
+                elif capital > MAX_INITIAL_CAPITAL:
+                    capital_feedback = f"Initial capital cannot exceed ${MAX_INITIAL_CAPITAL:,}"
+                    capital_style = {"display": "block"}
+            except (ValueError, TypeError):
+                capital_feedback = "Please enter a valid number"
+                capital_style = {"display": "block"}
+        
+        return strategy_feedback, strategy_style, capital_feedback, capital_style    # Step 2: Date Range Validation
     @app.callback(
         [
             Output(WizardIDs.DATE_START_FEEDBACK, "children"),
@@ -78,9 +135,10 @@ def register_validation_callbacks(app):
         [
             Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
             Input(WizardIDs.DATE_RANGE_END_PICKER, "date")
-        ]
+        ],
+        [State(WizardIDs.CONFIRM_DATES_BUTTON, "n_clicks")]
     )
-    def validate_date_range(start_date, end_date):
+    def validate_date_range(start_date, end_date, confirm_clicks):
         """Validate date range selection."""
         start_feedback = ""
         start_style = {"display": "none"}
@@ -89,16 +147,16 @@ def register_validation_callbacks(app):
         range_feedback = ""
         range_style = {"display": "none"}
         
-        # Validate individual dates
-        if start_date is None:
+        # Only validate if dates are missing and user tried to confirm
+        if start_date is None and confirm_clicks and confirm_clicks > 0:
             start_feedback = "Please select a start date"
             start_style = {"display": "block"}
         
-        if end_date is None:
+        if end_date is None and confirm_clicks and confirm_clicks > 0:
             end_feedback = "Please select an end date"
             end_style = {"display": "block"}
         
-        # Validate date range relationship
+        # Validate date range relationship only if both dates are selected
         if start_date and end_date:
             try:
                 start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -115,19 +173,21 @@ def register_validation_callbacks(app):
                 range_style = {"display": "block"}
         
         return (start_feedback, start_style, end_feedback, end_style, 
-                range_feedback, range_style)
-
-    # Step 3: Ticker Selection Validation
+                range_feedback, range_style)# Step 3: Ticker Selection Validation
     @app.callback(
         [
-            Output(WizardIDs.TICKER_SELECTION_FEEDBACK, "children"),
-            Output(WizardIDs.TICKER_SELECTION_FEEDBACK, "style")
+            Output(WizardIDs.TICKER_DROPDOWN_FEEDBACK, "children"),
+            Output(WizardIDs.TICKER_DROPDOWN_FEEDBACK, "style")
         ],
-        [Input(WizardIDs.TICKER_DROPDOWN, "value")]
+        [Input(WizardIDs.TICKER_DROPDOWN, "value")],
+        [State(WizardIDs.CONFIRM_TICKERS_BUTTON, "n_clicks")]
     )
-    def validate_ticker_selection(ticker_values):
+    def validate_ticker_selection(ticker_values, confirm_clicks):
         """Validate ticker selection."""
-        if not ticker_values or len(ticker_values) == 0:
+        # Don't show validation error until user tries to confirm
+        if (not ticker_values or len(ticker_values) == 0) and (confirm_clicks is None or confirm_clicks == 0):
+            return "", {"display": "none"}
+        elif not ticker_values or len(ticker_values) == 0:
             return "Please select at least one ticker", {"display": "block"}
         elif len(ticker_values) > 50:  # Reasonable limit
             return "Too many tickers selected (maximum 50)", {"display": "block"}

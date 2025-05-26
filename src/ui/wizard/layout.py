@@ -216,8 +216,11 @@ def create_strategy_config_section(tickers=None):
                                         max_date_allowed=pd.Timestamp.today().strftime('%Y-%m-%d'),
                                         placeholder='Start Date',
                                         display_format='YYYY-MM-DD',
-                                        className='mb-1',
-                                        style={"textAlign": "center", "width": "150px"}
+                                        className='mb-1',                                        style={"textAlign": "center", "width": "150px"}
+                                    ),
+                                    dbc.FormFeedback(
+                                        id=WizardIDs.DATE_START_FEEDBACK,
+                                        type="invalid"
                                     )
                                 ], style={"display": "flex", "alignItems": "center"})
                             ]), width=6),
@@ -234,6 +237,10 @@ def create_strategy_config_section(tickers=None):
                                         display_format='YYYY-MM-DD',
                                         className='mb-1',
                                         style={"textAlign": "center", "width": "150px"}
+                                    ),
+                                    dbc.FormFeedback(
+                                        id=WizardIDs.DATE_END_FEEDBACK,
+                                        type="invalid"
                                     )
                                 ], style={"display": "flex", "alignItems": "center"})
                             ]), width=6)
