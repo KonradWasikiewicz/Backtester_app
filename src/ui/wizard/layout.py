@@ -187,7 +187,8 @@ def create_strategy_config_section(tickers=None):
                         className="mb-3"
                     ),
                     html.Label("Select a strategy:", className="mb-2", htmlFor=WizardIDs.STRATEGY_DROPDOWN), 
-                    get_strategy_dropdown(AVAILABLE_STRATEGIES),                    dbc.FormFeedback(
+                    get_strategy_dropdown(AVAILABLE_STRATEGIES),
+                    dbc.FormFeedback(
                         id=WizardIDs.STRATEGY_VALIDATION_FEEDBACK,
                         type="invalid",
                         className="mb-3"

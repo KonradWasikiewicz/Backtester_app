@@ -24,7 +24,7 @@ MAX_LOOKBACK_DAYS = 1000
 def register_validation_callbacks(app):
     """Register all real-time validation callbacks for the wizard."""
     logger.info("Registering wizard validation callbacks...")
-      # Step 1: Initial Capital Validation
+    # Step 1: Initial Capital Validation
     @app.callback(
         [
             Output(WizardIDs.INITIAL_CAPITAL_INPUT, "valid"),
@@ -155,8 +155,7 @@ def register_validation_callbacks(app):
         if end_date is None and confirm_clicks and confirm_clicks > 0:
             end_feedback = "Please select an end date"
             end_style = {"display": "block"}
-        
-        # Validate date range relationship only if both dates are selected
+          # Validate date range relationship only if both dates are selected
         if start_date and end_date:
             try:
                 start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -173,21 +172,20 @@ def register_validation_callbacks(app):
                 range_style = {"display": "block"}
         
         return (start_feedback, start_style, end_feedback, end_style, 
-                range_feedback, range_style)# Step 3: Ticker Selection Validation
+                 range_feedback, range_style)
+
+    # Step 3: Ticker Selection Validation
     @app.callback(
         [
             Output(WizardIDs.TICKER_DROPDOWN_FEEDBACK, "children"),
             Output(WizardIDs.TICKER_DROPDOWN_FEEDBACK, "style")
         ],
         [Input(WizardIDs.TICKER_DROPDOWN, "value")],
-        [State(WizardIDs.CONFIRM_TICKERS_BUTTON, "n_clicks")]
+        prevent_initial_call=True
     )
-    def validate_ticker_selection(ticker_values, confirm_clicks):
-        """Validate ticker selection."""
-        # Don't show validation error until user tries to confirm
-        if (not ticker_values or len(ticker_values) == 0) and (confirm_clicks is None or confirm_clicks == 0):
-            return "", {"display": "none"}
-        elif not ticker_values or len(ticker_values) == 0:
+    def validate_ticker_selection(ticker_values):
+        """Validate ticker selection with immediate feedback."""
+        if not ticker_values or len(ticker_values) == 0:
             return "Please select at least one ticker", {"display": "block"}
         elif len(ticker_values) > 50:  # Reasonable limit
             return "Too many tickers selected (maximum 50)", {"display": "block"}
@@ -422,22 +420,120 @@ def register_validation_callbacks(app):
     @app.callback(
         Output(WizardIDs.VALIDATION_STATE_STORE, "data"),
         [
-            Input(WizardIDs.INITIAL_CAPITAL_INPUT, "valid"),
+            # Step 1: Initial Capital
+            Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),
+            # Step 2: Strategy
             Input(WizardIDs.STRATEGY_DROPDOWN, "value"),
+            # Step 3: Dates
             Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
             Input(WizardIDs.DATE_RANGE_END_PICKER, "date"),
+            # Step 4: Tickers
             Input(WizardIDs.TICKER_DROPDOWN, "value"),
-            # Add other inputs as needed
-        ]
+            # Step 5: Risk Management (simplified - just one key field)
+            Input(WizardIDs.MAX_POSITION_SIZE_INPUT, "value"),
+            # Step 6: Trading Costs (simplified)
+            Input(WizardIDs.COMMISSION_INPUT, "value"),
+            # Step 7: Rebalancing (simplified)
+            Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
+        ],
+        prevent_initial_call=True
     )
-    def update_validation_state(capital_valid, strategy, start_date, end_date, tickers):
-        """Update the global validation state for all wizard steps."""
+    def update_validation_state(initial_capital, strategy, start_date, end_date, 
+                               tickers, max_position, commission, rebalancing_freq):
+        """Update validation state for all steps."""
         validation_state = {
-            "step1_valid": capital_valid and strategy is not None,
-            "step2_valid": start_date is not None and end_date is not None,
-            "step3_valid": tickers is not None and len(tickers) > 0,
-            # Add more step validations as needed
+            1: True,  # Step 1: Initial Capital - default valid
+            2: True,  # Step 2: Strategy - default valid  
+            3: True,  # Step 3: Dates - default valid
+            4: True,  # Step 4: Tickers - default valid
+            5: True,  # Step 5: Risk Management - default valid
+            6: True,  # Step 6: Trading Costs - default valid
+            7: True,  # Step 7: Rebalancing - default valid
         }
+        
+        # Step 1: Initial Capital validation
+        if initial_capital is not None:
+            try:
+                clean_value = str(initial_capital).replace(" ", "").replace(",", "")
+                capital = float(clean_value)
+                validation_state[1] = MIN_INITIAL_CAPITAL <= capital <= MAX_INITIAL_CAPITAL
+            except (ValueError, TypeError):
+                validation_state[1] = False
+        else:
+            validation_state[1] = False
+            
+        # Step 2: Strategy validation
+        validation_state[2] = strategy is not None and strategy != ""
+        
+        # Step 3: Date validation
+        if start_date and end_date:
+            try:
+                from datetime import datetime
+                start_dt = datetime.fromisoformat(start_date)
+                end_dt = datetime.fromisoformat(end_date)
+                validation_state[3] = start_dt < end_dt and (end_dt - start_dt).days >= 30
+            except (ValueError, TypeError):
+                validation_state[3] = False
+        else:
+            validation_state[3] = False
+            
+        # Step 4: Ticker validation
+        validation_state[4] = tickers is not None and len(tickers) > 0
+        
+        # Step 5: Risk Management validation
+        if max_position is not None:
+            try:
+                size = float(max_position)
+                validation_state[5] = 0 < size <= 100
+            except (ValueError, TypeError):
+                validation_state[5] = False
+        else:
+            validation_state[5] = False
+            
+        # Step 6: Trading Costs validation
+        if commission is not None:
+            try:
+                comm = float(commission)
+                validation_state[6] = 0 <= comm <= 1  # 0-1% commission
+            except (ValueError, TypeError):
+                validation_state[6] = False
+        else:
+            validation_state[6] = False
+            
+        # Step 7: Rebalancing validation
+        validation_state[7] = rebalancing_freq is not None and rebalancing_freq != ""
+        
         return validation_state
+
+    # Confirm Button States Based on Validation
+    @app.callback(
+        [
+            Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled", allow_duplicate=True),
+        ],
+        [Input(WizardIDs.VALIDATION_STATE_STORE, "data")],
+        prevent_initial_call=True
+    )
+    def update_confirm_button_states(validation_state):
+        """Update confirm button states based on validation."""
+        if not validation_state:
+            # If no validation state, disable all buttons
+            return [True] * 6
+            
+        # Map step numbers to button disable states (invert validation state)
+        button_states = [
+            not validation_state.get(1, False),  # Strategy button (step 1)
+            not validation_state.get(3, False),  # Dates button (step 3) 
+            not validation_state.get(4, False),  # Tickers button (step 4)
+            not validation_state.get(5, False),  # Risk button (step 5)
+            not validation_state.get(6, False),  # Costs button (step 6)
+            not validation_state.get(7, False),  # Rebalancing button (step 7)
+        ]
+        
+        return button_states
 
     logger.info("Wizard validation callbacks registered successfully.")
