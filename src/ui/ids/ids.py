@@ -13,6 +13,35 @@ class WizardIDs:
     STRATEGY_DESCRIPTION_OUTPUT = "wizard-strategy-description-output"
     STRATEGY_PARAM_INPUTS_CONTAINER = "wizard-strategy-param-inputs"
     CONFIRM_STRATEGY_BUTTON = "wizard-confirm-strategy"
+    
+    # Validation IDs for real-time feedback
+    # Step 1: Initial Capital and Strategy Validation
+    INITIAL_CAPITAL_FEEDBACK = "wizard-initial-capital-feedback"
+    STRATEGY_VALIDATION_FEEDBACK = "wizard-strategy-validation-feedback"
+    
+    # Step 2: Date Range Validation
+    DATE_START_FEEDBACK = "wizard-date-start-feedback"
+    DATE_END_FEEDBACK = "wizard-date-end-feedback"
+    DATE_RANGE_FEEDBACK = "wizard-date-range-feedback"
+    
+    # Step 3: Ticker Selection Validation
+    TICKER_DROPDOWN_FEEDBACK = "wizard-ticker-dropdown-feedback"
+    
+    # Step 4: Risk Management Validation
+    MAX_POSITION_SIZE_FEEDBACK = "wizard-max-position-size-feedback"
+    STOP_LOSS_FEEDBACK = "wizard-stop-loss-feedback"
+    TAKE_PROFIT_FEEDBACK = "wizard-take-profit-feedback"
+    MAX_RISK_PER_TRADE_FEEDBACK = "wizard-max-risk-per-trade-feedback"
+    MARKET_TREND_LOOKBACK_FEEDBACK = "wizard-market-trend-lookback-feedback"
+    MAX_DRAWDOWN_FEEDBACK = "wizard-max-drawdown-feedback"
+    MAX_DAILY_LOSS_FEEDBACK = "wizard-max-daily-loss-feedback"
+    
+    # Step 5: Trading Costs Validation
+    COMMISSION_FEEDBACK = "wizard-commission-feedback"
+    SLIPPAGE_FEEDBACK = "wizard-slippage-feedback"
+    
+    # Step 6: Rebalancing Validation
+    REBALANCING_THRESHOLD_FEEDBACK = "wizard-rebalancing-threshold-feedback"
       # Wizard Progress & Main Containers
     STEPS_CONTAINER = "wizard-steps-container"
     STRATEGY_CONFIG_CONTAINER = "strategy-config-container"
@@ -102,12 +131,11 @@ class WizardIDs:
     RISK_MANAGEMENT_STORE_WIZARD = "wizard-risk-management-store" # NEW
     
     # Run Backtest Button in Wizard
-    RUN_BACKTEST_BUTTON_WIZARD = "run-backtest-button-wizard"
-
-    # Stores for wizard state
+    RUN_BACKTEST_BUTTON_WIZARD = "run-backtest-button-wizard"    # Stores for wizard state
     ACTIVE_STEP_STORE = "wizard-active-step-store"
     CONFIRMED_STEPS_STORE = "wizard-confirmed-steps-store"
     ALL_STEPS_COMPLETED_STORE = "wizard-all-steps-completed-store"
+    VALIDATION_STATE_STORE = "wizard-validation-state-store"
 
 
 class ResultsIDs:

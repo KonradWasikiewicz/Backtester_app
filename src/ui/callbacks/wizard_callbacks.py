@@ -140,161 +140,126 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
     #     """
     #     pass # Commented out
 
-    @app.callback(
-        Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled", allow_duplicate=True), # Added allow_duplicate
-        [
-            Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
-            Input(WizardIDs.DATE_RANGE_END_PICKER, "date"),
-        ],
-        prevent_initial_call=True # Added prevent_initial_call for consistency if it was missing
-    )
-    def toggle_confirm_dates_button(start_date_str: str | None, end_date_str: str | None) -> bool:
-        logger.debug(
-            "Callback 'toggle_confirm_dates_button' triggered with start_date: %s, end_date: %s",
-            start_date_str,
-            end_date_str,
-        )
-        if not start_date_str or not end_date_str:
-            logger.debug("Disabling CONFIRM_DATES_BUTTON because one or both dates are not selected.")
-            return True
-        try:
-            start_date = date.fromisoformat(start_date_str)
-            end_date = date.fromisoformat(end_date_str)
-        except ValueError:
-            logger.error(
-                "Invalid date format received for date pickers. start_date: %s, end_date: %s",
-                start_date_str,
-                end_date_str,
-                exc_info=True,
-            )
-            return True
-        if start_date > end_date:
-            logger.debug(
-                "Disabling CONFIRM_DATES_BUTTON because start_date (%s) is after end_date (%s).",
-                start_date,
-                end_date,
-            )
-            return True
-        logger.debug(
-            "Enabling CONFIRM_DATES_BUTTON. Start date: %s, End date: %s",
-            start_date,
-            end_date,
-        )
-        return False
-
     # --- Enable/disable Strategy Step 1 Confirm button ---
-    @app.callback(
-        Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled", allow_duplicate=True), # Added allow_duplicate
-        [
-            Input(WizardIDs.STRATEGY_DROPDOWN, "value"),
-            Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value")
-        ],
-        prevent_initial_call=True # Added prevent_initial_call
-    )
-    def toggle_confirm_strategy_button(strategy, initial_capital):
-        """
-        Enable the Step 1 confirm button only when a strategy is selected and valid initial capital is provided.
-        """
-        logger.info(
-            "Callback 'toggle_confirm_strategy_button' triggered with strategy: %s, initial_capital: %s",
-            strategy,
-            initial_capital
-        )
-        
-        # Check if strategy and initial capital are provided
-        if not strategy:
-            logger.info("Disabling CONFIRM_STRATEGY_BUTTON because strategy is not selected.")
-            return True
-            
-        if initial_capital is None:
-            logger.info("Disabling CONFIRM_STRATEGY_BUTTON because initial capital is not provided.")
-            return True
-        
-        # Check if initial capital is a valid number and greater than minimum
-        try:
-            # Remove spaces and any non-numeric except dot and minus
-            sanitized_capital = (
-                initial_capital.replace(' ', '') if isinstance(initial_capital, str) else initial_capital
-            )
-            capital_value = float(sanitized_capital)
-            if capital_value < 1000:  # Matches the min value in the UI
-                logger.info("Disabling CONFIRM_STRATEGY_BUTTON because initial capital is less than minimum required.")
-                return True
-        except (ValueError, TypeError):
-            logger.info("Disabling CONFIRM_STRATEGY_BUTTON due to invalid initial capital type.")
-            return True
-        
-        # All validation passed
-        logger.info(
-            "Enabling CONFIRM_STRATEGY_BUTTON. Strategy: %s, Initial capital: %s",
-            strategy,
-            initial_capital
-        )
-        return False
+    # --- BEGIN DISABLED CALLBACK: Replaced by comprehensive validation system ---
+    # @app.callback(
+    #     Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled", allow_duplicate=True),
+    #     [
+    #         Input(WizardIDs.STRATEGY_DROPDOWN, "value"),
+    #         Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value")
+    #     ],
+    #     prevent_initial_call=True
+    # )
+    # def toggle_confirm_strategy_button(strategy, initial_capital):
+    #     """
+    #     Enable the Step 1 confirm button only when a strategy is selected and valid initial capital is provided.
+    #     """
+    #     logger.info(
+    #         "Callback 'toggle_confirm_strategy_button' triggered with strategy: %s, initial_capital: %s",
+    #         strategy,
+    #         initial_capital
+    #     )
+    #     
+    #     # Check if strategy and initial capital are provided
+    #     if not strategy:
+    #         logger.info("Disabling CONFIRM_STRATEGY_BUTTON because strategy is not selected.")
+    #         return True
+    #         
+    #     if initial_capital is None:
+    #         logger.info("Disabling CONFIRM_STRATEGY_BUTTON because initial capital is not provided.")
+    #         return True
+    #     
+    #     # Check if initial capital is a valid number and greater than minimum
+    #     try:
+    #         # Remove spaces and any non-numeric except dot and minus
+    #         sanitized_capital = (
+    #             initial_capital.replace(' ', '') if isinstance(initial_capital, str) else initial_capital
+    #         )
+    #         capital_value = float(sanitized_capital)
+    #         if capital_value < 1000:  # Matches the min value in the UI
+    #             logger.info("Disabling CONFIRM_STRATEGY_BUTTON because initial capital is less than minimum required.")
+    #             return True
+    #     except (ValueError, TypeError):
+    #         logger.info("Disabling CONFIRM_STRATEGY_BUTTON due to invalid initial capital type.")
+    #         return True
+    #     
+    #     # All validation passed
+    #     logger.info(
+    #         "Enabling CONFIRM_STRATEGY_BUTTON. Strategy: %s, Initial capital: %s",
+    #         strategy,
+    #         initial_capital
+    #     )
+    #     return False
+    # --- END DISABLED CALLBACK: Replaced by comprehensive validation system ---
 
     # --- Enable/disable Risk Confirm button ---
-    @app.callback(
-        Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled", allow_duplicate=True), # Added allow_duplicate
-        [Input(WizardIDs.step_content("risk-management"), "style")],
-        prevent_initial_call=True # Added prevent_initial_call
-    )
-    def toggle_confirm_risk_button(risk_content_style):
-        if risk_content_style and risk_content_style.get("display") == "block":
-            logger.debug("Enabling CONFIRM_RISK_BUTTON as Step 4 is visible.")
-            return False
-        logger.debug("Disabling CONFIRM_RISK_BUTTON as Step 4 is not visible.")
-        return True
+    # @app.callback(
+    #     Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled", allow_duplicate=True), # Added allow_duplicate
+    #     [Input(WizardIDs.step_content("risk-management"), "style")],
+    #     prevent_initial_call=True # Added prevent_initial_call
+    # )
+    # def toggle_confirm_risk_button(risk_content_style):
+    #     if risk_content_style and risk_content_style.get("display") == "block":
+    #         logger.debug("Enabling CONFIRM_RISK_BUTTON as Step 4 is visible.")
+    #         return False
+    #     logger.debug("Disabling CONFIRM_RISK_BUTTON as Step 4 is not visible.")
+    #     return True
 
     # --- Enable/disable Costs Confirm button ---
-    @app.callback(
-        Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled", allow_duplicate=True), # Added allow_duplicate
-        [Input(WizardIDs.COMMISSION_INPUT, "value"),
-         Input(WizardIDs.SLIPPAGE_INPUT, "value")],
-        prevent_initial_call=True # Added prevent_initial_call
-    )
-    def toggle_confirm_costs_button(commission, slippage):
-        if commission is not None and slippage is not None:
-            try:
-                if float(commission) >= 0 and float(slippage) >= 0:
-                    logger.debug("Enabling CONFIRM_COSTS_BUTTON.")
-                    return False
-            except (ValueError, TypeError):
-                logger.debug("Disabling CONFIRM_COSTS_BUTTON due to invalid input type.")
-                return True
-        logger.debug("Disabling CONFIRM_COSTS_BUTTON due to missing inputs.")
-        return True
+    # --- BEGIN DISABLED CALLBACK: Replaced by comprehensive validation system ---
+    # @app.callback(
+    #     Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled", allow_duplicate=True),
+    #     [Input(WizardIDs.COMMISSION_INPUT, "value"),
+    #      Input(WizardIDs.SLIPPAGE_INPUT, "value")],
+    #     prevent_initial_call=True
+    # )
+    # def toggle_confirm_costs_button(commission, slippage):
+    #     if commission is not None and slippage is not None:
+    #         try:
+    #             if float(commission) >= 0 and float(slippage) >= 0:
+    #                 logger.debug("Enabling CONFIRM_COSTS_BUTTON.")
+    #                 return False
+    #         except (ValueError, TypeError):
+    #             logger.debug("Disabling CONFIRM_COSTS_BUTTON due to invalid input type.")
+    #             return True
+    #     logger.debug("Disabling CONFIRM_COSTS_BUTTON due to missing inputs.")
+    #     return True
+    # --- END DISABLED CALLBACK: Replaced by comprehensive validation system ---
 
     # --- Enable/disable Rebalancing Confirm button ---
-    @app.callback(
-        Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled", allow_duplicate=True), # Added allow_duplicate
-        [Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
-         Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")],
-        prevent_initial_call=True # Added prevent_initial_call
-    )
-    def toggle_confirm_rebalancing_button(frequency, threshold):
-        if frequency is not None and threshold is not None:
-            try:
-                if float(threshold) >= 0:
-                    logger.debug("Enabling CONFIRM_REBALANCING_BUTTON.")
-                    return False
-            except (ValueError, TypeError):
-                logger.debug("Disabling CONFIRM_REBALANCING_BUTTON due to invalid threshold type.")
-                return True
-        logger.debug("Disabling CONFIRM_REBALANCING_BUTTON due to missing inputs.")
-        return True
+    # @app.callback(
+    #     Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled", allow_duplicate=True), # Added allow_duplicate
+    #     [Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
+    #      Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")],
+    #     prevent_initial_call=True # Added prevent_initial_call
+    # )
+    # def toggle_confirm_rebalancing_button(frequency, threshold):
+    #     if frequency is not None and threshold is not None:
+    #         try:
+    #             if float(threshold) >= 0:
+    #                 logger.debug("Enabling CONFIRM_REBALANCING_BUTTON.")
+    #                 return False
+    #         except (ValueError, TypeError):
+    #             logger.debug("Disabling CONFIRM_REBALANCING_BUTTON due to invalid threshold type.")
+    #             return True
+    #     logger.debug("Disabling CONFIRM_REBALANCING_BUTTON due to missing inputs.")
+    #     return True
+    # --- END DISABLED CALLBACK: Replaced by comprehensive validation system ---
 
     # --- Enable/disable Run Backtest button on Summary Page ---
-    @app.callback(
-        Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, "disabled", allow_duplicate=True), # Added allow_duplicate
-        [Input(WizardIDs.step_content("wizard-summary"), "style")], # This input might need review if summary visibility is also controlled by new callback
-        prevent_initial_call=True # Added prevent_initial_call
-    )
-    def toggle_run_backtest_button(summary_content_style):
-        if summary_content_style and summary_content_style.get("display") == "block":
-            logger.debug("Enabling RUN_BACKTEST_BUTTON_WIZARD as Step 7 is visible.")
-            return False
-        logger.debug("Disabling RUN_BACKTEST_BUTTON_WIZARD as Step 7 is not visible.")
-        return True
+    # --- BEGIN DISABLED CALLBACK: Replaced by comprehensive validation system ---
+    # @app.callback(
+    #     Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, "disabled", allow_duplicate=True),
+    #     [Input(WizardIDs.step_content("wizard-summary"), "style")],
+    #     prevent_initial_call=True
+    # )
+    # def toggle_run_backtest_button(summary_content_style):
+    #     if summary_content_style and summary_content_style.get("display") == "block":
+    #         logger.debug("Enabling RUN_BACKTEST_BUTTON_WIZARD as Step 7 is visible.")
+    #         return False
+    #     logger.debug("Disabling RUN_BACKTEST_BUTTON_WIZARD as Step 7 is not visible.")
+    #     return True
+    # --- END DISABLED CALLBACK: Replaced by comprehensive validation system ---
 
     # --- Callback for Strategy Dropdown to Update Description ---
     @app.callback(
@@ -634,18 +599,15 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
             config_data["strategy_params"] = strategy_params
         
         logger.info(f"Updated main configuration store with wizard data: {config_data}")
-        return config_data
-
-    # --- Update Selected Tickers List ---
+        return config_data    # --- Update Selected Tickers List ---
     @app.callback(
         [Output(WizardIDs.TICKER_DROPDOWN, "value"),
-         Output(WizardIDs.TICKER_LIST_CONTAINER, "children"),
-         Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled", allow_duplicate=True)], # Added allow_duplicate
+         Output(WizardIDs.TICKER_LIST_CONTAINER, "children")],
         [Input(WizardIDs.TICKER_DROPDOWN, "value"),
          Input(WizardIDs.SELECT_ALL_TICKERS_BUTTON, "n_clicks"),
          Input(WizardIDs.DESELECT_ALL_TICKERS_BUTTON, "n_clicks")],
         [State(WizardIDs.TICKER_DROPDOWN, "options")],
-        prevent_initial_call=True # Added prevent_initial_call=True
+        prevent_initial_call=True
     )
     def update_selected_tickers(current_selected_tickers, select_all_clicks, deselect_all_clicks, available_options):
         trigger = ctx.triggered_id
@@ -660,7 +622,7 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
             new_selected_tickers = current_selected_tickers if current_selected_tickers is not None else []
 
         if not new_selected_tickers:
-            return [], html.Div("No tickers selected. Please select at least one ticker."), True
+            return [], html.Div("No tickers selected. Please select at least one ticker.")
             
         ticker_badges = []
         for ticker in new_selected_tickers:
@@ -670,8 +632,7 @@ def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not al
             )
             ticker_badges.append(badge)
             
-        button_disabled = len(ticker_badges) == 0
-        return new_selected_tickers, html.Div(ticker_badges, className="mt-2"), button_disabled
+        return new_selected_tickers, html.Div(ticker_badges, className="mt-2")
 
     # --- Populate ticker dropdown options ---
     @app.callback(
