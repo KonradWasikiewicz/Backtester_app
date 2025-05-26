@@ -5,7 +5,7 @@ Module for managing application version information using Semantic Versioning (S
 # Application version numbers (SemVer: MAJOR.MINOR.PATCH)
 MAJOR = 1
 MINOR = 0
-PATCH = 124
+PATCH = 125
 
 # Build metadata
 BUILD = ""
@@ -31,10 +31,16 @@ VERSION_INFO = {
 }
 
 # Release date information
-RELEASE_DATE = "2025-05-23"
+RELEASE_DATE = "2025-05-26"
 
 # Changelog for the current version
 CHANGELOG = {
+    "1.0.125": {
+        "date": "2025-05-26",
+        "changes": [
+            "Merge branch 'master' of https://github.com/KonradWasikiewicz/Backtester_app into master",
+        ]
+    },
     "1.0.124": {
         "date": "2025-05-23",
         "changes": [

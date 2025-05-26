@@ -118,9 +118,9 @@ class WizardIDs:
     DATE_START_FEEDBACK = "wizard-date-start-feedback"
     DATE_END_FEEDBACK = "wizard-date-end-feedback"
     DATE_RANGE_FEEDBACK = "wizard-date-range-feedback"
-    
-    # Step 3: Tickers Validation
+      # Step 3: Tickers Validation
     TICKER_SELECTION_FEEDBACK = "wizard-ticker-selection-feedback"
+    TICKER_DROPDOWN_FEEDBACK = "wizard-ticker-dropdown-feedback"
     
     # Step 4: Risk Management Validation
     MAX_POSITION_SIZE_FEEDBACK = "wizard-max-position-size-feedback"

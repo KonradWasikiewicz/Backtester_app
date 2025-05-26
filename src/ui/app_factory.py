@@ -37,7 +37,7 @@ from src.ui.callbacks.wizard_callbacks import register_wizard_callbacks
 from src.ui.callbacks.wizard_validation_callbacks import register_validation_callbacks
 from src.ui.callbacks.run_backtest_callback import register_run_backtest_callback
 from src.ui.callbacks.config_update_callback import register_config_update_callback
-from src.ui.layouts.strategy_config import create_strategy_config_section
+from src.ui.wizard.layout import create_strategy_config_section
 # --- Import the new panel layout functions ---
 from src.ui.layouts.results_display import create_center_panel_layout, create_right_panel_layout
 from src.ui.components.loading_overlay import create_loading_overlay  # Import the loading overlay component
@@ -58,6 +58,14 @@ def create_app(debug: bool = False, suppress_callback_exceptions: bool = True, a
     Returns:
         dash.Dash: Configured Dash application instance
     """
+    # Set default assets directory if not provided
+    if assets_dir is None:
+        # Use the default assets directory relative to the project root
+        project_root = Path(__file__).resolve().parent.parent.parent
+        assets_dir = str(project_root / "assets")
+    
+    logger.info(f"Using assets directory: {assets_dir}")
+    
     # --- ADDED: Initialize DiskcacheManager ---
     cache = diskcache.Cache("./cache") # Creates a cache directory
     background_callback_manager = DiskcacheManager(cache)
