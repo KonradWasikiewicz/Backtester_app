@@ -597,18 +597,16 @@ def register_validation_callbacks(app):
             validation_state[6] = True        # Step 7: Rebalancing validation
         validation_state[7] = rebalancing_freq is not None and rebalancing_freq != ""
         
-        return validation_state
-
-    # Main validation callback that controls all button states
+        return validation_state    # Main validation callback that controls all button states
     @app.callback(
         [
             # Button disabled states for steps 1-6
-            Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled"),
+            Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled"),
+            Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled"),
+            Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled"),
+            Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled"),
+            Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled"),
         ],
         [
             # Watch all relevant inputs for changes
@@ -623,11 +621,10 @@ def register_validation_callbacks(app):
             Input(WizardIDs.COMMISSION_INPUT, "value"),
             Input(WizardIDs.SLIPPAGE_INPUT, "value"),
             Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
-            Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value"),
-            # Also watch confirmed steps to handle already confirmed states
+            Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value"),            # Also watch confirmed steps to handle already confirmed states
             Input(WizardIDs.CONFIRMED_STEPS_STORE, "data"),
         ]
-        # REMOVED: prevent_initial_call=True - this was preventing proper initialization
+        # No prevent_initial_call - let this run on page load to initialize button states
     )
     def update_button_states(strategy, initial_capital, start_date, end_date, tickers,
                            max_position_size, stop_loss, take_profit, commission, slippage, 
