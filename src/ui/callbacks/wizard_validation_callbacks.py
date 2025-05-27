@@ -594,43 +594,10 @@ def register_validation_callbacks(app):
                 validation_state[6] = False
         else:
             # Allow missing commission (will use defaults)
-            validation_state[6] = True
-            
-        # Step 7: Rebalancing validation
+            validation_state[6] = True        # Step 7: Rebalancing validation
         validation_state[7] = rebalancing_freq is not None and rebalancing_freq != ""
         
         return validation_state
-
-    # Confirm Button States Based on Validation
-    @app.callback(
-        [
-            Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled", allow_duplicate=True),
-            Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled", allow_duplicate=True),
-        ],
-        [Input(WizardIDs.VALIDATION_STATE_STORE, "data")],
-        prevent_initial_call=True
-    )
-    def update_confirm_button_states(validation_state):
-        """Update confirm button states based on validation."""
-        if not validation_state:
-            # If no validation state, disable all buttons
-            return [True] * 6
-            
-        # Map step numbers to button disable states (invert validation state)
-        button_states = [
-            not (validation_state.get(1, False)),  # Strategy button (step 1) - requires both capital and strategy
-            not validation_state.get(3, False),   # Dates button (step 3) 
-            not validation_state.get(4, False),   # Tickers button (step 4)
-            not validation_state.get(5, False),   # Risk button (step 5)
-            not validation_state.get(6, False),   # Costs button (step 6)
-            not validation_state.get(7, False),   # Rebalancing button (step 7)
-        ]
-        
-        return button_states
 
     # Main validation callback that controls all button states
     @app.callback(
@@ -659,8 +626,8 @@ def register_validation_callbacks(app):
             Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value"),
             # Also watch confirmed steps to handle already confirmed states
             Input(WizardIDs.CONFIRMED_STEPS_STORE, "data"),
-        ],
-        prevent_initial_call=True
+        ]
+        # REMOVED: prevent_initial_call=True - this was preventing proper initialization
     )
     def update_button_states(strategy, initial_capital, start_date, end_date, tickers,
                            max_position_size, stop_loss, take_profit, commission, slippage, 

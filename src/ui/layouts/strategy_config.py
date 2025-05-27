@@ -225,16 +225,25 @@ def create_strategy_config_section(tickers=None):
             create_wizard_step(
                 "strategy-selection",
                 "Step 1: Initial Capital and Strategy Selection",
-                html.Div([
-                    html.Label("Initial Capital (USD):", className="mb-1", htmlFor=WizardIDs.INITIAL_CAPITAL_INPUT), 
+                html.Div([                    html.Label("Initial Capital (USD):", className="mb-1", htmlFor=WizardIDs.INITIAL_CAPITAL_INPUT), 
                     dbc.Input(
                         id=WizardIDs.INITIAL_CAPITAL_INPUT,
                         type='text',  
                         value="100 000",  
                         className="mb-2 numeric-input-formatted", 
                     ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.INITIAL_CAPITAL_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
                     html.Label("Select a strategy:", className="mb-1", htmlFor=WizardIDs.STRATEGY_DROPDOWN), 
                     get_strategy_dropdown(AVAILABLE_STRATEGIES),
+                    dbc.FormFeedback(
+                        id=WizardIDs.STRATEGY_VALIDATION_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
                     html.Div(id=WizardIDs.STRATEGY_DESCRIPTION_OUTPUT, className="mb-2 mt-2"), 
                     html.Div(id=WizardIDs.STRATEGY_PARAM_INPUTS_CONTAINER, className="mt-3 mb-2"), 
                     dbc.Button("Confirm", id=WizardIDs.CONFIRM_STRATEGY_BUTTON, color="primary", className="mt-2", disabled=True) 
@@ -279,9 +288,23 @@ def create_strategy_config_section(tickers=None):
                                         style={"textAlign": "center", "width": "150px"}
                                     )
                                 ], style={"display": "flex", "alignItems": "center"})
-                            ]), width=6)
-                        ])
+                            ]), width=6)                        ])
                     ]),
+                    dbc.FormFeedback(
+                        id=WizardIDs.DATE_START_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.DATE_END_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.DATE_RANGE_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
                     dbc.Button(
                         "Confirm",
                         id=WizardIDs.CONFIRM_DATES_BUTTON,
@@ -308,8 +331,12 @@ def create_strategy_config_section(tickers=None):
                         multi=True,
                         placeholder="Select tickers...",
                         className="mb-2 w-100"
+                    ),                    html.Div(id=WizardIDs.TICKER_LIST_CONTAINER, className="mt-2"), # ADDED: Container for selected ticker badges
+                    dbc.FormFeedback(
+                        id=WizardIDs.TICKER_DROPDOWN_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
                     ),
-                    html.Div(id=WizardIDs.TICKER_LIST_CONTAINER, className="mt-2"), # ADDED: Container for selected ticker badges
                     dbc.Button(
                         "Confirm",
                         id=WizardIDs.CONFIRM_TICKERS_BUTTON,
@@ -404,8 +431,44 @@ def create_strategy_config_section(tickers=None):
                                 html.Label("Max Daily Loss (%):", className="mb-1", htmlFor=WizardIDs.MAX_DAILY_LOSS_INPUT),
                                 dbc.Input(id=WizardIDs.MAX_DAILY_LOSS_INPUT, type="number", min=0, step=0.1, size="sm")
                             ], width="auto")
-                        ], className="align-items-center ms-3 mb-3")
-                    ], id=WizardIDs.RISK_PANEL_DRAWDOWN_PROTECTION, style={"display": "none"}),
+                        ], className="align-items-center ms-3 mb-3")                    ], id=WizardIDs.RISK_PANEL_DRAWDOWN_PROTECTION, style={"display": "none"}),
+                    
+                    # Validation feedback components for Step 4
+                    dbc.FormFeedback(
+                        id=WizardIDs.MAX_POSITION_SIZE_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.STOP_LOSS_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.TAKE_PROFIT_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.MAX_RISK_PER_TRADE_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.MARKET_TREND_LOOKBACK_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.MAX_DRAWDOWN_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.MAX_DAILY_LOSS_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
 
                     dbc.Button(
                         "Continue without additional risk measures",
@@ -444,8 +507,20 @@ def create_strategy_config_section(tickers=None):
                                 value=0.05,
                                 size="sm"
                             )
-                        ], width="auto", className="d-flex flex-column align-items-start")
-                    ], className="align-items-center mb-2"),
+                        ], width="auto", className="d-flex flex-column align-items-start")                    ], className="align-items-center mb-2"),
+                    
+                    # Validation feedback components for Step 5
+                    dbc.FormFeedback(
+                        id=WizardIDs.COMMISSION_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    dbc.FormFeedback(
+                        id=WizardIDs.SLIPPAGE_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    
                     dbc.Button(
                         "Confirm",
                         id=WizardIDs.CONFIRM_COSTS_BUTTON,
@@ -489,8 +564,15 @@ def create_strategy_config_section(tickers=None):
                                 value=5.0, 
                                 size="sm"
                             )
-                        ], width="auto")
-                    ], className="align-items-center ms-3 mb-2"),
+                        ], width="auto")                    ], className="align-items-center ms-3 mb-2"),
+                    
+                    # Validation feedback component for Step 6
+                    dbc.FormFeedback(
+                        id=WizardIDs.REBALANCING_THRESHOLD_FEEDBACK,
+                        type="invalid",
+                        style={"display": "none"}
+                    ),
+                    
                     dbc.Button(
                         "Confirm",
                         id=WizardIDs.CONFIRM_REBALANCING_BUTTON,
@@ -529,9 +611,9 @@ def create_strategy_config_section(tickers=None):
         ]        # Wrap all steps in a single container
         return html.Div([
             progress_container_for_stepper, # MODIFIED: Use the new container for the stepper
-            html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps"),
-            dcc.Store(id=WizardIDs.RISK_MANAGEMENT_STORE_WIZARD),
+            html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps"),            dcc.Store(id=WizardIDs.RISK_MANAGEMENT_STORE_WIZARD),
             dcc.Store(id=WizardIDs.STRATEGY_PARAMS_STORE),  # Add store for strategy-specific parameters
+            dcc.Store(id=WizardIDs.VALIDATION_STATE_STORE),  # Add store for validation state
             # Add new stores for wizard state management
             dcc.Store(id=WizardIDs.ACTIVE_STEP_STORE, data=1), # Default to step 1 being active
             dcc.Store(id=WizardIDs.CONFIRMED_STEPS_STORE, data=[]),
