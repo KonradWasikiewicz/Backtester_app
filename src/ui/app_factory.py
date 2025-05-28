@@ -342,9 +342,7 @@ def create_app_layout() -> html.Div:
         logger.debug("Creating app layout")
 
         # Get available tickers for the strategy configuration
-        available_tickers = get_available_tickers()
-
-        # Create the application layout
+        available_tickers = get_available_tickers()        # Create the application layout
         layout = html.Div([
             # Store for app state
             dcc.Store(id=AppStructureIDs.APP_STATE_STORE, data={}), # CHANGED
@@ -368,60 +366,64 @@ def create_app_layout() -> html.Div:
                 is_open=False,
             ),
 
-            # App header
-            dbc.Navbar(
+            # Main content wrapper for sticky footer
+            html.Div([
+                # App header
+                dbc.Navbar(
+                    dbc.Container([
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    html.H3("Trading Strategy Backtester", className="text-center mb-0 text-light"),
+                                    className="text-center"
+                                ),
+                            ],
+                            className="w-100",
+                        ),
+                        dbc.Row([
+
+                            dbc.Col([
+                                create_version_display(), # Version display
+                                # GitHub icon moved here
+                                html.A(
+                                    html.I(className="fab fa-github fa-lg ms-2"), # Added margin-start
+                                    href="https://github.com/KonradWasikiewicz/Backtester_app", # Updated URL
+                                    target="_blank",
+                                    className="text-light text-decoration-none" # Added classes for styling
+                                )
+                            ], width="auto", className="d-flex align-items-center"), # Use flexbox for alignment
+                        ], justify="end") # Justify content to the end (right)
+                    ], fluid=True),
+                    color="dark",
+                    dark=True,
+                    className="mb-4"
+                ),
+                # Global loading overlay (fixed position, covers the entire app)
+                create_loading_overlay(),
+
+                # --- UPDATED Three-Panel Main Content ---
                 dbc.Container([
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                html.H3("Trading Strategy Backtester", className="text-center mb-0 text-light"),
-                                className="text-center"
-                            ),
-                        ],
-                        className="w-100",
-                    ),
                     dbc.Row([
-
+                        # Left Panel (Steps/Config)
                         dbc.Col([
-                            create_version_display(), # Version display
-                            # GitHub icon moved here
-                            html.A(
-                                html.I(className="fab fa-github fa-lg ms-2"), # Added margin-start
-                                href="https://github.com/KonradWasikiewicz/Backtester_app", # Updated URL
-                                target="_blank",
-                                className="text-light text-decoration-none" # Added classes for styling
-                            )
-                        ], width="auto", className="d-flex align-items-center"), # Use flexbox for alignment
-                    ], justify="end") # Justify content to the end (right)
+                            create_strategy_config_section(available_tickers),
+                        ], id=AppStructureIDs.LEFT_PANEL_COL, width=12, lg=3, className="mb-4"), # CHANGED
+
+                        # Center Panel (Charts/Table)
+                        dbc.Col([
+                            create_center_panel_layout(),
+                        # --- ADDED ID and initial style --- 
+                        ], id=ResultsIDs.CENTER_PANEL_COLUMN, width=12, lg=6, className="mb-4", style={'display': 'none'}), # CHANGED (using ResultsIDs)
+
+                        # Right Panel (Stats)
+                        dbc.Col([
+                            create_right_panel_layout()
+                        # --- ADDED ID and initial style --- 
+                        ], id=ResultsIDs.RIGHT_PANEL_COLUMN, width=12, lg=3, className="mb-4", style={'display': 'none'}) # CHANGED (using ResultsIDs)
+                    ])
                 ], fluid=True),
-                color="dark",
-                dark=True,
-                className="mb-4"
-            ),            # Global loading overlay (fixed position, covers the entire app)
-            create_loading_overlay(),
-
-            # --- UPDATED Three-Panel Main Content ---
-            dbc.Container([
-                dbc.Row([
-                    # Left Panel (Steps/Config)
-                    dbc.Col([
-                        create_strategy_config_section(available_tickers),
-                    ], id=AppStructureIDs.LEFT_PANEL_COL, width=12, lg=3, className="mb-4"), # CHANGED
-
-                    # Center Panel (Charts/Table)
-                    dbc.Col([
-                        create_center_panel_layout(),
-                    # --- ADDED ID and initial style --- 
-                    ], id=ResultsIDs.CENTER_PANEL_COLUMN, width=12, lg=6, className="mb-4", style={'display': 'none'}), # CHANGED (using ResultsIDs)
-
-                    # Right Panel (Stats)
-                    dbc.Col([
-                        create_right_panel_layout()
-                    # --- ADDED ID and initial style --- 
-                    ], id=ResultsIDs.RIGHT_PANEL_COLUMN, width=12, lg=3, className="mb-4", style={'display': 'none'}) # CHANGED (using ResultsIDs)
-                ])
-            ], fluid=True),
-            # --- END UPDATED Three-Panel Main Content ---
+                # --- END UPDATED Three-Panel Main Content ---
+            ], className="main-content"),
 
             # Footer
             html.Footer(
@@ -444,10 +446,10 @@ def create_app_layout() -> html.Div:
                         ])
                     ], className="text-center text-muted")
                 ], fluid=True),
-                className="py-3 mt-5",
+                className="py-3 mt-5 sticky-footer",
                 style={"backgroundColor": "#1a1a1a"}
             )
-        ])
+        ], className="app-container")
 
         logger.debug("App layout created")
         return layout
