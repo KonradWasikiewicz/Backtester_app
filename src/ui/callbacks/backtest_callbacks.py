@@ -228,10 +228,9 @@ def register_backtest_callbacks(app: Dash):
         dot_str = dots[n_intervals % len(dots)]
           # Ensure current_progress_value is an int for formatting
         progress_percent = int(current_progress_value) if current_progress_value is not None else 0
-        
-        # Return the text and a span with the percentage to utilize the CSS spacing
+          # Return the text and a span with the percentage to utilize the CSS spacing
         return ["Running backtest" + dot_str, html.Span(f"({progress_percent}%)", className="progress-bar-percentage")]
-
+    
     # --- Result Update Callbacks (Triggered by Store) ---
     @app.callback(
         Output(ResultsIDs.PERFORMANCE_METRICS_CONTAINER, 'children'),
@@ -243,61 +242,129 @@ def register_backtest_callbacks(app: Dash):
         Output(ResultsIDs.SIGNALS_TICKER_SELECTOR, 'options'),
         Output(ResultsIDs.SIGNALS_TICKER_SELECTOR, 'value'),
         Output(ResultsIDs.RESULTS_AREA_WRAPPER, 'style', allow_duplicate=True),
-        Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style', allow_duplicate=True), 
+        Output(ResultsIDs.CENTER_PANEL_COLUMN, 'style', allow_duplicate=True),
         Output(ResultsIDs.RIGHT_PANEL_COLUMN, 'style', allow_duplicate=True),
+        Output(ResultsIDs.PERFORMANCE_OVERVIEW_CARD, 'style'),
+        Output(ResultsIDs.TRADE_STATISTICS_CARD, 'style'),
         Input(ResultsIDs.BACKTEST_RESULTS_STORE, 'data'),
-        prevent_initial_call=True
-    )
+        prevent_initial_call=True    )
     def update_results_display(results_data):
         logger.info("--- update_results_display callback triggered ---")
+        
         if not results_data or not results_data.get('success'):
             logger.warning("--- update_results_display: results_data indicates failure or is invalid. Returning empty/default components and hiding panels.")
             empty_fig = create_empty_chart("No data available")
             # Always ensure panels are hidden when there's no valid data
             return ([], [], html.Div("Backtest failed or no data."), 
                     empty_fig, empty_fig, empty_fig, 
-                    [], None, {'display': 'none'}, {'display': 'none'}, {'display': 'none'})
+                    [], None, {'display': 'none'}, {'display': 'none'}, {'display': 'none'}, 
+                    {'display': 'none'}, {'display': 'none'})
 
         metrics = results_data.get('metrics', {})
         trades_list = results_data.get('trades_data', [])
         
+        # Make sure metrics is a dictionary, not None or empty list
+        if not metrics or not isinstance(metrics, dict):
+            logger.warning("--- update_results_display: No metrics available or invalid metrics format")
+            metrics = {}
+            
+        # Make sure trades_list is a list, not None
+        if not trades_list or not isinstance(trades_list, list):
+            logger.warning("--- update_results_display: No trades data available or invalid trades format")
+            trades_list = []
+        
         perf_metrics = {k: v for k, v in metrics.items() if "Trade" not in k and "Win" not in k and "Loss" not in k and "Ratio" not in k and "Avg" not in k and "Profit Factor" not in k and "Trades" not in k}
         trade_stats = {k: v for k, v in metrics.items() if k not in perf_metrics}
 
+        # More robust check for meaningful data - ensure we have actual values to display
+        has_performance_metrics = bool(perf_metrics) and any(v is not None and (not isinstance(v, (int, float)) or v != 0) for v in perf_metrics.values())
+        has_trade_stats = bool(trade_stats) and any(v is not None and (not isinstance(v, (int, float)) or v != 0) for v in trade_stats.values())
+        has_trades = bool(trades_list) and len(trades_list) > 0 and isinstance(trades_list[0], dict) and bool(trades_list[0])
+        
+        has_meaningful_data = has_performance_metrics or has_trade_stats or has_trades
+        
+        if not has_meaningful_data:
+            logger.warning("--- update_results_display: Backtest successful but no meaningful data to display. Hiding panels.")
+            empty_fig = create_empty_chart("Backtest completed but no results to display")
+            return ([], [], html.Div("Backtest completed but no results to display."), 
+                    empty_fig, empty_fig, empty_fig, 
+                    [], None, {'display': 'none'}, {'display': 'none'}, {'display': 'none'},
+                    {'display': 'none'}, {'display': 'none'})
+
+        # Only create children components if we have meaningful data
         performance_metrics_children = [
             dbc.Col(create_metric_card(title, f"{value:.2f}" if isinstance(value, (int, float)) else str(value)), width=6, md=4, lg=3) 
-            for title, value in perf_metrics.items()
-        ] if perf_metrics else [dbc.Col(html.P("No performance metrics available."))]
+            for title, value in perf_metrics.items() if value is not None        ] if has_performance_metrics else []
         
         trade_metrics_children = [
             dbc.Col(create_metric_card(title, f"{value:.2f}" if isinstance(value, (int, float)) else str(value)), width=6, md=4, lg=3)
-            for title, value in trade_stats.items()
-        ] if trade_stats else [dbc.Col(html.P("No trade statistics available."))]
-
-        trades_table_component = dash_table.DataTable(
-            data=trades_list,
-            columns=[{'name': i, 'id': i} for i in trades_list[0].keys()] if trades_list else [],
-            style_as_list_view=True,
-            style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white', 'fontWeight': 'bold'},
-            style_cell={'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white', 'textAlign': 'left', 'padding': '5px'},
-            page_size=10,
-        ) if trades_list else html.Div("No trades executed.")
-
-        portfolio_chart_fig = pio.from_json(results_data.get('portfolio_value_chart_json')) if results_data.get('portfolio_value_chart_json') else create_empty_chart("Portfolio Value")
-        drawdown_chart_fig = pio.from_json(results_data.get('drawdown_chart_json')) if results_data.get('drawdown_chart_json') else create_empty_chart("Drawdown")
+            for title, value in trade_stats.items() if value is not None
+        ] if has_trade_stats else []
         
-        monthly_returns_heatmap_fig = pio.from_json(results_data.get('monthly_returns_heatmap_json')) if results_data.get('monthly_returns_heatmap_json') else create_empty_chart("Monthly Returns Heatmap")
+        # Create trades table only if we have valid trades data
+        if has_trades:
+            # Check if trade data contains the expected columns
+            if trades_list and isinstance(trades_list[0], dict) and trades_list[0]:
+                trades_table_component = dash_table.DataTable(
+                    data=trades_list,
+                    columns=[{'name': i, 'id': i} for i in trades_list[0].keys()],
+                    style_as_list_view=True,
+                    style_header={'backgroundColor': 'rgb(30, 30, 30)', 'color': 'white', 'fontWeight': 'bold'},
+                    style_cell={'backgroundColor': 'rgb(50, 50, 50)', 'color': 'white', 'textAlign': 'left', 'padding': '5px'},
+                    page_size=10,
+                )
+            else:
+                trades_table_component = html.Div("No trades executed or invalid trade data format.")
+        else:
+            trades_table_component = html.Div("No trades executed during the backtest.")
 
+        # Process chart figures if available, otherwise create empty placeholders
+        portfolio_chart_fig = None
+        try:
+            portfolio_chart_fig = pio.from_json(results_data.get('portfolio_value_chart_json')) if results_data.get('portfolio_value_chart_json') else None
+        except Exception as e:
+            logger.error(f"Error parsing portfolio chart: {e}")
+        if not portfolio_chart_fig:
+            portfolio_chart_fig = create_empty_chart("Portfolio Value data not available")
+
+        drawdown_chart_fig = None
+        try:
+            drawdown_chart_fig = pio.from_json(results_data.get('drawdown_chart_json')) if results_data.get('drawdown_chart_json') else None
+        except Exception as e:
+            logger.error(f"Error parsing drawdown chart: {e}")
+        if not drawdown_chart_fig:
+            drawdown_chart_fig = create_empty_chart("Drawdown data not available")
+        
+        monthly_returns_heatmap_fig = None
+        try:
+            monthly_returns_heatmap_fig = pio.from_json(results_data.get('monthly_returns_heatmap_json')) if results_data.get('monthly_returns_heatmap_json') else None
+        except Exception as e:
+            logger.error(f"Error parsing monthly returns heatmap: {e}")
+        if not monthly_returns_heatmap_fig:
+            monthly_returns_heatmap_fig = create_empty_chart("Monthly Returns data not available")
+
+        # Process ticker options
         tickers = results_data.get('selected_tickers', [])
-        ticker_options = [{'label': t, 'value': t} for t in tickers]
+        ticker_options = [{'label': t, 'value': t} for t in tickers] if tickers else []
         ticker_value = tickers[0] if tickers else None
         
         logger.info("--- update_results_display callback successfully processed data and is returning updates. ---")
-        # Show all relevant panels ONLY upon successful backtest with valid data
-        return (performance_metrics_children, trade_metrics_children, trades_table_component,
-                portfolio_chart_fig, drawdown_chart_fig, monthly_returns_heatmap_fig, 
-                ticker_options, ticker_value, {'display': 'block'}, # RESULTS_AREA_WRAPPER
-                {'display': 'block', 'paddingLeft': '3.75px', 'paddingRight': '3.75px'}, # CENTER_PANEL_COLUMN
-                {'display': 'block', 'paddingLeft': '3.75px'}) # RIGHT_PANEL_COLUMN
+        
+        # Only show panels if we have meaningful data to display
+        if has_meaningful_data:
+            logger.info("Showing result panels - meaningful data is available")
+            return (performance_metrics_children, trade_metrics_children, trades_table_component,
+                    portfolio_chart_fig, drawdown_chart_fig, monthly_returns_heatmap_fig, 
+                    ticker_options, ticker_value, {'display': 'block'}, # RESULTS_AREA_WRAPPER
+                    {'display': 'block', 'paddingLeft': '3.75px', 'paddingRight': '3.75px'}, # CENTER_PANEL_COLUMN
+                    {'display': 'block', 'paddingLeft': '3.75px'}, # RIGHT_PANEL_COLUMN
+                    {'display': 'block'}, # PERFORMANCE_OVERVIEW_CARD
+                    {'display': 'block'}) # TRADE_STATISTICS_CARD
+        else:
+            logger.warning("Keeping result panels hidden - no meaningful data available")
+            return ([], [], html.Div("No meaningful backtest data to display."), 
+                    create_empty_chart("No portfolio data"), create_empty_chart("No drawdown data"), create_empty_chart("No monthly returns data"), 
+                    [], None, {'display': 'none'}, {'display': 'none'}, {'display': 'none'},
+                    {'display': 'none'}, {'display': 'none'})
 
     logger.info("Backtest callbacks registered.")

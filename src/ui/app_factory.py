@@ -399,9 +399,7 @@ def create_app_layout() -> html.Div:
                     className="mb-4"
                 ),
                 # Global loading overlay (fixed position, covers the entire app)
-                create_loading_overlay(),
-
-                # --- UPDATED Three-Panel Main Content ---
+                create_loading_overlay(),                # --- UPDATED Three-Panel Main Content ---
                 dbc.Container([
                     dbc.Row([
                         # Left Panel (Steps/Config)
@@ -413,13 +411,15 @@ def create_app_layout() -> html.Div:
                         dbc.Col([
                             create_center_panel_layout(),
                         # --- ADDED ID and initial style --- 
-                        ], id=ResultsIDs.CENTER_PANEL_COLUMN, width=12, lg=6, className="mb-4", style={'display': 'none'}), # CHANGED (using ResultsIDs)
+                        ], id=ResultsIDs.CENTER_PANEL_COLUMN, width=12, lg=6, className="mb-4", 
+                           style={'display': 'none'}), # Explicitly hidden by default
 
                         # Right Panel (Stats)
                         dbc.Col([
                             create_right_panel_layout()
                         # --- ADDED ID and initial style --- 
-                        ], id=ResultsIDs.RIGHT_PANEL_COLUMN, width=12, lg=3, className="mb-4", style={'display': 'none'}) # CHANGED (using ResultsIDs)
+                        ], id=ResultsIDs.RIGHT_PANEL_COLUMN, width=12, lg=3, className="mb-4", 
+                           style={'display': 'none'}) # Explicitly hidden by default
                     ])
                 ], fluid=True),
                 # --- END UPDATED Three-Panel Main Content ---

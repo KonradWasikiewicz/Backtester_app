@@ -194,7 +194,7 @@ def create_right_panel_layout() -> html.Div:
                 # Use g-2 for smaller gutters between metric cards
                 dbc.Row(id=app_ids.ResultsIDs.PERFORMANCE_METRICS_CONTAINER, className="g-2")
             )
-        ], className="mb-1"),
+        ], className="mb-1", id=app_ids.ResultsIDs.PERFORMANCE_OVERVIEW_CARD, style={'display': 'none'}),
 
         dbc.Card([
             dbc.CardHeader("Trade Statistics", className="card-title-text"), # Added className
@@ -203,7 +203,7 @@ def create_right_panel_layout() -> html.Div:
                 # Use g-2 for smaller gutters between metric cards
                 dbc.Row(id=app_ids.ResultsIDs.TRADE_METRICS_CONTAINER, className="g-2")
             )
-        ], className="mb-1")
+        ], className="mb-1", id=app_ids.ResultsIDs.TRADE_STATISTICS_CARD, style={'display': 'none'})
     ])
 
 def create_main_results_area() -> html.Div:

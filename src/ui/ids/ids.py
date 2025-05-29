@@ -167,11 +167,13 @@ class ResultsIDs:
 
     # Tables & Their Loaders/Containers
     TRADES_TABLE_CONTAINER = "trades-table-container" # UNCOMMENTED
-    TRADES_TABLE_LOADING = "trades-table-loading" # UNCOMMENTED
-
-    # Metrics Containers
+    TRADES_TABLE_LOADING = "trades-table-loading" # UNCOMMENTED    # Metrics Containers
     PERFORMANCE_METRICS_CONTAINER = "performance-metrics-container" # UNCOMMENTED
     TRADE_METRICS_CONTAINER = "trade-metrics-container" # UNCOMMENTED
+    
+    # Cards for metrics containers
+    PERFORMANCE_OVERVIEW_CARD = "performance-overview-card" # NEW
+    TRADE_STATISTICS_CARD = "trade-statistics-card" # NEW
 
     # Status and Progress
     BACKTEST_STATUS_MESSAGE = "backtest-status"
