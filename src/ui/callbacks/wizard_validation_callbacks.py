@@ -508,189 +508,267 @@ def register_validation_callbacks(app):
                 return "Rebalancing threshold cannot exceed 100%", {"display": "block"}
             return "", {"display": "none"}
         except (ValueError, TypeError):
-            return "Please enter a valid percentage", {"display": "block"}    # Validation state aggregator - updates the validation store
+            return "Please enter a valid percentage", {"display": "block"}
+
+    # Step 2: Validation on Confirm Button Click
     @app.callback(
-        Output(WizardIDs.VALIDATION_STATE_STORE, "data"),
         [
-            # Step 1: Initial Capital
-            Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),
-            # Step 2: Strategy
-            Input(WizardIDs.STRATEGY_DROPDOWN, "value"),
-            # Step 3: Dates
-            Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
-            Input(WizardIDs.DATE_RANGE_END_PICKER, "date"),
-            # Step 4: Tickers
-            Input(WizardIDs.TICKER_DROPDOWN, "value"),
-            # Step 5: Risk Management (simplified - just one key field)
-            Input(WizardIDs.MAX_POSITION_SIZE_INPUT, "value"),
-            # Step 6: Trading Costs (simplified)
-            Input(WizardIDs.COMMISSION_INPUT, "value"),
-            # Step 7: Rebalancing (simplified)
-            Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
+            Output(WizardIDs.DATE_START_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.DATE_START_FEEDBACK, "style", allow_duplicate=True),
+            Output(WizardIDs.DATE_END_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.DATE_END_FEEDBACK, "style", allow_duplicate=True),
+            Output(WizardIDs.DATE_RANGE_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.DATE_RANGE_FEEDBACK, "style", allow_duplicate=True)
+        ],
+        [Input(WizardIDs.CONFIRM_DATES_BUTTON, "n_clicks")],
+        [
+            State(WizardIDs.DATE_RANGE_START_PICKER, "date"),
+            State(WizardIDs.DATE_RANGE_END_PICKER, "date")
         ],
         prevent_initial_call=True
     )
-    def update_validation_state(initial_capital, strategy, start_date, end_date, 
-                               tickers, max_position, commission, rebalancing_freq):
-        """Update validation state for all steps."""
-        validation_state = {
-            1: True,  # Step 1: Initial Capital - default valid
-            2: True,  # Step 2: Strategy - default valid  
-            3: True,  # Step 3: Dates - default valid
-            4: True,  # Step 4: Tickers - default valid
-            5: True,  # Step 5: Risk Management - default valid
-            6: True,  # Step 6: Trading Costs - default valid
-            7: True,  # Step 7: Rebalancing - default valid
-        }
+    def validate_step2_on_confirm(n_clicks, start_date, end_date):
+        """Show validation errors when user tries to confirm Step 2."""
+        if n_clicks is None or n_clicks == 0:
+            return ("", {"display": "none"}, "", {"display": "none"}, 
+                    "", {"display": "none"})
         
-        # Step 1: Initial Capital validation - accept default value (100000)
-        capital_valid = False
-        if initial_capital is not None:
-            try:
-                clean_value = str(initial_capital).replace(" ", "").replace(",", "")
-                capital = float(clean_value)
-                capital_valid = MIN_INITIAL_CAPITAL <= capital <= MAX_INITIAL_CAPITAL
-            except (ValueError, TypeError):
-                capital_valid = False
+        start_feedback = ""
+        start_style = {"display": "none"}
+        end_feedback = ""
+        end_style = {"display": "none"}
+        range_feedback = ""
+        range_style = {"display": "none"}
         
-        # Step 1: Strategy validation - accept any non-null selection
-        strategy_valid = strategy is not None and strategy != ""
+        # Validate start date
+        if start_date is None:
+            start_feedback = "Please select a start date"
+            start_style = {"display": "block"}
         
-        # Step 1 combines both capital and strategy
-        validation_state[1] = capital_valid and strategy_valid
+        # Validate end date
+        if end_date is None:
+            end_feedback = "Please select an end date"
+            end_style = {"display": "block"}
         
-        # Step 3: Date validation
+        # Validate date range relationship if both dates are provided
         if start_date and end_date:
             try:
-                from datetime import datetime
-                start_dt = datetime.fromisoformat(start_date)
-                end_dt = datetime.fromisoformat(end_date)
-                validation_state[3] = start_dt < end_dt and (end_dt - start_dt).days >= 30
+                start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+                end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
+                
+                if start_dt >= end_dt:
+                    range_feedback = "End date must be after start date"
+                    range_style = {"display": "block"}
+                elif (end_dt - start_dt).days < 30:
+                    range_feedback = "Date range should be at least 30 days"
+                    range_style = {"display": "block"}
             except (ValueError, TypeError):
-                validation_state[3] = False
-        else:
-            validation_state[3] = False
-            
-        # Step 4: Ticker validation
-        validation_state[4] = tickers is not None and len(tickers) > 0
+                range_feedback = "Invalid date format"
+                range_style = {"display": "block"}
         
-        # Step 5: Risk Management validation - allow defaults or reasonable values
-        if max_position is not None:
+        return (start_feedback, start_style, end_feedback, end_style,
+                range_feedback, range_style)
+
+    # Step 3: Validation on Confirm Button Click
+    @app.callback(
+        [
+            Output(WizardIDs.TICKER_DROPDOWN_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.TICKER_DROPDOWN_FEEDBACK, "style", allow_duplicate=True)
+        ],
+        [Input(WizardIDs.CONFIRM_TICKERS_BUTTON, "n_clicks")],
+        [State(WizardIDs.TICKER_DROPDOWN, "value")],
+        prevent_initial_call=True
+    )
+    def validate_step3_on_confirm(n_clicks, tickers):
+        """Show validation errors when user tries to confirm Step 3."""
+        if n_clicks is None or n_clicks == 0:
+            return "", {"display": "none"}
+        
+        feedback = ""
+        style = {"display": "none"}
+        
+        # Validate ticker selection
+        if not tickers or len(tickers) == 0:
+            feedback = "Please select at least one ticker"
+            style = {"display": "block"}
+        elif len(tickers) > 50:  # Reasonable limit
+            feedback = "Too many tickers selected (maximum 50)"
+            style = {"display": "block"}
+        
+        return feedback, style
+
+    # Step 4: Validation on Confirm Button Click
+    @app.callback(
+        [
+            Output(WizardIDs.MAX_POSITION_SIZE_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.MAX_POSITION_SIZE_FEEDBACK, "style", allow_duplicate=True),
+            Output(WizardIDs.STOP_LOSS_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.STOP_LOSS_FEEDBACK, "style", allow_duplicate=True),
+            Output(WizardIDs.TAKE_PROFIT_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.TAKE_PROFIT_FEEDBACK, "style", allow_duplicate=True)
+        ],
+        [Input(WizardIDs.CONFIRM_RISK_BUTTON, "n_clicks")],
+        [
+            State(WizardIDs.MAX_POSITION_SIZE_INPUT, "value"),
+            State(WizardIDs.STOP_LOSS_INPUT, "value"),
+            State(WizardIDs.TAKE_PROFIT_INPUT, "value")
+        ],
+        prevent_initial_call=True
+    )
+    def validate_step4_on_confirm(n_clicks, max_position_size, stop_loss, take_profit):
+        """Show validation errors when user tries to confirm Step 4."""
+        if n_clicks is None or n_clicks == 0:
+            return ("", {"display": "none"}, "", {"display": "none"}, 
+                    "", {"display": "none"})
+        
+        position_feedback = ""
+        position_style = {"display": "none"}
+        sl_feedback = ""
+        sl_style = {"display": "none"}
+        tp_feedback = ""
+        tp_style = {"display": "none"}
+        
+        # Validate max position size
+        if max_position_size is not None:
             try:
-                size = float(max_position)
-                validation_state[5] = 0 < size <= 100
+                size = float(max_position_size)
+                if size < 0:
+                    position_feedback = "Position size cannot be negative"
+                    position_style = {"display": "block"}
+                elif size > 100:
+                    position_feedback = "Position size cannot exceed 100%"
+                    position_style = {"display": "block"}
+                elif size == 0:
+                    position_feedback = "Position size should be greater than 0"
+                    position_style = {"display": "block"}
             except (ValueError, TypeError):
-                validation_state[5] = False
-        else:
-            # Allow missing max_position (will use defaults)
-            validation_state[5] = True
-            
-        # Step 6: Trading Costs validation - allow defaults
+                position_feedback = "Please enter a valid number"
+                position_style = {"display": "block"}
+        
+        # Validate stop loss
+        if stop_loss is not None:
+            try:
+                sl = float(stop_loss)
+                if sl < 0:
+                    sl_feedback = "Stop loss cannot be negative"
+                    sl_style = {"display": "block"}
+                elif sl > 50:
+                    sl_feedback = "Stop loss seems very high (>50%)"
+                    sl_style = {"display": "block"}
+            except (ValueError, TypeError):
+                sl_feedback = "Please enter a valid percentage"
+                sl_style = {"display": "block"}
+        
+        # Validate take profit
+        if take_profit is not None:
+            try:
+                tp = float(take_profit)
+                if tp < 0:
+                    tp_feedback = "Take profit cannot be negative"
+                    tp_style = {"display": "block"}
+                elif tp > 1000:
+                    tp_feedback = "Take profit seems very high (>1000%)"
+                    tp_style = {"display": "block"}
+            except (ValueError, TypeError):
+                tp_feedback = "Please enter a valid percentage"
+                tp_style = {"display": "block"}
+        
+        return (position_feedback, position_style, sl_feedback, sl_style,
+                tp_feedback, tp_style)
+
+    # Step 5: Validation on Confirm Button Click
+    @app.callback(
+        [
+            Output(WizardIDs.COMMISSION_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.COMMISSION_FEEDBACK, "style", allow_duplicate=True),
+            Output(WizardIDs.SLIPPAGE_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.SLIPPAGE_FEEDBACK, "style", allow_duplicate=True)
+        ],
+        [Input(WizardIDs.CONFIRM_COSTS_BUTTON, "n_clicks")],
+        [
+            State(WizardIDs.COMMISSION_INPUT, "value"),
+            State(WizardIDs.SLIPPAGE_INPUT, "value")
+        ],
+        prevent_initial_call=True
+    )
+    def validate_step5_on_confirm(n_clicks, commission, slippage):
+        """Show validation errors when user tries to confirm Step 5."""
+        if n_clicks is None or n_clicks == 0:
+            return ("", {"display": "none"}, "", {"display": "none"})
+        
+        commission_feedback = ""
+        commission_style = {"display": "none"}
+        slippage_feedback = ""
+        slippage_style = {"display": "none"}
+        
+        # Validate commission
         if commission is not None:
             try:
                 comm = float(commission)
-                validation_state[6] = 0 <= comm <= 5  # 0-5% commission (more reasonable range)
+                if comm < 0:
+                    commission_feedback = "Commission cannot be negative"
+                    commission_style = {"display": "block"}
+                elif comm > 5:
+                    commission_feedback = "Commission seems very high (>5%)"
+                    commission_style = {"display": "block"}
             except (ValueError, TypeError):
-                validation_state[6] = False
-        else:
-            # Allow missing commission (will use defaults)
-            validation_state[6] = True        # Step 7: Rebalancing validation
-        validation_state[7] = rebalancing_freq is not None and rebalancing_freq != ""
+                commission_feedback = "Please enter a valid percentage"
+                commission_style = {"display": "block"}
         
-        return validation_state    # Main validation callback that controls all button states
-    @app.callback(
-        [
-            # Button disabled states for steps 1-6
-            Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled"),
-            Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled"),
-            Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled"),
-            Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled"),
-            Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled"),
-            Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled"),
-        ],
-        [
-            # Watch all relevant inputs for changes
-            Input(WizardIDs.STRATEGY_DROPDOWN, "value"),
-            Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),
-            Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
-            Input(WizardIDs.DATE_RANGE_END_PICKER, "date"),
-            Input(WizardIDs.TICKER_DROPDOWN, "value"),
-            Input(WizardIDs.MAX_POSITION_SIZE_INPUT, "value"),
-            Input(WizardIDs.STOP_LOSS_INPUT, "value"),
-            Input(WizardIDs.TAKE_PROFIT_INPUT, "value"),
-            Input(WizardIDs.COMMISSION_INPUT, "value"),
-            Input(WizardIDs.SLIPPAGE_INPUT, "value"),
-            Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
-            Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value"),            # Also watch confirmed steps to handle already confirmed states
-            Input(WizardIDs.CONFIRMED_STEPS_STORE, "data"),
-        ]
-        # No prevent_initial_call - let this run on page load to initialize button states
-    )
-    def update_button_states(strategy, initial_capital, start_date, end_date, tickers,
-                           max_position_size, stop_loss, take_profit, commission, slippage, 
-                           rebalancing_freq, rebalancing_threshold, confirmed_steps):
-        """Update button disabled states based on step validation."""
+        # Validate slippage
+        if slippage is not None:
+            try:
+                slip = float(slippage)
+                if slip < 0:
+                    slippage_feedback = "Slippage cannot be negative"
+                    slippage_style = {"display": "block"}
+                elif slip > 2:
+                    slippage_feedback = "Slippage seems very high (>2%)"
+                    slippage_style = {"display": "block"}
+            except (ValueError, TypeError):
+                slippage_feedback = "Please enter a valid percentage"
+                slippage_style = {"display": "block"}
         
-        # Get confirmed steps (default to empty list)
-        if confirmed_steps is None:
-            confirmed_steps = []
-        
-        # Validate each step
-        step1_valid = validate_step_1(strategy, initial_capital)
-        step2_valid = validate_step_2(start_date, end_date)
-        step3_valid = validate_step_3(tickers)
-        step4_valid = validate_step_4(max_position_size, stop_loss, take_profit)
-        step5_valid = validate_step_5(commission, slippage)
-        step6_valid = validate_step_6(rebalancing_freq, rebalancing_threshold)
-        
-        # Button states: disabled if invalid OR already confirmed
-        button_states = [
-            not step1_valid or 1 in confirmed_steps,  # Strategy button
-            not step2_valid or 2 in confirmed_steps,  # Dates button
-            not step3_valid or 3 in confirmed_steps,  # Tickers button
-            not step4_valid or 4 in confirmed_steps,  # Risk button
-            not step5_valid or 5 in confirmed_steps,  # Costs button
-            not step6_valid or 6 in confirmed_steps,  # Rebalancing button
-        ]
-        
-        return button_states
+        return (commission_feedback, commission_style, slippage_feedback, slippage_style)
 
-    # Validation for Run Backtest button (Step 7)
+    # Step 6: Validation on Confirm Button Click
     @app.callback(
-        Output(WizardIDs.RUN_BACKTEST_BUTTON_WIZARD, "disabled", allow_duplicate=True),
         [
-            Input(WizardIDs.CONFIRMED_STEPS_STORE, "data"),
-            Input(WizardIDs.step_content("wizard-summary"), "style"),
+            Output(WizardIDs.REBALANCING_THRESHOLD_FEEDBACK, "children", allow_duplicate=True),
+            Output(WizardIDs.REBALANCING_THRESHOLD_FEEDBACK, "style", allow_duplicate=True)
         ],
+        [Input(WizardIDs.CONFIRM_REBALANCING_BUTTON, "n_clicks")],
         [
-            State(WizardIDs.STRATEGY_DROPDOWN, "value"),
-            State(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),
-            State(WizardIDs.TICKER_DROPDOWN, "value"),
+            State(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
+            State(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value")
         ],
         prevent_initial_call=True
     )
-    def update_run_backtest_button(confirmed_steps, summary_style, strategy, initial_capital, tickers):
-        """Control Run Backtest button state."""
+    def validate_step6_on_confirm(n_clicks, rebalancing_freq, rebalancing_threshold):
+        """Show validation errors when user tries to confirm Step 6."""
+        if n_clicks is None or n_clicks == 0:
+            return "", {"display": "none"}
         
-        # Must be on summary page
-        if not summary_style or summary_style.get("display") != "block":
-            return True
+        feedback = ""
+        style = {"display": "none"}
         
-        # Check if critical steps are valid
-        step1_valid = validate_step_1(strategy, initial_capital)
-        step3_valid = validate_step_3(tickers)  # Critical: must have tickers
+        # Validate rebalancing frequency (required)
+        if not rebalancing_freq:
+            feedback = "Please select a rebalancing frequency"
+            style = {"display": "block"}
+          # Validate rebalancing threshold if provided
+        if rebalancing_threshold is not None:
+            try:
+                threshold = float(rebalancing_threshold)
+                if threshold < 0:
+                    feedback = "Rebalancing threshold cannot be negative"
+                    style = {"display": "block"}
+                elif threshold > 100:
+                    feedback = "Rebalancing threshold cannot exceed 100%"
+                    style = {"display": "block"}
+            except (ValueError, TypeError):
+                if not feedback:  # Don't override frequency validation error
+                    feedback = "Please enter a valid percentage"
+                    style = {"display": "block"}
         
-        # Must have valid strategy, capital, and tickers
-        if not (step1_valid and step3_valid):
-            return True
-        
-        # Check if essential steps are confirmed (steps 1-6)
-        if confirmed_steps is None:
-            confirmed_steps = []
-        
-        required_steps = [1, 2, 3, 4, 5, 6]
-        steps_confirmed = all(step in confirmed_steps for step in required_steps)
-        
-        return not steps_confirmed
-
-    logger.info("Wizard validation callbacks registered successfully.")
+        return feedback, style
