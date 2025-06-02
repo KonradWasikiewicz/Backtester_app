@@ -772,3 +772,64 @@ def register_validation_callbacks(app):
                     style = {"display": "block"}
         
         return feedback, style
+
+    # Main validation callback that controls all button states
+    @app.callback(
+        [
+            # Button disabled states for steps 1-6
+            Output(WizardIDs.CONFIRM_STRATEGY_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_DATES_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_TICKERS_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_RISK_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_COSTS_BUTTON, "disabled", allow_duplicate=True),
+            Output(WizardIDs.CONFIRM_REBALANCING_BUTTON, "disabled", allow_duplicate=True),
+        ],
+        [
+            # Watch all relevant inputs for changes
+            Input(WizardIDs.STRATEGY_DROPDOWN, "value"),
+            Input(WizardIDs.INITIAL_CAPITAL_INPUT, "value"),
+            Input(WizardIDs.DATE_RANGE_START_PICKER, "date"),
+            Input(WizardIDs.DATE_RANGE_END_PICKER, "date"),
+            Input(WizardIDs.TICKER_DROPDOWN, "value"),
+            Input(WizardIDs.MAX_POSITION_SIZE_INPUT, "value"),
+            Input(WizardIDs.STOP_LOSS_INPUT, "value"),
+            Input(WizardIDs.TAKE_PROFIT_INPUT, "value"),
+            Input(WizardIDs.COMMISSION_INPUT, "value"),
+            Input(WizardIDs.SLIPPAGE_INPUT, "value"),
+            Input(WizardIDs.REBALANCING_FREQUENCY_DROPDOWN, "value"),
+            Input(WizardIDs.REBALANCING_THRESHOLD_INPUT, "value"),
+            # Also watch confirmed steps to handle already confirmed states
+            Input(WizardIDs.CONFIRMED_STEPS_STORE, "data"),
+        ],
+        prevent_initial_call=True
+    )
+    def update_button_states(strategy, initial_capital, start_date, end_date, tickers,
+                           max_position_size, stop_loss, take_profit, commission, slippage, 
+                           rebalancing_freq, rebalancing_threshold, confirmed_steps):
+        """Update button disabled states based on step validation."""
+        
+        # Get confirmed steps (default to empty list)
+        if confirmed_steps is None:
+            confirmed_steps = []
+        
+        # Validate each step
+        step1_valid = validate_step_1(strategy, initial_capital)
+        step2_valid = validate_step_2(start_date, end_date)
+        step3_valid = validate_step_3(tickers)
+        step4_valid = validate_step_4(max_position_size, stop_loss, take_profit)
+        step5_valid = validate_step_5(commission, slippage)
+        step6_valid = validate_step_6(rebalancing_freq, rebalancing_threshold)
+        
+        # Button states: disabled if invalid OR already confirmed
+        button_states = [
+            not step1_valid or 1 in confirmed_steps,  # Strategy button
+            not step2_valid or 2 in confirmed_steps,  # Dates button
+            not step3_valid or 3 in confirmed_steps,  # Tickers button
+            not step4_valid or 4 in confirmed_steps,  # Risk button
+            not step5_valid or 5 in confirmed_steps,  # Costs button
+            not step6_valid or 6 in confirmed_steps,  # Rebalancing button
+        ]
+        
+        return button_states
+
+    logger.info("Wizard validation callbacks registered successfully")
