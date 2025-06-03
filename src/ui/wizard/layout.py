@@ -379,14 +379,23 @@ def create_strategy_config_section(tickers: List[str] = None) -> html.Div:
                     size="lg",
                     className="mt-3 w-100",
                     disabled=True
-                )
-            ]),
-            is_hidden=True        )
+                )            ]),
+            is_hidden=True
+        )
     ]
     
     return html.Div([
         progress,
         html.Div(steps, id=WizardIDs.STEPS_CONTAINER, className="wizard-steps"),
         # Add a hidden div to store validation state
-        html.Div(id=WizardIDs.VALIDATION_STATE_STORE, style={"display": "none"})
+        html.Div(id=WizardIDs.VALIDATION_STATE_STORE, style={"display": "none"}),
+        # Hidden trigger components for disabled button click detection
+        html.Div([
+            html.Div(id="step-1-disabled-click-trigger", children="0", style={"display": "none"}),
+            html.Div(id="step-2-disabled-click-trigger", children="0", style={"display": "none"}),
+            html.Div(id="step-3-disabled-click-trigger", children="0", style={"display": "none"}),
+            html.Div(id="step-4-disabled-click-trigger", children="0", style={"display": "none"}),
+            html.Div(id="step-5-disabled-click-trigger", children="0", style={"display": "none"}),
+            html.Div(id="step-6-disabled-click-trigger", children="0", style={"display": "none"})
+        ], style={"display": "none"})
     ], id=WizardIDs.STRATEGY_CONFIG_CONTAINER, className="strategy-wizard")

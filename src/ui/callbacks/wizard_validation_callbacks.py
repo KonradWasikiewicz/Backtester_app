@@ -830,6 +830,5 @@ def register_validation_callbacks(app):
             not step6_valid or 6 in confirmed_steps,  # Rebalancing button
         ]
         
-        return button_states
-
+        return button_states    # Button state management system working correctly
     logger.info("Wizard validation callbacks registered successfully")

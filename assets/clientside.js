@@ -217,3 +217,44 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         }
     }
 });
+
+// --- Disabled Button Click Handler ---
+// Handle clicks on disabled wizard confirmation buttons to show validation errors
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[DisabledButtonClick] Setting up disabled button click handlers...');
+    
+    // Add click listeners to wizard confirmation buttons
+    const wizardButtons = [
+        { id: 'confirm-strategy-button', step: 1 },
+        { id: 'confirm-dates-button', step: 2 },
+        { id: 'confirm-tickers-button', step: 3 },
+        { id: 'confirm-risk-button', step: 4 },
+        { id: 'confirm-costs-button', step: 5 },
+        { id: 'confirm-rebalancing-button', step: 6 }
+    ];
+
+    wizardButtons.forEach(buttonInfo => {
+        // Use a timeout to ensure DOM is fully loaded
+        setTimeout(() => {
+            const button = document.getElementById(buttonInfo.id);
+            if (button) {
+                button.addEventListener('click', function(e) {
+                    // Check if button is disabled
+                    if (this.disabled || this.hasAttribute('disabled')) {
+                        console.log(`[DisabledButtonClick] User clicked disabled button: ${buttonInfo.id}`);
+                        e.preventDefault(); // Prevent default click behavior
+                        e.stopPropagation(); // Stop event bubbling
+                        
+                        // Show a simple alert for now
+                        alert('Please complete the required fields in this step before confirming.');
+                        return false;
+                    }
+                });
+                
+                console.log(`[DisabledButtonClick] Added listener to button: ${buttonInfo.id}`);
+            } else {
+                console.warn(`[DisabledButtonClick] Button not found: ${buttonInfo.id}`);
+            }
+        }, 100);
+    });
+});
