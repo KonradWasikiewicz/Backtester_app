@@ -217,7 +217,7 @@ input:focus, .form-control:focus {
   padding-left: 3.75px !important;   /* Further reduced from 7.5px */
 }
 
-/* Force the left and center panels to be top-aligned */
+/* Force all panels to be top-aligned and fill full width */
 #left-panel-col, #center-panel-col, #right-panel-col {
   padding-top: 0 !important;
   margin-top: 0 !important;
@@ -225,6 +225,33 @@ input:focus, .form-control:focus {
   align-items: flex-start !important;
   display: flex !important;
   flex-direction: column !important;
+}
+
+/* Update CENTER_PANEL_COLUMN and RIGHT_PANEL_COLUMN to use correct IDs and ensure proper width utilization */
+#center-panel-col, #right-panel-col {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure center and right panel contents fill their containers completely */
+#center-panel-col > div, #right-panel-col > div {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all cards and content within center and right panels fill available width */
+#center-panel-col .card, #right-panel-col .card,
+#center-panel-col .dash-graph, #right-panel-col .dash-graph,
+#center-panel-col .dash-table-container, #right-panel-col .dash-table-container {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Force chart containers to fill their cards completely */
+#center-panel-col .plotly-graph-div, #right-panel-col .plotly-graph-div {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 /* Ensure rows in the dashboard are also top-aligned */
@@ -256,7 +283,7 @@ input:focus, .form-control:focus {
   width: 100%;
   box-sizing: border-box;
   margin-top: 0; /* Ensure no top margin */
-  margin-bottom: 6px; /* Consistent small bottom margin, was 0.125rem or 6px !important */
+  margin-bottom: 1px; /* Further reduced from 3px to 1px to minimize overall spacing between steps */
   border-radius: 4px;
   overflow: hidden;
   border: none; /* Explicitly no border for the card itself */
@@ -287,7 +314,7 @@ input:focus, .form-control:focus {
     width: 100%;
     box-sizing: border-box;
     padding: 8px 0; /* Adjusted for vertical centering of a 44px stepper (60px total height with stepper) */
-    margin-bottom: 6px; /* Consistent with wizard-step margin, was 10px or 0.125rem */
+    margin-bottom: 1px; /* Further reduced from 3px to 1px to minimize space between stepper and headers */
     margin-top: -1.25rem !important; /* Kept !important as it seems a deliberate override for layout */
     position: sticky;
     top: 0;
@@ -492,7 +519,6 @@ input:focus, .form-control:focus {
 /* Ensure the stepper container allows horizontal scrolling if needed */
 /* This .wizard-stepper block (around lines 507-520) is a duplicate of the one refined earlier (385-398). */
 /* The earlier one is now the primary. This block can be removed or commented if it's truly identical. */
-/* For safety, I'll comment out the duplicate block if the tool allows, otherwise assume it's handled by replacing the first instance. */
 /* Given the tool's nature, I'll assume the first .wizard-stepper definition is the one being modified. */
 
 
@@ -686,3 +712,90 @@ input:focus, .form-control:focus {
   color: #f8f9fa;           /* Lighter text on hover */
   border-color: #555;
 }
+
+/* Additional alignment and width optimization styles */
+
+/* Ensure the main container row aligns all columns to the top */
+.main-content .container-fluid .row {
+  align-items: flex-start !important;
+  margin: 0 !important;
+}
+
+/* Make sure all panel containers start at the same vertical position */
+#left-panel-col, #center-panel-col, #right-panel-col {
+  align-self: flex-start !important;
+  min-height: 0 !important;
+}
+
+/* Ensure Bootstrap container spacing is optimized */
+.main-content .container-fluid {
+  padding-left: 15px !important;
+  padding-right: 15px !important;
+}
+
+/* Force all dbc.Card components in center and right panels to use full width */
+#center-panel-col .card, #right-panel-col .card {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Ensure card bodies in center and right panels use full width */
+#center-panel-col .card-body, #right-panel-col .card-body {
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Force Bootstrap row/col components in center and right panels to use full width */
+#center-panel-col .row, #right-panel-col .row,
+#center-panel-col .col, #right-panel-col .col {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+
+/* Ensure the stepper and first wizard step are properly aligned */
+.wizard-stepper-container + .wizard-steps > .wizard-step:first-child {
+  margin-top: 0 !important;
+}
+
+/* Specific styles for charts and components in center and right panels */
+
+/* Force Plotly graphs to use full container width */
+#center-panel-col .js-plotly-plot, #right-panel-col .js-plotly-plot {
+  width: 100% !important;
+}
+
+/* Force Dash DataTable components to use full width */
+#center-panel-col .dash-table-container, #right-panel-col .dash-table-container {
+  width: 100% !important;
+  overflow-x: auto !important;
+}
+
+/* Ensure metric cards in right panel use optimal spacing */
+#right-panel-col .row.g-2 {
+  --bs-gutter-x: 0.5rem !important;
+  --bs-gutter-y: 0.5rem !important;
+}
+
+/* Responsive adjustments for panels */
+@media (min-width: 992px) {
+  /* On large screens, ensure proper column behavior */
+  #left-panel-col {
+    flex: 0 0 25% !important;
+    max-width: 25% !important;
+  }
+  
+  #center-panel-col {
+    flex: 0 0 50% !important;
+    max-width: 50% !important;
+  }
+  
+  #right-panel-col {
+    flex: 0 0 25% !important;
+    max-width: 25% !important;
+  }
+}
+
+/* END Specific styles for charts and components */
