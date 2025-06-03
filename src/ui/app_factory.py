@@ -380,9 +380,7 @@ def create_app_layout() -> html.Div:
                             ],
                             className="w-100",
                         ),
-                        dbc.Row([
-
-                            dbc.Col([
+                        dbc.Row([                            dbc.Col([
                                 create_version_display(), # Version display
                                 # GitHub icon moved here
                                 html.A(
@@ -390,7 +388,8 @@ def create_app_layout() -> html.Div:
                                     href="https://github.com/KonradWasikiewicz/Backtester_app", # Updated URL
                                     target="_blank",
                                     className="text-light text-decoration-none" # Added classes for styling
-                                )                            ], width="auto", className="d-flex align-items-center"), # Use flexbox for alignment
+                                )
+                            ], width="auto", className="d-flex align-items-center"), # Use flexbox for alignment
                         ], justify="end") # Justify content to the end (right)
                     ], fluid=True),
                     color="dark",
