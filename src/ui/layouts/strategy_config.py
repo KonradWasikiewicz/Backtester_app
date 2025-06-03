@@ -640,14 +640,13 @@ def create_wizard_step(step_id, title, content, is_hidden=False, step_number=0):
     overflow_style = {"overflow": "visible"} if step_id == "strategy-selection" else {}
     
     return dbc.Card(
-        [
-            dbc.CardHeader(
+        [            dbc.CardHeader(
                 # Wrap H5 in an html.Div and assign the ID here - this div gets the header class for coloring
                 html.Div(
                     html.H6(title, className="mb-0 fw-bold text-white"), # Changed H5 to H6 for more compact sizing
                     id=WizardIDs.step_header(step_id), # ID for click events moved to Div
                     className=initial_header_class, # Apply initial coloring to the div directly
-                    style={"cursor": "pointer", "width": "100%", "padding": "2px"} # Further reduced padding
+                    style={"cursor": "pointer", "width": "100%", "height": "100%"} # Removed padding, let CSS handle it
                 ),
                 className="step-header p-0" # Remove padding from header, apply to div inside
                 # Removed ID from CardHeader itself

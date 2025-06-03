@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 def create_portfolio_value_returns_chart() -> dbc.Card:
     """
-    Creates the card containing the portfolio value/returns chart and toggle buttons.
-    """
+    Creates the card containing the portfolio value/returns chart and toggle buttons.    """
     logger.debug("Creating portfolio value/returns chart card structure with Row/Col and flex-nowrap.")
     return dbc.Card([
         dbc.CardHeader(
@@ -22,11 +21,6 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                     dbc.Col(
                         html.H4("Portfolio Value", className="card-title mb-0"), 
                         width="auto"
-                    ),
-                    dbc.Col(
-                        html.Span("in"), 
-                        width="auto", 
-                        className="px-1" # Adds padding left and right of "in" for spacing
                     ),
                     dbc.Col(
                         dbc.ButtonGroup(
@@ -53,9 +47,9 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                             size="sm"
                         ),
                         width="auto"
-                    )
-                ],
+                    )                ],
                 align="center", # Vertically aligns items (columns) within the Row
+                justify="between", # Distributes space between title (left) and buttons (right)
                 className="gx-2 flex-nowrap"  # gx-2 for horizontal gutters, flex-nowrap to prevent wrapping
             )
         ),
@@ -77,7 +71,7 @@ def create_drawdown_chart() -> dbc.Card:
     """
     logger.debug("Creating drawdown chart card structure.")
     return dbc.Card([
-        dbc.CardHeader(html.Span(["Drawdown ", html.Span("(%)", style={"fontWeight": "normal"})]), className="card-title-text"), # Corrected: "font-weight" to "fontWeight"
+        dbc.CardHeader(html.H4("Drawdown (%)", className="card-title mb-0")),
         dbc.CardBody([
             dcc.Loading(
                 id=app_ids.ResultsIDs.DRAWDOWN_CHART_LOADING, 
@@ -95,7 +89,7 @@ def create_monthly_returns_heatmap() -> dbc.Card:
     """
     logger.debug("Creating monthly returns heatmap card structure.")
     return dbc.Card([
-        dbc.CardHeader("Monthly Returns Heatmap", className="card-title-text"), # Added className
+        dbc.CardHeader(html.H4("Monthly Returns Heatmap", className="card-title mb-0")),
         dbc.CardBody([
             dcc.Loading(
                 id=app_ids.ResultsIDs.MONTHLY_RETURNS_HEATMAP_LOADING, # Corrected ID
@@ -114,7 +108,7 @@ def create_trades_table() -> dbc.Card:
     """
     logger.debug("Creating trades table card structure.")
     return dbc.Card([
-        dbc.CardHeader("Trade History", className="card-title-text"), # Added className
+        dbc.CardHeader(html.H4("Trade History", className="card-title mb-0")),
         dbc.CardBody([
             dcc.Loading(
                 id=app_ids.ResultsIDs.TRADES_TABLE_LOADING, # Corrected ID
@@ -136,7 +130,7 @@ def create_signals_chart() -> dbc.Card:
     return dbc.Card([
         dbc.CardHeader(
             dbc.Row([
-                dbc.Col("Signals & Price Action", width="auto", className="card-title-text"), # Added className
+                dbc.Col(html.H4("Signals & Price Action", className="card-title mb-0"), width="auto"),
                 dbc.Col(
                     dbc.Select(
                         id=app_ids.ResultsIDs.SIGNALS_TICKER_SELECTOR,
@@ -188,7 +182,7 @@ def create_right_panel_layout() -> html.Div:
     logger.debug("Creating right panel layout.")
     return html.Div([
         dbc.Card([
-            dbc.CardHeader("Performance Overview", className="card-title-text"), # Added className
+            dbc.CardHeader(html.H4("Performance Overview", className="card-title mb-0")),
             dbc.CardBody(
                 # Container for performance metrics, populated by callback
                 # Use g-2 for smaller gutters between metric cards
@@ -197,7 +191,7 @@ def create_right_panel_layout() -> html.Div:
         ], className="mb-1", id=app_ids.ResultsIDs.PERFORMANCE_OVERVIEW_CARD, style={'display': 'none'}),
 
         dbc.Card([
-            dbc.CardHeader("Trade Statistics", className="card-title-text"), # Added className
+            dbc.CardHeader(html.H4("Trade Statistics", className="card-title mb-0")),
             dbc.CardBody(
                 # Container for trade statistics, populated by callback
                 # Use g-2 for smaller gutters between metric cards

@@ -159,6 +159,37 @@ input:focus, .form-control:focus {
   margin-bottom: 0.25rem !important; /* Consistent small bottom margin, reduced from 0.5rem */
 }
 
+/* Unified card header title styling */
+.card-header h4,
+.card-header .card-title {
+  font-size: 1rem !important; /* Match wizard step header font size */
+  font-weight: 600 !important; /* Match wizard step header font weight */
+  margin-bottom: 0 !important;
+  margin-top: 0 !important;
+  padding-left: 8px !important; /* Add 2-3 spaces from left edge */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Unify ALL card headers to use the same typography as Portfolio Value */
+.card-header,
+.card-header .card-title-text,
+.card-header span {
+  font-size: 1rem !important; /* Same as Portfolio Value h4 */
+  font-weight: 600 !important; /* Same as Portfolio Value h4 */
+  color: #ffffff !important; /* Ensure white text */
+}
+
+/* Specific styling for card-title-text class used in other sections */
+.card-title-text {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  padding-left: 8px !important;
+  margin: 0 !important;
+}
+
+/* Ensure card headers have proper layout */
 .card-header { /* New style for card headers */
   display: flex;
   align-items: center;
@@ -174,8 +205,35 @@ input:focus, .form-control:focus {
   margin-bottom: 0; /* Remove default margin from h5/etc if used */
 }
 
-.card-title {
-    margin-bottom: 0.75rem;
+/* Portfolio Value header specific adjustments */
+#center-panel-col .card:first-child .card-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 28px !important;
+  padding: 4px 8px !important; /* Small padding for better spacing */
+}
+
+/* Ensure Portfolio Value title and buttons are properly spaced */
+#center-panel-col .card:first-child .card-header .row {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+/* Make sure all other card headers match Portfolio Value styling */
+.card-header {
+  min-height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 4px 8px !important;
+  background-color: #2a2e39 !important;
+  border-bottom: 1px solid #444 !important;
+}
+
+/* Ensure button group in Portfolio Value header has proper styling */
+#center-panel-col .card-header .btn-group-sm .btn {
+  font-size: 0.75rem !important;
+  padding: 2px 6px !important;
 }
 
 /* --- Main Layout Styles --- */
@@ -224,6 +282,9 @@ input:focus, .form-control:focus {
   padding-top: 0 !important;
   position: relative;
   top: 0 !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 /* Ensure center and right panels align with the stepper container top */
@@ -237,15 +298,10 @@ input:focus, .form-control:focus {
   margin-top: 0 !important;
 }
 
-/* Ensure the stepper container in left panel and first content in other panels align */
-.wizard-stepper-container {
-  position: relative;
-  z-index: 100;
-}
-
 /* Force consistent top positioning across all panel children */
 #left-panel-col > *, #center-panel-col > *, #right-panel-col > * {
   vertical-align: top !important;
+  margin-top: 0 !important;
 }
 
 /* Update CENTER_PANEL_COLUMN and RIGHT_PANEL_COLUMN to use correct IDs and ensure proper width utilization */
@@ -334,14 +390,15 @@ input:focus, .form-control:focus {
 .wizard-stepper-container {
     width: 100%;
     box-sizing: border-box;
-    padding: 8px 0; /* Adjusted for vertical centering of a 44px stepper (60px total height with stepper) */
+    padding: 2px 0; /* Reduced padding to match card header height */
     margin-bottom: 1px; /* Further reduced from 3px to 1px to minimize space between stepper and headers */
-    margin-top: -1.25rem !important; /* Kept !important as it seems a deliberate override for layout */
-    position: sticky;
-    top: 0;
+    margin-top: 0 !important; /* Ensure consistent top alignment with other panels */
+    position: relative; /* Changed from sticky to relative for better alignment with other panels */
     background-color: #121212; /* Or your page background color */
     z-index: 100; /* Ensure it's above other content */
-    /* min-height: 60px; /* This is implicitly handled by padding + stepper height */
+    min-height: 28px; /* Match card header height */
+    display: flex;
+    align-items: center; /* Center the stepper vertically within the container */
 }
 
 /* Refined .wizard-stepper. Original was around lines 385-398 and 507-520. */
@@ -502,13 +559,15 @@ input:focus, .form-control:focus {
 
 /* --- Professional, Consistent Wizard Step Header Styling --- */
 /* Common styling for .wizard-step-header-* (the Div inside dbc.CardHeader) */
-/* Original was around lines 491-505. Attempting to remove !important. */
+/* Fixed to ensure full coverage of header area */
 .wizard-step-header-completed,
 .wizard-step-header-current,
 .wizard-step-header-pending {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 4px 8px; /* Maintained original padding */
+  width: 100% !important;
+  height: 100% !important;
+  box-sizing: border-box !important;
+  padding: 6px 9px !important; /* Reduced padding by 25% (from 8px 12px) */
+  margin: 0 !important; /* Remove any margins */
   text-align: left;
   font-size: 1rem;
   font-weight: 600;
@@ -518,6 +577,9 @@ input:focus, .form-control:focus {
   text-overflow: ellipsis;
   cursor: pointer; /* Assuming headers are clickable */
   transition: background-color 0.3s, box-shadow 0.3s;
+  display: flex !important; /* Use flexbox for proper alignment */
+  align-items: center !important; /* Center content vertically */
+  min-height: 30px !important; /* Reduced from 40px to 30px (25% reduction) */
   /* Color and background are set by the more specific rules above, !important kept there for now */
 }
 
@@ -818,4 +880,155 @@ input:focus, .form-control:focus {
   }
 }
 
-/* END Specific styles for charts and components */
+/* Perfect alignment for all three panels */
+#left-panel-col > *:first-child,
+#center-panel-col > *:first-child,
+#right-panel-col > *:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Ensure stepper content starts aligned with other panels */
+.wizard-stepper-container + * {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Force card headers to use standard height and styling */
+#center-panel-col .card:first-child .card-header,
+#right-panel-col .card:first-child .card-header {
+  min-height: 28px !important; /* Match standard card header height */
+  display: flex !important;
+  align-items: center !important; /* Center content vertically */
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Force all panels to have same baseline */
+#left-panel-col, #center-panel-col, #right-panel-col {
+  align-items: flex-start !important;
+  vertical-align: top !important;
+}
+
+/* Ultra-specific alignment for Portfolio Value and Performance Overview headers */
+#center-panel-col .card:first-child,
+#right-panel-col .card:first-child {
+  margin-top: 0 !important;
+}
+
+#center-panel-col .card:first-child .card-header,
+#right-panel-col .card:first-child .card-header {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+#center-panel-col h4:first-child,
+#right-panel-col h4:first-child,
+#center-panel-col .card-header:first-child,
+#right-panel-col .card-header:first-child,
+#center-panel-col .card-header h4,
+#right-panel-col .card-header h4 {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Force stepper to have same top position as card headers */
+.wizard-stepper-container {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+/* Ensure all first children in panels start at exact same level */
+#left-panel-col > *:first-child,
+#center-panel-col > *:first-child, 
+#right-panel-col > *:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  position: relative;
+  top: 0 !important;
+}
+
+/* Force ALL section headers to have identical styling */
+.card-header h4,
+.card-header .card-title,
+.card-header,
+.card-title-text,
+.card-header span {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  font-size: 1rem !important; /* Exactly same as Portfolio Value */
+  font-weight: 600 !important; /* Exactly same as Portfolio Value */
+  color: #ffffff !important;
+  line-height: 1.2 !important;
+  letter-spacing: normal !important;
+}
+
+/* Ensure Portfolio Value button group is properly positioned */
+#center-panel-col .card:first-child .card-header .btn-group {
+  margin-left: auto !important;
+}
+
+/* Additional styling for dropdown in Signals section */
+#center-panel-col .card-header .form-select {
+  font-size: 0.875rem !important;
+  height: 24px !important;
+  padding: 2px 6px !important;
+}
+
+/* Ensure all card headers have consistent background and borders */
+.card-header {
+  background-color: #2a2e39 !important;
+  border-bottom: 1px solid #444 !important;
+  border-radius: 4px 4px 0 0 !important;
+}
+
+/* Ensure CardHeader doesn't interfere with step header styling */
+.step-header {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  overflow: hidden !important;
+  border-radius: 4px 4px 0 0 !important;
+}
+
+/* Ensure H6 inside step headers doesn't have extra margins/padding */
+.wizard-step-header-completed h6,
+.wizard-step-header-current h6,
+.wizard-step-header-pending h6 {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.2 !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+}
+
+/* Additional fixes for step header coverage */
+.wizard-step .card-header {
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+/* Ensure the colored div fills the entire header space */
+.wizard-step-header-completed,
+.wizard-step-header-current,
+.wizard-step-header-pending {
+  position: relative !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Force proper dimensions for step headers */
+.wizard-step .card {
+  margin-bottom: 1px !important; /* Minimal gap between steps */
+}
+
+.wizard-step .card .card-header {
+  height: auto !important;
+  min-height: 30px !important; /* Reduced from 40px to 30px (25% reduction) */
+}
