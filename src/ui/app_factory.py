@@ -390,13 +390,12 @@ def create_app_layout() -> html.Div:
                                     href="https://github.com/KonradWasikiewicz/Backtester_app", # Updated URL
                                     target="_blank",
                                     className="text-light text-decoration-none" # Added classes for styling
-                                )
-                            ], width="auto", className="d-flex align-items-center"), # Use flexbox for alignment
+                                )                            ], width="auto", className="d-flex align-items-center"), # Use flexbox for alignment
                         ], justify="end") # Justify content to the end (right)
                     ], fluid=True),
                     color="dark",
                     dark=True,
-                    className="mb-4"
+                    className="mb-1"
                 ),
                 # Global loading overlay (fixed position, covers the entire app)
                 create_loading_overlay(),                # --- UPDATED Three-Panel Main Content ---

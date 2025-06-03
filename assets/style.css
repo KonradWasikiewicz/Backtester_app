@@ -217,14 +217,35 @@ input:focus, .form-control:focus {
   padding-left: 3.75px !important;   /* Further reduced from 7.5px */
 }
 
-/* Force all panels to be top-aligned and fill full width */
+/* Force all three panels to start at exactly the same vertical position */
+/* Override any margin differences between panels */
 #left-panel-col, #center-panel-col, #right-panel-col {
-  padding-top: 0 !important;
   margin-top: 0 !important;
+  padding-top: 0 !important;
+  position: relative;
+  top: 0 !important;
+}
+
+/* Ensure center and right panels align with the stepper container top */
+#center-panel-col > div:first-child, #right-panel-col > div:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Special alignment for center and right panel cards to match stepper position */
+#center-panel-col .card:first-child, #right-panel-col .card:first-child {
+  margin-top: 0 !important;
+}
+
+/* Ensure the stepper container in left panel and first content in other panels align */
+.wizard-stepper-container {
+  position: relative;
+  z-index: 100;
+}
+
+/* Force consistent top positioning across all panel children */
+#left-panel-col > *, #center-panel-col > *, #right-panel-col > * {
   vertical-align: top !important;
-  align-items: flex-start !important;
-  display: flex !important;
-  flex-direction: column !important;
 }
 
 /* Update CENTER_PANEL_COLUMN and RIGHT_PANEL_COLUMN to use correct IDs and ensure proper width utilization */
@@ -519,7 +540,6 @@ input:focus, .form-control:focus {
 /* Ensure the stepper container allows horizontal scrolling if needed */
 /* This .wizard-stepper block (around lines 507-520) is a duplicate of the one refined earlier (385-398). */
 /* The earlier one is now the primary. This block can be removed or commented if it's truly identical. */
-/* Given the tool's nature, I'll assume the first .wizard-stepper definition is the one being modified. */
 
 
 /* Enhance animation for current step */
