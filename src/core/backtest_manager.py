@@ -55,6 +55,12 @@ class BacktestManager:
         logger.info(f"Strategy: {strategy_type}, Tickers: {tickers}")
         logger.info(f"Strategy Params: {strategy_params}, Risk Params: {risk_params}, Cost Params: {cost_params}, Rebalancing Params: {rebalancing_params}")
 
+        # Ensure optional parameter dictionaries are initialized
+        strategy_params = strategy_params or {}
+        risk_params = risk_params or {}
+        cost_params = cost_params or {}
+        rebalancing_params = rebalancing_params or {}
+
         # Base progress for manager, assuming service part took up to 7%
         MANAGER_PROGRESS_START = 8
         MANAGER_PROGRESS_END_BEFORE_SERVICE_RESUMES = 80
@@ -112,9 +118,8 @@ class BacktestManager:
             if progress_callback: progress_callback((MANAGER_PROGRESS_START + 12, "Manager: Data Prepared. Initializing Strategy...")) # 20%
 
             # --- 3. Strategy and Component Initialization (21% - 25%) ---
-            strategy_params = strategy_params or {}
             try:
-                strategy = strategy_class(tickers=valid_tickers, **strategy_params) 
+                strategy = strategy_class(tickers=valid_tickers, **strategy_params)
                 logger.info(f"Initialized strategy '{strategy_type}' with params: {strategy_params}")
                 if progress_callback: progress_callback((MANAGER_PROGRESS_START + 14, "Manager: Strategy Initialized. Initializing Risk Manager...")) # 22%
             except Exception as e: 
@@ -134,8 +139,8 @@ class BacktestManager:
             portfolio_manager = PortfolioManager(
                 initial_capital=self.initial_capital, 
                 risk_manager=risk_manager,
-                cost_params=cost_params or {},
-                rebalancing_params=rebalancing_params or {}
+                cost_params=cost_params,
+                rebalancing_params=rebalancing_params
             )
             if progress_callback: progress_callback((MANAGER_PROGRESS_START + 17, "Manager: Components Initialized. Generating Signals...")) # 25%
 
