@@ -97,7 +97,7 @@ src/
 
 Detailed documentation is available in the `docs/` directory:
 - [Project Context](docs/project_context.md)
-- [Architecture Guide](docs/architecture.md)
+- [Architecture Guide](docs/technical_specification.md)
 - [Product Design Specification](docs/product_design_specification.md)
 - [Technical Specification](docs/technical_specification.md)
 - [Aesthetics Guidelines](docs/aesthetics_guidelines.md)
