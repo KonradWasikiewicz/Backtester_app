@@ -368,3 +368,42 @@ def register_backtest_callbacks(app: Dash):
                     {'display': 'none'}, {'display': 'none'})
 
     logger.info("Backtest callbacks registered.")
+
+    # --- New Interactive Chart Callbacks ---
+
+    @app.callback(
+        Output(ResultsIDs.PORTFOLIO_CHART, "figure", allow_duplicate=True),
+        Input(ResultsIDs.PORTFOLIO_SCALE_RADIO, "value"),
+        State(ResultsIDs.BACKTEST_RESULTS_STORE, "data"),
+        prevent_initial_call=True
+    )
+    def update_portfolio_chart_scale(scale_mode, results_data):
+        """Update portfolio chart with linear or log scale."""
+        if not results_data or not results_data.get("portfolio_value_chart_json"):
+            raise PreventUpdate
+
+        try:
+            fig = pio.from_json(results_data["portfolio_value_chart_json"])
+        except Exception as e:
+            logger.error(f"Error decoding portfolio chart json: {e}")
+            raise PreventUpdate
+
+        yaxis_type = "log" if scale_mode == "log" else "linear"
+        fig.update_yaxes(type=yaxis_type)
+        return fig
+
+    @app.callback(
+        Output(ResultsIDs.SIGNALS_CHART, "figure"),
+        Input(ResultsIDs.SIGNALS_TICKER_SELECTOR, "value"),
+        Input(ResultsIDs.SIGNALS_INDICATOR_CHECKLIST, "value"),
+        prevent_initial_call=True
+    )
+    def update_signals_chart(ticker, indicators):
+        """Update signals chart for selected ticker with optional indicators."""
+        if not ticker:
+            raise PreventUpdate
+
+        fig = backtest_service.get_signals_chart(ticker, indicators or [])
+        if fig is None:
+            return create_empty_chart("No signal data")
+        return fig

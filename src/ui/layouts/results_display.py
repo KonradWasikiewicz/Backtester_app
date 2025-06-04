@@ -28,16 +28,16 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                                 dbc.Button(
                                     "USD",
                                     id=app_ids.ResultsIDs.PORTFOLIO_VALUE_CURRENCY_USD,
-                                    className="py-0 px-1", # Small padding
+                                    className="py-0 px-1",
                                     color="primary",
-                                    outline=False, # Active by default
+                                    outline=False,
                                     size="sm",
                                     n_clicks=0
                                 ),
                                 dbc.Button(
                                     "%",
                                     id=app_ids.ResultsIDs.PORTFOLIO_VALUE_CURRENCY_PERCENT,
-                                    className="py-0 px-1", # Small padding
+                                    className="py-0 px-1",
                                     color="primary",
                                     outline=True,
                                     size="sm",
@@ -47,7 +47,18 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                             size="sm"
                         ),
                         width="auto"
-                    )                ],
+                    ),
+                    dbc.Col(
+                        dbc.RadioItems(
+                            id=app_ids.ResultsIDs.PORTFOLIO_SCALE_RADIO,
+                            options=[{"label": "Linear", "value": "linear"}, {"label": "Log", "value": "log"}],
+                            value="linear",
+                            inline=True,
+                            className="btn-group-sm"
+                        ),
+                        width="auto"
+                    )
+                ],
                 align="center", # Vertically aligns items (columns) within the Row
                 justify="between", # Distributes space between title (left) and buttons (right)
                 className="gx-2 flex-nowrap"  # gx-2 for horizontal gutters, flex-nowrap to prevent wrapping
@@ -134,11 +145,21 @@ def create_signals_chart() -> dbc.Card:
                 dbc.Col(
                     dbc.Select(
                         id=app_ids.ResultsIDs.SIGNALS_TICKER_SELECTOR,
-                        options=[], # Populated by callback
+                        options=[],
                         placeholder="Select Ticker...",
                         size="sm"
                     ),
-                    width=4 # Adjust width as needed
+                    width=4
+                ),
+                dbc.Col(
+                    dbc.Checklist(
+                        id=app_ids.ResultsIDs.SIGNALS_INDICATOR_CHECKLIST,
+                        options=[{"label": "SMA50", "value": "sma50"}, {"label": "SMA200", "value": "sma200"}],
+                        value=[],
+                        inline=True,
+                        switch=True,
+                    ),
+                    width="auto"
                 )
             ], justify="between", align="center")
         ),

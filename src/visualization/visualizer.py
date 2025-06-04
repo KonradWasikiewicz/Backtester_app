@@ -366,8 +366,12 @@ class BacktestVisualizer:
             daily_returns = portfolio_values.pct_change().fillna(0)
             
             # Resample to month end and calculate monthly returns
-            # Use 'M' instead of 'ME' for pandas 1.5.3 compatibility
-            monthly_returns = (1 + daily_returns).resample('M').prod() - 1
+            # Use 'ME' for pandas >=1.1 but fall back to 'M' for older versions
+            try:
+                monthly_returns = (1 + daily_returns).resample('ME').prod() - 1
+            except ValueError:
+                logger.warning("'ME' offset unsupported - falling back to 'M'")
+                monthly_returns = (1 + daily_returns).resample('M').prod() - 1
             
             # Create dataframe with year and month
             returns_df = pd.DataFrame({
@@ -439,7 +443,7 @@ class BacktestVisualizer:
             )
             return fig
     
-    def create_signals_chart(self, ticker: str, signals_df: pd.DataFrame, trades: List[Dict]) -> go.Figure:
+    def create_signals_chart(self, ticker: str, signals_df: pd.DataFrame, trades: List[Dict], indicators: Optional[Dict[str, pd.Series]] = None) -> go.Figure:
         """
         Create a chart showing price data with signals and trades for a specific ticker.
         
@@ -468,9 +472,13 @@ class BacktestVisualizer:
             return fig
             
         try:
+            # Normalize column names to lower case for flexibility
+            signals_df = signals_df.copy()
+            signals_df.columns = [c.lower() for c in signals_df.columns]
+
             # Create figure
             fig = go.Figure()
-            
+
             # Add price data
             if 'close' in signals_df.columns:
                 # Używamy małych liter dla nazw kolumn
@@ -482,26 +490,15 @@ class BacktestVisualizer:
                     line=dict(color='#888888', width=1.5),
                     hovertemplate="Date: %{x}<br>Price: $%{y:.2f}<extra></extra>"
                 ))
-            elif 'Close' in signals_df.columns:
-                # Alternatywnie, używamy wielkich liter
-                fig.add_trace(go.Scatter(
-                    x=signals_df.index,
-                    y=signals_df['Close'],
-                    mode='lines',
-                    name='Price',
-                    line=dict(color='#888888', width=1.5),
-                    hovertemplate="Date: %{x}<br>Price: $%{y:.2f}<extra></extra>"
-                ))
             else:
                 logger.warning(f"No 'Close' or 'close' column in signals DataFrame for {ticker}")
                 return create_empty_chart(f"Missing Price Data for {ticker}", height=500)
-            
-            # Określamy kolumnę ceny na podstawie dostępnych danych
-            price_col = 'close' if 'close' in signals_df.columns else 'Close'
+
+            price_col = 'close'
             
             # Add buy signals
-            if 'Signal' in signals_df.columns:
-                buy_signals = signals_df[signals_df['Signal'] > 0]
+            if 'signal' in signals_df.columns:
+                buy_signals = signals_df[signals_df['signal'] > 0]
                 if not buy_signals.empty:
                     fig.add_trace(go.Scatter(
                         x=buy_signals.index,
@@ -518,7 +515,7 @@ class BacktestVisualizer:
                     ))
                 
                 # Add sell signals
-                sell_signals = signals_df[signals_df['Signal'] < 0]
+                sell_signals = signals_df[signals_df['signal'] < 0]
                 if not sell_signals.empty:
                     fig.add_trace(go.Scatter(
                         x=sell_signals.index,
@@ -592,6 +589,20 @@ class BacktestVisualizer:
                             dash="dot",
                         )
                     )
+
+            # Add indicators (e.g., moving averages)
+            if indicators:
+                for name, series in indicators.items():
+                    if series is not None and not series.empty:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=series.index,
+                                y=series,
+                                mode="lines",
+                                name=name,
+                                line=dict(width=1.2, dash="dash")
+                            )
+                        )
             
             # Update layout
             layout = _create_base_layout(

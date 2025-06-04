@@ -817,7 +817,11 @@ class VisualizationService:
         """
         import calendar
         # Calculate end-of-month portfolio values and monthly returns
-        monthly_vals = portfolio_series.resample('ME').last()
+        try:
+            monthly_vals = portfolio_series.resample('ME').last()
+        except ValueError:
+            logger.warning("'ME' offset unsupported - falling back to 'M'")
+            monthly_vals = portfolio_series.resample('M').last()
         monthly_ret = monthly_vals.pct_change().dropna()
         # Prepare pivot table
         df = monthly_ret.to_frame(name='Return')
