@@ -29,6 +29,10 @@ Backtester App is a tool for testing and analyzing trading strategies using hist
 3. Install required dependencies
    ```
    pip install -r requirements.txt
+   # This installs all required packages, including pandas-ta.
+   # pandas-ta currently fails with numpy 2.x, so numpy is pinned below 2.0.
+   # If you see "ImportError: cannot import name 'NaN' from 'numpy'",
+   # reinstall numpy<2.0 to resolve the issue.
    ```
 
 ## Running the Application
@@ -37,7 +41,14 @@ Backtester App is a tool for testing and analyzing trading strategies using hist
 python app.py
 ```
 
-The application will be available at http://127.0.0.1:8050/ in your browser.
+By default the app uses host `127.0.0.1` and port `8050`. You can override these
+values:
+
+```
+python app.py --host 0.0.0.0 --port 8060
+```
+
+The application will then be available at the provided address.
 
 ## Client-Side Error Logging
 
