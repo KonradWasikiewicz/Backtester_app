@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 import logging
 import traceback  # Add this line to fix the error
+from src.core.constants import VISUALIZATION_CONFIG, BACKTEST_ENGINE_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -94,31 +95,3 @@ except Exception as e:
     config = BasicConfig()
     logger.warning("Using basic fallback configuration.")
 
-
-# --- Visualization Config (Separate for clarity, could be part of Config class) ---
-VISUALIZATION_CONFIG = {
-    "chart_height": 400,
-    "dark_theme": True,
-    "template": "plotly_dark",
-    "colors": {
-        # Changed portfolio and benchmark colors
-        "portfolio": "#1f77b4",    # Plotly Blue
-        "benchmark": "#ff7f0e",    # Plotly Orange
-        "profit": "#28a745",       # Standard Bootstrap success green
-        "loss": "#dc3545",         # Standard Bootstrap danger red
-        "primary": "#0d6efd",      # Standard Bootstrap primary blue
-        "secondary": "#6c757d",    # Standard Bootstrap secondary gray
-        "background": "#131722",   # Very dark background
-        "card_background": "#1e222d", # Slightly lighter card background
-        "grid_color": "#2a2e39",     # Grid line color
-        "text_color": "#dee2e6",     # Light text color
-        "text_muted": "#6c757d",    # Muted text color
-    }
-}
-
-# --- Backtest Engine Config (Separate for clarity, could be part of Config class) ---
-# These might be passed directly or used by the engine internally
-BACKTEST_ENGINE_CONFIG = {
-    "commission_rate": 0.0005,  # Example: 0.05% commission per trade
-    "slippage_pct": 0.0002,    # Example: 0.02% slippage per trade (adjust based on asset liquidity)
-}
