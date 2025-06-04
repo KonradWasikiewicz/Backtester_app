@@ -64,8 +64,6 @@ portfolio, trades, metrics = manager.run_backtest(
 print(metrics["Sharpe Ratio"])
 ```
 
-
-
 ## Configuration via Environment Variables
 Several settings can be customized before running the app:
 
