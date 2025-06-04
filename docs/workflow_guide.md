@@ -13,7 +13,7 @@ To ensure that all development conversations maintain the proper context and fol
    This will output the essential context from your project documentation. Copy this output and include it at the beginning of your conversation to provide the AI with necessary context.
 
 2. **Reference specific documentation** when needed:
-   - For architectural questions: refer to `docs/architecture.md`
+   - For architectural questions: refer to `docs/technical_specification.md`
    - For UI design and aesthetics: refer to `docs/aesthetics_guidelines.md`
    - For product specifications: refer to `docs/product_design_specification.md`
    - For technical implementation: refer to `docs/technical_specification.md`
