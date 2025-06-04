@@ -103,6 +103,10 @@ The application uses Python's built-in `logging` module with a simplified config
 - External library log suppression (e.g., werkzeug, urllib3, dash set to WARNING).
 - Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL.
 
+Client-side JavaScript errors are sent via POST requests to the
+`/log-client-errors` route. This endpoint logs received errors, warnings and
+messages on the server for easier debugging.
+
 Example log configuration from `app_factory.py`:
 ```python
 def configure_logging(log_level=logging.INFO) -> None:
@@ -143,6 +147,7 @@ def configure_logging(log_level=logging.INFO) -> None:
 ### 2.3 Developer Tools
 - **Git**: Version control
 - **SemVer**: Semantic versioning standard
+- **StrategyTemplateGenerator**: Generates boilerplate code for new strategies
 
 ## 3. Key Algorithms (Pseudocode Examples)
 

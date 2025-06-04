@@ -14,6 +14,7 @@ Backtester App is a tool for testing and analyzing trading strategies using hist
 - Result analysis with key metrics (CAGR, Sharpe Ratio, max drawdown)
 - Interactive visualizations (equity charts, returns heatmap, signal charts)
 - Intuitive wizard interface with visual stepper navigation
+- `StrategyTemplateGenerator` utility for creating new strategy templates
 
 ## Installation
 
@@ -35,6 +36,12 @@ python app.py
 ```
 
 The application will be available at http://127.0.0.1:8050/ in your browser.
+
+## Client-Side Error Logging
+
+Errors from the browser are sent to the `/log-client-errors` endpoint. The
+frontend JavaScript captures uncaught errors and posts them to this route so
+they can be logged by the server.
 
 ## Versioning System
 
