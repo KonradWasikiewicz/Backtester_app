@@ -29,8 +29,10 @@ Backtester App is a tool for testing and analyzing trading strategies using hist
 3. Install required dependencies
    ```
    pip install -r requirements.txt
-   # pandas-ta does not yet support numpy 2.x, so numpy is pinned below 2.0
-   # If you run into an ImportError referencing "NaN", ensure numpy<2.0 is installed
+   # This installs all required packages, including pandas-ta.
+   # pandas-ta currently fails with numpy 2.x, so numpy is pinned below 2.0.
+   # If you see "ImportError: cannot import name 'NaN' from 'numpy'",
+   # reinstall numpy<2.0 to resolve the issue.
    ```
 
 ## Running the Application
