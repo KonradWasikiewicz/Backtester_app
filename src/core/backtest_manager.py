@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import logging
 import traceback
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import sys
 
@@ -43,9 +43,9 @@ class BacktestManager:
 
     def run_backtest(self, 
                      strategy_type: str, 
-                     tickers: list[str], 
-                     strategy_params: Optional[dict[str, Any]] = None, 
-                     risk_params: Optional[dict[str, Any]] = None,
+                     tickers: List[str],
+                     strategy_params: Optional[Dict[str, Any]] = None,
+                     risk_params: Optional[Dict[str, Any]] = None,
                      cost_params: Optional[Dict[str, Any]] = None,      # Added cost_params
                      rebalancing_params: Optional[Dict[str, Any]] = None, # Added rebalancing_params
                      progress_callback: Optional[callable] = None

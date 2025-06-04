@@ -18,7 +18,7 @@ class BollingerBandsStrategy(BaseStrategy):
     | **Limitations** | May generate false signals in strong trending markets, requires careful parameter tuning based on market volatility. |
     """
 
-    def __init__(self, tickers: list[str], window: int = 20, num_std: float = 2.0):
+    def __init__(self, tickers: List[str], window: int = 20, num_std: float = 2.0):
         """
         Initializes the Bollinger Bands strategy.
 

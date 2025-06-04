@@ -6,6 +6,7 @@ and concrete strategy implementations like Moving Average, RSI, and Bollinger Ba
 """
 
 import logging
+from typing import Dict, Type, List, Optional
 from src.strategies.base import BaseStrategy
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ else:
 
 
 # --- Helper Functions ---
-def get_strategy_class(strategy_key: str) -> type[BaseStrategy] | None:
+def get_strategy_class(strategy_key: str) -> Optional[Type[BaseStrategy]]:
     """
     Retrieves the strategy class object based on its registered key.
 
@@ -54,7 +55,7 @@ def get_strategy_class(strategy_key: str) -> type[BaseStrategy] | None:
         logger.warning(f"Strategy class for key '{strategy_key}' not found in AVAILABLE_STRATEGIES.")
     return strategy_class
 
-def get_available_strategy_names() -> list[str]:
+def get_available_strategy_names() -> List[str]:
     """
     Returns a list of the display names of all registered strategies.
     NOTE: This might need adjustment if UI needs display names different from keys.

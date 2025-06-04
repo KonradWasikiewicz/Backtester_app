@@ -1,6 +1,7 @@
 import pandas as pd
-import pandas_ta as ta # type: ignore
+import pandas_ta as ta  # type: ignore
 import logging
+from typing import List
 # --- MODIFIED: Use absolute import ---
 from src.strategies.base import BaseStrategy
 # --- END MODIFIED ---
@@ -13,7 +14,7 @@ class RSIStrategy(BaseStrategy):
 
     Signals are generated when RSI crosses specified overbought or oversold levels.
     """
-    def __init__(self, tickers: list[str], rsi_period: int = 14, lower_bound: int = 30, upper_bound: int = 70):
+    def __init__(self, tickers: List[str], rsi_period: int = 14, lower_bound: int = 30, upper_bound: int = 70):
         """
         Initializes the RSI strategy.
 
