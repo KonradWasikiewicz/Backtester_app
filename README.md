@@ -49,6 +49,21 @@ python app.py --host 0.0.0.0 --port 8060
 ```
 
 The application will then be available at the provided address.
+### Quick Example: Running a Backtest in Python
+Use the core backtesting engine directly from a script. The `strategy_type` should be one of the keys from `AVAILABLE_STRATEGIES` (e.g., `MAC`, `RSI`, `BB`):
+
+```python
+from src.core.backtest_manager import BacktestManager
+from src.core.config import config
+
+manager = BacktestManager(initial_capital=config.INITIAL_CAPITAL)
+portfolio, trades, metrics = manager.run_backtest(
+    strategy_type="MAC",
+    tickers=["AAPL"]
+)
+print(metrics["Sharpe Ratio"])
+```
+
 
 ## Configuration via Environment Variables
 Several settings can be customized before running the app:
