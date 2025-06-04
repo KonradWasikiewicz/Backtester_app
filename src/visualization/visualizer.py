@@ -366,8 +366,9 @@ class BacktestVisualizer:
             daily_returns = portfolio_values.pct_change().fillna(0)
             
             # Resample to month end and calculate monthly returns
-            # Use 'M' instead of 'ME' for pandas 1.5.3 compatibility
-            monthly_returns = (1 + daily_returns).resample('M').prod() - 1
+            # Use 'ME' which is supported in pandas>=1.1 and avoids a
+            # FutureWarning when using newer pandas versions
+            monthly_returns = (1 + daily_returns).resample('ME').prod() - 1
             
             # Create dataframe with year and month
             returns_df = pd.DataFrame({
@@ -439,7 +440,7 @@ class BacktestVisualizer:
             )
             return fig
     
-    def create_signals_chart(self, ticker: str, signals_df: pd.DataFrame, trades: List[Dict]) -> go.Figure:
+    def create_signals_chart(self, ticker: str, signals_df: pd.DataFrame, trades: List[Dict], indicators: Optional[Dict[str, pd.Series]] = None) -> go.Figure:
         """
         Create a chart showing price data with signals and trades for a specific ticker.
         
@@ -592,6 +593,20 @@ class BacktestVisualizer:
                             dash="dot",
                         )
                     )
+
+            # Add indicators (e.g., moving averages)
+            if indicators:
+                for name, series in indicators.items():
+                    if series is not None and not series.empty:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=series.index,
+                                y=series,
+                                mode="lines",
+                                name=name,
+                                line=dict(width=1.2, dash="dash")
+                            )
+                        )
             
             # Update layout
             layout = _create_base_layout(

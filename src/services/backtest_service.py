@@ -225,7 +225,7 @@ class BacktestService:
             logger.error(f"Error generating performance metrics dictionary: {e}", exc_info=True)
             return {}
 
-    def get_signals_chart(self, ticker: str):
+    def get_signals_chart(self, ticker: str, indicators: Optional[List[str]] = None):
         """
         Generate signals and trades chart figure for a specific ticker.
         Uses BacktestVisualizer.
@@ -245,19 +245,24 @@ class BacktestService:
 
         try:
             signals_df = self.current_signals.get(ticker)
-            # Ensure trades data is available and filter for the ticker
             trades_list = self.current_results.get("trades", [])
             ticker_trades = [t for t in trades_list if t.get('ticker') == ticker]
 
             if signals_df is None or signals_df.empty:
-                 logger.warning(f"No signal data found for ticker {ticker} in current_signals.")
-                 return None
+                logger.warning(f"No signal data found for ticker {ticker} in current_signals.")
+                return None
 
-            # Use BacktestVisualizer to create the chart figure
+            indicators_dict = {}
+            if indicators:
+                price_col = 'close' if 'close' in signals_df.columns else 'Close'
+                if 'sma50' in indicators and price_col in signals_df.columns:
+                    indicators_dict['SMA50'] = signals_df[price_col].rolling(window=50).mean()
+                if 'sma200' in indicators and price_col in signals_df.columns:
+                    indicators_dict['SMA200'] = signals_df[price_col].rolling(window=200).mean()
+
             visualizer = BacktestVisualizer()
             visualizer.theme = CHART_THEME
-            # Pass the filtered trades list
-            fig = visualizer.create_signals_chart(ticker, signals_df, ticker_trades)
+            fig = visualizer.create_signals_chart(ticker, signals_df, ticker_trades, indicators=indicators_dict)
             return fig
 
         except Exception as e:
