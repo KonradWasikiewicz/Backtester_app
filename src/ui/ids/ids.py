@@ -164,6 +164,8 @@ class ResultsIDs:
     SIGNALS_CHART = "signals-chart"
     SIGNALS_CHART_LOADING = "signals-chart-loading"
     SIGNALS_TICKER_SELECTOR = "ticker-selector" # For signals chart
+    PORTFOLIO_SCALE_RADIO = "portfolio-scale-radio"  # Linear vs Log scale
+    SIGNALS_INDICATOR_CHECKLIST = "signals-indicator-checklist"  # Indicator toggles
 
     # Tables & Their Loaders/Containers
     TRADES_TABLE_CONTAINER = "trades-table-container" # UNCOMMENTED
