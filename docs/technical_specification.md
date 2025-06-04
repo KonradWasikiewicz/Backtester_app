@@ -236,7 +236,10 @@ class VisualizationService:
 ### 4.2 Strategy Configuration Panel (Wizard Example)
 - **Step 1**: Initial Capital, Strategy Selection & Parameters.
 - **Step 2**: Date Range Selection.
-- **Step 3**: Ticker Selection.
+- **Step 3**: Ticker Selection. This step includes the **Import Tickers** modal
+  created by `create_import_tickers_modal()`, allowing users to paste tickers or
+  upload a file. Validation IDs provide real-time feedback next to the input
+  fields.
 - **Step 4**: Risk Management Configuration (expandable/conditional sections).
 - **Step 5**: Trading Costs (Commission, Slippage).
 - **Step 6**: Rebalancing Rules.
@@ -296,4 +299,4 @@ Callbacks are organized into modules within `src/ui/callbacks/` based on functio
 
 ---
 *Documentation version: 1.4 (Merged Architecture)*
-*Last updated: May 5, 2025*
+*Last updated: June 4, 2025*
