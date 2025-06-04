@@ -250,3 +250,7 @@ This document tracks potential features and improvements for the Backtester App,
 
 **Summary of Phase 1 (ID Management):**
 The primary goals of auditing, centralizing, and refactoring UI component IDs have been met. Hardcoded IDs have been moved to `src/ui/ids/ids.py`, and relevant files have been updated to use these centralized IDs. Unused IDs identified during the audit have been commented out for future review or potential removal. The codebase is now in a better state for managing UI component IDs.
+
+## Extension Notes
+- Add API-based data loaders in `src/services/data_service.py`.
+- Extend chart options in `src/services/visualization_service.py`.
