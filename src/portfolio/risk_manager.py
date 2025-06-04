@@ -33,6 +33,14 @@ class RiskManager:
         self.max_open_positions = float('inf')  # unlimited until configured
         self.stop_loss_pct = 0.0  # fraction of price for stop loss
         self.profit_target_ratio = 1.0  # risk:reward ratio for take profit
+
+        # Market trend filter & trailing stop defaults
+        self.market_trend_lookback = config.get('market_trend_lookback', 200) if config else 200
+        self.trailing_stop_activation = 0.05
+        self.trailing_stop_distance = 0.03
+
+        # Instance logger
+        self.logger = logging.getLogger(__name__)
         
         # Feature flags for risk management
         self._apply_risk_rules = False  # Only apply risk rules when checkbox is checked
@@ -69,6 +77,9 @@ class RiskManager:
         self.max_open_positions = get_numeric_config('max_open_positions', self.max_open_positions)
         self.stop_loss_pct = get_numeric_config('stop_loss_pct', self.stop_loss_pct)
         self.profit_target_ratio = get_numeric_config('profit_target_ratio', self.profit_target_ratio)
+        self.market_trend_lookback = get_numeric_config('market_trend_lookback', self.market_trend_lookback)
+        self.trailing_stop_activation = get_numeric_config('trailing_stop_activation', self.trailing_stop_activation)
+        self.trailing_stop_distance = get_numeric_config('trailing_stop_distance', self.trailing_stop_distance)
 
         # Load feature flags (booleans are generally safe with .get)
         self._apply_risk_rules = config.get('apply_risk_rules', self._apply_risk_rules)
