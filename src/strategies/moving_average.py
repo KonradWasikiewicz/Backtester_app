@@ -8,6 +8,7 @@ except ImportError:
     )
 from src.strategies.base import BaseStrategy
 import logging
+from typing import List
 
 # Configure logging for this module
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ class MovingAverageStrategy(BaseStrategy):
     | **Application** | Suitable for trending markets. May generate false signals during consolidation periods. |
     | **Limitations** | Delayed reaction to price changes, sensitivity to period selection, poor performance in sideways markets. |
     """
-    def __init__(self, tickers: list[str], short_window: int = 20, long_window: int = 50):
+    def __init__(self, tickers: List[str], short_window: int = 20, long_window: int = 50):
         """
         Initializes the MA Cross strategy.
 

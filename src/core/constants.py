@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import numpy as np
 import pandas as pd
+from typing import Dict, List, Type, Union
 
 # --- Logging Setup ---
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ TRADING_DAYS_PER_YEAR: int = 252
 RISK_FREE_RATE: float = 0.02
 
 # --- Strategy Definitions ---
-AVAILABLE_STRATEGIES: list[dict[str, str]] = [
+AVAILABLE_STRATEGIES: List[Dict[str, str]] = [
     {"label": "Relative Strength Index (RSI)", "value": "RSI"},
     {"label": "Moving Average Crossover (MAC)", "value": "MAC"},
     {"label": "Bollinger Bands (BB)", "value": "BB"},
@@ -29,7 +30,7 @@ AVAILABLE_STRATEGIES: list[dict[str, str]] = [
 ]
 
 # --- Strategy Descriptions ---
-STRATEGY_DESCRIPTIONS: dict[str, str] = {
+STRATEGY_DESCRIPTIONS: Dict[str, str] = {
     "RSI": "Buys when RSI crosses below a defined threshold (e.g., 30), sells when RSI crosses above another threshold (e.g., 70).",
     "MAC": "Buys when the shorter-term Moving Average crosses above the longer-term Moving Average, sells on the reverse cross.",
     "BB": "Buys when the price touches or crosses below the lower Bollinger Band, sells when the price touches or crosses above the upper band.",
@@ -37,7 +38,7 @@ STRATEGY_DESCRIPTIONS: dict[str, str] = {
 }
 
 # --- Default Strategy Parameters ---
-DEFAULT_STRATEGY_PARAMS: dict[str, dict] = {
+DEFAULT_STRATEGY_PARAMS: Dict[str, Dict] = {
     "RSI": {"rsi_period": 14, "lower_bound": 30, "upper_bound": 70},
     "MAC": {"short_window": 12, "long_window": 26},
     "BB": {"window": 20, "num_std": 2.0}, # Changed bb_period to window, bb_std_dev to num_std
@@ -45,7 +46,7 @@ DEFAULT_STRATEGY_PARAMS: dict[str, dict] = {
 }
 
 # --- Parameter Descriptions for tooltips and documentation ---
-PARAM_DESCRIPTIONS: dict[str, dict[str, str]] = {
+PARAM_DESCRIPTIONS: Dict[str, Dict[str, str]] = {
     "RSI": {
         "rsi_period": "Number of lookback periods to calculate the RSI (e.g., 14 days)",
         "lower_bound": "RSI value below which the strategy generates a buy signal (e.g., 30)",
@@ -65,10 +66,10 @@ PARAM_DESCRIPTIONS: dict[str, dict[str, str]] = {
 import importlib
 
 # --- Strategy Class Mapping (dynamic import to avoid missing when dependencies absent) ---
-STRATEGY_CLASS_MAP: dict[str, type] = {}
+STRATEGY_CLASS_MAP: Dict[str, Type] = {}
 # Map strategy keys to their module and class names
-_MODULE_MAP: dict[str, str] = {"RSI": "rsi", "MAC": "moving_average", "BB": "bollinger"}
-_CLASS_MAP: dict[str, str] = {"RSI": "RSIStrategy", "MAC": "MovingAverageStrategy", "BB": "BollingerBandsStrategy"}
+_MODULE_MAP: Dict[str, str] = {"RSI": "rsi", "MAC": "moving_average", "BB": "bollinger"}
+_CLASS_MAP: Dict[str, str] = {"RSI": "RSIStrategy", "MAC": "MovingAverageStrategy", "BB": "BollingerBandsStrategy"}
 for _key, _module in _MODULE_MAP.items():
     try:
         _mod = importlib.import_module(f"src.strategies.{_module}")
@@ -98,7 +99,7 @@ except Exception as e:
     logger.error(f"Error processing strategy definitions for logging: {e}. Check structures in constants.py.", exc_info=True)
 
 # --- Visualization Configuration ---
-VISUALIZATION_CONFIG: dict[str, str | list[str]] = {
+VISUALIZATION_CONFIG: Dict[str, Union[str, List[str]]] = {
     'plot_bgcolor': '#1E1E1E',
     'paper_bgcolor': '#1E1E1E',
     'font_color': '#EAEAEA',
