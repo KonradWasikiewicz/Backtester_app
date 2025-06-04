@@ -204,27 +204,27 @@ This document tracks potential features and improvements for the Backtester App,
             -   Other wizard step IDs (strategy selection, dates, tickers, costs, rebalancing inputs, summary structure) are also in use.
     -   **Action:** Future development for Step 4 should ensure all necessary components are implemented and use existing defined IDs where appropriate, or new IDs are added to `ids.py`. The commented-out container IDs can be reinstated if a specific container component is added to the layout for these steps.
 
--   [x] **(M) Review Unused ResultsIDs:**
-    -   The following IDs within the `ResultsIDs` class were found to be unused and have been **commented out** in `src/ui/ids/ids.py`:
-        -   ~`ResultsIDs.PORTFOLIO_VALUE_BUTTON`~
-        -   ~`ResultsIDs.PORTFOLIO_RETURNS_BUTTON`~
-        -   ~`ResultsIDs.PORTFOLIO_VALUE_CURRENCY_USD`~
-        -   ~`ResultsIDs.PORTFOLIO_VALUE_CURRENCY_PERCENT`~
-        -   ~`ResultsIDs.TRADES_TABLE_CONTAINER`~
-        -   ~`ResultsIDs.TRADES_TABLE_LOADING`~
-        -   ~`ResultsIDs.PERFORMANCE_METRICS_CONTAINER`~
-        -   ~`ResultsIDs.TRADE_METRICS_CONTAINER`~
-        -   ~`ResultsIDs.BACKTEST_STATUS_MESSAGE`~
-        -   ~`ResultsIDs.BACKTEST_PROGRESS_BAR`~
-        -   ~`ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER`~
-        -   ~`ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT`~
-        -   ~`ResultsIDs.BACKTEST_ANIMATED_TEXT`~
-        -   ~`ResultsIDs.BACKTEST_PROGRESS_DETAIL_TEXT`~
-        -   ~`ResultsIDs.BACKTEST_ANIMATION_INTERVAL`~
-        -   ~`ResultsIDs.RESULTS_AREA_WRAPPER`~
-        -   ~`ResultsIDs.CENTER_PANEL_COLUMN`~
-        -   ~`ResultsIDs.RIGHT_PANEL_COLUMN`~
-    -   **Action:** If these features/components are planned, the corresponding IDs can be uncommented and implemented. Otherwise, they can be permanently removed later.
+-   [x] **(M) Review ResultsIDs Implementation:**
+    -   The following IDs within the `ResultsIDs` class were originally unused but have since been implemented across the results layout:
+        -   `ResultsIDs.PORTFOLIO_VALUE_BUTTON`
+        -   `ResultsIDs.PORTFOLIO_RETURNS_BUTTON`
+        -   `ResultsIDs.PORTFOLIO_VALUE_CURRENCY_USD`
+        -   `ResultsIDs.PORTFOLIO_VALUE_CURRENCY_PERCENT`
+        -   `ResultsIDs.TRADES_TABLE_CONTAINER`
+        -   `ResultsIDs.TRADES_TABLE_LOADING`
+        -   `ResultsIDs.PERFORMANCE_METRICS_CONTAINER`
+        -   `ResultsIDs.TRADE_METRICS_CONTAINER`
+        -   `ResultsIDs.BACKTEST_STATUS_MESSAGE`
+        -   `ResultsIDs.BACKTEST_PROGRESS_BAR`
+        -   `ResultsIDs.BACKTEST_PROGRESS_BAR_CONTAINER`
+        -   `ResultsIDs.BACKTEST_PROGRESS_LABEL_TEXT`
+        -   `ResultsIDs.BACKTEST_ANIMATED_TEXT`
+        -   `ResultsIDs.BACKTEST_PROGRESS_DETAIL_TEXT`
+        -   `ResultsIDs.BACKTEST_ANIMATION_INTERVAL`
+        -   `ResultsIDs.RESULTS_AREA_WRAPPER`
+        -   `ResultsIDs.CENTER_PANEL_COLUMN`
+        -   `ResultsIDs.RIGHT_PANEL_COLUMN`
+    -   **Action:** These IDs are now active and should remain part of the results module going forward.
 
 -   [x] **(M) Address StrategyConfigIDs Discrepancies and Unused IDs:**
     -   **Discrepancy Resolution:**
