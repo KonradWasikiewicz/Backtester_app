@@ -372,7 +372,7 @@ def register_backtest_callbacks(app: Dash):
     # --- New Interactive Chart Callbacks ---
 
     @app.callback(
-        Output(ResultsIDs.PORTFOLIO_CHART, "figure"),
+        Output(ResultsIDs.PORTFOLIO_CHART, "figure", allow_duplicate=True),
         Input(ResultsIDs.PORTFOLIO_SCALE_RADIO, "value"),
         State(ResultsIDs.BACKTEST_RESULTS_STORE, "data"),
         prevent_initial_call=True

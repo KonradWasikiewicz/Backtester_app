@@ -63,7 +63,7 @@ portfolio, trades, metrics = manager.run_backtest(
 )
 print(metrics["Sharpe Ratio"])
 ```
- 
+
 ## Configuration via Environment Variables
 Several settings can be customized before running the app:
 
@@ -85,6 +85,13 @@ python app.py
 Errors from the browser are sent to the `/log-client-errors` endpoint. The
 frontend JavaScript captures uncaught errors and posts them to this route so
 they can be logged by the server.
+
+Server-side logging now also writes to `logs/dash_errors.log` and
+`logs/dash_debug.log`. You can view the latest error messages with:
+
+```bash
+python scripts/get_dash_logs.py -n 20
+```
 
 ## Versioning System
 
