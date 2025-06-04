@@ -102,6 +102,7 @@ The application uses Python's built-in `logging` module with a simplified config
 - Structured log format: `%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s`.
 - External library log suppression (e.g., werkzeug, urllib3, dash set to WARNING).
 - Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL.
+- Client-side errors are posted to `/log-client-errors` for centralized logging.
 
 Client-side JavaScript errors are sent via POST requests to the
 `/log-client-errors` route. This endpoint logs received errors, warnings and
