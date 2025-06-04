@@ -138,3 +138,23 @@ BACKTEST_ENGINE_CONFIG: Dict[str, float] = {
 logger.info("Constants module loaded.")
 logger.info(f"Application Root Directory: {APP_ROOT}")
 logger.info(f"Data Directory: {DATA_DIR}")
+
+# --- UI Constants (Stepper and Validation) ---
+# Wizard stepper settings
+TOTAL_STEPS: int = 7
+STEPPER_COMPLETED_CLASS: str = "completed"
+STEPPER_ACTIVE_CLASS: str = "current"
+STEPPER_PENDING_CLASS: str = "pending"
+
+# Wizard header CSS classes
+HEADER_COMPLETED_CLASS: str = "wizard-step-header-completed"
+HEADER_ACTIVE_CLASS: str = "wizard-step-header-current"
+HEADER_PENDING_CLASS: str = "wizard-step-header-pending"
+
+# Validation thresholds
+MIN_INITIAL_CAPITAL: int = 1000
+MAX_INITIAL_CAPITAL: int = 100000000
+MIN_PERCENTAGE: int = 0
+MAX_PERCENTAGE: int = 100
+MIN_LOOKBACK_DAYS: int = 1
+MAX_LOOKBACK_DAYS: int = 1000
