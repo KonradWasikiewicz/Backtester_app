@@ -1,5 +1,7 @@
 pandas
-numpy
+# Pin numpy below 2.0 because pandas-ta currently fails to import with
+# numpy 2.x due to the removal of the NaN constant.
+numpy<2.0
 matplotlib
 yfinance
 scikit-learn
