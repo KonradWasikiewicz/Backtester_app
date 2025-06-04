@@ -275,12 +275,10 @@ class RiskManager:
     def check_portfolio_risk(self, current_date, portfolio):
         """
         Check if portfolio risk limits have been exceeded.
-        Returns True if portfolio risk limits are acceptable.
-        Returns False if risk limits are breached (and continue_iterate=False).
-        
-        Note: As of April 2025, this method has been modified to always return True
-        to ensure backtests only stop when the period ends or capital is depleted,
-        while still logging warnings when risk limits are breached.
+
+        This method now always returns ``True`` and only logs warnings when
+        risk thresholds are breached. Backtests are no longer interrupted if a
+        limit is exceeded.
         """
         # If no drawdown protection is enabled, just return True
         if not self._use_drawdown_protection:
