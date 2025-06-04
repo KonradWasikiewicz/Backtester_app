@@ -3,6 +3,7 @@ import logging
 import traceback
 from pathlib import Path
 import os
+import argparse
 import pandas as pd
 from flask import request, jsonify
 
@@ -14,6 +15,12 @@ from flask import request, jsonify
 APP_ROOT = Path(__file__).resolve().parent
 ASSETS_DIR = APP_ROOT / "assets" # Define assets directory path
 sys.path.append(str(APP_ROOT))
+
+# --- Command Line Arguments ---
+parser = argparse.ArgumentParser(description="Backtester App")
+parser.add_argument("--host", default="127.0.0.1", help="Host address for the Dash server")
+parser.add_argument("--port", type=int, default=8050, help="Port for the Dash server")
+args = parser.parse_args()
 
 # Import factory functions and Dash components
 try:
@@ -131,8 +138,12 @@ try:
             logging.getLogger('flask').setLevel(logging.ERROR)
         
         # Keep debug=True
-        app.run(debug=True,
-                use_reloader=True)
+        app.run(
+            debug=True,
+            host=args.host,
+            port=args.port,
+            use_reloader=True
+        )
 
 except Exception as e:
     # Catch any exceptions during the app setup process
