@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .env
 .venv/
+
+# Ignore runtime data
+logs/
+cache/
+*.db

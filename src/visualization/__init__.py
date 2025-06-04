@@ -27,11 +27,15 @@ try:
         # create_trade_histogram_figure,
         # create_allocation_chart
     )
+    from .base import _create_base_layout, add_shapes_to_chart, format_currency
     logger.debug("Successfully imported key chart utility functions.")
 except ImportError as e:
     logger.error(f"Failed to import chart utility functions: {e}")
     def create_empty_chart(*args, **kwargs): return None
     def create_styled_chart(*args, **kwargs): return None
+    def _create_base_layout(*args, **kwargs): return None
+    def add_shapes_to_chart(*args, **kwargs): return None
+    def format_currency(*args, **kwargs): return ""
     # Additional fallbacks would go here
 
 logger.info("Visualization package initialized.")
