@@ -50,7 +50,6 @@ python app.py --host 0.0.0.0 --port 8060
 
 The application will then be available at the provided address.
 
-
 ## Configuration via Environment Variables
 Several settings can be customized before running the app:
 
