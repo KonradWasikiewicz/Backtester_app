@@ -63,6 +63,13 @@ portfolio, trades, metrics = manager.run_backtest(
 )
 print(metrics["Sharpe Ratio"])
 ```
+Server-side logging now also writes to `logs/dash_errors.log` and
+`logs/dash_debug.log`. You can view the latest error messages with:
+
+```bash
+python scripts/get_dash_logs.py -n 20
+```
+
  
 ## Configuration via Environment Variables
 Several settings can be customized before running the app:

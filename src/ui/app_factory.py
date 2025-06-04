@@ -460,8 +460,9 @@ def create_app_layout() -> html.Div:
 def configure_logging(log_level=logging.INFO) -> None:
     """
     Configures the application's logging.
-    Uses console output only, suppresses external library logs,
-    and prevents duplicate handler registration.
+    Logs to console and to files in ``logs/`` so that errors can be
+    collected for debugging by other tools. External library logs are
+    suppressed and duplicate handler registration is avoided.
     """
     # Check if root logger already has handlers to prevent duplicate setup
     root_logger = logging.getLogger()
@@ -469,14 +470,28 @@ def configure_logging(log_level=logging.INFO) -> None:
         log_format = '%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s'
         date_format = '%Y-%m-%d %H:%M:%S'
 
-        # Configure root logger with console output only
+        log_dir = Path('logs')
+        log_dir.mkdir(exist_ok=True)
+
+        handlers = [logging.StreamHandler(sys.stdout)]
+
+        debug_file = log_dir / 'dash_debug.log'
+        debug_handler = logging.FileHandler(debug_file)
+        debug_handler.setLevel(log_level)
+        debug_handler.setFormatter(logging.Formatter(log_format, date_format))
+        handlers.append(debug_handler)
+
+        error_file = log_dir / 'dash_errors.log'
+        error_handler = logging.FileHandler(error_file)
+        error_handler.setLevel(logging.ERROR)
+        error_handler.setFormatter(logging.Formatter(log_format, date_format))
+        handlers.append(error_handler)
+
         logging.basicConfig(
             level=log_level,
             format=log_format,
             datefmt=date_format,
-            handlers=[
-                logging.StreamHandler(sys.stdout)
-            ]
+            handlers=handlers
         )
         logger.info(f"Root logger configured with level {logging.getLevelName(log_level)}")
 
