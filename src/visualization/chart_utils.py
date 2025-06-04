@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 # Importuj konfigurację wizualizacji
 try:
-    from src.core.config import VISUALIZATION_CONFIG as VIZ_CFG
+    from src.core.constants import VISUALIZATION_CONFIG as VIZ_CFG
 except ImportError:
     logger.warning("Could not import VISUALIZATION_CONFIG. Using default visualization settings.")
     # Podstawowe ustawienia fallback
@@ -31,124 +31,8 @@ GRID_COLOR = VIZ_CFG["colors"]["grid_color"]
 TEXT_COLOR = VIZ_CFG["colors"]["text_color"]
 DEFAULT_HEIGHT = VIZ_CFG.get("chart_height", 400)
 
-# --- Funkcje pomocnicze ---
-
-def _create_base_layout(title: str = "", height: int = DEFAULT_HEIGHT, **kwargs) -> go.Layout:
-    """Creates a base Plotly layout object with common theme settings."""
-    layout = go.Layout(
-        # CORRECTED: Center the title
-        title=dict(text=title, x=0.5, xanchor='center', font=dict(size=16, color=TEXT_COLOR)), # Tytuł po lewej
-        height=height,
-        template=CHART_TEMPLATE,
-        paper_bgcolor=PAPER_BGCOLOR,
-        plot_bgcolor=PLOT_BGCOLOR,
-        font=dict(color=TEXT_COLOR, family="Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"), # Lepszy font stack
-        xaxis=dict(gridcolor=GRID_COLOR, linecolor=GRID_COLOR, zeroline=False, automargin=True),
-        yaxis=dict(gridcolor=GRID_COLOR, linecolor=GRID_COLOR, zeroline=False, automargin=True),
-        margin=dict(t=50, l=50, r=20, b=40), # Dopasowane marginesy
-        hovermode='x unified',
-        hoverlabel=dict(bgcolor=VIZ_CFG['colors']['card_background'], bordercolor=GRID_COLOR, font=dict(color=TEXT_COLOR)),
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0.01, # Legenda na górze po lewej
-            bgcolor='rgba(0,0,0,0)', # Przezroczyste tło legendy
-            bordercolor='rgba(0,0,0,0)'
-        )
-    )
-    layout.update(**kwargs) # Zastosuj dodatkowe argumenty layoutu
-    return layout
-
-def add_shapes_to_chart(fig: go.Figure, 
-                       shapes: List[Dict[str, Any]]) -> go.Figure:
-    """
-    Adds shape annotations (like vertical lines, rectangles, etc.) to a Plotly chart.
-    
-    Args:
-        fig (go.Figure): The Plotly figure object to add shapes to
-        shapes (List[Dict]): List of shape definitions. Each shape should be a dict with:
-            - type: 'line', 'rect', etc.
-            - x0, y0, x1, y1: Coordinates 
-            - line_color (optional): Color for lines
-            - fillcolor (optional): Fill color for shapes
-            - opacity (optional): Opacity value
-            - layer (optional): 'below' or 'above'
-            - name (optional): Shape name for hover
-            - text (optional): Text to display with the shape
-            
-    Returns:
-        go.Figure: The modified figure with shapes added
-    """
-    if not shapes:
-        return fig
-        
-    for shape in shapes:
-        shape_type = shape.get('type', 'line')
-        
-        # Set default colors based on shape type
-        if shape_type == 'line' and 'line_color' not in shape:
-            shape['line_color'] = VIZ_CFG['colors']['primary']
-        elif 'fillcolor' not in shape and shape_type in ['rect', 'circle']:
-            shape['fillcolor'] = f"rgba({int(VIZ_CFG['colors']['primary'][1:3], 16)}, {int(VIZ_CFG['colors']['primary'][3:5], 16)}, {int(VIZ_CFG['colors']['primary'][5:7], 16)}, 0.3)"
-            
-        # Set default opacity
-        if 'opacity' not in shape and shape_type in ['rect', 'circle']:
-            shape['opacity'] = 0.3
-            
-        # Set default line properties
-        if 'line' not in shape:
-            shape['line'] = dict(
-                color=shape.get('line_color', VIZ_CFG['colors']['primary']),
-                width=shape.get('line_width', 1),
-                dash=shape.get('line_dash', None)
-            )
-            
-        # Add the shape to the figure
-        fig.add_shape(
-            type=shape_type,
-            x0=shape.get('x0'),
-            y0=shape.get('y0'),
-            x1=shape.get('x1'),
-            y1=shape.get('y1'),
-            line=shape.get('line'),
-            fillcolor=shape.get('fillcolor'),
-            opacity=shape.get('opacity'),
-            layer=shape.get('layer', 'above'),
-            name=shape.get('name', '')
-        )
-        
-        # Add annotation if text is provided
-        if 'text' in shape and shape.get('text'):
-            fig.add_annotation(
-                x=shape.get('x1', shape.get('x0')),  # Use x1 if available, otherwise x0
-                y=shape.get('y1', shape.get('y0')),  # Use y1 if available, otherwise y0
-                text=shape['text'],
-                showarrow=shape.get('showarrow', False),
-                arrowhead=shape.get('arrowhead', 1),
-                arrowcolor=shape.get('arrowcolor', shape.get('line', {}).get('color', VIZ_CFG['colors']['primary'])),
-                ax=shape.get('ax', 0),
-                ay=shape.get('ay', -40),
-                font=dict(
-                    color=shape.get('text_color', TEXT_COLOR),
-                    size=shape.get('text_size', 12)
-                ),
-                bgcolor=shape.get('text_bgcolor', 'rgba(0,0,0,0.5)'),
-                bordercolor=shape.get('text_bordercolor', 'rgba(0,0,0,0)'),
-                borderwidth=shape.get('text_borderwidth', 0),
-                borderpad=shape.get('text_borderpad', 4)
-            )
-    
-    return fig
-
-def format_currency(value: Union[float, int]) -> str:
-    """
-    Formats a numeric value as currency with $ prefix and commas for thousands.
-    
-    Args:
-        value (float or int): The numeric value to format
-        
-    Returns:
-        str: Formatted currency string
-    """
-    return f"${value:,.2f}" if value is not None else "$0.00"
+# --- Helper functions now moved to base.py ---
+from .base import _create_base_layout, add_shapes_to_chart, format_currency
 
 # --- Funkcje tworzące komponenty Dash ---
 

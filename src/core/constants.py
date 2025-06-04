@@ -99,15 +99,24 @@ except Exception as e:
     logger.error(f"Error processing strategy definitions for logging: {e}. Check structures in constants.py.", exc_info=True)
 
 # --- Visualization Configuration ---
+# Moved from config.py so all constants live in one module
 VISUALIZATION_CONFIG: Dict[str, Union[str, List[str]]] = {
-    'plot_bgcolor': '#1E1E1E',
-    'paper_bgcolor': '#1E1E1E',
-    'font_color': '#EAEAEA',
-    'colorway': ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'],
-    'equity_curve_color': '#1f77b4',
-    'drawdown_color': '#d62728',
-    'buy_marker_color': '#2ca02c',
-    'sell_marker_color': '#d62728',
+    "chart_height": 400,
+    "dark_theme": True,
+    "template": "plotly_dark",
+    "colors": {
+        "portfolio": "#1f77b4",  # Plotly Blue
+        "benchmark": "#ff7f0e",  # Plotly Orange
+        "profit": "#28a745",     # Standard Bootstrap success green
+        "loss": "#dc3545",       # Standard Bootstrap danger red
+        "primary": "#0d6efd",    # Standard Bootstrap primary blue
+        "secondary": "#6c757d",  # Standard Bootstrap secondary gray
+        "background": "#131722",   # Very dark background
+        "card_background": "#1e222d",  # Slightly lighter card background
+        "grid_color": "#2a2e39",     # Grid line color
+        "text_color": "#dee2e6",     # Light text color
+        "text_muted": "#6c757d",    # Muted text color
+    },
 }
 
 # --- DODANA STAŁA CHART_THEME ---
@@ -116,6 +125,12 @@ CHART_THEME: str = 'plotly_dark'
 
 MONTHLY_RETURNS_DEFAULT_TITLE: str = "Monthly Returns Heatmap"
 
+# Configuration for backtesting engine parameters
+BACKTEST_ENGINE_CONFIG: Dict[str, float] = {
+    "commission_rate": 0.0005,  # Commission per trade
+    "slippage_pct": 0.0002,     # Estimated slippage per trade
+}
+
 # --- Other Application Constants ---
 # DEFAULT_COMMISSION: float = 0.001
 # DEFAULT_SLIPPAGE: float = 0.0005
@@ -123,3 +138,23 @@ MONTHLY_RETURNS_DEFAULT_TITLE: str = "Monthly Returns Heatmap"
 logger.info("Constants module loaded.")
 logger.info(f"Application Root Directory: {APP_ROOT}")
 logger.info(f"Data Directory: {DATA_DIR}")
+
+# --- UI Constants (Stepper and Validation) ---
+# Wizard stepper settings
+TOTAL_STEPS: int = 7
+STEPPER_COMPLETED_CLASS: str = "completed"
+STEPPER_ACTIVE_CLASS: str = "current"
+STEPPER_PENDING_CLASS: str = "pending"
+
+# Wizard header CSS classes
+HEADER_COMPLETED_CLASS: str = "wizard-step-header-completed"
+HEADER_ACTIVE_CLASS: str = "wizard-step-header-current"
+HEADER_PENDING_CLASS: str = "wizard-step-header-pending"
+
+# Validation thresholds
+MIN_INITIAL_CAPITAL: int = 1000
+MAX_INITIAL_CAPITAL: int = 100000000
+MIN_PERCENTAGE: int = 0
+MAX_PERCENTAGE: int = 100
+MIN_LOOKBACK_DAYS: int = 1
+MAX_LOOKBACK_DAYS: int = 1000

@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 # Import visualization configuration for consistent colors/styles
 try:
-    from src.core.config import VISUALIZATION_CONFIG as VIZ_CFG
+    from src.core.constants import VISUALIZATION_CONFIG as VIZ_CFG
 except ImportError:
     logger.warning("Could not import VISUALIZATION_CONFIG in components. Using fallback colors.")
     # Basic fallback settings for colors

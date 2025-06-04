@@ -5,7 +5,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 from dash import dcc, html
 import logging
-from src.core.config import config, VISUALIZATION_CONFIG as VIZ_CFG
+from src.core.config import config
+from src.core.constants import VISUALIZATION_CONFIG as VIZ_CFG
 
 logger = logging.getLogger(__name__)
 

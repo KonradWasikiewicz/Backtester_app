@@ -4,10 +4,19 @@ import logging
 from datetime import date  # Import for date validation
 # Make sure logging is configured appropriately elsewhere (e.g., in app_factory or main app.py)
 # from ...config.logging_config import setup_logging
-from src.core.constants import STRATEGY_DESCRIPTIONS # Poprawna ścieżka do stałych
-from src.core.constants import DEFAULT_STRATEGY_PARAMS  # added import for default params
-from src.core.constants import AVAILABLE_STRATEGIES # Ensure this is imported
-from src.core.constants import PARAM_DESCRIPTIONS  # added import for parameter descriptions
+from src.core.constants import (
+    STRATEGY_DESCRIPTIONS,
+    DEFAULT_STRATEGY_PARAMS,
+    AVAILABLE_STRATEGIES,
+    PARAM_DESCRIPTIONS,
+    TOTAL_STEPS,
+    STEPPER_COMPLETED_CLASS,
+    STEPPER_ACTIVE_CLASS,
+    STEPPER_PENDING_CLASS,
+    HEADER_COMPLETED_CLASS,
+    HEADER_ACTIVE_CLASS,
+    HEADER_PENDING_CLASS,
+)
 from src.ui.ids import WizardIDs, StrategyConfigIDs # Removed PageIDs and GeneralIDs
 from src.ui.components.stepper import create_wizard_stepper  # Import for updating the stepper
 from src.core.data import DataLoader  # Import for ticker data
@@ -16,18 +25,6 @@ import dash_bootstrap_components as dbc # Added dbc
 from typing import List, Tuple, Dict # Added Dict
 
 logger = logging.getLogger(__name__)
-
-TOTAL_STEPS = 7
-
-# CSS class names (ensure these are defined in style.css)
-# For Stepper Indicators
-STEPPER_COMPLETED_CLASS = "completed"  # Matches style.css .step-indicator.completed
-STEPPER_ACTIVE_CLASS = "current" # Changed from "step-active"
-STEPPER_PENDING_CLASS = "pending"  # Matches style.css .step-indicator.pending
-# For Step Headers
-HEADER_COMPLETED_CLASS = "wizard-step-header-completed"
-HEADER_ACTIVE_CLASS = "wizard-step-header-current"
-HEADER_PENDING_CLASS = "wizard-step-header-pending"
 
 
 def register_wizard_callbacks(app: Dash): # Make sure Dash is imported if not already

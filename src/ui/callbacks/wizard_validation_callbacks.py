@@ -11,16 +11,16 @@ from dash.exceptions import PreventUpdate
 import dash_bootstrap_components as dbc
 
 from src.ui.ids import WizardIDs
+from src.core.constants import (
+    MIN_INITIAL_CAPITAL,
+    MAX_INITIAL_CAPITAL,
+    MIN_PERCENTAGE,
+    MAX_PERCENTAGE,
+    MIN_LOOKBACK_DAYS,
+    MAX_LOOKBACK_DAYS,
+)
 
 logger = logging.getLogger(__name__)
-
-# Validation constants
-MIN_INITIAL_CAPITAL = 1000
-MAX_INITIAL_CAPITAL = 100000000  # 100 million
-MIN_PERCENTAGE = 0
-MAX_PERCENTAGE = 100
-MIN_LOOKBACK_DAYS = 1
-MAX_LOOKBACK_DAYS = 1000
 
 # Core validation logic for button states
 def validate_step_1(strategy, initial_capital):
