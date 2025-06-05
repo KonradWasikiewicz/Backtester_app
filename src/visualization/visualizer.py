@@ -404,7 +404,7 @@ class BacktestVisualizer:
             max_abs = max(abs(pivot_df.min().min()), abs(pivot_df.max().max()))
             
             # Create heatmap
-            text_vals = pivot_df.round(0).astype(int).values
+            text_vals = pivot_df.round(0).fillna(0).astype(int).values
             norm = np.abs(pivot_df.values) / max_abs
             text_colors = np.where(norm < 0.4, "#f0f0f0", "#111111")
 
@@ -418,12 +418,22 @@ class BacktestVisualizer:
                     zmax=max_abs,
                     hoverongaps=False,
                     colorbar=dict(title="Return (%)", ticksuffix="%"),
-                    text=text_vals,
-                    texttemplate="%{text}%",
-                    textfont=dict(color=text_colors),
                     hovertemplate="Year: %{y}<br>Month: %{x}<br>Return: %{z:.2f}%<extra></extra>",
                 )
             )
+
+            for i, year in enumerate(pivot_df.index):
+                fig.add_trace(
+                    go.Scatter(
+                        x=pivot_df.columns,
+                        y=[year] * len(pivot_df.columns),
+                        mode="text",
+                        text=text_vals[i],
+                        textfont=dict(color=text_colors[i]),
+                        showlegend=False,
+                        hoverinfo="skip",
+                    )
+                )
 
             layout = _create_base_layout(
                 title="",
