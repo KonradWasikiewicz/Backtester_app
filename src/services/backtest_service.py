@@ -154,11 +154,13 @@ class BacktestService:
                 "success": True,
                 "metrics": formatted_metrics,
                 "trades_data": trades_list,
+                "strategy_type": strategy_type,
                 "portfolio_value_chart_json": equity_value_fig.to_json() if equity_value_fig else None,
                 "portfolio_returns_chart_json": equity_returns_fig.to_json() if equity_returns_fig else None,
                 "drawdown_chart_json": drawdown_fig.to_json() if drawdown_fig else None,
                 "monthly_returns_heatmap_json": monthly_returns_fig.to_json() if monthly_returns_fig else None,
-                "selected_tickers": tickers
+                "selected_tickers": tickers,
+                "signals": {t: df.to_json(orient="split") for t, df in all_signals.items()}
             }
             logger.info("BacktestService: Successfully processed and packaged results.")
             if progress_callback: progress_callback((SERVICE_RESUME_PROGRESS + 17, "Service: Results Packaged. Finalizing...")) # 98%
@@ -272,7 +274,7 @@ class BacktestService:
             )
             return {}
 
-    def get_signals_chart(self, ticker: str, indicators: Optional[List[str]] = None):
+    def get_signals_chart(self, ticker: str, indicators: Optional[List[str]] = None, signals_df: Optional[pd.DataFrame] = None):
         """
         Generate signals and trades chart figure for a specific ticker.
         Uses BacktestVisualizer.
@@ -286,12 +288,18 @@ class BacktestService:
         if isinstance(ticker, list) and len(ticker) > 0:
             ticker = ticker[0]
 
-        if not isinstance(ticker, str) or not self.current_signals or ticker not in self.current_signals:
-            logger.warning(f"Cannot generate signals chart. Invalid ticker ('{ticker}') or no signal data.")
+        if not isinstance(ticker, str):
+            logger.warning(f"Cannot generate signals chart. Invalid ticker ('{ticker}').")
             return None
 
-        try:
+        if signals_df is None:
+            if not self.current_signals or ticker not in self.current_signals:
+                logger.warning(f"Cannot generate signals chart. Invalid ticker ('{ticker}') or no signal data.")
+                return None
             signals_df = self.current_signals.get(ticker)
+
+        try:
+            # signals_df already assigned above
             trades_list = self.current_results.get("trades", [])
             ticker_trades = [t for t in trades_list if t.get('ticker') == ticker]
 
@@ -306,6 +314,15 @@ class BacktestService:
                     indicators_dict['SMA50'] = signals_df[price_col].rolling(window=50).mean()
                 if 'sma200' in indicators and price_col in signals_df.columns:
                     indicators_dict['SMA200'] = signals_df[price_col].rolling(window=200).mean()
+                if 'bollinger' in indicators and price_col in signals_df.columns:
+                    sma = signals_df[price_col].rolling(window=20).mean()
+                    std = signals_df[price_col].rolling(window=20).std()
+                    indicators_dict['Upper Band'] = sma + 2 * std
+                    indicators_dict['Lower Band'] = sma - 2 * std
+                if 'rsi' in indicators:
+                    rsi_col = next((c for c in signals_df.columns if 'rsi' in c.lower()), None)
+                    if rsi_col:
+                        indicators_dict['RSI'] = signals_df[rsi_col]
 
             visualizer = BacktestVisualizer()
             visualizer.theme = CHART_THEME
@@ -334,23 +351,49 @@ class BacktestService:
                 entry_dt = pd.to_datetime(t.get('entry_date'))
                 exit_dt = pd.to_datetime(t.get('exit_date'))
                 duration_val = t.get('duration', None)
-                # Ensure duration is a string or None
                 duration_str = str(duration_val) if duration_val is not None else None
 
+                pnl = t.get('net_pnl') if t.get('net_pnl') is not None else t.get('pnl')
+                if pnl is None:
+                    entry_price = t.get('entry_price', 0)
+                    exit_price = t.get('exit_price', 0)
+                    size = t.get('size', 0)
+                    direction = t.get('direction', 'LONG')
+                    mult = 1 if str(direction).upper() == 'LONG' else -1
+                    pnl = (exit_price - entry_price) * size * mult
+
+                ret = t.get('pnl_pct') if t.get('pnl_pct') is not None else t.get('return_pct')
+                if ret is None:
+                    entry_price = t.get('entry_price', 0)
+                    size = t.get('size', 0)
+                    ret = (pnl / (entry_price * size)) * 100 if entry_price and size else 0
+
+                direction_val = t.get('direction', 'LONG')
+                if isinstance(direction_val, (int, float)):
+                    direction = 'BUY' if direction_val > 0 else 'SELL'
+                else:
+                    direction = str(direction_val).upper()
+                    if direction.startswith('L') or direction.startswith('B'):
+                        direction = 'BUY'
+                    else:
+                        direction = 'SELL'
+
+                if duration_val is None and entry_dt is not None and exit_dt is not None:
+                    duration_val = (exit_dt - entry_dt).days
+                    duration_str = str(duration_val)
+
                 formatted_trades.append({
-                    # Match IDs used in backtest_callbacks.py update_trades_table
-                    'entry_date': entry_dt.strftime('%Y-%m-%d %H:%M') if entry_dt else None,
-                    'exit_date': exit_dt.strftime('%Y-%m-%d %H:%M') if exit_dt else None,
+                    'entry_date': entry_dt.strftime('%Y-%m-%d') if entry_dt else None,
+                    'exit_date': exit_dt.strftime('%Y-%m-%d') if exit_dt else None,
                     'ticker': t.get('ticker'),
-                    'direction': t.get('direction', 'LONG'), # Assume LONG if missing
+                    'direction': direction,
                     'entry_price': t.get('entry_price'),
                     'exit_price': t.get('exit_price'),
-                    'size': t.get('size'), # Use 'size' instead of 'shares'
-                    'pnl': t.get('pnl'),
-                    'return_pct': t.get('return_pct'), # Use 'return_pct'
-                    'duration': duration_str, # Use formatted duration string
-                    'stop_loss_hit': t.get('stop_loss_hit', False),
-                    'take_profit_hit': t.get('take_profit_hit', False),
+                    'size': t.get('size') if t.get('size') is not None else t.get('shares'),
+                    'pnl': pnl,
+                    'return_pct': ret,
+                    'duration': duration_str,
+                    'exit_reason': t.get('exit_reason', ''),
                 })
             return formatted_trades
         except Exception as e:
