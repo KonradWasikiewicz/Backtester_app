@@ -137,7 +137,7 @@ def create_drawdown_chart() -> dbc.Card:
     Now uses the dedicated drawdown chart from VisualizationService.
     """
     logger.debug("Creating drawdown chart card structure.")
-    return dbc.Card(
+ return dbc.Card(
         [
             dbc.CardHeader(
                 dbc.Row(
