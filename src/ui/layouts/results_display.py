@@ -40,8 +40,7 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                                 size="sm",
                                 className="gear-btn",
                             ),
-                            width="auto",
-                        ),
+                            width="auto",                        ),
                     ],
                     align="center",  # Vertically aligns items (columns) within the Row
                     justify="between",  # Distributes space between title (left) and buttons (right)
@@ -51,7 +50,7 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
             dbc.Popover(
                 dbc.PopoverBody(
                     className="settings-popover-body",
-                    [
+                    children=[
                         dbc.Row(
                             [
                                 dbc.Col("Y axis in", width="auto"),
@@ -137,7 +136,7 @@ def create_drawdown_chart() -> dbc.Card:
     Now uses the dedicated drawdown chart from VisualizationService.
     """
     logger.debug("Creating drawdown chart card structure.")
- return dbc.Card(
+    return dbc.Card(
         [
             dbc.CardHeader(
                 dbc.Row(
@@ -157,8 +156,7 @@ def create_drawdown_chart() -> dbc.Card:
                                 color="primary",
                                 outline=False,
                                 size="sm",
-                                className="gear-btn",
-                            ),
+                                className="gear-btn",                            ),
                             width="auto",
                         ),
                     ],
@@ -170,7 +168,7 @@ def create_drawdown_chart() -> dbc.Card:
             dbc.Popover(
                 dbc.PopoverBody(
                     className="settings-popover-body",
-                    [
+                    children=[
                         dbc.Row(
                             [
                                 dbc.Col("Y axis in", width="auto"),

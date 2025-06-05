@@ -5,7 +5,7 @@ Module for managing application version information using Semantic Versioning (S
 # Application version numbers (SemVer: MAJOR.MINOR.PATCH)
 MAJOR = 1
 MINOR = 0
-PATCH = 135
+PATCH = 136
 
 # Build metadata
 BUILD = ""
@@ -31,10 +31,16 @@ VERSION_INFO = {
 }
 
 # Release date information
-RELEASE_DATE = "2025-06-03"
+RELEASE_DATE = "2025-06-05"
 
 # Changelog for the current version
 CHANGELOG = {
+    "1.0.136": {
+        "date": "2025-06-05",
+        "changes": [
+            "1",
+        ]
+    },
     "1.0.135": {
         "date": "2025-06-03",
         "changes": [
