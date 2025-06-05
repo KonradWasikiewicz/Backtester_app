@@ -404,28 +404,39 @@ class BacktestVisualizer:
             max_abs = max(abs(pivot_df.min().min()), abs(pivot_df.max().max()))
             
             # Create heatmap
-            fig = go.Figure(data=go.Heatmap(
-                z=pivot_df.values,
-                x=pivot_df.columns,
-                y=pivot_df.index,
-                colorscale=colorscale,
-                zmin=-max_abs,
-                zmax=max_abs,
-                hoverongaps=False,
-                colorbar=dict(
-                    title="Return (%)",
-                    ticksuffix="%"
-                ),
-                hovertemplate="Year: %{y}<br>Month: %{x}<br>Return: %{z:.2f}%<extra></extra>"
-            ))
-            
-            # Update layout
-            layout = _create_base_layout(
-                title="Monthly Returns",
-                height=400,
-                margin=dict(t=50, l=40, r=80, b=40)
+            text_vals = pivot_df.round(0).astype(int).values
+            norm = np.abs(pivot_df.values) / max_abs
+            text_colors = np.where(norm < 0.4, "#f0f0f0", "#111111")
+
+            fig = go.Figure(
+                data=go.Heatmap(
+                    z=pivot_df.values,
+                    x=pivot_df.columns,
+                    y=pivot_df.index,
+                    colorscale=colorscale,
+                    zmin=-max_abs,
+                    zmax=max_abs,
+                    hoverongaps=False,
+                    colorbar=dict(title="Return (%)", ticksuffix="%"),
+                    text=text_vals,
+                    texttemplate="%{text}%",
+                    textfont=dict(color=text_colors),
+                    hovertemplate="Year: %{y}<br>Month: %{x}<br>Return: %{z:.2f}%<extra></extra>",
+                )
             )
-            fig.update_layout(layout)
+
+            layout = _create_base_layout(
+                title="",
+                height=400,
+                margin=dict(t=40, l=40, r=80, b=40),
+            )
+            fig.update_layout(
+                layout,
+                hovermode="closest",
+                xaxis_showspikes=False,
+                yaxis_showspikes=False,
+            )
+            fig.update_yaxes(dtick=1, tickformat="d")
             return fig
             
         except Exception as e:
