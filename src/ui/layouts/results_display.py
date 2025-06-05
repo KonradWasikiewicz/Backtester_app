@@ -24,16 +24,21 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                 dbc.Row(
                     [
                         dbc.Col(
-                            html.H4("Portfolio Value", className="card-title mb-0"),
+                            html.H4(
+                                "Portfolio Value",
+                                className="card-title mb-0",
+                            ),
                             width="auto",
+                            className="d-flex align-items-center",
                         ),
                         dbc.Col(
                             dbc.Button(
                                 html.I(className="fas fa-cog"),
                                 id=app_ids.ResultsIDs.PORTFOLIO_SETTINGS_BUTTON,
-                                color="secondary",
-                                outline=True,
+                                color="primary",
+                                outline=False,
                                 size="sm",
+                                className="gear-btn",
                             ),
                             width="auto",
                         ),
@@ -45,6 +50,7 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
             ),
             dbc.Popover(
                 dbc.PopoverBody(
+                    className="settings-popover-body",
                     [
                         dbc.Row(
                             [
@@ -104,6 +110,7 @@ def create_portfolio_value_returns_chart() -> dbc.Card:
                 target=app_ids.ResultsIDs.PORTFOLIO_SETTINGS_BUTTON,
                 placement="bottom-end",
                 trigger="legacy",
+                autohide=False,
                 is_open=False,
             ),
             dbc.CardBody(
@@ -136,16 +143,21 @@ def create_drawdown_chart() -> dbc.Card:
                 dbc.Row(
                     [
                         dbc.Col(
-                            html.H4("Drawdown", className="card-title mb-0"),
+                            html.H4(
+                                "Drawdown",
+                                className="card-title mb-0",
+                            ),
                             width="auto",
+                            className="d-flex align-items-center",
                         ),
                         dbc.Col(
                             dbc.Button(
                                 html.I(className="fas fa-cog"),
                                 id=app_ids.ResultsIDs.DRAWDOWN_SETTINGS_BUTTON,
-                                color="secondary",
-                                outline=True,
+                                color="primary",
+                                outline=False,
                                 size="sm",
+                                className="gear-btn",
                             ),
                             width="auto",
                         ),
@@ -157,6 +169,7 @@ def create_drawdown_chart() -> dbc.Card:
             ),
             dbc.Popover(
                 dbc.PopoverBody(
+                    className="settings-popover-body",
                     [
                         dbc.Row(
                             [
@@ -216,6 +229,7 @@ def create_drawdown_chart() -> dbc.Card:
                 target=app_ids.ResultsIDs.DRAWDOWN_SETTINGS_BUTTON,
                 placement="bottom-end",
                 trigger="legacy",
+                autohide=False,
                 is_open=False,
             ),
             dbc.CardBody(
