@@ -329,20 +329,7 @@ def create_signals_chart() -> dbc.Card:
                                 placeholder="Select Ticker...",
                                 size="sm",
                             ),
-                            width=4,
-                        ),
-                        dbc.Col(
-                            dbc.Checklist(
-                                id=app_ids.ResultsIDs.SIGNALS_INDICATOR_CHECKLIST,
-                                options=[
-                                    {"label": "SMA50", "value": "sma50"},
-                                    {"label": "SMA200", "value": "sma200"},
-                                ],
-                                value=[],
-                                inline=True,
-                                switch=True,
-                            ),
-                            width="auto",
+                            width=3,
                         ),
                     ],
                     justify="between",
