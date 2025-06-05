@@ -577,11 +577,11 @@ def register_backtest_callbacks(app: Dash):
                     {"name": "Exit Date", "id": "exit_date"},
                     {"name": "Ticker", "id": "ticker"},
                     {"name": "Direction", "id": "direction"},
-                    {"name": "Entry Price", "id": "entry_price", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)},
-                    {"name": "Exit Price", "id": "exit_price", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)},
+                    {"name": "Entry Price", "id": "entry_price", "type": "numeric", "format": Format.Format(precision=2, scheme=Scheme.fixed)},
+                    {"name": "Exit Price", "id": "exit_price", "type": "numeric", "format": Format.Format(precision=2, scheme=Scheme.fixed)},
                     {"name": "Size", "id": "size", "type": "numeric"},
-                    {"name": "PnL", "id": "pnl", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)},
-                    {"name": "Return %", "id": "return_pct", "type": "numeric", "format": Format(precision=2, scheme=Scheme.percentage)},
+                    {"name": "PnL", "id": "pnl", "type": "numeric", "format": Format.Format(precision=0, scheme=Scheme.fixed, group=Format.Group.yes)},
+                    {"name": "Return %", "id": "return_pct", "type": "numeric", "format": Format.Format(precision=0, scheme=Scheme.fixed, group=Format.Group.yes).symbol_suffix('%')},
                     {"name": "Duration", "id": "duration"},
                     {"name": "Exit Reason", "id": "exit_reason"},
                 ]
@@ -605,6 +605,8 @@ def register_backtest_callbacks(app: Dash):
                     style_data_conditional=[
                         {"if": {"filter_query": "{pnl} > 0", "column_id": "pnl"}, "color": "#28a745"},
                         {"if": {"filter_query": "{pnl} < 0", "column_id": "pnl"}, "color": "#dc3545"},
+                        {"if": {"filter_query": "{return_pct} > 0", "column_id": "return_pct"}, "color": "#28a745"},
+                        {"if": {"filter_query": "{return_pct} < 0", "column_id": "return_pct"}, "color": "#dc3545"},
                     ],
                     page_size=10,
                 )
@@ -879,7 +881,18 @@ def register_backtest_callbacks(app: Dash):
         elif strategy == "RSI":
             indicators = ["rsi"]
 
-        fig = backtest_service.get_signals_chart(ticker, indicators)
+        signals_df = None
+        signals_dict = results_data.get("signals", {})
+        if isinstance(signals_dict, dict) and ticker in signals_dict:
+            try:
+                signals_df = pd.read_json(signals_dict[ticker], orient="split")
+            except ValueError:
+                try:
+                    signals_df = pd.read_json(signals_dict[ticker])
+                except Exception:
+                    signals_df = None
+
+        fig = backtest_service.get_signals_chart(ticker, indicators, signals_df)
         if fig is None:
             return create_empty_chart("No signal data")
         return fig

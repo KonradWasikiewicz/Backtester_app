@@ -835,7 +835,7 @@ class VisualizationService:
             pivot.values,
             x=month_names,
             y=pivot.index,
-            color_continuous_scale='RdYlGn', # Red-Yellow-Green scale
+            color_continuous_scale='RdYlGn',  # Red-Yellow-Green scale
             labels={'x': 'Month', 'y': 'Year', 'color': 'Return'},
             aspect='auto',
             text_auto='.0%'
@@ -858,9 +858,13 @@ class VisualizationService:
         # Ensure text color contrasts with the heatmap colors
         # Use white text for better contrast on dark theme
         fig.update_layout(
-            font=dict(color='white') # Set default font color for the whole chart
+            font=dict(color='white')
         )
-        fig.update_traces(textfont_color='black') # Keep cell text black for RdYlGn contrast
+        z = pivot.values
+        max_abs = max(abs(z.min()), abs(z.max())) if not np.isnan(z).all() else 1
+        norm = np.abs(z) / max_abs
+        text_colors = np.where(norm < 0.4, '#f0f0f0', '#111111')
+        fig.update_traces(textfont_color=text_colors)
         return fig
 
     def prepare_trades_for_table(self, trades):
