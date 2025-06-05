@@ -10,7 +10,7 @@ from src.ui.components.stepper import create_wizard_stepper, create_step_indicat
 import dash_bootstrap_components as dbc
 from dash import html
 import logging
-from typing import Optional
+from typing import Optional, List, Tuple, Any
 
 logger = logging.getLogger(__name__)
 
@@ -91,3 +91,53 @@ def create_metric_card_with_tooltip(title: str,
         return html.Div([card, tooltip])
     else:
         return html.Div([card])
+
+
+def create_metrics_table(rows: List[Tuple[str, Any, Optional[Any]]]) -> dbc.Table:
+    """Create a simple metrics table.
+
+    Args:
+        rows: List of tuples (label, strategy_value, benchmark_value or None).
+
+    Returns:
+        dbc.Table component representing the metrics.
+    """
+    show_benchmark = any(len(r) > 2 and r[2] is not None for r in rows)
+
+    header_cells = [html.Th("Metric"), html.Th("Strategy")]
+    if show_benchmark:
+        header_cells.append(html.Th("Benchmark"))
+
+    body_rows = []
+    for row in rows:
+        label = row[0]
+        strat_val = row[1]
+        bench_val = row[2] if len(row) > 2 else None
+
+        def _fmt(val):
+            if isinstance(val, (int, float)):
+                return f"{val:.2f}"
+            return "" if val is None else str(val)
+
+        cells = [html.Td(label), html.Td(_fmt(strat_val))]
+        if show_benchmark:
+            cells.append(html.Td(_fmt(bench_val)))
+
+        body_rows.append(html.Tr(cells))
+
+    table = dbc.Table(
+        [html.Thead(html.Tr(header_cells)), html.Tbody(body_rows)],
+        bordered=True,
+        size="sm",
+        className="w-100",
+    )
+    return table
+
+
+__all__ = [
+    "create_wizard_stepper",
+    "create_step_indicator",
+    "create_metric_card",
+    "create_metric_card_with_tooltip",
+    "create_metrics_table",
+]
