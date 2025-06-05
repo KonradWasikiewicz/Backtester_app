@@ -1032,3 +1032,16 @@ input:focus, .form-control:focus {
   height: auto !important;
   min-height: 30px !important; /* Reduced from 40px to 30px (25% reduction) */
 }
+
+/* --- Settings Popover and Gear Button Styles --- */
+.gear-btn {
+  background-color: #0d6efd !important;
+  border: none !important;
+  padding: 2px 4px !important;
+  font-size: 0.8rem !important;
+}
+
+.settings-popover-body {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+}
