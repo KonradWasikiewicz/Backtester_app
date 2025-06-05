@@ -835,28 +835,36 @@ class VisualizationService:
             pivot.values,
             x=month_names,
             y=pivot.index,
-            color_continuous_scale='RdYlGn', # Red-Yellow-Green scale
-            labels={'x':'Month','y':'Year','color':'Return'},
+            color_continuous_scale='RdYlGn',  # Red-Yellow-Green scale
+            labels={'x': 'Month', 'y': 'Year', 'color': 'Return'},
             aspect='auto',
-            title='Monthly Returns Heatmap',
-            text_auto='.2%' # Format text as percentage
+            text_auto='.0%'
         )
         # Update layout for dark theme and better appearance
         fig.update_layout(
-            height=self.height, 
-            template=self.theme, # Use the service's theme (e.g., 'plotly_dark')
-            plot_bgcolor='rgba(0,0,0,0)', # Transparent plot background
-            paper_bgcolor='rgba(0,0,0,0)', # Transparent paper background
-            margin=dict(l=50, r=50, b=50, t=80),
-            xaxis_nticks=12, # Ensure all months are shown
-            yaxis_nticks=len(pivot.index) # Ensure all years are shown
+            height=self.height,
+            template=self.theme,  # Use the service's theme (e.g., 'plotly_dark')
+            plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot background
+            paper_bgcolor='rgba(0,0,0,0)',  # Transparent paper background
+            margin=dict(l=50, r=50, b=50, t=40),
+            xaxis_nticks=12,  # Ensure all months are shown
+            yaxis_nticks=len(pivot.index),  # Ensure all years are shown
+            hovermode="closest",
+            xaxis_showspikes=False,
+            yaxis_showspikes=False,
         )
+        fig.update_layout(title=None)
+        fig.update_yaxes(dtick=1, tickformat="d")
         # Ensure text color contrasts with the heatmap colors
         # Use white text for better contrast on dark theme
         fig.update_layout(
-            font=dict(color='white') # Set default font color for the whole chart
+            font=dict(color='white')
         )
-        fig.update_traces(textfont_color='black') # Keep cell text black for RdYlGn contrast
+        z = pivot.values
+        max_abs = max(abs(z.min()), abs(z.max())) if not np.isnan(z).all() else 1
+        norm = np.abs(z) / max_abs
+        text_colors = np.where(norm < 0.4, '#f0f0f0', '#111111')
+        fig.update_traces(textfont_color=text_colors)
         return fig
 
     def prepare_trades_for_table(self, trades):
