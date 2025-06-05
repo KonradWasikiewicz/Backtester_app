@@ -27,7 +27,7 @@ from dash import dash_table  # Import dash_table
 
 # Import services and components
 from src.services.backtest_service import BacktestService
-from src.ui.components import create_metric_card
+from src.ui.components import create_metrics_table
 
 # Import layout functions needed for the new callback
 from src.visualization.chart_utils import create_empty_chart
@@ -468,18 +468,21 @@ def register_backtest_callbacks(app: Dash):
             )
             trades_list = []
 
-        perf_metrics = {
-            k: v
-            for k, v in metrics.items()
-            if "Trade" not in k
-            and "Win" not in k
-            and "Loss" not in k
-            and "Ratio" not in k
-            and "Avg" not in k
-            and "Profit Factor" not in k
-            and "Trades" not in k
+        trade_keys = {
+            "trades-count",
+            "winning-trades",
+            "losing-trades",
+            "win-rate",
+            "profit-factor",
+            "avg-trade",
+            "avg-win",
+            "avg-loss",
+            "largest-win",
+            "largest-loss",
         }
-        trade_stats = {k: v for k, v in metrics.items() if k not in perf_metrics}
+
+        perf_metrics = {k: v for k, v in metrics.items() if k not in trade_keys}
+        trade_stats = {k: v for k, v in metrics.items() if k in trade_keys}
 
         # More robust check for meaningful data - ensure we have actual values to display
         has_performance_metrics = bool(perf_metrics) and any(
@@ -523,49 +526,47 @@ def register_backtest_callbacks(app: Dash):
             )
 
         # Only create children components if we have meaningful data
-        performance_metrics_children = (
-            [
-                dbc.Col(
-                    create_metric_card(
-                        title,
-                        (
-                            f"{value:.2f}"
-                            if isinstance(value, (int, float))
-                            else str(value)
-                        ),
-                    ),
-                    width=6,
-                    md=4,
-                    lg=3,
-                )
-                for title, value in perf_metrics.items()
-                if value is not None
+        performance_metrics_children = []
+        if has_performance_metrics:
+            perf_rows = [
+                ("Starting Balance", perf_metrics.get("starting-balance"), None),
+                ("Ending Balance", perf_metrics.get("ending-balance"), None),
+                ("Total Return %", perf_metrics.get("total-return"), perf_metrics.get("benchmark-return")),
+                ("Excess Return %", perf_metrics.get("excess-return"), None),
+                ("CAGR %", perf_metrics.get("cagr"), perf_metrics.get("benchmark-cagr")),
+                ("Sharpe Ratio", perf_metrics.get("sharpe"), None),
+                ("Sortino Ratio", perf_metrics.get("sortino"), None),
+                ("Annual Volatility %", perf_metrics.get("annualized-volatility"), None),
+                ("Max Drawdown %", perf_metrics.get("max-drawdown"), None),
+                ("Calmar Ratio", perf_metrics.get("calmar-ratio"), None),
+                ("Recovery Factor", perf_metrics.get("recovery-factor"), None),
+                ("Alpha", perf_metrics.get("alpha"), None),
+                ("Beta", perf_metrics.get("beta"), None),
+                ("Information Ratio", perf_metrics.get("information-ratio"), None),
             ]
-            if has_performance_metrics
-            else []
-        )
 
-        trade_metrics_children = (
-            [
-                dbc.Col(
-                    create_metric_card(
-                        title,
-                        (
-                            f"{value:.2f}"
-                            if isinstance(value, (int, float))
-                            else str(value)
-                        ),
-                    ),
-                    width=6,
-                    md=4,
-                    lg=3,
-                )
-                for title, value in trade_stats.items()
-                if value is not None
+            performance_metrics_children = [
+                dbc.Col(create_metrics_table(perf_rows), width=12)
             ]
-            if has_trade_stats
-            else []
-        )
+
+        trade_metrics_children = []
+        if has_trade_stats:
+            trade_rows = [
+                ("Trades Count", trade_stats.get("trades-count"), None),
+                ("Winning Trades", trade_stats.get("winning-trades"), None),
+                ("Losing Trades", trade_stats.get("losing-trades"), None),
+                ("Win Rate %", trade_stats.get("win-rate"), None),
+                ("Profit Factor", trade_stats.get("profit-factor"), None),
+                ("Avg Trade %", trade_stats.get("avg-trade"), None),
+                ("Avg Win PnL", trade_stats.get("avg-win"), None),
+                ("Avg Loss PnL", trade_stats.get("avg-loss"), None),
+                ("Largest Win PnL", trade_stats.get("largest-win"), None),
+                ("Largest Loss PnL", trade_stats.get("largest-loss"), None),
+            ]
+
+            trade_metrics_children = [
+                dbc.Col(create_metrics_table(trade_rows), width=12)
+            ]
 
         # Create trades table only if we have valid trades data
         if has_trades:

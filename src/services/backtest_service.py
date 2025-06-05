@@ -16,7 +16,10 @@ from src.core.config import config
 from src.services.data_service import DataService
 from src.services.visualization_service import VisualizationService
 from src.visualization.visualizer import BacktestVisualizer
-from src.core.exceptions import DataError, StrategyError, BacktestError # Added
+from src.core.exceptions import DataError, StrategyError, BacktestError
+
+# Import metric helpers for additional performance calculations
+from src.analysis.metrics import calculate_total_return, calculate_cagr
 
 class BacktestService:
     """
@@ -193,36 +196,80 @@ class BacktestService:
 
         metrics = {}
         try:
-            # --- Standard Performance Metrics (Raw Values) ---
             start_balance = self.backtest_manager.initial_capital
-            # Safely get end balance
-            end_balance = start_balance # Default to start if results are missing
-            if self.current_results and "Portfolio_Value" in self.current_results and not self.current_results["Portfolio_Value"].empty:
+            end_balance = start_balance
+            if (
+                self.current_results
+                and "Portfolio_Value" in self.current_results
+                and not self.current_results["Portfolio_Value"].empty
+            ):
                 end_balance = self.current_results["Portfolio_Value"].iloc[-1]
+
+            benchmark_series = None
+            if (
+                self.current_results
+                and "Benchmark" in self.current_results
+                and isinstance(self.current_results["Benchmark"], pd.Series)
+                and not self.current_results["Benchmark"].empty
+            ):
+                benchmark_series = self.current_results["Benchmark"]
+
+            benchmark_return = None
+            benchmark_cagr = None
+            excess_return = None
+            if benchmark_series is not None:
+                tr = calculate_total_return(benchmark_series)
+                if tr is not None:
+                    benchmark_return = tr * 100
+                cagr_bench = calculate_cagr(benchmark_series)
+                if cagr_bench is not None:
+                    benchmark_cagr = cagr_bench * 100
+
+            total_return = self.current_stats.get("Total Return", 0)
+            if benchmark_return is not None:
+                excess_return = total_return - benchmark_return
 
             metrics = {
                 "starting-balance": start_balance,
                 "ending-balance": end_balance,
-                "total-return": self.current_stats.get('Total Return', 0), # Raw percentage
-                "cagr": self.current_stats.get('CAGR', 0), # Raw percentage
-                "sharpe": self.current_stats.get('Sharpe Ratio', 0),
-                "max-drawdown": self.current_stats.get('Max Drawdown', 0), # Raw percentage
-                "calmar-ratio": self.current_stats.get('Calmar Ratio', 0),
-                "recovery-factor": self.current_stats.get('Recovery Factor', 0),
-                "trades-count": self.current_stats.get('total_trades', 0),
-                "win-rate": self.current_stats.get('Win Rate', 0) * 100, # Convert to percentage
-                "profit-factor": self.current_stats.get('Profit Factor', np.nan), # Use NaN for undefined
-                "avg-trade": self.current_stats.get('Avg Trade Pct', 0), # Use Avg Trade Pct
-                "signals-generated": self.current_stats.get('total_entry_signals', 0),
-                "rejected-signals-total": self.current_stats.get('total_rejected_signals', 0),
+                "total-return": total_return,
+                "benchmark-return": benchmark_return,
+                "excess-return": excess_return,
+                "cagr": self.current_stats.get("CAGR", 0),
+                "benchmark-cagr": benchmark_cagr,
+                "sharpe": self.current_stats.get("Sharpe Ratio", 0),
+                "sortino": self.current_stats.get("Sortino Ratio", 0),
+                "annualized-volatility": self.current_stats.get("Annualized Volatility", 0),
+                "max-drawdown": self.current_stats.get("Max Drawdown", 0),
+                "calmar-ratio": self.current_stats.get("Calmar Ratio", 0),
+                "recovery-factor": self.current_stats.get("Recovery Factor", 0),
+                "alpha": self.current_stats.get("Alpha"),
+                "beta": self.current_stats.get("Beta"),
+                "information-ratio": self.current_stats.get("Information Ratio"),
+
+                # Trade-related metrics
+                "trades-count": self.current_stats.get("total_trades", 0),
+                "winning-trades": self.current_stats.get("winning_trades", 0),
+                "losing-trades": self.current_stats.get("losing_trades", 0),
+                "win-rate": self.current_stats.get("Win Rate", 0) * 100,
+                "profit-factor": self.current_stats.get("Profit Factor", np.nan),
+                "avg-trade": self.current_stats.get("Avg Trade Pct", 0),
+                "avg-win": self.current_stats.get("avg_win_pnl", 0),
+                "avg-loss": self.current_stats.get("avg_loss_pnl", 0),
+                "largest-win": self.current_stats.get("largest_win_pnl", 0),
+                "largest-loss": self.current_stats.get("largest_loss_pnl", 0),
+                "signals-generated": self.current_stats.get("total_entry_signals", 0),
+                "rejected-signals-total": self.current_stats.get("total_rejected_signals", 0),
             }
-            # Handle potential NaN for profit factor
+
             if pd.isna(metrics["profit-factor"]):
-                 metrics["profit-factor"] = 0 # Or some other indicator like 'inf' or None
+                metrics["profit-factor"] = 0
 
             return metrics
         except Exception as e:
-            logger.error(f"Error generating performance metrics dictionary: {e}", exc_info=True)
+            logger.error(
+                f"Error generating performance metrics dictionary: {e}", exc_info=True
+            )
             return {}
 
     def get_signals_chart(self, ticker: str, indicators: Optional[List[str]] = None):
