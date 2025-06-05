@@ -23,8 +23,7 @@ from dash import (
 import plotly.graph_objects as go
 import plotly.io as pio
 import dash_bootstrap_components as dbc  # Import dbc
-from dash import dash_table
-from dash.dash_table.Format import Format, Scheme
+from dash import dash_table  # Import dash_table
 
 # Import services and components
 from src.services.backtest_service import BacktestService
@@ -571,23 +570,11 @@ def register_backtest_callbacks(app: Dash):
 
         # Create trades table only if we have valid trades data
         if has_trades:
+            # Check if trade data contains the expected columns
             if trades_list and isinstance(trades_list[0], dict) and trades_list[0]:
-                columns = [
-                    {"name": "Entry Date", "id": "entry_date"},
-                    {"name": "Exit Date", "id": "exit_date"},
-                    {"name": "Ticker", "id": "ticker"},
-                    {"name": "Direction", "id": "direction"},
-                    {"name": "Entry Price", "id": "entry_price", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)},
-                    {"name": "Exit Price", "id": "exit_price", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)},
-                    {"name": "Size", "id": "size", "type": "numeric"},
-                    {"name": "PnL", "id": "pnl", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)},
-                    {"name": "Return %", "id": "return_pct", "type": "numeric", "format": Format(precision=2, scheme=Scheme.percentage)},
-                    {"name": "Duration", "id": "duration"},
-                    {"name": "Exit Reason", "id": "exit_reason"},
-                ]
                 trades_table_component = dash_table.DataTable(
                     data=trades_list,
-                    columns=columns,
+                    columns=[{"name": i, "id": i} for i in trades_list[0].keys()],
                     style_as_list_view=True,
                     style_header={
                         "backgroundColor": "rgb(30, 30, 30)",
@@ -599,13 +586,7 @@ def register_backtest_callbacks(app: Dash):
                         "color": "white",
                         "textAlign": "left",
                         "padding": "5px",
-                        "fontFamily": "inherit",
-                        "fontSize": "14px",
                     },
-                    style_data_conditional=[
-                        {"if": {"filter_query": "{pnl} > 0", "column_id": "pnl"}, "color": "#28a745"},
-                        {"if": {"filter_query": "{pnl} < 0", "column_id": "pnl"}, "color": "#dc3545"},
-                    ],
                     page_size=10,
                 )
             else:
@@ -862,24 +843,15 @@ def register_backtest_callbacks(app: Dash):
     @app.callback(
         Output(ResultsIDs.SIGNALS_CHART, "figure"),
         Input(ResultsIDs.SIGNALS_TICKER_SELECTOR, "value"),
-        State(ResultsIDs.BACKTEST_RESULTS_STORE, "data"),
+        Input(ResultsIDs.SIGNALS_INDICATOR_CHECKLIST, "value"),
         prevent_initial_call=True,
     )
-    def update_signals_chart(ticker, results_data):
-        """Update signals chart for selected ticker using strategy defaults."""
-        if not ticker or not results_data:
+    def update_signals_chart(ticker, indicators):
+        """Update signals chart for selected ticker with optional indicators."""
+        if not ticker:
             raise PreventUpdate
 
-        strategy = (results_data.get("strategy_type") or "").upper()
-        indicators = []
-        if strategy == "MAC":
-            indicators = ["sma50", "sma200"]
-        elif strategy == "BB":
-            indicators = ["bollinger"]
-        elif strategy == "RSI":
-            indicators = ["rsi"]
-
-        fig = backtest_service.get_signals_chart(ticker, indicators)
+        fig = backtest_service.get_signals_chart(ticker, indicators or [])
         if fig is None:
             return create_empty_chart("No signal data")
         return fig
