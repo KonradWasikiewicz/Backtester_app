@@ -24,7 +24,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import dash_bootstrap_components as dbc  # Import dbc
 from dash import dash_table
-from dash.dash_table.Format import Format, Scheme
+from dash.dash_table.Format import Format, Scheme, Group
 
 # Import services and components
 from src.services.backtest_service import BacktestService
@@ -577,11 +577,11 @@ def register_backtest_callbacks(app: Dash):
                     {"name": "Exit Date", "id": "exit_date"},
                     {"name": "Ticker", "id": "ticker"},
                     {"name": "Direction", "id": "direction"},
-                    {"name": "Entry Price", "id": "entry_price", "type": "numeric", "format": Format.Format(precision=2, scheme=Scheme.fixed)},
-                    {"name": "Exit Price", "id": "exit_price", "type": "numeric", "format": Format.Format(precision=2, scheme=Scheme.fixed)},
+                    {"name": "Entry Price", "id": "entry_price", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)},
+                    {"name": "Exit Price", "id": "exit_price", "type": "numeric", "format": Format(precision=2, scheme=Scheme.fixed)},
                     {"name": "Size", "id": "size", "type": "numeric"},
-                    {"name": "PnL", "id": "pnl", "type": "numeric", "format": Format.Format(precision=0, scheme=Scheme.fixed, group=Format.Group.yes)},
-                    {"name": "Return %", "id": "return_pct", "type": "numeric", "format": Format.Format(precision=0, scheme=Scheme.fixed, group=Format.Group.yes).symbol_suffix('%')},
+                    {"name": "PnL", "id": "pnl", "type": "numeric", "format": Format(precision=0, scheme=Scheme.fixed, group=Group.yes)},
+                    {"name": "Return %", "id": "return_pct", "type": "numeric", "format": Format(precision=0, scheme=Scheme.fixed, group=Group.yes).symbol_suffix('%')},
                     {"name": "Duration", "id": "duration"},
                     {"name": "Exit Reason", "id": "exit_reason"},
                 ]
