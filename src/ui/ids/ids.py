@@ -4,29 +4,30 @@ This file serves as the single source of truth for all component IDs,
 preventing conflicts and making refactoring easier.
 """
 
+
 class WizardIDs:
     """IDs for components in the wizard interface."""
-    
+
     # Step 1: Initial Capital & Strategy
     INITIAL_CAPITAL_INPUT = "wizard-initial-capital-input"
     STRATEGY_DROPDOWN = "wizard-strategy-dropdown"
     STRATEGY_DESCRIPTION_OUTPUT = "wizard-strategy-description-output"
     STRATEGY_PARAM_INPUTS_CONTAINER = "wizard-strategy-param-inputs"
     CONFIRM_STRATEGY_BUTTON = "wizard-confirm-strategy"
-    
+
     # Validation IDs for real-time feedback
     # Step 1: Initial Capital and Strategy Validation
     INITIAL_CAPITAL_FEEDBACK = "wizard-initial-capital-feedback"
     STRATEGY_VALIDATION_FEEDBACK = "wizard-strategy-validation-feedback"
-    
+
     # Step 2: Date Range Validation
     DATE_START_FEEDBACK = "wizard-date-start-feedback"
     DATE_END_FEEDBACK = "wizard-date-end-feedback"
     DATE_RANGE_FEEDBACK = "wizard-date-range-feedback"
-    
+
     # Step 3: Ticker Selection Validation
     TICKER_DROPDOWN_FEEDBACK = "wizard-ticker-dropdown-feedback"
-    
+
     # Step 4: Risk Management Validation
     MAX_POSITION_SIZE_FEEDBACK = "wizard-max-position-size-feedback"
     STOP_LOSS_FEEDBACK = "wizard-stop-loss-feedback"
@@ -35,42 +36,42 @@ class WizardIDs:
     MARKET_TREND_LOOKBACK_FEEDBACK = "wizard-market-trend-lookback-feedback"
     MAX_DRAWDOWN_FEEDBACK = "wizard-max-drawdown-feedback"
     MAX_DAILY_LOSS_FEEDBACK = "wizard-max-daily-loss-feedback"
-    
+
     # Step 5: Trading Costs Validation
     COMMISSION_FEEDBACK = "wizard-commission-feedback"
     SLIPPAGE_FEEDBACK = "wizard-slippage-feedback"
-    
+
     # Step 6: Rebalancing Validation
     REBALANCING_THRESHOLD_FEEDBACK = "wizard-rebalancing-threshold-feedback"
-      # Wizard Progress & Main Containers
+    # Wizard Progress & Main Containers
     STEPS_CONTAINER = "wizard-steps-container"
     STRATEGY_CONFIG_CONTAINER = "strategy-config-container"
     WIZARD_STEPPER = "wizard-stepper"
     PROGRESS_BAR = "wizard-progress-bar"
-    PROGRESS_CONTAINER = "wizard-progress-container" # ADDED
-    
+    PROGRESS_CONTAINER = "wizard-progress-container"  # ADDED
+
     # Stepper Component IDs (NEW)
     @staticmethod
     def step_indicator(step_number):
         """Generate ID for a step indicator in the stepper."""
         return f"step-indicator-{step_number}"
-    
+
     # Step Headers and Contents (by pattern)
     @staticmethod
     def step_header(step_id):
         """Generate ID for a step header."""
         return f"{step_id}-header"
-    
+
     @staticmethod
     def step_content(step_id):
         """Generate ID for step content."""
         return f"{step_id}-content"
-    
+
     # Step 2: Date Range
     DATE_RANGE_START_PICKER = "wizard-date-start-picker"
     DATE_RANGE_END_PICKER = "wizard-date-end-picker"
     CONFIRM_DATES_BUTTON = "wizard-confirm-dates-button"
-    
+
     # Step 3: Ticker Selection
     TICKER_SELECTION_CONTAINER = "wizard-ticker-selection"
     TICKER_DROPDOWN = "wizard-ticker-dropdown"
@@ -78,18 +79,20 @@ class WizardIDs:
     CONFIRM_TICKERS_BUTTON = "wizard-confirm-tickers-button"
     SELECT_ALL_TICKERS_BUTTON = "wizard-select-all-tickers-button"
     DESELECT_ALL_TICKERS_BUTTON = "wizard-deselect-all-tickers-button"
-    
+
     # Step 4: Risk Management
     # RISK_MANAGEMENT_CONTAINER = "wizard-risk-management" # Unused
     RISK_FEATURES_CHECKLIST = "wizard-risk-features-checklist"
     MAX_POSITION_SIZE_INPUT = "wizard-max-position-size-input"
     STOP_LOSS_TYPE_SELECT = "wizard-stop-loss-type-select"
-    STOP_LOSS_INPUT = "wizard-stop-loss-input" # Existing, intended for stop loss value
+    STOP_LOSS_INPUT = "wizard-stop-loss-input"  # Existing, intended for stop loss value
     TAKE_PROFIT_TYPE_SELECT = "wizard-take-profit-type-select"
-    TAKE_PROFIT_INPUT = "wizard-take-profit-input" # Existing, intended for take profit value
+    TAKE_PROFIT_INPUT = (
+        "wizard-take-profit-input"  # Existing, intended for take profit value
+    )
     MAX_RISK_PER_TRADE_INPUT = "wizard-max-risk-per-trade-input"
     MARKET_TREND_LOOKBACK_INPUT = "wizard-market-trend-lookback-input"
-    MAX_DRAWDOWN_INPUT = "wizard-max-drawdown-input" # Existing
+    MAX_DRAWDOWN_INPUT = "wizard-max-drawdown-input"  # Existing
     MAX_DAILY_LOSS_INPUT = "wizard-max-daily-loss-input"
     CONFIRM_RISK_BUTTON = "wizard-confirm-risk-button"
 
@@ -100,38 +103,44 @@ class WizardIDs:
     RISK_PANEL_RISK_PER_TRADE = "wizard-risk-panel-risk-per-trade"
     RISK_PANEL_MARKET_FILTER = "wizard-risk-panel-market-filter"
     RISK_PANEL_DRAWDOWN_PROTECTION = "wizard-risk-panel-drawdown-protection"
-    
+
     # Step 5: Trading Costs
     # TRADING_COSTS_CONTAINER = "wizard-trading-costs" # Unused
     COMMISSION_INPUT = "wizard-commission-input"
     SLIPPAGE_INPUT = "wizard-slippage-input"
     CONFIRM_COSTS_BUTTON = "wizard-confirm-costs-button"
-    
+
     # Step 6: Rebalancing
     # REBALANCING_CONTAINER = "wizard-rebalancing" # Unused
     REBALANCING_FREQUENCY_DROPDOWN = "wizard-rebalancing-frequency"
     REBALANCING_THRESHOLD_INPUT = "wizard-rebalancing-threshold"
     CONFIRM_REBALANCING_BUTTON = "wizard-confirm-rebalancing-button"
-      # Step 7: Summary & Run
+    # Step 7: Summary & Run
     SUMMARY_CONTAINER = "wizard-summary"
     # SUMMARY_STRATEGY_NAME = "wizard-summary-strategy-name" # Unused
     # SUMMARY_INITIAL_CAPITAL = "wizard-summary-initial-capital" # Unused
     SUMMARY_OUTPUT_CONTAINER = "wizard-summary-output"
     RUN_BACKTEST_BUTTON_WIZARD = "wizard-run-backtest-button"
-    STRATEGY_PARAMS_STORE = "wizard-strategy-params-store"  # Store for strategy-specific parameters
+    STRATEGY_PARAMS_STORE = (
+        "wizard-strategy-params-store"  # Store for strategy-specific parameters
+    )
 
     # Summary Detail Fields (NEW - based on wizard_callbacks.py usage)
-    SUMMARY_STRATEGY_DETAILS = "wizard-summary-strategy" # For strategy name and initial capital
+    SUMMARY_STRATEGY_DETAILS = (
+        "wizard-summary-strategy"  # For strategy name and initial capital
+    )
     SUMMARY_DATES_DETAILS = "wizard-summary-dates"
     SUMMARY_TICKERS_DETAILS = "wizard-summary-tickers"
     SUMMARY_RISK_DETAILS = "wizard-summary-risk"
     SUMMARY_COSTS_DETAILS = "wizard-summary-costs"
     SUMMARY_REBALANCING_DETAILS = "wizard-summary-rebalancing"
-    SUMMARY_STRATEGY_PARAMETERS = "wizard-strategy-parameters-summary"    # Wizard-specific data stores
-    RISK_MANAGEMENT_STORE_WIZARD = "wizard-risk-management-store" # NEW
-    
+    SUMMARY_STRATEGY_PARAMETERS = (
+        "wizard-strategy-parameters-summary"  # Wizard-specific data stores
+    )
+    RISK_MANAGEMENT_STORE_WIZARD = "wizard-risk-management-store"  # NEW
+
     # Run Backtest Button in Wizard
-    RUN_BACKTEST_BUTTON_WIZARD = "run-backtest-button-wizard"    # Stores for wizard state
+    RUN_BACKTEST_BUTTON_WIZARD = "run-backtest-button-wizard"  # Stores for wizard state
     ACTIVE_STEP_STORE = "wizard-active-step-store"
     CONFIRMED_STEPS_STORE = "wizard-confirmed-steps-store"
     ALL_STEPS_COMPLETED_STORE = "wizard-all-steps-completed-store"
@@ -148,8 +157,8 @@ class ResultsIDs:
     PORTFOLIO_VALUE_BUTTON = "btn-chart-value"
     PORTFOLIO_RETURNS_BUTTON = "btn-chart-returns"
     # ADDED NEW IDs for currency/percentage toggle
-    PORTFOLIO_VALUE_CURRENCY_USD = "portfolio-value-currency-usd" # UNCOMMENTED
-    PORTFOLIO_VALUE_CURRENCY_PERCENT = "portfolio-value-currency-percent" # UNCOMMENTED
+    PORTFOLIO_VALUE_CURRENCY_USD = "portfolio-value-currency-usd"  # UNCOMMENTED
+    PORTFOLIO_VALUE_CURRENCY_PERCENT = "portfolio-value-currency-percent"  # UNCOMMENTED
 
     # Charts & Their Loaders
     PORTFOLIO_CHART = "portfolio-chart"
@@ -159,23 +168,38 @@ class ResultsIDs:
     DRAWDOWN_CHART_LOADING = "drawdown-chart-loading"
 
     MONTHLY_RETURNS_HEATMAP = "monthly-returns-heatmap"
-    MONTHLY_RETURNS_HEATMAP_LOADING = "heatmap-chart-loading" # as per layout
+    MONTHLY_RETURNS_HEATMAP_LOADING = "heatmap-chart-loading"  # as per layout
 
     SIGNALS_CHART = "signals-chart"
     SIGNALS_CHART_LOADING = "signals-chart-loading"
-    SIGNALS_TICKER_SELECTOR = "ticker-selector" # For signals chart
+    SIGNALS_TICKER_SELECTOR = "ticker-selector"  # For signals chart
     PORTFOLIO_SCALE_RADIO = "portfolio-scale-radio"  # Linear vs Log scale
     SIGNALS_INDICATOR_CHECKLIST = "signals-indicator-checklist"  # Indicator toggles
 
+    # Settings buttons and stores for interactive charts
+    PORTFOLIO_SETTINGS_BUTTON = "portfolio-settings-button"
+    PORTFOLIO_SETTINGS_POPOVER = "portfolio-settings-popover"
+    PORTFOLIO_SCALE_LINEAR_BTN = "portfolio-scale-linear-btn"
+    PORTFOLIO_SCALE_LOG_BTN = "portfolio-scale-log-btn"
+    PORTFOLIO_SETTINGS_STORE = "portfolio-settings-store"
+
+    DRAWDOWN_SETTINGS_BUTTON = "drawdown-settings-button"
+    DRAWDOWN_SETTINGS_POPOVER = "drawdown-settings-popover"
+    DRAWDOWN_YAXIS_USD_BTN = "drawdown-yaxis-usd-btn"
+    DRAWDOWN_YAXIS_PERCENT_BTN = "drawdown-yaxis-percent-btn"
+    DRAWDOWN_SCALE_LINEAR_BTN = "drawdown-scale-linear-btn"
+    DRAWDOWN_SCALE_LOG_BTN = "drawdown-scale-log-btn"
+    DRAWDOWN_SETTINGS_STORE = "drawdown-settings-store"
+
     # Tables & Their Loaders/Containers
-    TRADES_TABLE_CONTAINER = "trades-table-container" # UNCOMMENTED
-    TRADES_TABLE_LOADING = "trades-table-loading" # UNCOMMENTED    # Metrics Containers
-    PERFORMANCE_METRICS_CONTAINER = "performance-metrics-container" # UNCOMMENTED
-    TRADE_METRICS_CONTAINER = "trade-metrics-container" # UNCOMMENTED
-    
+    TRADES_TABLE_CONTAINER = "trades-table-container"  # UNCOMMENTED
+    TRADES_TABLE_LOADING = "trades-table-loading"  # UNCOMMENTED    # Metrics Containers
+    PERFORMANCE_METRICS_CONTAINER = "performance-metrics-container"  # UNCOMMENTED
+    TRADE_METRICS_CONTAINER = "trade-metrics-container"  # UNCOMMENTED
+
     # Cards for metrics containers
-    PERFORMANCE_OVERVIEW_CARD = "performance-overview-card" # NEW
-    TRADE_STATISTICS_CARD = "trade-statistics-card" # NEW
+    PERFORMANCE_OVERVIEW_CARD = "performance-overview-card"  # NEW
+    TRADE_STATISTICS_CARD = "trade-statistics-card"  # NEW
 
     # Status and Progress
     BACKTEST_STATUS_MESSAGE = "backtest-status"
@@ -187,55 +211,61 @@ class ResultsIDs:
     BACKTEST_ANIMATION_INTERVAL = "backtest-animation-interval"
 
     # Layout Wrappers / Areas
-    RESULTS_AREA_WRAPPER = "actual-results-area" # UNCOMMENTED
+    RESULTS_AREA_WRAPPER = "actual-results-area"  # UNCOMMENTED
 
     # These might be better in LayoutIDs if they define major page structure columns
     # For now, keeping them here as they are directly related to results visibility in callbacks
-    CENTER_PANEL_COLUMN = "center-panel-col" # UNCOMMENTED
-    RIGHT_PANEL_COLUMN = "right-panel-col" # UNCOMMENTED
+    CENTER_PANEL_COLUMN = "center-panel-col"  # UNCOMMENTED
+    RIGHT_PANEL_COLUMN = "right-panel-col"  # UNCOMMENTED
 
 
 class StrategyConfigIDs:
     """IDs for strategy configuration components outside the wizard (main page)."""
-    
+
     CONFIG_CONTAINER = "strategy-config-container-main"
-    STRATEGY_SELECTOR = "strategy-selector-main" # Main strategy dropdown
-    PARAMS_CONTAINER = "strategy-params-container-main" # Main strategy parameters container
-    
+    STRATEGY_SELECTOR = "strategy-selector-main"  # Main strategy dropdown
+    PARAMS_CONTAINER = (
+        "strategy-params-container-main"  # Main strategy parameters container
+    )
+
     # Basic Config
     INITIAL_CAPITAL_INPUT_MAIN = "initial-capital-input-main"
     TICKER_INPUT_MAIN = "ticker-input-main"
     START_DATE_PICKER_MAIN = "backtest-start-date-main"
     END_DATE_PICKER_MAIN = "backtest-end-date-main"
-    
+
     # Run Button
     RUN_BACKTEST_BUTTON_MAIN = "run-backtest-button-main"
-    
+
     # Risk Management (Main Page)
     RISK_FEATURES_CHECKLIST_MAIN = "risk-features-checklist-main"
     MAX_POSITION_SIZE_INPUT_MAIN = "max-position-size-main"
     STOP_LOSS_TYPE_SELECT_MAIN = "stop-loss-type-main"
-    STOP_LOSS_INPUT_MAIN = "stop-loss-value-main" # Input for stop loss value
+    STOP_LOSS_INPUT_MAIN = "stop-loss-value-main"  # Input for stop loss value
     TAKE_PROFIT_TYPE_SELECT_MAIN = "take-profit-type-main"
-    TAKE_PROFIT_INPUT_MAIN = "take-profit-value-main" # Input for take profit value
+    TAKE_PROFIT_INPUT_MAIN = "take-profit-value-main"  # Input for take profit value
     MAX_RISK_PER_TRADE_INPUT_MAIN = "max-risk-per-trade-main"
     MARKET_TREND_LOOKBACK_INPUT_MAIN = "market-trend-lookback-main"
     MAX_DRAWDOWN_INPUT_MAIN = "max-drawdown-main"
     MAX_DAILY_LOSS_INPUT_MAIN = "max-daily-loss-main"
-    
+
     # Trading Costs (Main Page)
     COMMISSION_INPUT_MAIN = "commission-input-main"
     SLIPPAGE_INPUT_MAIN = "slippage-input-main"
-    
+
     # Rebalancing (Main Page)
     REBALANCING_FREQUENCY_DROPDOWN_MAIN = "rebalancing-frequency-main"
     REBALANCING_THRESHOLD_INPUT_MAIN = "rebalancing-threshold-main"
 
     # Store for configuration if used by main page components
-    STRATEGY_CONFIG_STORE_MAIN = "strategy-config-store-main" # Distinct from wizard's potential store
+    STRATEGY_CONFIG_STORE_MAIN = (
+        "strategy-config-store-main"  # Distinct from wizard's potential store
+    )
 
     # IDs from src/ui/layouts/risk_management.py, potentially for a non-wizard main page context
-    RISK_FEATURES_CHECKLIST_ALT = "risk-features-checklist" # WizardIDs.RISK_FEATURES_CHECKLIST exists
+    RISK_FEATURES_CHECKLIST_ALT = (
+        "risk-features-checklist"  # WizardIDs.RISK_FEATURES_CHECKLIST exists
+    )
     POSITION_SIZING_PANEL_ALT = "position_sizing-panel"
     STOP_LOSS_PANEL_ALT = "stop_loss-panel"
     TAKE_PROFIT_PANEL_ALT = "take_profit-panel"
@@ -251,29 +281,40 @@ class StrategyConfigIDs:
     DRAWDOWN_PROTECTION_CHECKBOX_ALT = "drawdown_protection-checkbox"
     CONTINUE_ITERATE_CHECKBOX_ALT = "continue-iterate-checkbox"
 
-    RISK_MANAGEMENT_STORE_ALT = "risk-management-store" # WizardIDs.RISK_MANAGEMENT_STORE_WIZARD exists
+    RISK_MANAGEMENT_STORE_ALT = (
+        "risk-management-store"  # WizardIDs.RISK_MANAGEMENT_STORE_WIZARD exists
+    )
 
     # Inputs from src/ui/layouts/risk_management.py (alternative context)
-    MAX_POSITION_SIZE_ALT = "max-position-size" # WizardIDs.MAX_POSITION_SIZE_INPUT exists
+    MAX_POSITION_SIZE_ALT = (
+        "max-position-size"  # WizardIDs.MAX_POSITION_SIZE_INPUT exists
+    )
     MAX_PORTFOLIO_RISK_ALT = "max-portfolio-risk"
-    STOP_LOSS_TYPE_ALT = "stop-loss-type" # WizardIDs.STOP_LOSS_TYPE_SELECT exists
-    STOP_LOSS_VALUE_ALT = "stop-loss-value" # WizardIDs.STOP_LOSS_INPUT exists
-    TAKE_PROFIT_TYPE_ALT = "take-profit-type" # WizardIDs.TAKE_PROFIT_TYPE_SELECT exists
-    TAKE_PROFIT_VALUE_ALT = "take-profit-value" # WizardIDs.TAKE_PROFIT_INPUT exists
-    MAX_RISK_PER_TRADE_ALT = "max-risk-per-trade" # WizardIDs.MAX_RISK_PER_TRADE_INPUT exists
+    STOP_LOSS_TYPE_ALT = "stop-loss-type"  # WizardIDs.STOP_LOSS_TYPE_SELECT exists
+    STOP_LOSS_VALUE_ALT = "stop-loss-value"  # WizardIDs.STOP_LOSS_INPUT exists
+    TAKE_PROFIT_TYPE_ALT = (
+        "take-profit-type"  # WizardIDs.TAKE_PROFIT_TYPE_SELECT exists
+    )
+    TAKE_PROFIT_VALUE_ALT = "take-profit-value"  # WizardIDs.TAKE_PROFIT_INPUT exists
+    MAX_RISK_PER_TRADE_ALT = (
+        "max-risk-per-trade"  # WizardIDs.MAX_RISK_PER_TRADE_INPUT exists
+    )
     RISK_REWARD_RATIO_ALT = "risk-reward-ratio"
-    MARKET_TREND_LOOKBACK_ALT = "market-trend-lookback" # WizardIDs.MARKET_TREND_LOOKBACK_INPUT exists
-    MAX_DRAWDOWN_ALT = "max-drawdown" # WizardIDs.MAX_DRAWDOWN_INPUT exists
-    MAX_DAILY_LOSS_ALT = "max-daily-loss" # WizardIDs.MAX_DAILY_LOSS_INPUT exists
+    MARKET_TREND_LOOKBACK_ALT = (
+        "market-trend-lookback"  # WizardIDs.MARKET_TREND_LOOKBACK_INPUT exists
+    )
+    MAX_DRAWDOWN_ALT = "max-drawdown"  # WizardIDs.MAX_DRAWDOWN_INPUT exists
+    MAX_DAILY_LOSS_ALT = "max-daily-loss"  # WizardIDs.MAX_DAILY_LOSS_INPUT exists
 
     # IDs from src/ui/layouts/strategy_config.py (non-wizard parts, e.g. old main page elements)
-    TICKER_INPUT_LEGACY = "ticker-input" # WizardIDs.TICKER_DROPDOWN and StrategyConfigIDs.TICKER_INPUT_MAIN exist
-    BACKTEST_START_DATE_LEGACY = "backtest-start-date" # WizardIDs.DATE_RANGE_START_PICKER and StrategyConfigIDs.START_DATE_PICKER_MAIN exist
-    BACKTEST_END_DATE_LEGACY = "backtest-end-date" # WizardIDs.DATE_RANGE_END_PICKER and StrategyConfigIDs.END_DATE_PICKER_MAIN exist
+    TICKER_INPUT_LEGACY = "ticker-input"  # WizardIDs.TICKER_DROPDOWN and StrategyConfigIDs.TICKER_INPUT_MAIN exist
+    BACKTEST_START_DATE_LEGACY = "backtest-start-date"  # WizardIDs.DATE_RANGE_START_PICKER and StrategyConfigIDs.START_DATE_PICKER_MAIN exist
+    BACKTEST_END_DATE_LEGACY = "backtest-end-date"  # WizardIDs.DATE_RANGE_END_PICKER and StrategyConfigIDs.END_DATE_PICKER_MAIN exist
 
 
 class SharedComponentIDs:
     """IDs for components shared or used across different UI modules."""
+
     LOADING_OVERLAY = "loading-overlay"
     RUN_BACKTEST_TRIGGER_STORE = "run-backtest-trigger-store"
     STATUS_AND_PROGRESS_BAR_DIV = "status-and-progress-bar-div"
@@ -281,6 +322,7 @@ class SharedComponentIDs:
 
 class AppStructureIDs:
     """IDs for main application structural elements, modals, and global stores."""
+
     APP_STATE_STORE = "app-state"
 
     # Main layout columns
